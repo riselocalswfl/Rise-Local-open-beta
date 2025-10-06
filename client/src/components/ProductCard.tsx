@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ShoppingCart, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -27,6 +27,8 @@ export default function ProductCard({
   inventory,
   isVerifiedVendor = false,
 }: ProductCardProps) {
+  const [, setLocation] = useLocation();
+
   const getStockStatus = () => {
     if (inventory === 0) return { color: "destructive", text: "Out of Stock" };
     if (inventory < 5) return { color: "default", text: `Only ${inventory} left` };
@@ -37,7 +39,14 @@ export default function ProductCard({
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     console.log(`Added ${name} to cart`);
+  };
+
+  const handleVendorClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocation(`/vendors/${vendorId}`);
   };
 
   return (
@@ -64,14 +73,14 @@ export default function ProductCard({
                 <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--le-green)' }} strokeWidth={1.75} />
               )}
             </div>
-            <Link
-              href={`/vendors/${vendorId}`}
-              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              type="button"
+              onClick={handleVendorClick}
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline text-left"
               data-testid={`link-vendor-${vendorId}`}
             >
               {vendorName}
-            </Link>
+            </button>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="le-chip text-xs">{category}</span>
               <Badge variant={stockStatus.color as any} className="text-xs rounded-pill">
