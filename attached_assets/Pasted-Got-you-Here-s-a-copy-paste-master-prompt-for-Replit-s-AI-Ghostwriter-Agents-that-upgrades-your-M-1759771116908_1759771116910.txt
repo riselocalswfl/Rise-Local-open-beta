@@ -1,0 +1,192 @@
+Got you. Here’s a copy-paste master prompt for Replit’s AI (Ghostwriter/Agents) that upgrades your MVP’s visuals to your brand: counterculture, yet put-together—aware and artistic. It preserves your current functionality and just layers in a coherent design system.
+
+MASTER PROMPT — “Local Exchange” Brand/UI Pass
+
+Goal: Apply a cohesive brand style to my existing Local Exchange MVP without breaking functionality. Keep layout and routes the same. Add a light/dark theme and refactor styles to use shared design tokens.
+
+Brand vibe
+
+“Counterculture, yet put together. Aware and artistic.”
+Organic, filmic, indie-market feel; clean, modern UI.
+
+Design tokens (use exactly)
+
+Colors
+
+--le-green: #5B8C5A; (primary)
+
+--le-wheat: #EEDC82; (secondary highlight)
+
+--le-clay: #E67A4E; (accent / CTA)
+
+--le-ink: #2D2D2D; (primary text)
+
+--le-paper: #FAF8F5; (page bg)
+
+Dark mode base: --le-night: #181A18;, text on dark: --le-mint: #DDE6D9;
+
+Elevation & radius
+
+Card radius: 14px
+
+Button radius: 9999px (pill)
+
+Shadow sm: 0 2px 8px rgba(0,0,0,.08)
+
+Shadow md: 0 6px 18px rgba(0,0,0,.10)
+
+Typography (Google Fonts)
+
+Headings: Playfair Display (700)
+
+Body/UI: Work Sans (400/600)
+
+Icon set
+
+Lucide (outline) or Feather; stroke 1.75px
+
+Implementation instructions
+
+Create design system
+
+If using Tailwind, extend the theme in tailwind.config.js with these colors, radii, shadows, and font family tokens.
+
+If not using Tailwind, add a styles/design-tokens.css with :root { /* variables above */ } and a [data-theme="dark"] { /* dark overrides */ }. Import globally.
+
+Add utility classes (or Tailwind components) for .le-card, .le-btn, .le-chip, .le-section, and .le-badge.
+
+Global theming
+
+Add a theme toggle in the header (sun/moon). Toggle data-theme="dark" on <html>.
+
+In dark theme: background --le-night, text --le-mint, desaturate images slightly (CSS filter ~0.9) for a night-market vibe.
+
+Typography
+
+Load Playfair Display + Work Sans from Google Fonts.
+
+Apply: h1,h2,h3 { Playfair Display; letter-spacing: .2px }
+
+Body, nav, buttons: Work Sans. Base size 16px; line-height 1.55.
+
+Navigation/header
+
+Header background: white (light), --le-night (dark).
+
+Logo mark: “LE” in a rounded pill with --le-green background and white text.
+
+Search input with subtle shadow and 10px radius.
+
+Active nav link underlined with a 2px --le-clay bar.
+
+Hero (Fort Myers Spotlight banner)
+
+Use a full-bleed image with a filmic overlay gradient (linear-gradient( to bottom, rgba(24,26,24,.15), rgba(24,26,24,.55) ) on dark; lighter on light theme).
+
+Place a small badge top-left: “Fort Myers Spotlight” using .le-badge (pill, bg --le-green, text white).
+
+Title in Playfair, big and confident; CTA button in --le-clay.
+
+Cards
+
+Vendor/Product/Event cards use .le-card: 14px radius, shadow sm, border 1px solid rgba(0,0,0,.06) (light) or 1px solid rgba(255,255,255,.08) (dark).
+
+On hover: transform: translateY(-2px); box-shadow: var(--shadow-md);.
+
+Chips for categories (e.g., Bakery, Organic) with outline style using --le-green text and a faint green bg rgba(91,140,90,.10).
+
+Buttons
+
+Primary: background --le-clay, text white, pill radius, hover darken by ~6%.
+
+Secondary: outline with --le-green, hover fill rgba(91,140,90,.10).
+
+Destructive not needed now.
+
+Lists & grids
+
+Category grid uses 4-column responsive layout with spacious gutters (24–28px).
+
+Section headers use Playfair + a thin underline rule in --le-wheat.
+
+Micro-interactions
+
+Focus states: 2px focus ring in --le-wheat.
+
+Loading shimmer for cards (subtle).
+
+Loyalty “Shop Local Points” badge in header (small green dot with number).
+
+Image direction
+
+Use candid market imagery, warm tones, low saturation.
+
+Add a reusable CSS class .film with filter: contrast(1.02) saturate(.95) for that aware/artistic feel.
+
+Pages/components to update (do these now)
+
+Header/Nav + ThemeToggle
+
+Home: Spotlight hero, Category grid, Featured Products
+
+Vendors list & Vendor detail: apply .le-card, chips, follow button style
+
+Products list & Product detail: card hover + CTA buttons
+
+Events: list with date badge and RSVP pill button in --le-clay
+
+Spotlight page: badge, curated grid, soft dividers
+
+Cart/Checkout: show 3% buyer fee as a subtle line; primary CTA in clay
+
+Loyalty indicator: header chip showing current points; /loyalty simple history list
+
+Acceptance criteria
+
+Fonts and color tokens are used app-wide (inspectable).
+
+Light/Dark toggle works and is persisted (localStorage).
+
+Cards, buttons, chips use the new classes and hover/active states.
+
+Hero banner uses overlay gradient + badge.
+
+No functional regressions (routing, cart, RSVP still work).
+
+Lint passes; no console errors.
+
+Files to touch (adjust to this repo)
+
+styles/design-tokens.css (or tailwind.config.js + global.css)
+
+components/ui/* (Button, Card, Badge, Chip, ThemeToggle)
+
+layouts/Header.tsx, pages/index.tsx, pages/vendors/*, pages/products/*, pages/events/*, pages/spotlight.tsx, pages/checkout.tsx, pages/loyalty.tsx
+
+When done, show before/after screenshots and list each changed file. If any file isn’t present, create it and wire it up.
+
+QUICK FOLLOW-UPS (paste after first pass)
+
+A. Tighten the hero + badge
+
+Make the Spotlight hero title 54/44/32 responsive, add .le-badge with 12px/20px pill, and ensure contrast AA in both themes.
+
+B. Card polish
+
+Increase card image corner radius to 14px, add subtle inner border, and implement hover “lift + glow” using box-shadow: 0 6px 18px rgba(230,122,78,.18) on product cards only.
+
+C. Typography rhythm
+
+Apply vertical rhythm: h1 margin-bottom 8px, section intro copy 12px bottom margin, lists 6px. Ensure headings use Playfair and everything else Work Sans.
+
+D. Loyalty chip
+
+Add a Points pill to the header that shows the user’s current balance (mocked if needed). On hover, show a tooltip “Shop Local Points”.
+
+E. Dark mode tuning
+
+In dark mode, slightly desaturate images (.film-dark { filter: brightness(.95) saturate(.9); }) and lighten card borders to rgba(255,255,255,.08).
+
+If the project uses Tailwind, tell the agent to put the tokens into tailwind.config.js (extend.colors, extend.boxShadow, extend.borderRadius, fontFamily) and swap utility classes accordingly. If not, keep everything in design-tokens.css with BEM-like classes as above.
+
+This is a style pass only—do not remove existing routes or logic.
