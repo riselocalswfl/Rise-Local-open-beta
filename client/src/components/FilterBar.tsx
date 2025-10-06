@@ -44,18 +44,18 @@ export default function FilterBar({ type, onSearch, onCategoryChange, onSortChan
       <div className="max-w-7xl mx-auto px-4 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
             <Input
               type="search"
               placeholder={`Search ${type}...`}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10"
+              className="pl-10 rounded-lg"
               data-testid={`input-filter-search-${type}`}
             />
           </div>
           <Select onValueChange={onSortChange} defaultValue="newest">
-            <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-sort">
+            <SelectTrigger className="w-full sm:w-[180px] rounded-pill" data-testid="select-sort">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -68,12 +68,12 @@ export default function FilterBar({ type, onSearch, onCategoryChange, onSortChan
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          <SlidersHorizontal className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <SlidersHorizontal className="w-4 h-4 text-muted-foreground flex-shrink-0" strokeWidth={1.75} />
           {categories[type].map((category) => (
             <Badge
               key={category}
               variant={selectedCategory === category.toLowerCase() ? "default" : "outline"}
-              className="cursor-pointer whitespace-nowrap hover-elevate"
+              className="cursor-pointer whitespace-nowrap hover-elevate rounded-pill"
               onClick={() => handleCategoryToggle(category.toLowerCase())}
               data-testid={`badge-category-${category.toLowerCase()}`}
             >

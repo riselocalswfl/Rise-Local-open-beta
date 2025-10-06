@@ -24,15 +24,15 @@ export default function CartItem({
   onRemove,
 }: CartItemProps) {
   return (
-    <Card>
+    <Card className="le-card transition-all duration-200">
       <CardContent className="p-4">
         <div className="flex gap-4">
-          <div className="w-20 h-20 rounded-md bg-muted flex-shrink-0 overflow-hidden">
+          <div className="w-20 h-20 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
             {image ? (
-              <img src={image} alt={name} className="w-full h-full object-cover" />
+              <img src={image} alt={name} className="w-full h-full object-cover film dark:film-dark" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                <span className="text-2xl font-bold text-primary/40">{name[0]}</span>
+              <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(91, 140, 90, 0.10)' }}>
+                <span className="text-2xl font-bold" style={{ color: 'var(--le-green)', opacity: 0.4 }}>{name[0]}</span>
               </div>
             )}
           </div>
@@ -46,20 +46,20 @@ export default function CartItem({
               variant="ghost"
               size="icon"
               onClick={() => onRemove(id)}
-              className="h-8 w-8"
+              className="h-8 w-8 rounded-pill"
               data-testid={`button-remove-${id}`}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" strokeWidth={1.75} />
             </Button>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => onUpdateQuantity(id, Math.max(1, quantity - 1))}
-                className="h-8 w-8"
+                className="h-8 w-8 rounded-pill"
                 data-testid={`button-decrease-${id}`}
               >
-                <Minus className="w-3 h-3" />
+                <Minus className="w-3 h-3" strokeWidth={1.75} />
               </Button>
               <span className="w-8 text-center font-medium" data-testid={`text-quantity-${id}`}>
                 {quantity}
@@ -68,10 +68,10 @@ export default function CartItem({
                 variant="outline"
                 size="icon"
                 onClick={() => onUpdateQuantity(id, quantity + 1)}
-                className="h-8 w-8"
+                className="h-8 w-8 rounded-pill"
                 data-testid={`button-increase-${id}`}
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3 h-3" strokeWidth={1.75} />
               </Button>
             </div>
           </div>

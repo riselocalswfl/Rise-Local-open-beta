@@ -16,9 +16,9 @@ export default function OrderSummary({
   const total = subtotal + buyerFee;
 
   return (
-    <Card>
+    <Card className="le-card transition-all duration-200">
       <CardHeader>
-        <CardTitle>Order Summary</CardTitle>
+        <CardTitle className="font-serif">Order Summary</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">

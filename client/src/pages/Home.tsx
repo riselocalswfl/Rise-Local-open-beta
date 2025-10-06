@@ -93,13 +93,14 @@ export default function Home() {
 
         {/* Quick Categories */}
         <section className="max-w-7xl mx-auto px-4 py-8">
-          <h2 className="text-2xl font-semibold mb-6">Browse Categories</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <h2 className="text-3xl font-serif font-bold mb-2">Browse Categories</h2>
+          <div className="h-0.5 w-20 mb-6" style={{ background: 'var(--le-wheat)' }} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {categories.map((category) => (
-              <Card key={category.name} className="hover-elevate cursor-pointer">
+              <Card key={category.name} className="le-card cursor-pointer transition-all duration-200">
                 <CardContent className="p-6 text-center">
-                  <category.icon className="w-8 h-8 mx-auto mb-3 text-primary" />
-                  <h3 className="font-medium mb-1">{category.name}</h3>
+                  <category.icon className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--le-green)' }} strokeWidth={1.75} />
+                  <h3 className="font-semibold mb-1">{category.name}</h3>
                   <p className="text-sm text-muted-foreground">{category.count} items</p>
                 </CardContent>
               </Card>
@@ -110,11 +111,14 @@ export default function Home() {
         {/* Featured Products */}
         <section className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold">Featured Products</h2>
-            <Button variant="ghost" asChild>
+            <div>
+              <h2 className="text-3xl font-serif font-bold mb-2">Featured Products</h2>
+              <div className="h-0.5 w-20" style={{ background: 'var(--le-wheat)' }} />
+            </div>
+            <Button variant="ghost" asChild className="rounded-pill">
               <Link href="/products">
                 View All
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2" strokeWidth={1.75} />
               </Link>
             </Button>
           </div>
@@ -128,11 +132,14 @@ export default function Home() {
         {/* Featured Vendors */}
         <section className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold">Top Vendors</h2>
-            <Button variant="ghost" asChild>
+            <div>
+              <h2 className="text-3xl font-serif font-bold mb-2">Top Vendors</h2>
+              <div className="h-0.5 w-20" style={{ background: 'var(--le-wheat)' }} />
+            </div>
+            <Button variant="ghost" asChild className="rounded-pill">
               <Link href="/vendors">
                 View All
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2" strokeWidth={1.75} />
               </Link>
             </Button>
           </div>
@@ -146,11 +153,14 @@ export default function Home() {
         {/* Upcoming Events */}
         <section className="max-w-7xl mx-auto px-4 py-8 pb-16">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold">Upcoming Events</h2>
-            <Button variant="ghost" asChild>
+            <div>
+              <h2 className="text-3xl font-serif font-bold mb-2">Upcoming Events</h2>
+              <div className="h-0.5 w-20" style={{ background: 'var(--le-wheat)' }} />
+            </div>
+            <Button variant="ghost" asChild className="rounded-pill">
               <Link href="/events">
                 View All
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2" strokeWidth={1.75} />
               </Link>
             </Button>
           </div>
