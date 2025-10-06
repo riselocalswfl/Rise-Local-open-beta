@@ -26,13 +26,13 @@ export default function VendorCard({
   avatarUrl,
 }: VendorCardProps) {
   return (
-    <Card className="hover-elevate">
+    <Card className="le-card transition-all duration-200">
       <Link href={`/vendors/${id}`} data-testid={`link-vendor-${id}`}>
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="w-16 h-16">
-              <AvatarImage src={avatarUrl} alt={name} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+              <AvatarImage src={avatarUrl} alt={name} className="film dark:film-dark" />
+              <AvatarFallback className="text-xl" style={{ background: 'var(--le-green)', color: 'white' }}>
                 {name[0]}
               </AvatarFallback>
             </Avatar>
@@ -42,29 +42,29 @@ export default function VendorCard({
                   {name}
                 </h3>
                 {isVerified && (
-                  <CheckCircle className="w-5 h-5 text-chart-1 flex-shrink-0" />
+                  <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--le-green)' }} strokeWidth={1.75} />
                 )}
               </div>
               <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
-                <MapPin className="w-3 h-3" />
+                <MapPin className="w-3 h-3" strokeWidth={1.75} />
                 <span>{city}</span>
               </div>
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{bio}</p>
               <div className="flex flex-wrap gap-2 mb-3">
                 {categories.slice(0, 3).map((category, idx) => (
-                  <Badge key={idx} variant="secondary" className="text-xs">
+                  <span key={idx} className="le-chip text-xs">
                     {category}
-                  </Badge>
+                  </span>
                 ))}
                 {categories.length > 3 && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs rounded-pill">
                     +{categories.length - 3} more
                   </Badge>
                 )}
               </div>
               {followerCount > 0 && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Users className="w-3 h-3" />
+                  <Users className="w-3 h-3" strokeWidth={1.75} />
                   <span>{followerCount} followers</span>
                 </div>
               )}

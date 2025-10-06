@@ -41,18 +41,18 @@ export default function ProductCard({
   };
 
   return (
-    <Card className="hover-elevate overflow-hidden group">
+    <Card className="le-card overflow-hidden group transition-all duration-200">
       <Link href={`/products/${id}`} data-testid={`link-product-${id}`}>
-        <div className="aspect-square overflow-hidden bg-muted">
+        <div className="aspect-square overflow-hidden bg-muted rounded-t-lg">
           {image ? (
             <img
               src={image}
               alt={name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 film dark:film-dark"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-primary/10">
-              <span className="text-6xl font-bold text-primary/40">{name[0]}</span>
+            <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(91, 140, 90, 0.10)' }}>
+              <span className="text-6xl font-bold" style={{ color: 'var(--le-green)', opacity: 0.4 }}>{name[0]}</span>
             </div>
           )}
         </div>
@@ -61,7 +61,7 @@ export default function ProductCard({
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-medium text-lg line-clamp-1" data-testid={`text-product-name-${id}`}>{name}</h3>
               {isVerifiedVendor && (
-                <CheckCircle className="w-4 h-4 text-chart-1 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--le-green)' }} strokeWidth={1.75} />
               )}
             </div>
             <Link
@@ -72,9 +72,9 @@ export default function ProductCard({
             >
               {vendorName}
             </Link>
-            <div className="flex items-center justify-between">
-              <Badge variant="secondary" className="text-xs">{category}</Badge>
-              <Badge variant={stockStatus.color as any} className="text-xs">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="le-chip text-xs">{category}</span>
+              <Badge variant={stockStatus.color as any} className="text-xs rounded-pill">
                 {stockStatus.text}
               </Badge>
             </div>
@@ -88,9 +88,11 @@ export default function ProductCard({
             size="sm"
             onClick={handleAddToCart}
             disabled={inventory === 0}
+            className="rounded-pill"
+            style={{ background: 'var(--le-clay)' }}
             data-testid={`button-add-to-cart-${id}`}
           >
-            <ShoppingCart className="w-4 h-4 mr-1" />
+            <ShoppingCart className="w-4 h-4 mr-1" strokeWidth={1.75} />
             Add
           </Button>
         </CardFooter>

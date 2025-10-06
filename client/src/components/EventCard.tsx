@@ -37,7 +37,7 @@ export default function EventCard({
   };
 
   return (
-    <Card className="hover-elevate">
+    <Card className="le-card transition-all duration-200">
       <Link href={`/events/${id}`} data-testid={`link-event-${id}`}>
         <CardContent className="p-6">
           <div className="space-y-4">
@@ -48,18 +48,18 @@ export default function EventCard({
                 </h3>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mb-3">
                   <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4" strokeWidth={1.75} />
                     <span>{format(eventDate, "MMM d, yyyy 'at' h:mm a")}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
+                    <MapPin className="w-4 h-4" strokeWidth={1.75} />
                     <span>{location}</span>
                   </div>
                 </div>
               </div>
-              <Badge variant={isUpcoming ? "default" : "secondary"} className="flex-shrink-0">
+              <span className={`le-chip text-xs ${!isUpcoming ? "opacity-50" : ""}`}>
                 {category}
-              </Badge>
+              </span>
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
@@ -67,11 +67,11 @@ export default function EventCard({
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-1">
-                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <Users className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
                   <span className="text-muted-foreground">{rsvpCount} going</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Ticket className="w-4 h-4 text-muted-foreground" />
+                  <Ticket className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
                   <span className="text-muted-foreground">{ticketsAvailable} spots left</span>
                 </div>
               </div>
@@ -79,6 +79,8 @@ export default function EventCard({
                 size="sm"
                 onClick={handleRSVP}
                 disabled={ticketsAvailable === 0 || !isUpcoming}
+                className="rounded-pill"
+                style={{ background: 'var(--le-clay)' }}
                 data-testid={`button-rsvp-${id}`}
               >
                 RSVP

@@ -16,26 +16,26 @@ export default function SpotlightBanner({ title, body, city }: SpotlightBannerPr
       <img
         src={heroImage}
         alt="Fort Myers Local Market"
-        className="absolute inset-0 w-full h-full object-cover"
+        className="absolute inset-0 w-full h-full object-cover film dark:film-dark"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent dark:from-[#181A18]/90 dark:via-[#181A18]/60 dark:to-[#181A18]/20" />
       
       <div className="relative h-full flex flex-col justify-end p-6 md:p-12">
         <div className="max-w-3xl">
-          <Badge className="mb-4 bg-chart-3 text-white border-0">
-            <Star className="w-3 h-3 mr-1" />
+          <div className="le-badge mb-4">
+            <Star className="w-3 h-3" strokeWidth={1.75} />
             {city} Spotlight
-          </Badge>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4" data-testid="text-spotlight-title">
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-[54px] font-serif font-bold text-white mb-4 leading-tight" data-testid="text-spotlight-title">
             {title}
           </h1>
-          <p className="text-lg text-white/90 mb-6 line-clamp-3">
+          <p className="text-lg text-white/90 mb-6 line-clamp-3 leading-relaxed">
             {body}
           </p>
-          <Button asChild size="lg" variant="outline" className="bg-background/10 backdrop-blur-sm border-white/20 text-white hover:bg-background/20">
+          <Button asChild size="lg" variant="outline" className="rounded-pill bg-background/10 backdrop-blur-sm border-white/20 text-white hover:bg-background/20">
             <Link href="/spotlight" data-testid="link-explore-spotlight">
               Explore Spotlight
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-4 h-4 ml-2" strokeWidth={1.75} />
             </Link>
           </Button>
         </div>
