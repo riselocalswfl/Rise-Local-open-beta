@@ -1,0 +1,139 @@
+Project: Local Exchange – MVP
+Goal: Build a minimal, working web app with two pillars:
+
+Marketplace (browse/buy inventory by vendor/product/category with filters)
+
+Community (events + social feed + Fort Myers Spotlight)
+
+Tech preferences (okay to suggest defaults):
+
+Backend: Python FastAPI (or Node/Express if faster), SQLite via SQLAlchemy/Prisma for speed
+
+Frontend: React + Vite (simple, clean), Tailwind for styling
+
+Auth: email+password (JWT), roles: buyer, vendor, admin
+
+Payments: stubbed for now (fake checkout) but keep a Stripe-ready abstraction
+
+Deploy: run entirely on Replit; one-click run (npm run dev / uvicorn main:app)
+
+Key requirements (MUST HAVE):
+
+Entities & basic CRUD
+
+User (id, name, email, role, city, created_at)
+
+Vendor (id, owner_user_id, name, bio, categories[], city, delivery_options[], is_verified)
+
+Product (id, vendor_id, name, price, category, images[], inventory, is_active)
+
+Event (id, organizer_vendor_id, title, date_time, location, category, description, tickets_available)
+
+Order (id, buyer_id, items[], total, status, fulfillment_method[pickup|delivery])
+
+LoyaltyPoint (id, user_id, delta, reason, balance_after, created_at)
+
+Spotlight (id, title, body, city="Fort Myers", featured_vendor_ids[], featured_event_ids[], start/end date)
+
+Flows
+
+Auth: signup/login/logout; JWT; vendor onboarding form; admin verify vendor
+
+Marketplace: list/search/filter by vendor, product category, city; product detail; cart; checkout (mock)
+
+Community: list/filter events; RSVP/ticket count (no payment yet); Fort Myers Spotlight banner/feed
+
+Loyalty: on completed order, add points (+10 per order for now) and show user balance
+
+Pricing model baked-in logic
+
+Flat $150/mo vendor membership (no per-transaction fee logic yet; just a field vendor_plan = "founder").
+
+Buyer 3% fee: show as a calculated line item at checkout (no real charge).
+
+Admin
+
+Simple admin screen: verify vendors, create/edit Spotlight, view metrics (counts)
+
+Filters
+
+By vendor, product category, event category, city; sort by newest/popular/price
+
+Fort Myers spotlight
+
+Dedicated section on homepage + /spotlight route pulling city="Fort Myers"
+
+API endpoints (FastAPI examples):
+
+Auth: POST /auth/signup, POST /auth/login, GET /auth/me
+
+Vendors: GET /vendors, POST /vendors, GET /vendors/:id, PATCH /vendors/:id, POST /vendors/:id/verify (admin)
+
+Products: GET /products?category=&vendor_id=&q=, POST /products, GET /products/:id, PATCH /products/:id
+
+Events: GET /events?category=&city=, POST /events, GET /events/:id, POST /events/:id/rsvp
+
+Cart/Orders: POST /cart/add, GET /cart, POST /checkout (mock: create Order, status=“paid”), GET /orders/me
+
+Loyalty: GET /loyalty/balance, GET /loyalty/history
+
+Spotlight: GET /spotlight?city=Fort%20Myers, POST /spotlight (admin)
+
+Frontend routes:
+
+/ (home: spotlight + search bar + categories)
+
+/login, /signup
+
+/vendors, /vendors/:id
+
+/products, /products/:id
+
+/events, /events/:id
+
+/cart, /checkout
+
+/spotlight (Fort Myers)
+
+/admin (guarded)
+
+Acceptance criteria (don’t skip):
+
+Can create a vendor, add two products, see them on /products, add to cart, run mock checkout, and see loyalty points increase.
+
+Can create an event and RSVP.
+
+Fort Myers Spotlight visible on home and /spotlight.
+
+Basic responsive UI with Tailwind (simple cards/lists; no fancy design needed).
+
+Seed script creates: 3 vendors (bakery, kombucha, plants), 6 products, 3 events, 1 spotlight.
+
+Nice-to-haves (only if time permits):
+
+Vendor QR code link to vendor page
+
+Saved vendors (“follow”) for buyers
+
+Simple review text on orders
+
+Deliverables:
+
+Monorepo or two folders (/api, /web)
+
+README.md with setup/run steps and test logins:
+
+Admin: admin@local.exchange
+ / Admin123!
+
+Vendor: vendor@local.exchange
+ / Vendor123!
+
+Buyer: buyer@local.exchange
+ / Buyer123!
+
+Seed command (python seed.py or npm run seed)
+
+Clearly marked places to swap Stripe later
+
+Build this now. If a choice is ambiguous, choose the simplest working option and keep code clean and documented.
