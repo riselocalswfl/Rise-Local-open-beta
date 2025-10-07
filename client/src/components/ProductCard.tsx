@@ -3,6 +3,7 @@ import { ShoppingCart, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { addToCart } from "@/lib/cart";
 
 interface ProductCardProps {
   id: string;
@@ -40,7 +41,13 @@ export default function ProductCard({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log(`Added ${name} to cart`);
+    
+    addToCart({
+      productId: id,
+      name,
+      price,
+      vendorName,
+    });
   };
 
   const handleVendorClick = (e: React.MouseEvent) => {

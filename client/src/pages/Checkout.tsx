@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import OrderSummary from "@/components/OrderSummary";
 import { Button } from "@/components/ui/button";
@@ -8,45 +9,105 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
+import { getCart, clearCart, getCartSubtotal, type CartItem } from "@/lib/cart";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [fulfillmentMethod, setFulfillmentMethod] = useState<"pickup" | "delivery">("pickup");
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  // todo: remove mock functionality
-  const cartItems = [
-    { id: "1", name: "Sourdough Bread", price: 8.99, quantity: 2 },
-    { id: "2", name: "Ginger Kombucha", price: 6.50, quantity: 3 },
-    { id: "3", name: "Succulent Collection", price: 24.99, quantity: 1 },
-  ];
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-  const handleCheckout = () => {
-    // todo: replace with real Stripe payment processing
-    console.log("Processing checkout with fulfillment method:", fulfillmentMethod);
+  useEffect(() => {
+    setCartItems(getCart());
     
-    toast({
-      title: "Order Placed Successfully!",
-      description: "You earned 10 loyalty points. Check your email for confirmation.",
-    });
+    const handleCartUpdate = () => {
+      setCartItems(getCart());
+    };
+    
+    window.addEventListener('cart-updated', handleCartUpdate);
+    return () => window.removeEventListener('cart-updated', handleCartUpdate);
+  }, []);
 
-    // Simulate successful order
-    setTimeout(() => {
-      setLocation("/");
-    }, 2000);
+  const subtotal = getCartSubtotal(cartItems);
+  const buyerFee = subtotal * 0.03;
+  const total = subtotal + buyerFee;
+
+  const createOrderMutation = useMutation({
+    mutationFn: async () => {
+      const latestCart = getCart();
+      const latestSubtotal = getCartSubtotal(latestCart);
+      const latestBuyerFee = latestSubtotal * 0.03;
+      const latestTotal = latestSubtotal + latestBuyerFee;
+      
+      const order = {
+        buyerId: "e2b77df8-61aa-4002-88f4-955f3da3ddfe",
+        status: "pending",
+        fulfillmentMethod,
+        subtotal: latestSubtotal.toString(),
+        buyerFee: latestBuyerFee.toString(),
+        total: latestTotal.toString(),
+      };
+
+      const items = latestCart.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        priceAtPurchase: item.price.toString(),
+      }));
+
+      return apiRequest("POST", "/api/orders", { order, items });
+    },
+    onSuccess: () => {
+      clearCart();
+      setCartItems([]);
+      
+      toast({
+        title: "Order Placed Successfully!",
+        description: "You earned 10 loyalty points. Check your email for confirmation.",
+      });
+      
+      setTimeout(() => {
+        setLocation("/");
+      }, 2000);
+    },
+    onError: () => {
+      toast({
+        title: "Order Failed",
+        description: "There was an error placing your order. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCheckout = async () => {
+    await createOrderMutation.mutateAsync();
   };
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <h1 className="text-3xl font-semibold mb-8" data-testid="heading-checkout">Checkout</h1>
+          <div className="text-center py-16">
+            <p className="text-muted-foreground mb-6">Your cart is empty. Add some products first!</p>
+            <Button asChild>
+              <a href="/products">Browse Products</a>
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-semibold mb-8">Checkout</h1>
+        <h1 className="text-3xl font-semibold mb-8" data-testid="heading-checkout">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {/* Customer Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Contact Information</CardTitle>
@@ -58,7 +119,7 @@ export default function Checkout() {
                     id="email"
                     type="email"
                     placeholder="buyer@local.exchange"
-                    defaultValue="buyer@local.exchange"
+                    defaultValue="buyer@test.com"
                     data-testid="input-email"
                   />
                 </div>
@@ -74,7 +135,6 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
-            {/* Fulfillment Method */}
             <Card>
               <CardHeader>
                 <CardTitle>Fulfillment Method</CardTitle>
@@ -99,7 +159,6 @@ export default function Checkout() {
               </CardContent>
             </Card>
 
-            {/* Payment Method - Stripe Ready */}
             <Card>
               <CardHeader>
                 <CardTitle>Payment Method</CardTitle>
@@ -107,7 +166,6 @@ export default function Checkout() {
               <CardContent>
                 <div className="p-4 bg-muted rounded-md text-center">
                   <p className="text-sm text-muted-foreground">
-                    {/* STRIPE INTEGRATION POINT */}
                     Payment processing will be handled by Stripe
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
@@ -124,13 +182,11 @@ export default function Checkout() {
               onClick={handleCheckout}
               className="w-full"
               size="lg"
+              disabled={createOrderMutation.isPending}
               data-testid="button-place-order"
             >
-              Place Order
+              {createOrderMutation.isPending ? "Processing..." : "Place Order"}
             </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              By placing this order, you agree to our terms and conditions
-            </p>
           </div>
         </div>
       </main>
