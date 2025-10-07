@@ -34,7 +34,8 @@ export default function FilterBar({ type, onSearch, onCategoryChange, onSortChan
   };
 
   const handleCategoryToggle = (category: string) => {
-    const newCategory = selectedCategory === category ? "all" : category;
+    const categoryValue = category.toLowerCase();
+    const newCategory = selectedCategory === categoryValue ? "all" : categoryValue;
     setSelectedCategory(newCategory);
     onCategoryChange?.(newCategory);
   };
