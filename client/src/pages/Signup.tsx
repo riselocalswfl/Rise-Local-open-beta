@@ -5,7 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+
+const PAYMENT_OPTIONS = ["Cash", "Venmo", "PayPal", "Credit Card", "Zelle", "Check"];
+const CATEGORY_OPTIONS = ["Food & Beverage", "Crafts & Art", "Home & Garden", "Fashion", "Health & Wellness"];
 
 export default function Signup() {
   const [, setLocation] = useLocation();
@@ -15,12 +21,49 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [city, setCity] = useState("");
   const [role, setRole] = useState<"buyer" | "vendor">("buyer");
+  
+  const [businessName, setBusinessName] = useState("");
+  const [bio, setBio] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+
+  const toggleCategory = (category: string) => {
+    setCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const togglePaymentMethod = (method: string) => {
+    setPaymentMethods(prev => 
+      prev.includes(method) 
+        ? prev.filter(m => m !== method)
+        : [...prev, method]
+    );
+  };
 
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (role === "vendor" && (!businessName || !bio || categories.length === 0 || paymentMethods.length === 0)) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all vendor fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // todo: replace with real authentication
-    console.log("Signup attempt:", { name, email, password, city, role });
+    console.log("Signup attempt:", { 
+      name, 
+      email, 
+      password, 
+      city, 
+      role,
+      ...(role === "vendor" && { businessName, bio, categories, paymentMethods })
+    });
     
     toast({
       title: "Account Created!",
@@ -45,6 +88,13 @@ export default function Signup() {
           <CardDescription className="text-center">
             Join the Local Exchange community
           </CardDescription>
+          {role === "vendor" && (
+            <div className="bg-primary/10 border border-primary/20 rounded-md p-3 mt-4">
+              <p className="text-sm text-center font-medium text-primary">
+                First 25 vendors join FREE! Help us grow the Fort Myers community.
+              </p>
+            </div>
+          )}
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
@@ -95,7 +145,16 @@ export default function Signup() {
             </div>
             <div className="space-y-2">
               <Label>Account Type</Label>
-              <RadioGroup value={role} onValueChange={(v) => setRole(v as any)}>
+              <RadioGroup value={role} onValueChange={(v) => {
+                const newRole = v as "buyer" | "vendor";
+                setRole(newRole);
+                if (newRole === "buyer") {
+                  setBusinessName("");
+                  setBio("");
+                  setCategories([]);
+                  setPaymentMethods([]);
+                }
+              }}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="buyer" id="buyer" data-testid="radio-buyer" />
                   <Label htmlFor="buyer" className="cursor-pointer">
@@ -110,6 +169,72 @@ export default function Signup() {
                 </div>
               </RadioGroup>
             </div>
+
+            {role === "vendor" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <Input
+                    id="businessName"
+                    placeholder="Your Business Name"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    required
+                    data-testid="input-business-name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Business Description</Label>
+                  <Textarea
+                    id="bio"
+                    placeholder="Tell customers about your business..."
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    required
+                    className="resize-none"
+                    rows={3}
+                    data-testid="input-bio"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Categories</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {CATEGORY_OPTIONS.map(category => (
+                      <Badge
+                        key={category}
+                        variant={categories.includes(category) ? "default" : "outline"}
+                        className="cursor-pointer hover-elevate"
+                        onClick={() => toggleCategory(category)}
+                        data-testid={`badge-category-${category.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        {category}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Payment Methods Accepted</Label>
+                  <div className="space-y-2">
+                    {PAYMENT_OPTIONS.map(method => (
+                      <div key={method} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={method}
+                          checked={paymentMethods.includes(method)}
+                          onCheckedChange={() => togglePaymentMethod(method)}
+                          data-testid={`checkbox-payment-${method.toLowerCase().replace(/\s+/g, '-')}`}
+                        />
+                        <Label htmlFor={method} className="cursor-pointer">
+                          {method}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" data-testid="button-signup">
