@@ -27,6 +27,7 @@ export const vendors = pgTable("vendors", {
   bio: text("bio").notNull(),
   city: text("city").notNull(),
   categories: text("categories").array().notNull(),
+  paymentMethods: text("payment_methods").array().notNull(),
   isVerified: boolean("is_verified").notNull().default(false),
   followerCount: integer("follower_count").notNull().default(0),
 });
