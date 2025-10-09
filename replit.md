@@ -97,9 +97,16 @@ Preferred communication style: Simple, everyday language.
 ### Key Business Logic
 
 **Pricing Model:**
-- Vendors pay flat $150/month membership ("founder" plan)
+- First 25 vendors join FREE to help build momentum and grow the community
+- After initial 25: Vendors pay flat $150/month membership ("founder" plan)
 - 3% buyer fee on transactions
 - No per-transaction vendor fees
+
+**Payment Methods:**
+- Vendors specify accepted payment methods during signup (Cash, Venmo, PayPal, Credit Card, Zelle, Check)
+- Payment methods stored as array field in vendor schema
+- Displayed to buyers on vendor/product pages
+- Vendors manage their own payment collection (platform does not process payments)
 
 **Loyalty System:**
 - Users earn 10 points per completed order
@@ -173,16 +180,16 @@ Preferred communication style: Simple, everyday language.
 **Admin Routes:**
 - `/admin` - Dashboard for vendor verification, platform stats
 
-### Data Entities (Planned)
+### Data Entities
 
-While only Users are currently implemented, the application is designed for:
-- User (authentication, role-based access)
-- Vendor (owner, name, bio, categories, city, verification status)
-- Product (vendor association, pricing, inventory, categories)
-- Event (organizer, date/time, location, tickets)
-- Order (buyer, items, fulfillment method, status)
-- LoyaltyPoint (user association, transaction history)
-- Spotlight (featured content for Fort Myers)
+All core entities are now implemented in the database:
+- **User** - Authentication, role-based access (buyer/vendor/admin), loyalty points balance
+- **Vendor** - Owner reference, business name, bio, categories (array), payment methods (array), city, verification status, follower count
+- **Product** - Vendor association, name, price, category, inventory, description
+- **Event** - Organizer (vendor) reference, title, description, date/time, location, category, ticket availability, RSVP count
+- **Order** - Buyer reference, status, fulfillment method, subtotal, buyer fee, total, created timestamp
+- **OrderItem** - Order reference, product reference, quantity, price at purchase
+- **Spotlight** - Featured content for Fort Myers with title, body, city, active status
 
 ### Build and Deployment
 
