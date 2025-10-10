@@ -1,0 +1,318 @@
+Brand the entire Local Exchange app (Tailwind + React) with the following design system and component updates. Make all edits below and return a list of files changed.
+
+0) Design system (source of truth)
+
+Palette
+
+primary: #7C9A67 (sage)
+
+secondary: #E8C27E (wheat)
+
+accent: #E37B40 (rust)
+
+bg: #FDFBF7 (warm paper)
+
+text: #2F2F2F (ink)
+
+neutrals scale from #111827 to #F3F4F6 ok
+
+Fonts
+
+Headings: Playfair Display
+
+Body/UI: Inter
+
+Radii & shadow
+
+rounded-2xl default for cards/buttons; soft shadow shadow-[0_6px_20px_rgba(0,0,0,.06)]
+
+Aesthetic
+
+Counterculture yet put-together, nature-forward, minimal texture (paper)
+
+Subtle motion on hover/focus; accessible contrast
+
+1) Tailwind + global styles
+
+Update tailwind.config.js:
+
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ["./index.html","./src/**/*.{ts,tsx,js,jsx}"],
+  theme: {
+    extend: {
+      colors: {
+        primary: "#7C9A67",
+        secondary: "#E8C27E",
+        accent: "#E37B40",
+        bg: "#FDFBF7",
+        text: "#2F2F2F",
+      },
+      fontFamily: {
+        heading: ["Playfair Display", "serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
+      },
+      borderRadius: {
+        xl: "1rem",
+        "2xl": "1.5rem",
+      },
+      boxShadow: {
+        soft: "0 6px 20px rgba(0,0,0,.06)",
+      },
+      transitionDuration: {
+        brand: "250ms",
+      },
+    },
+  },
+  plugins: [],
+}
+
+
+Import fonts once. If there’s an index.html, add to <head>:
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+
+
+In src/index.css (or global.css), set base styles + subtle paper texture:
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+html, body, #root {
+  height: 100%;
+  background: #FDFBF7;
+}
+
+body {
+  @apply font-body text-text antialiased;
+  background-image: radial-gradient(rgba(0,0,0,.02) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+2) Reusable brand components
+
+Create/update the following (adjust paths to match your project):
+
+src/components/BrandLogo.tsx
+import { Leaf } from "lucide-react";
+
+export default function BrandLogo({ size = 22 }: { size?: number }) {
+  return (
+    <div className="inline-flex items-center gap-2">
+      <div className="h-9 w-9 rounded-full border border-primary/30 bg-white grid place-items-center shadow-soft">
+        <Leaf size={size} className="text-primary" />
+      </div>
+      <div className="leading-tight">
+        <div className="font-heading text-xl text-text">Local Exchange</div>
+        <div className="text-xs text-text/60 -mt-0.5">Shop your values</div>
+      </div>
+    </div>
+  );
+}
+
+src/components/ui/Button.tsx
+import { cn } from "@/lib/cn";
+
+type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary" | "ghost";
+  size?: "sm" | "md" | "lg";
+};
+
+export function Button({ className, variant="primary", size="md", ...props }: Props) {
+  const base = "inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60";
+  const v = {
+    primary: "bg-primary text-white hover:bg-primary/90",
+    secondary: "bg-secondary text-text hover:bg-secondary/90",
+    ghost: "bg-transparent text-text hover:bg-black/5",
+  }[variant];
+  const s = { sm: "h-9 px-3 text-sm", md: "h-11 px-4", lg: "h-12 px-6 text-lg" }[size];
+  return <button className={cn(base,v,s,className)} {...props} />;
+}
+
+src/components/ui/Card.tsx
+import { cn } from "@/lib/cn";
+export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("rounded-2xl bg-white shadow-soft", className)} {...props} />;
+}
+export function CardBody({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("p-4 md:p-6", className)} {...props} />;
+}
+
+src/components/ui/Badge.tsx
+import { cn } from "@/lib/cn";
+export function Badge({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
+  return <span className={cn("inline-flex items-center rounded-xl border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary", className)} {...props} />;
+}
+export function BadgeSecondary({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
+  return <span className={cn("inline-flex items-center rounded-xl border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text/75", className)} {...props} />;
+}
+
+
+If cn helper doesn’t exist, add src/lib/cn.ts:
+
+export const cn = (...c: (string|false|undefined|null)[]) => c.filter(Boolean).join(" ");
+
+3) Navbar + header polish
+
+Replace current brand area with <BrandLogo />.
+
+Use a soft sticky header with translucent background and blur.
+
+Update your Navbar.tsx:
+
+import BrandLogo from "@/components/BrandLogo";
+import { Button } from "@/components/ui/Button";
+
+export default function Navbar() {
+  return (
+    <header className="sticky top-0 z-50 backdrop-blur bg-bg/70 border-b border-black/5">
+      <nav className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
+        <BrandLogo />
+        <div className="hidden md:flex items-center gap-6 text-sm">
+          <a href="/" className="text-text/80 hover:text-text">Home</a>
+          <a href="/products" className="text-text/80 hover:text-text">Products</a>
+          <a href="/vendors" className="text-text/80 hover:text-text">Vendors</a>
+          <a href="/events" className="text-text/80 hover:text-text">Events</a>
+          <a href="/spotlight" className="text-text/80 hover:text-text">Spotlight</a>
+          <a href="/values" className="text-text/80 hover:text-text">Values</a>
+        </div>
+        <Button variant="secondary" size="sm">Join the Movement</Button>
+      </nav>
+    </header>
+  );
+}
+
+4) Branded Hero on Home
+
+Replace the existing home hero with a full-bleed card hero using your market photo (keep your current image path):
+
+import { Button } from "@/components/ui/Button";
+import { Card, CardBody } from "@/components/ui/Card";
+
+export function HomeHero() {
+  return (
+    <Card className="overflow-hidden">
+      <div className="relative h-[360px] md:h-[460px]">
+        <img src={"/images/fort-myers-market.jpg"} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/55 via-black/20 to-transparent" />
+        <CardBody className="relative h-full flex flex-col justify-end max-w-4xl text-white">
+          <span className="inline-flex items-center gap-2 mb-3 text-sm bg-white/15 px-3 py-1 rounded-xl backdrop-blur">
+            Fort Myers Spotlight
+          </span>
+          <h1 className="font-heading text-4xl md:text-5xl leading-tight">Discover Fort Myers’ Local Treasures</h1>
+          <p className="mt-3 max-w-2xl text-white/90">
+            Locally made. Mindfully traded. Support artisans, farmers, and makers bringing sustainable products to your neighborhood.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Button>Explore Spotlight</Button>
+            <Button variant="ghost">Meet Local Makers</Button>
+          </div>
+        </CardBody>
+      </div>
+    </Card>
+  );
+}
+
+
+Mount <HomeHero /> at the top of your home page component.
+
+5) “Shop by Values” section (branded)
+
+Add below “Browse Categories” on Home and also ensure /values page exists.
+
+src/components/ValuesShowcase.tsx
+import { Badge } from "@/components/ui/Badge";
+import { VALUE_META, type ValueTag } from "@/data/values";
+import { motion } from "framer-motion";
+
+const ICONS: Record<ValueTag, string> = {
+  organic:"🌱", local:"🏡", nonGMO:"🚫🧬", regenerative:"🌾",
+  fairTrade:"🤝", womanOwned:"👩‍🌾", veteranOwned:"🎖️",
+  glutenFree:"🌾🚫", vegan:"🥦", artisan:"🧺", lowWaste:"♻️", plasticFree:"🧴🚫"
+};
+
+export default function ValuesShowcase({ limit=8 }: { limit?: number }) {
+  const all = (Object.keys(VALUE_META) as ValueTag[]).slice(0, limit);
+  return (
+    <section className="mx-auto max-w-7xl px-4 md:px-6 mt-10">
+      <div className="mb-4">
+        <h2 className="font-heading text-3xl text-text">Shop by Values</h2>
+        <p className="text-text/70">Support local businesses that share your principles.</p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {all.map((tag, i) => (
+          <motion.a
+            key={tag}
+            href={`/vendors?values=${tag}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+            className="group rounded-2xl bg-white shadow-soft p-4 hover:-translate-y-0.5 transition duration-brand border border-black/5"
+          >
+            <div className="text-2xl">{ICONS[tag]}</div>
+            <div className="mt-2 font-medium">{VALUE_META[tag].label}</div>
+            <div className="mt-1 text-sm text-text/70 line-clamp-2">{VALUE_META[tag].description}</div>
+            <div className="mt-3 flex gap-2">
+              <Badge className="group-hover:bg-primary group-hover:text-white">Vendors</Badge>
+              <Badge className="group-hover:bg-primary group-hover:text-white" >Products</Badge>
+            </div>
+          </motion.a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+
+Mount <ValuesShowcase /> on Home.
+
+6) Card & badge branding on existing lists
+
+Update VendorCard and ProductCard to use Card, CardBody, and Badge from above.
+
+Ensure value badges use primary/secondary styles (max 4 visible, “+N” overflow remains).
+
+7) Microinteractions & focus states
+
+Add framer-motion transitions to list items on first paint (fade/slide in).
+
+Buttons/links must have focus-visible rings using accent.
+
+8) Copy updates for brand voice
+
+Replace generic CTAs:
+
+“Explore Vendors” → “Meet Local Makers”
+
+“Shop Now” → “Discover Nearby Goods”
+
+“Learn More” → “See the Story”
+
+Header subtitle under logo: “Shop your values”.
+
+9) Accessibility & QA
+
+Contrast checked (text vs bg).
+
+alt text on all images.
+
+Keyboard nav across chips/filters and buttons.
+
+10) Acceptance criteria
+
+App uses the new palette, fonts, rounded corners, and soft shadows consistently.
+
+Home shows a branded hero and “Shop by Values” grid that deep-links to /vendors?values=<tag> and /products?values=<tag> (second link optional).
+
+Vendor/Product cards use branded badges and motion.
+
+Navbar is sticky, translucent, and branded.
+
+No console errors; TypeScript passes.
+
+Return a summary of files changed and screenshots of Home, Vendors, Products, and Values pages after branding.
