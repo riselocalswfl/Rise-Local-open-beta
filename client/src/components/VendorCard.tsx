@@ -16,7 +16,7 @@ interface VendorCardProps {
   bio: string;
   city: string;
   categories: string[];
-  values: ValueTag[];
+  values?: ValueTag[];
   isVerified: boolean;
   followerCount?: number;
   avatarUrl?: string;
@@ -28,7 +28,7 @@ export default function VendorCard({
   bio,
   city,
   categories,
-  values,
+  values = [],
   isVerified,
   followerCount = 0,
   avatarUrl,

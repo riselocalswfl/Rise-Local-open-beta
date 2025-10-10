@@ -13,7 +13,7 @@ export default {
       },
       fontFamily: {
         heading: ["Playfair Display", "serif"],
-        body: ["Inter", "system-ui", "sans-serif"],
+        body: ["Work Sans", "system-ui", "sans-serif"],
       },
       borderRadius: {
         xl: "1rem",

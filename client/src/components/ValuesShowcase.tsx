@@ -2,20 +2,35 @@ import { Link } from "wouter";
 import { BrandBadge } from "@/components/ui/BrandBadge";
 import { VALUE_META, type ValueTag } from "@/../../shared/values";
 import { motion } from "framer-motion";
+import { 
+  Sprout, 
+  Home, 
+  ShieldCheck, 
+  Wheat, 
+  Handshake, 
+  Users, 
+  Medal, 
+  Circle,
+  Leaf,
+  Scissors,
+  Recycle,
+  Package
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const ICONS: Record<ValueTag, string> = {
-  organic: "🌱",
-  local: "🏡",
-  nonGMO: "🚫🧬",
-  regenerative: "🌾",
-  fairTrade: "🤝",
-  womanOwned: "👩‍🌾",
-  veteranOwned: "🎖️",
-  glutenFree: "🌾🚫",
-  vegan: "🥦",
-  artisan: "🧺",
-  lowWaste: "♻️",
-  plasticFree: "🧴🚫",
+const ICONS: Record<ValueTag, LucideIcon> = {
+  organic: Sprout,
+  local: Home,
+  nonGMO: ShieldCheck,
+  regenerative: Wheat,
+  fairTrade: Handshake,
+  womanOwned: Users,
+  veteranOwned: Medal,
+  glutenFree: Circle,
+  vegan: Leaf,
+  artisan: Scissors,
+  lowWaste: Recycle,
+  plasticFree: Package,
 };
 
 export default function ValuesShowcase({ limit = 8 }: { limit?: number }) {
@@ -29,32 +44,35 @@ export default function ValuesShowcase({ limit = 8 }: { limit?: number }) {
         </p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {all.map((tag, i) => (
-          <motion.div
-            key={tag}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-          >
-            <Link href={`/vendors?values=${tag}`} data-testid={`link-value-${tag}`}>
-              <div className="group rounded-2xl bg-white shadow-soft p-4 hover:-translate-y-0.5 transition duration-brand border border-black/5">
-                <div className="text-2xl">{ICONS[tag]}</div>
-                <div className="mt-2 font-medium">{VALUE_META[tag].label}</div>
-                <div className="mt-1 text-sm text-text/70 line-clamp-2">
-                  {VALUE_META[tag].description}
+        {all.map((tag, i) => {
+          const Icon = ICONS[tag];
+          return (
+            <motion.div
+              key={tag}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+            >
+              <Link href={`/vendors?values=${tag}`} data-testid={`link-value-${tag}`}>
+                <div className="group rounded-2xl bg-white shadow-soft p-4 hover:-translate-y-0.5 transition duration-brand border border-black/5">
+                  <Icon className="w-8 h-8 text-primary" strokeWidth={1.75} />
+                  <div className="mt-2 font-medium">{VALUE_META[tag].label}</div>
+                  <div className="mt-1 text-sm text-text/70 line-clamp-2">
+                    {VALUE_META[tag].description}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <BrandBadge className="group-hover:bg-primary group-hover:text-white">
+                      Vendors
+                    </BrandBadge>
+                    <BrandBadge className="group-hover:bg-primary group-hover:text-white">
+                      Products
+                    </BrandBadge>
+                  </div>
                 </div>
-                <div className="mt-3 flex gap-2">
-                  <BrandBadge className="group-hover:bg-primary group-hover:text-white">
-                    Vendors
-                  </BrandBadge>
-                  <BrandBadge className="group-hover:bg-primary group-hover:text-white">
-                    Products
-                  </BrandBadge>
-                </div>
-              </div>
-            </Link>
-          </motion.div>
-        ))}
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );
