@@ -73,6 +73,15 @@ export default function Header() {
                 Events
               </Button>
             </Link>
+            <Link href="/values" data-testid="link-values">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`rounded-pill ${isActive("/values") ? "border-b-2 border-[var(--le-clay)] rounded-b-none" : ""}`}
+              >
+                Values
+              </Button>
+            </Link>
             <Link href="/spotlight" data-testid="link-spotlight">
               <Button
                 variant="ghost"

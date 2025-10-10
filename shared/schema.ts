@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, decimal, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import type { ValueTag } from "./values";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -28,7 +29,7 @@ export const vendors = pgTable("vendors", {
   city: text("city").notNull(),
   categories: text("categories").array().notNull(),
   paymentMethods: text("payment_methods").array().notNull(),
-  businessValues: text("business_values").array().notNull().default(sql`'{}'::text[]`),
+  values: text("values").array().notNull().default(sql`'{}'::text[]`).$type<ValueTag[]>(),
   isVerified: boolean("is_verified").notNull().default(false),
   followerCount: integer("follower_count").notNull().default(0),
 });
@@ -49,6 +50,7 @@ export const products = pgTable("products", {
   category: text("category").notNull(),
   inventory: integer("inventory").notNull(),
   description: text("description"),
+  values: text("values").array().notNull().default(sql`'{}'::text[]`).$type<ValueTag[]>(),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({

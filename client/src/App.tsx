@@ -11,6 +11,7 @@ import Events from "@/pages/Events";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Spotlight from "@/pages/Spotlight";
+import Values from "@/pages/Values";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import Admin from "@/pages/Admin";
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/products" component={Products} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/events" component={Events} />
+      <Route path="/values" component={Values} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/spotlight" component={Spotlight} />

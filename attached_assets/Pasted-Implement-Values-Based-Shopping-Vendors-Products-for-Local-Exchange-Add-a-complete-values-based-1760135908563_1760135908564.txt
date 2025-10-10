@@ -1,0 +1,194 @@
+Implement Values-Based Shopping (Vendors + Products) for Local Exchange
+
+Add a complete values-based shopping system. Assume React + TypeScript; adjust paths to this repo.
+
+1) Data & types
+Create src/data/values.ts:
+
+export type ValueTag =
+  | "organic"
+  | "local"
+  | "nonGMO"
+  | "regenerative"
+  | "fairTrade"
+  | "womanOwned"
+  | "veteranOwned"
+  | "glutenFree"
+  | "vegan"
+  | "artisan"
+  | "lowWaste"
+  | "plasticFree";
+
+export const VALUE_META: Record<ValueTag, { label: string; description: string }> = {
+  organic: { label: "Organic", description: "Certified or verifiably grown/produced without synthetic inputs." },
+  local: { label: "Local", description: "Produced within ~100 miles of Fort Myers." },
+  nonGMO: { label: "Non-GMO", description: "No genetically modified ingredients." },
+  regenerative: { label: "Regenerative", description: "Practices that improve soil health and biodiversity." },
+  fairTrade: { label: "Fair Trade", description: "Ethical labor and fair pricing." },
+  womanOwned: { label: "Woman-Owned", description: "Majority owned/operated by women." },
+  veteranOwned: { label: "Veteran-Owned", description: "Majority owned/operated by veterans." },
+  glutenFree: { label: "Gluten-Free", description: "No gluten ingredients; dedicated process where applicable." },
+  vegan: { label: "Vegan", description: "No animal ingredients." },
+  artisan: { label: "Artisan", description: "Small-batch, handcrafted goods." },
+  lowWaste: { label: "Low-Waste", description: "Packaging/practices that reduce waste." },
+  plasticFree: { label: "Plastic-Free", description: "No plastic packaging/components." },
+};
+
+
+Extend entity types wherever defined:
+
+import type { ValueTag } from "@/data/values";
+
+export type Vendor = {
+  id: string;
+  name: string;
+  // ...
+  values: ValueTag[];          // overall business values
+};
+
+export type Product = {
+  id: string;
+  vendorId: string;
+  // ...
+  values?: ValueTag[];         // optional product-specific values
+};
+
+
+Update seeds/mock data: add realistic values to at least 6 vendors and 12 products.
+
+Create a fast index at boot (e.g., src/data/valueIndex.ts) that builds:
+
+type ValueIndex = { [V in ValueTag]: { vendors: Set<string>; products: Set<string> } };
+
+
+2) URL-based filter hook
+Create src/hooks/useValueFilters.ts:
+
+Sync selected values via search param ?values=organic,local.
+
+Persist to localStorage key le:valueFilters.
+
+API:
+
+export type MatchMode = "any" | "all";
+
+export function useValueFilters() {
+  const selected: ValueTag[];
+  const setSelected: (vals: ValueTag[]) => void;
+
+  const matchMode: MatchMode; // default "any"
+  const setMatchMode: (m: MatchMode) => void;
+
+  const includeVendorValuesForProducts: boolean; // default true
+  const setIncludeVendorValuesForProducts: (b: boolean) => void;
+
+  const clear: () => void;
+}
+
+
+3) Filtering rules
+
+Vendors page:
+
+ANY: vendor passes if vendor.values intersects selected.
+
+ALL: every selected value is in vendor.values.
+
+Products page:
+
+Start with product.values ?? [].
+
+If includeVendorValuesForProducts, union with its vendor’s values.
+
+Apply same ANY/ALL logic.
+
+If nothing selected → no filtering.
+
+4) Reusable UI: ValueFilterBar
+Create src/components/ValueFilterBar.tsx:
+
+Horizontal chips for top 8 values (by count). “All Values” button opens a searchable popover with full list.
+
+Right controls:
+
+Segmented Match: Any | All
+
+Checkbox (Products only): Include vendor values
+
+Clear (visible only when active)
+
+Show live counts on chips (e.g., “Organic · 12”). OK to start with raw totals from valueIndex.
+
+Mount:
+
+At top of /vendors and /products pages under the search bar.
+
+5) Value badges on cards
+
+On VendorCard and ProductCard, render up to 4 badges; show “+N” overflow.
+
+Tooltip on hover uses VALUE_META[tag].description.
+
+6) New nav tab + page
+
+Add a Values tab in the navbar → route /values.
+
+Page content:
+
+Short explainer (2–3 lines): “Shop by your values—filter vendors and products that align with what you care about.”
+
+Grid of all values (icon/emoji + label + description) with two links per tile:
+
+“Browse Vendors” → /vendors?values=<tag>
+
+“Browse Products” → /products?values=<tag>
+
+7) Optional search integration
+
+If global search exists, parse comma-separated query terms and auto-toggle any that match known values (leave other terms as normal search).
+
+8) Accessibility & performance
+
+Chips are buttons with keyboard toggle (Space/Enter). Popover Esc closes.
+
+ARIA labels and aria-pressed on chips.
+
+Memoize filtered lists and avoid recomputing on unrelated renders.
+
+9) Acceptance tests
+
+Selecting Organic + Local, Match = All on Vendors shows only vendors with both tags.
+
+On Products, with Include vendor values ON, products without their own values still appear if their vendor matches.
+
+URL reflects state and survives reload/navigation.
+
+Badges show up to 4, with “+N” overflow.
+
+/values page deep-links correctly.
+
+No TS or console errors.
+
+10) Seed examples to add
+
+Vendors:
+
+“Flying Eagle Kombucha”: ["organic","local","artisan","lowWaste"]
+
+“Epiphany’s Gluten Free Bakery”: ["glutenFree","local","womanOwned","artisan"]
+
+“Gulf Coast Beekeepers”: ["local","nonGMO","regenerative","plasticFree"]
+
+Products:
+
+“Mango Kombucha”: ["vegan","lowWaste"]
+
+“Sourdough Boule”: ["artisan"]
+
+“Raw Wildflower Honey”: ["local","plasticFree"]
+
+Deliverables
+
+New/updated files list
+
+Brief README note describing how to use the filter bar and URL params.
