@@ -108,6 +108,21 @@ Preferred communication style: Simple, everyday language.
 - Displayed to buyers on vendor/product pages
 - Vendors manage their own payment collection (platform does not process payments)
 
+**Values-Based Shopping:**
+- Vendors can disclose their business values and principles during signup (optional)
+- 9 comprehensive categories covering 60+ value options:
+  - Ownership & Identity (LGBTQ+ Owned, Women-Owned, Minority-Owned, Veteran-Owned, etc.)
+  - Environmental & Sustainability (Eco-Friendly, Zero Waste, Carbon Neutral, Organic, etc.)
+  - Economic & Labor (Fair Trade, Living Wage, Worker-Owned Co-op, Union Shop, etc.)
+  - Ethical & Animal Welfare (Cruelty-Free, Vegan, Animal Welfare, Transparency, etc.)
+  - Religious & Spiritual (Faith-Based, Christian, Jewish, Islamic, Buddhist, Secular, etc.)
+  - Community & Social (Community-Focused, Charitable Giving, Social Justice, etc.)
+  - Freedom & Rights (Free Speech, Privacy-Focused, Individual Liberty, 2nd Amendment, etc.)
+  - Health & Wellness (Holistic Health, Natural Ingredients, GMO-Free, Gluten-Free, etc.)
+  - Political & Governance (Progressive, Conservative, Libertarian, Non-Partisan, etc.)
+- Business values displayed on vendor cards as badges
+- Helps buyers shop according to their personal values and principles
+
 **Loyalty System:**
 - Users earn 10 points per completed order
 - Point balance tracking via LoyaltyPoint entity
@@ -184,7 +199,7 @@ Preferred communication style: Simple, everyday language.
 
 All core entities are now implemented in the database:
 - **User** - Authentication, role-based access (buyer/vendor/admin), loyalty points balance
-- **Vendor** - Owner reference, business name, bio, categories (array), payment methods (array), city, verification status, follower count
+- **Vendor** - Owner reference, business name, bio, categories (array), payment methods (array), business values (array), city, verification status, follower count
 - **Product** - Vendor association, name, price, category, inventory, description
 - **Event** - Organizer (vendor) reference, title, description, date/time, location, category, ticket availability, RSVP count
 - **Order** - Buyer reference, status, fulfillment method, subtotal, buyer fee, total, created timestamp
