@@ -13,6 +13,96 @@ import { useToast } from "@/hooks/use-toast";
 const PAYMENT_OPTIONS = ["Cash", "Venmo", "PayPal", "Credit Card", "Zelle", "Check"];
 const CATEGORY_OPTIONS = ["Food & Beverage", "Crafts & Art", "Home & Garden", "Fashion", "Health & Wellness"];
 
+const BUSINESS_VALUES = {
+  "Ownership & Identity": [
+    "LGBTQ+ Owned/Friendly",
+    "Women-Owned",
+    "Minority-Owned",
+    "Veteran-Owned",
+    "Immigrant-Owned",
+    "Disability-Owned",
+    "Youth-Owned",
+    "Senior-Owned",
+  ],
+  "Environmental & Sustainability": [
+    "Eco-Friendly",
+    "Zero Waste",
+    "Carbon Neutral",
+    "Organic",
+    "Sustainable Sourcing",
+    "Renewable Energy",
+    "Plastic-Free",
+    "Composting",
+    "Water Conservation",
+  ],
+  "Economic & Labor": [
+    "Fair Trade",
+    "Living Wage Employer",
+    "Local Sourcing",
+    "Small Batch Production",
+    "Worker-Owned Co-op",
+    "Union Shop",
+    "Profit-Sharing",
+    "Employee Benefits",
+  ],
+  "Ethical & Animal Welfare": [
+    "Cruelty-Free",
+    "Vegan",
+    "Vegetarian-Friendly",
+    "Animal Welfare",
+    "No Animal Testing",
+    "Ethical Production",
+    "Transparency",
+  ],
+  "Religious & Spiritual": [
+    "Faith-Based",
+    "Christian Values",
+    "Jewish Values",
+    "Islamic Values",
+    "Buddhist Values",
+    "Secular/Non-Religious",
+    "Interfaith",
+  ],
+  "Community & Social": [
+    "Community-Focused",
+    "Charitable Giving",
+    "Education-Focused",
+    "Youth Programs",
+    "Senior Support",
+    "Volunteer-Driven",
+    "Social Justice",
+    "Equity & Inclusion",
+  ],
+  "Freedom & Rights": [
+    "Free Speech Advocate",
+    "Privacy-Focused",
+    "Open Source",
+    "Anti-Censorship",
+    "Individual Liberty",
+    "Digital Rights",
+    "2nd Amendment",
+  ],
+  "Health & Wellness": [
+    "Holistic Health",
+    "Natural Ingredients",
+    "GMO-Free",
+    "Gluten-Free",
+    "Allergen-Friendly",
+    "Chemical-Free",
+    "Wellness-Focused",
+    "Mental Health Advocate",
+  ],
+  "Political & Governance": [
+    "Progressive Values",
+    "Conservative Values",
+    "Libertarian Values",
+    "Non-Partisan",
+    "Grassroots Movement",
+    "Decentralized",
+    "Local Governance",
+  ],
+};
+
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -26,6 +116,7 @@ export default function Signup() {
   const [bio, setBio] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
+  const [businessValues, setBusinessValues] = useState<string[]>([]);
 
   const toggleCategory = (category: string) => {
     setCategories(prev => 
@@ -43,13 +134,21 @@ export default function Signup() {
     );
   };
 
+  const toggleBusinessValue = (value: string) => {
+    setBusinessValues(prev => 
+      prev.includes(value) 
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (role === "vendor" && (!businessName || !bio || categories.length === 0 || paymentMethods.length === 0)) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all vendor fields.",
+        description: "Please fill in all required vendor fields.",
         variant: "destructive",
       });
       return;
@@ -62,7 +161,7 @@ export default function Signup() {
       password, 
       city, 
       role,
-      ...(role === "vendor" && { businessName, bio, categories, paymentMethods })
+      ...(role === "vendor" && { businessName, bio, categories, paymentMethods, businessValues })
     });
     
     toast({
@@ -153,6 +252,7 @@ export default function Signup() {
                   setBio("");
                   setCategories([]);
                   setPaymentMethods([]);
+                  setBusinessValues([]);
                 }
               }}>
                 <div className="flex items-center space-x-2">
@@ -229,6 +329,35 @@ export default function Signup() {
                         <Label htmlFor={method} className="cursor-pointer">
                           {method}
                         </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="space-y-1">
+                    <Label>Business Values (Optional)</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Help customers shop according to their values
+                    </p>
+                  </div>
+                  <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                    {Object.entries(BUSINESS_VALUES).map(([category, values]) => (
+                      <div key={category} className="space-y-2">
+                        <h4 className="text-sm font-medium text-foreground">{category}</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {values.map(value => (
+                            <Badge
+                              key={value}
+                              variant={businessValues.includes(value) ? "default" : "outline"}
+                              className="cursor-pointer hover-elevate"
+                              onClick={() => toggleBusinessValue(value)}
+                              data-testid={`badge-value-${value.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                            >
+                              {value}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
