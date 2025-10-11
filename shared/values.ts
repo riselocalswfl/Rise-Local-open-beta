@@ -1,6 +1,5 @@
 export type ValueTag =
   | "organic"
-  | "local"
   | "nonGMO"
   | "regenerative"
   | "fairTrade"
@@ -17,11 +16,6 @@ export const VALUE_META: Record<ValueTag, { label: string; description: string; 
     label: "Organic", 
     description: "Certified or verifiably grown/produced without synthetic inputs.",
     icon: "Sprout"
-  },
-  local: { 
-    label: "Local", 
-    description: "Produced within ~100 miles of Fort Myers.",
-    icon: "MapPin"
   },
   nonGMO: { 
     label: "Non-GMO", 
