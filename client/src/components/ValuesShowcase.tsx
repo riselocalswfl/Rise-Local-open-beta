@@ -4,7 +4,6 @@ import { VALUE_META, type ValueTag } from "@/../../shared/values";
 import { motion } from "framer-motion";
 import { 
   Sprout, 
-  Home, 
   ShieldCheck, 
   Wheat, 
   Handshake, 
@@ -20,7 +19,6 @@ import type { LucideIcon } from "lucide-react";
 
 const ICONS: Record<ValueTag, LucideIcon> = {
   organic: Sprout,
-  local: Home,
   nonGMO: ShieldCheck,
   regenerative: Wheat,
   fairTrade: Handshake,
