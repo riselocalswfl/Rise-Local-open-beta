@@ -49,15 +49,6 @@ export default function Header() {
             Events
           </Link>
           <Link
-            href="/spotlight"
-            className={`text-text/80 hover:text-text transition ${
-              location === "/spotlight" ? "text-text font-medium" : ""
-            }`}
-            data-testid="link-spotlight"
-          >
-            Spotlight
-          </Link>
-          <Link
             href="/values"
             className={`text-text/80 hover:text-text transition ${
               location === "/values" ? "text-text font-medium" : ""
