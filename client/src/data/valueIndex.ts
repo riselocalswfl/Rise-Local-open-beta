@@ -1,4 +1,4 @@
-import type { ValueTag } from "@/../../shared/values";
+import { ALL_VALUE_TAGS, type ValueTag } from "@/../../shared/values";
 import type { Vendor, Product } from "@/../../shared/schema";
 
 export type ValueIndex = {
@@ -11,13 +11,7 @@ export type ValueIndex = {
 export function buildValueIndex(vendors: Vendor[], products: Product[]): ValueIndex {
   const index = {} as ValueIndex;
   
-  const allTags: ValueTag[] = [
-    "organic", "local", "nonGMO", "regenerative", "fairTrade",
-    "womanOwned", "veteranOwned", "glutenFree", "vegan",
-    "artisan", "lowWaste", "plasticFree"
-  ];
-  
-  allTags.forEach(tag => {
+  ALL_VALUE_TAGS.forEach(tag => {
     index[tag] = {
       vendors: new Set<string>(),
       products: new Set<string>()
