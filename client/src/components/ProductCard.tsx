@@ -65,7 +65,7 @@ export default function ProductCard({
   };
 
   return (
-    <Card className="le-card overflow-hidden group transition-all duration-200">
+    <Card className="le-card overflow-hidden group">
       <Link href={`/products/${id}`} data-testid={`link-product-${id}`}>
         <div className="aspect-square overflow-hidden bg-muted rounded-t-lg">
           {image ? (
