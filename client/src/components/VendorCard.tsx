@@ -77,33 +77,36 @@ export default function VendorCard({
                     <span>{followerCount} followers</span>
                   </div>
                 )}
-                {values.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {values.slice(0, 4).map((value) => (
-                      <Tooltip key={value}>
-                        <TooltipTrigger asChild>
-                          <span className="inline-block">
-                            <Badge 
-                              variant="secondary" 
-                              className="text-xs cursor-help" 
-                              data-testid={`badge-vendor-value-${value}`}
-                            >
-                              {VALUE_META[value].label}
-                            </Badge>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{VALUE_META[value].description}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                    {values.length > 4 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{values.length - 4}
-                      </Badge>
-                    )}
-                  </div>
-                )}
+                {(() => {
+                  const validValues = values.filter(v => v in VALUE_META);
+                  return validValues.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {validValues.slice(0, 4).map((value) => (
+                        <Tooltip key={value}>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Badge 
+                                variant="secondary" 
+                                className="text-xs cursor-help" 
+                                data-testid={`badge-vendor-value-${value}`}
+                              >
+                                {VALUE_META[value].label}
+                              </Badge>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{VALUE_META[value].description}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                      {validValues.length > 4 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{validValues.length - 4}
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
