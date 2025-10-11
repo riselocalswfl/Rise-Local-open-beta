@@ -109,19 +109,18 @@ Preferred communication style: Simple, everyday language.
 - Vendors manage their own payment collection (platform does not process payments)
 
 **Values-Based Shopping:**
-- Vendors can disclose their business values and principles during signup (optional)
-- 9 comprehensive categories covering 60+ value options:
-  - Ownership & Identity (LGBTQ+ Owned, Women-Owned, Minority-Owned, Veteran-Owned, etc.)
-  - Environmental & Sustainability (Eco-Friendly, Zero Waste, Carbon Neutral, Organic, etc.)
-  - Economic & Labor (Fair Trade, Living Wage, Worker-Owned Co-op, Union Shop, etc.)
-  - Ethical & Animal Welfare (Cruelty-Free, Vegan, Animal Welfare, Transparency, etc.)
-  - Religious & Spiritual (Faith-Based, Christian, Jewish, Islamic, Buddhist, Secular, etc.)
-  - Community & Social (Community-Focused, Charitable Giving, Social Justice, etc.)
-  - Freedom & Rights (Free Speech, Privacy-Focused, Individual Liberty, 2nd Amendment, etc.)
-  - Health & Wellness (Holistic Health, Natural Ingredients, GMO-Free, Gluten-Free, etc.)
-  - Political & Governance (Progressive, Conservative, Libertarian, Non-Partisan, etc.)
-- Business values displayed on vendor cards as badges
+- "Local" is a core platform principle - ALL vendors and products on Local Exchange are local to Fort Myers by design
+- Being local is NOT a filter option because it's the foundation of the entire platform
+- Vendors can disclose additional business values and principles (optional) with 11 available filters:
+  - Environmental: organic, non-GMO, regenerative, low-waste, plastic-free
+  - Social: fair trade, woman-owned, veteran-owned
+  - Dietary: gluten-free, vegan
+  - Craft: artisan (small-batch, handcrafted)
+- Value filters defined in `shared/values.ts` with VALUE_META as source of truth
+- ALL_VALUE_TAGS array auto-generated from VALUE_META keys for consistency
+- Business values displayed on vendor/product cards as badges with tooltips
 - Helps buyers shop according to their personal values and principles
+- Defensive filtering implemented in components to gracefully handle invalid/unknown value tags
 
 **Loyalty System:**
 - Users earn 10 points per completed order

@@ -72,7 +72,7 @@ export default function ProductCard({
             <img
               src={image}
               alt={name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 film dark:film-dark"
+              className="w-full h-full object-cover film dark:film-dark"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(91, 140, 90, 0.10)' }}>
