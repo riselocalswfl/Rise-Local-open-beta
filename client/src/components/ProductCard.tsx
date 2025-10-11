@@ -102,33 +102,36 @@ export default function ProductCard({
                 {stockStatus.text}
               </Badge>
             </div>
-            {values.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {values.slice(0, 3).map((value) => (
-                  <Tooltip key={value}>
-                    <TooltipTrigger asChild>
-                      <span className="inline-block">
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs cursor-help" 
-                          data-testid={`badge-product-value-${value}`}
-                        >
-                          {VALUE_META[value].label}
-                        </Badge>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{VALUE_META[value].description}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-                {values.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{values.length - 3}
-                  </Badge>
-                )}
-              </div>
-            )}
+            {(() => {
+              const validValues = values.filter(v => v in VALUE_META);
+              return validValues.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {validValues.slice(0, 3).map((value) => (
+                    <Tooltip key={value}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs cursor-help" 
+                            data-testid={`badge-product-value-${value}`}
+                          >
+                            {VALUE_META[value].label}
+                          </Badge>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{VALUE_META[value].description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                  {validValues.length > 3 && (
+                    <Badge variant="outline" className="text-xs">
+                      +{validValues.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </CardContent>
         <CardFooter className="p-4 pt-0 flex items-center justify-between gap-2">
