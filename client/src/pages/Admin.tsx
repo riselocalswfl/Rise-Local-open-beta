@@ -42,6 +42,7 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-semibold">Admin Dashboard</h1>

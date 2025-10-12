@@ -85,6 +85,7 @@ export default function Spotlight() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <main>
         {/* Hero Banner */}
         <div className="relative h-[50vh] overflow-hidden">

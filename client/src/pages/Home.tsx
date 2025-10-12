@@ -46,6 +46,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <main>
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-8">
           <HomeHero />

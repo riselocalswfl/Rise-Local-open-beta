@@ -41,6 +41,7 @@ export default function Vendors() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <FilterBar type="vendors" />
       {valueCounts && (
         <div className="max-w-7xl mx-auto px-4 pt-4">

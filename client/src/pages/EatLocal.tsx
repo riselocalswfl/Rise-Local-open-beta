@@ -22,6 +22,7 @@ export default function EatLocal() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       
       {/* Hero Section */}
       <div className="bg-primary/5 border-b">

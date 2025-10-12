@@ -103,6 +103,7 @@ export default function Checkout() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <main className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold mb-8" data-testid="heading-checkout">Checkout</h1>
 

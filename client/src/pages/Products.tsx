@@ -66,6 +66,7 @@ export default function Products() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <FilterBar type="products" onCategoryChange={setSelectedCategory} />
       {valueCounts && (
         <div className="max-w-7xl mx-auto px-4 pt-4">

@@ -7,6 +7,7 @@ export default function Values() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold mb-4" data-testid="heading-shop-by-values">

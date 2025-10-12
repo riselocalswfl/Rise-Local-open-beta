@@ -38,6 +38,7 @@ export default function Cart() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <div className="h-16" aria-hidden="true" />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold mb-8 flex items-center gap-3" data-testid="heading-shopping-cart">
           <ShoppingCart className="w-8 h-8" />
