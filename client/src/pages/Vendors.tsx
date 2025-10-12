@@ -44,8 +44,10 @@ export default function Vendors() {
       <div className="h-16" aria-hidden="true" />
       <FilterBar type="vendors" />
       {valueCounts && (
-        <div className="max-w-7xl mx-auto px-4 pt-4">
-          <ValueFilterBar valueCounts={valueCounts} context="vendors" />
+        <div className="sticky top-[128px] z-30 bg-background pb-4">
+          <div className="max-w-7xl mx-auto px-4 pt-4">
+            <ValueFilterBar valueCounts={valueCounts} context="vendors" />
+          </div>
         </div>
       )}
       <main className="max-w-7xl mx-auto px-4 py-8">
