@@ -1,21 +1,15 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
-import ValueFilterBar from "@/components/ValueFilterBar";
-import VendorCard from "@/components/VendorCard";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useValueFilters } from "@/hooks/useValueFilters";
-import { buildValueIndex, getValueCounts } from "@/data/valueIndex";
-import { Leaf } from "lucide-react";
+import { Leaf, MapPin, Sprout } from "lucide-react";
 import type { Vendor } from "@shared/schema";
-import type { ValueTag } from "@/../../shared/values";
 
 export default function EatLocal() {
   const { data: allVendors, isLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
-  
-  const { selected, matchMode } = useValueFilters();
   
   // Filter for Food & Beverage restaurants only
   const restaurants = useMemo(() => {
@@ -24,27 +18,6 @@ export default function EatLocal() {
       return vendor.category === "Food & Beverage";
     });
   }, [allVendors]);
-  
-  const valueCounts = useMemo(() => {
-    if (!restaurants) return null;
-    const index = buildValueIndex(restaurants, []);
-    return getValueCounts(index);
-  }, [restaurants]);
-  
-  const filteredRestaurants = useMemo(() => {
-    if (!restaurants) return [];
-    if (selected.length === 0) return restaurants;
-    
-    return restaurants.filter(vendor => {
-      const vendorValues = (vendor.values ?? []) as ValueTag[];
-      
-      if (matchMode === "all") {
-        return selected.every(tag => vendorValues.includes(tag));
-      } else {
-        return selected.some(tag => vendorValues.includes(tag));
-      }
-    });
-  }, [restaurants, selected, matchMode]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,62 +25,72 @@ export default function EatLocal() {
       
       {/* Hero Section */}
       <div className="bg-primary/5 border-b">
-        <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="max-w-5xl mx-auto px-4 py-12">
           <div className="flex items-center gap-3 mb-4">
-            <Leaf className="w-10 h-10 text-primary" />
+            <Leaf className="w-10 h-10 text-primary" strokeWidth={1.75} />
             <h1 className="text-4xl font-semibold text-text" data-testid="heading-eat-local">
               Eat Local
             </h1>
           </div>
           <p className="text-lg text-text/70 max-w-3xl">
-            Discover Fort Myers restaurants partnering with local farms. Every meal supports our farming community and brings you the freshest, locally-sourced ingredients.
+            Discover Fort Myers restaurants partnering with local farms and makers. Every meal supports our farming community and brings you the freshest, locally-sourced ingredients.
           </p>
         </div>
       </div>
 
-      {/* Value Filters */}
-      {valueCounts && (
-        <div className="max-w-7xl mx-auto px-4 pt-6">
-          <ValueFilterBar valueCounts={valueCounts} context="vendors" />
-        </div>
-      )}
-
-      {/* Restaurant Grid */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {selected.length > 0 && (
-          <p className="text-sm text-muted-foreground mb-4">
-            Showing {filteredRestaurants.length} {filteredRestaurants.length === 1 ? 'restaurant' : 'restaurants'} matching your filters
-          </p>
-        )}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Restaurant List */}
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        <div className="space-y-4">
           {isLoading ? (
             <>
-              <Skeleton className="h-40" />
-              <Skeleton className="h-40" />
-              <Skeleton className="h-40" />
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
             </>
-          ) : filteredRestaurants.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">
-                {selected.length > 0 
-                  ? "No restaurants found matching your filters" 
-                  : "No restaurants currently listed. Check back soon!"}
-              </p>
+          ) : restaurants.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No restaurants currently listed. Check back soon!</p>
             </div>
           ) : (
-            filteredRestaurants.map((vendor) => (
-              <VendorCard 
-                key={vendor.id} 
-                id={vendor.id}
-                name={vendor.displayName || vendor.businessName}
-                bio={vendor.bio}
-                city={vendor.city}
-                categories={[vendor.category, ...(vendor.subcategories || [])]}
-                values={vendor.values as ValueTag[]}
-                isVerified={vendor.isVerified}
-                followerCount={vendor.followerCount}
-                avatarUrl={vendor.logoUrl || undefined}
-              />
+            restaurants.map((restaurant) => (
+              <Card key={restaurant.id} data-testid={`card-restaurant-${restaurant.id}`}>
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xl font-semibold mb-2" data-testid={`text-restaurant-name-${restaurant.id}`}>
+                        {restaurant.displayName || restaurant.businessName}
+                      </h3>
+                      
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+                        <MapPin className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        <span data-testid={`text-restaurant-city-${restaurant.id}`}>{restaurant.city}</span>
+                      </div>
+                      
+                      <p className="text-sm text-text/70 mb-3 line-clamp-2" data-testid={`text-restaurant-bio-${restaurant.id}`}>
+                        {restaurant.bio}
+                      </p>
+                      
+                      {restaurant.restaurantSources && (
+                        <p className="text-sm text-muted-foreground mb-2" data-testid={`text-restaurant-partners-${restaurant.id}`}>
+                          <span className="font-medium">Partners with:</span> {restaurant.restaurantSources}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {restaurant.localMenuPercent != null && (
+                      <div className="flex-shrink-0 text-right">
+                        <div className="flex items-center gap-2 text-primary" data-testid={`text-local-percent-${restaurant.id}`}>
+                          <Sprout className="w-5 h-5" strokeWidth={1.75} />
+                          <div>
+                            <div className="text-2xl font-semibold">~{restaurant.localMenuPercent}%</div>
+                            <div className="text-xs text-muted-foreground">locally sourced</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             ))
           )}
         </div>
