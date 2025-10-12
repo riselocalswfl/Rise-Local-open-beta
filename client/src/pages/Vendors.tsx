@@ -50,7 +50,7 @@ export default function Vendors() {
           </div>
         </div>
       )}
-      <div className="h-[220px]" aria-hidden="true" />
+      <div className="h-[320px]" aria-hidden="true" />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold mb-8" data-testid="heading-local-vendors">Local Vendors</h1>
         {selected.length > 0 && (
