@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import Vendors from "@/pages/Vendors";
+import EatLocal from "@/pages/EatLocal";
 import Events from "@/pages/Events";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
       <Route path="/vendors" component={Vendors} />
+      <Route path="/eat-local" component={EatLocal} />
       <Route path="/events" component={Events} />
       <Route path="/values" component={Values} />
       <Route path="/cart" component={Cart} />

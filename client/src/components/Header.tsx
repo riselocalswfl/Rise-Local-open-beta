@@ -40,6 +40,15 @@ export default function Header() {
             Vendors
           </Link>
           <Link
+            href="/eat-local"
+            className={`text-text/80 hover:text-text transition ${
+              location === "/eat-local" ? "text-text font-medium" : ""
+            }`}
+            data-testid="link-eat-local"
+          >
+            Eat Local
+          </Link>
+          <Link
             href="/events"
             className={`text-text/80 hover:text-text transition ${
               location === "/events" ? "text-text font-medium" : ""
