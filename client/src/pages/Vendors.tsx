@@ -70,7 +70,18 @@ export default function Vendors() {
             </div>
           ) : (
             filteredVendors.map((vendor) => (
-              <VendorCard key={vendor.id} {...vendor} />
+              <VendorCard
+                key={vendor.id}
+                id={vendor.id}
+                name={vendor.businessName}
+                bio={vendor.bio}
+                city={vendor.city}
+                categories={vendor.category ? [vendor.category, ...(vendor.subcategories || [])] : []}
+                values={vendor.values as ValueTag[]}
+                isVerified={vendor.isVerified}
+                followerCount={vendor.followerCount}
+                avatarUrl={vendor.logoUrl || undefined}
+              />
             ))
           )}
         </div>
