@@ -14,6 +14,9 @@ import Spotlight from "@/pages/Spotlight";
 import Values from "@/pages/Values";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import Join from "@/pages/Join";
+import BuyerSignup from "@/pages/BuyerSignup";
+import VendorSignup from "@/pages/VendorSignup";
 import Admin from "@/pages/Admin";
 
 function Router() {
@@ -29,6 +32,9 @@ function Router() {
       <Route path="/spotlight" component={Spotlight} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/join" component={Join} />
+      <Route path="/join/buyer" component={BuyerSignup} />
+      <Route path="/join/vendor" component={VendorSignup} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

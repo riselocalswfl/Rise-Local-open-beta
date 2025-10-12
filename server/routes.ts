@@ -359,6 +359,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Buyer signup route
+  app.post("/api/users/buyer/signup", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { firstName, lastName, phone, zipCode, travelRadius, dietaryPreferences, userValues, emailNotifications, smsNotifications } = req.body;
+      
+      // Update user with buyer info
+      await storage.updateUser(userId, {
+        firstName,
+        lastName,
+        phone,
+        zipCode,
+        travelRadius,
+        dietaryPreferences,
+        userValues,
+        emailNotifications,
+        smsNotifications,
+        role: "buyer"
+      });
+
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Buyer signup error:", error);
+      res.status(500).json({ error: "Failed to complete buyer signup" });
+    }
+  });
+
+  // Vendor signup route
+  app.post("/api/vendors/signup", isAuthenticated, async (req: any, res) => {
+    try {
+      const ownerId = req.user.claims.sub;
+      const vendorData = req.body;
+      
+      // Update user role to vendor
+      await storage.updateUser(ownerId, { role: "vendor" });
+      
+      // Create vendor profile
+      const vendor = await storage.createVendor({
+        ...vendorData,
+        ownerId,
+        isVerified: vendorData.isFoundingMember || false,
+      });
+
+      res.json(vendor);
+    } catch (error) {
+      console.error("Vendor signup error:", error);
+      res.status(500).json({ error: "Failed to complete vendor signup" });
+    }
+  });
+
+  // Vendor stats route
+  app.get("/api/vendors/stats", async (req, res) => {
+    try {
+      const verifiedVendors = await storage.getVerifiedVendors();
+      res.json({ totalVerifiedVendors: verifiedVendors.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor stats" });
+    }
+  });
+
   // User routes
   app.get("/api/users/:id", async (req, res) => {
     try {
