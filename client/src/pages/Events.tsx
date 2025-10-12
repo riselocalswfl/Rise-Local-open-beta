@@ -16,7 +16,7 @@ export default function Events() {
       <Header />
       <div className="h-16" aria-hidden="true" />
       <FilterBar type="events" />
-      <main className="max-w-7xl mx-auto px-4 pb-8" style={{ marginTop: '200px' }}>
+      <main className="max-w-7xl mx-auto px-4 pb-8" style={{ marginTop: '280px' }}>
         <h1 className="text-3xl font-semibold mb-8" data-testid="heading-community-events">Community Events</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isLoading ? (
