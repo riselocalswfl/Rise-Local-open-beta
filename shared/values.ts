@@ -15,6 +15,7 @@ export type ValueTag =
   | "minorityOwned"
   | "lgbtqOwned"
   | "familyOwned"
+  | "studentOwned"
   // Health & Diet
   | "glutenFree"
   | "vegan"
@@ -101,6 +102,11 @@ export const VALUE_META: Record<ValueTag, { label: string; description: string; 
     description: "Independently owned and operated by a family.",
     icon: "Home"
   },
+  studentOwned: { 
+    label: "Student-Owned", 
+    description: "Owned and operated by current students or recent graduates.",
+    icon: "GraduationCap"
+  },
   // Health & Diet
   glutenFree: { 
     label: "Gluten-Free", 
@@ -160,7 +166,7 @@ export const ALL_VALUE_TAGS: ValueTag[] = Object.keys(VALUE_META) as ValueTag[];
 // Categories for organizing values in forms
 export const VALUE_CATEGORIES = {
   environmental: ["sustainability", "organic", "nonGMO", "regenerative", "lowWaste", "plasticFree", "carbonNeutral", "ecoFriendly"] as ValueTag[],
-  social: ["fairTrade", "womanOwned", "veteranOwned", "minorityOwned", "lgbtqOwned", "familyOwned"] as ValueTag[],
+  social: ["fairTrade", "womanOwned", "veteranOwned", "minorityOwned", "lgbtqOwned", "familyOwned", "studentOwned"] as ValueTag[],
   dietary: ["glutenFree", "vegan", "dairyFree", "vegetarian", "lowSugar", "nutFree"] as ValueTag[],
   quality: ["artisan", "handmade", "smallBatch", "localIngredients"] as ValueTag[],
 };
