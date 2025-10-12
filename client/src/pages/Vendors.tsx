@@ -50,9 +50,8 @@ export default function Vendors() {
           </div>
         </div>
       )}
-      <div className="h-[320px]" aria-hidden="true" />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-semibold mb-8" data-testid="heading-local-vendors">Local Vendors</h1>
+      <main className="max-w-7xl mx-auto px-4 pb-8" style={{ marginTop: '400px' }}>
+        <h1 className="text-3xl font-semibold mb-8 mt-8" data-testid="heading-local-vendors">Local Vendors</h1>
         {selected.length > 0 && (
           <p className="text-sm text-muted-foreground mb-4">
             Showing {filteredVendors.length} {filteredVendors.length === 1 ? 'vendor' : 'vendors'} matching your filters
