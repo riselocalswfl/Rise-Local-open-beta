@@ -18,6 +18,7 @@ import Signup from "@/pages/Signup";
 import Join from "@/pages/Join";
 import BuyerSignup from "@/pages/BuyerSignup";
 import VendorSignup from "@/pages/VendorSignup";
+import RestaurantSignup from "@/pages/RestaurantSignup";
 import Admin from "@/pages/Admin";
 
 function Router() {
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/join" component={Join} />
       <Route path="/join/buyer" component={BuyerSignup} />
       <Route path="/join/vendor" component={VendorSignup} />
+      <Route path="/join/restaurant" component={RestaurantSignup} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

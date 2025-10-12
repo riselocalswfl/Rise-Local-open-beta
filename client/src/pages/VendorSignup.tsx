@@ -47,6 +47,7 @@ export default function VendorSignup() {
     contactName: "",
     displayName: "",
     bio: "",
+    businessType: "", // "vendors" or "eat-local"
     category: "",
     subcategories: [] as string[],
     zipCode: "",
@@ -203,21 +204,39 @@ export default function VendorSignup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
+              <Label htmlFor="businessType">Business Type *</Label>
               <Select 
-                value={formData.category} 
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                value={formData.businessType} 
+                onValueChange={(value) => setFormData({ ...formData, businessType: value })}
               >
-                <SelectTrigger id="category" data-testid="select-category">
-                  <SelectValue placeholder="Select a category" />
+                <SelectTrigger id="businessType" data-testid="select-businessType">
+                  <SelectValue placeholder="Select business type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
+                  <SelectItem value="vendors">Vendors (Products & Services)</SelectItem>
+                  <SelectItem value="eat-local">Eat Local (Restaurants)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {formData.businessType === "vendors" && (
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger id="category" data-testid="select-category">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="bio">Business Bio *</Label>
@@ -245,11 +264,30 @@ export default function VendorSignup() {
               Back
             </Button>
             <Button
-              onClick={() => setStep(3)}
-              disabled={!formData.businessName || !formData.contactName || !formData.category || !formData.bio}
+              onClick={() => {
+                if (formData.businessType === "eat-local") {
+                  // Store form data and redirect to restaurant signup
+                  sessionStorage.setItem("restaurantSignupData", JSON.stringify({
+                    businessName: formData.businessName,
+                    contactName: formData.contactName,
+                    displayName: formData.displayName,
+                    bio: formData.bio,
+                  }));
+                  setLocation("/join/restaurant");
+                } else {
+                  setStep(3);
+                }
+              }}
+              disabled={
+                !formData.businessName || 
+                !formData.contactName || 
+                !formData.businessType || 
+                !formData.bio ||
+                (formData.businessType === "vendors" && !formData.category)
+              }
               data-testid="button-next-to-location"
             >
-              Next: Location & Services
+              {formData.businessType === "eat-local" ? "Continue to Restaurant Form" : "Next: Location & Services"}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </CardFooter>
