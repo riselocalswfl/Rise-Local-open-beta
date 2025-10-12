@@ -1,9 +1,7 @@
-import { Link } from "wouter";
 import * as LucideIcons from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { VALUE_META, ALL_VALUE_TAGS, type ValueTag } from "@/../../shared/values";
+import { VALUE_META, ALL_VALUE_TAGS } from "@/../../shared/values";
 
 export default function Values() {
   return (
@@ -47,31 +45,9 @@ export default function Values() {
                       >
                         {meta.label}
                       </h3>
-                      <p className="text-sm text-muted-foreground mb-4">
+                      <p className="text-sm text-muted-foreground">
                         {meta.description}
                       </p>
-                      <div className="flex gap-2 flex-wrap">
-                        <Link href={`/vendors?values=${tag}`}>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="rounded-pill"
-                            data-testid={`button-browse-vendors-${tag}`}
-                          >
-                            Browse Vendors
-                          </Button>
-                        </Link>
-                        <Link href={`/products?values=${tag}`}>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="rounded-pill"
-                            data-testid={`button-browse-products-${tag}`}
-                          >
-                            Browse Products
-                          </Button>
-                        </Link>
-                      </div>
                     </div>
                   </div>
                 </CardContent>
