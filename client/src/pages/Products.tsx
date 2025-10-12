@@ -69,7 +69,7 @@ export default function Products() {
       <div className="h-16" aria-hidden="true" />
       <FilterBar type="products" onCategoryChange={setSelectedCategory} />
       {valueCounts && (
-        <div className="fixed top-[156px] left-0 right-0 z-30 bg-background pb-4">
+        <div className="fixed top-[156px] left-0 right-0 z-30 bg-background pb-4 border-b">
           <div className="max-w-7xl mx-auto px-4 pt-4">
             <ValueFilterBar valueCounts={valueCounts} context="products" />
           </div>
