@@ -1,5 +1,5 @@
 import { 
-  type User, type InsertUser,
+  type User, type InsertUser, type UpsertUser,
   type Vendor, type InsertVendor,
   type Product, type InsertProduct,
   type Event, type InsertEvent,
@@ -25,6 +25,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>; // For Replit Auth
   updateUser(id: string, data: Partial<InsertUser>): Promise<void>;
   deleteUser(id: string): Promise<void>;
   updateUserLoyaltyPoints(userId: string, points: number): Promise<void>;
@@ -94,12 +95,28 @@ export class DbStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const hashedPassword = await bcrypt.hash(user.password, SALT_ROUNDS);
-    const result = await db.insert(users).values({
-      ...user,
-      password: hashedPassword
-    }).returning();
+    const values: any = { ...user };
+    if (user.password) {
+      values.password = await bcrypt.hash(user.password, SALT_ROUNDS);
+    }
+    const result = await db.insert(users).values(values).returning();
     return result[0];
+  }
+
+  // Upsert user for Replit Auth (IMPORTANT for Replit Auth integration)
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
   }
 
   async updateUser(id: string, data: Partial<InsertUser>): Promise<void> {
@@ -139,12 +156,12 @@ export class DbStorage implements IStorage {
   }
 
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
-    const result = await db.insert(vendors).values(vendor).returning();
+    const result = await db.insert(vendors).values(vendor as any).returning();
     return result[0];
   }
 
   async updateVendor(id: string, data: Partial<InsertVendor>): Promise<void> {
-    await db.update(vendors).set(data).where(eq(vendors.id, id));
+    await db.update(vendors).set(data as any).where(eq(vendors.id, id));
   }
 
   async deleteVendor(id: string): Promise<void> {
@@ -174,12 +191,12 @@ export class DbStorage implements IStorage {
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
-    const result = await db.insert(products).values(product).returning();
+    const result = await db.insert(products).values(product as any).returning();
     return result[0];
   }
 
   async updateProduct(id: string, data: Partial<InsertProduct>): Promise<void> {
-    await db.update(products).set(data).where(eq(products.id, id));
+    await db.update(products).set(data as any).where(eq(products.id, id));
   }
 
   async deleteProduct(id: string): Promise<void> {
