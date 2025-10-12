@@ -6,7 +6,7 @@ export default function Header() {
   const [location] = useLocation();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur bg-bg/70 border-b border-black/5">
+    <header className="backdrop-blur bg-bg/70 border-b border-black/5">
       <nav className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
         <Link href="/" data-testid="link-home">
           <BrandLogo />

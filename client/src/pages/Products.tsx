@@ -66,16 +66,15 @@ export default function Products() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="h-16" aria-hidden="true" />
       <FilterBar type="products" onCategoryChange={setSelectedCategory} />
       {valueCounts && (
-        <div className="fixed top-[156px] left-0 right-0 z-30 bg-background pb-4 border-b">
+        <div className="bg-background pb-4 border-b">
           <div className="max-w-7xl mx-auto px-4 pt-4">
             <ValueFilterBar valueCounts={valueCounts} context="products" />
           </div>
         </div>
       )}
-      <main className="max-w-7xl mx-auto px-4 pb-8" style={{ marginTop: valueCounts ? '600px' : '280px' }}>
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold mb-8 mt-8" data-testid="heading-all-products">All Products</h1>
         {selected.length > 0 && (
           <p className="text-sm text-muted-foreground mb-4">

@@ -41,7 +41,7 @@ export default function FilterBar({ type, onSearch, onCategoryChange, onSortChan
   };
 
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 bg-background border-b py-4 shadow-sm">
+    <div className="bg-background border-b py-4 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
