@@ -1,4 +1,5 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -13,6 +14,16 @@ import type { Vendor } from "@shared/schema";
 import type { ValueTag } from "@/../../shared/values";
 
 export default function Home() {
+  const [, setLocation] = useLocation();
+
+  // Check for returnTo path after auth redirect
+  useEffect(() => {
+    const returnTo = sessionStorage.getItem("returnTo");
+    if (returnTo) {
+      sessionStorage.removeItem("returnTo");
+      setLocation(returnTo);
+    }
+  }, [setLocation]);
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ["/api/products-with-vendors"],
     queryFn: getProductsWithVendors,

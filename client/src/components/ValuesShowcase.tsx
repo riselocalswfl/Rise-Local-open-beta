@@ -43,7 +43,7 @@ export default function ValuesShowcase({ limit = 8 }: { limit?: number }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {all.map((tag, i) => {
-          const Icon = ICONS[tag];
+          const Icon = ICONS[tag] || Circle;
           return (
             <motion.div
               key={tag}

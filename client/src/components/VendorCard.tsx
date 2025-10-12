@@ -39,9 +39,9 @@ export default function VendorCard({
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="w-16 h-16">
-              <AvatarImage src={avatarUrl} alt={name} className="film dark:film-dark" />
+              <AvatarImage src={avatarUrl} alt={name || "Vendor"} className="film dark:film-dark" />
               <AvatarFallback className="text-xl" style={{ background: 'var(--le-green)', color: 'white' }}>
-                {name[0]}
+                {name?.[0] || "V"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
@@ -57,16 +57,16 @@ export default function VendorCard({
                 <MapPin className="w-3 h-3" strokeWidth={1.75} />
                 <span>{city}</span>
               </div>
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{bio}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{bio || "No description available"}</p>
               <div className="flex flex-wrap gap-2 mb-3">
-                {categories.slice(0, 3).map((category, idx) => (
+                {(categories || []).slice(0, 3).map((category, idx) => (
                   <span key={idx} className="le-chip text-xs">
                     {category}
                   </span>
                 ))}
-                {categories.length > 3 && (
+                {(categories || []).length > 3 && (
                   <Badge variant="secondary" className="text-xs rounded-pill">
-                    +{categories.length - 3} more
+                    +{(categories || []).length - 3} more
                   </Badge>
                 )}
               </div>

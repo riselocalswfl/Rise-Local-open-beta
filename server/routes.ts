@@ -48,6 +48,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/vendors/stats", async (req, res) => {
+    try {
+      const verifiedVendors = await storage.getVerifiedVendors();
+      res.json({ totalVerifiedVendors: verifiedVendors.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor stats" });
+    }
+  });
+
   app.get("/api/vendors/:id", async (req, res) => {
     try {
       const vendor = await storage.getVendor(req.params.id);
@@ -407,16 +416,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Vendor signup error:", error);
       res.status(500).json({ error: "Failed to complete vendor signup" });
-    }
-  });
-
-  // Vendor stats route
-  app.get("/api/vendors/stats", async (req, res) => {
-    try {
-      const verifiedVendors = await storage.getVerifiedVendors();
-      res.json({ totalVerifiedVendors: verifiedVendors.length });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch vendor stats" });
     }
   });
 

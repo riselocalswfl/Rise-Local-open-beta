@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,14 @@ export default function VendorSignup() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState(user ? 2 : 1);
+  const [step, setStep] = useState(1);
+  
+  // Update step when user auth status changes
+  useEffect(() => {
+    if (user && step === 1) {
+      setStep(2);
+    }
+  }, [user, step]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -148,7 +155,10 @@ export default function VendorSignup() {
             <Button 
               className="w-full" 
               size="lg"
-              onClick={() => window.location.href = "/api/auth/login"}
+              onClick={() => {
+                sessionStorage.setItem("returnTo", "/join/vendor");
+                window.location.href = "/api/login";
+              }}
               data-testid="button-replit-login"
             >
               Continue with Replit Auth

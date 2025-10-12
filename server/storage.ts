@@ -105,18 +105,30 @@ export class DbStorage implements IStorage {
 
   // Upsert user for Replit Auth (IMPORTANT for Replit Auth integration)
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
+    // Check if user exists by id (sub) or email
+    const existing = await db.select().from(users).where(
+      sql`${users.id} = ${userData.id} OR ${users.email} = ${userData.email}`
+    ).limit(1);
+
+    if (existing.length > 0) {
+      // Update existing user
+      const [user] = await db
+        .update(users)
+        .set({
           ...userData,
           updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+        })
+        .where(eq(users.id, existing[0].id))
+        .returning();
+      return user;
+    } else {
+      // Insert new user
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .returning();
+      return user;
+    }
   }
 
   async updateUser(id: string, data: Partial<InsertUser>): Promise<void> {
