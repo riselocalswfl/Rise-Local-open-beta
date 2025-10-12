@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { VALUE_META, ALL_VALUE_TAGS, type ValueTag } from "@shared/values";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const CATEGORIES = [
@@ -65,23 +65,14 @@ export default function VendorSignup() {
     hasDineIn: false,
   });
 
-  // Check founding member status
-  const { data: stats } = useQuery({
-    queryKey: ["/api/vendors/stats"],
-  });
-
-  const isFoundingMember = (stats as any)?.totalVerifiedVendors < 25;
-
   const signupMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/vendors/signup", data);
     },
     onSuccess: () => {
       toast({
-        title: isFoundingMember ? "🎉 Welcome, Founding Member!" : "Welcome to Local Exchange!",
-        description: isFoundingMember 
-          ? "Your FREE founding member vendor account has been created!"
-          : "Your vendor account has been created and is pending verification.",
+        title: "Welcome to Local Exchange!",
+        description: "Your vendor account has been created and is pending verification.",
       });
       setLocation("/");
     },
@@ -107,7 +98,6 @@ export default function VendorSignup() {
     signupMutation.mutate({
       ownerId: user.id,
       ...formData,
-      isFoundingMember,
     });
   };
 
@@ -141,17 +131,6 @@ export default function VendorSignup() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isFoundingMember && (
-              <div className="bg-wheat/10 border border-wheat/20 rounded-md p-4 text-center">
-                <Sparkles className="w-8 h-8 text-wheat mx-auto mb-2" />
-                <p className="font-semibold text-wheat">
-                  Join as a FREE Founding Member!
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Only {25 - ((stats as any)?.totalVerifiedVendors || 0)} spots remaining
-                </p>
-              </div>
-            )}
             <Button 
               className="w-full" 
               size="lg"

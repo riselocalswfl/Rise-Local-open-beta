@@ -76,11 +76,6 @@ export default function Join() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="bg-wheat/10 border border-wheat/20 rounded-md p-3 mb-4">
-                  <p className="text-sm font-semibold text-wheat">
-                    🎉 First 25 vendors join FREE as founding members!
-                  </p>
-                </div>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-start">
                     <span className="mr-2">✓</span>

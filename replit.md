@@ -97,8 +97,7 @@ Preferred communication style: Simple, everyday language.
 ### Key Business Logic
 
 **Pricing Model:**
-- First 25 vendors join FREE to help build momentum and grow the community
-- After initial 25: Vendors pay flat $150/month membership ("founder" plan)
+- Vendors pay flat $150/month membership
 - 3% buyer fee on transactions
 - No per-transaction vendor fees
 

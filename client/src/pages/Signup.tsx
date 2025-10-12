@@ -187,13 +187,6 @@ export default function Signup() {
           <CardDescription className="text-center">
             Join the Local Exchange community
           </CardDescription>
-          {role === "vendor" && (
-            <div className="bg-primary/10 border border-primary/20 rounded-md p-3 mt-4">
-              <p className="text-sm text-center font-medium text-primary">
-                First 25 vendors join FREE! Help us grow the Fort Myers community.
-              </p>
-            </div>
-          )}
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
