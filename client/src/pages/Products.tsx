@@ -75,7 +75,7 @@ export default function Products() {
           </div>
         </div>
       )}
-      <main className="max-w-7xl mx-auto px-4 pb-8" style={{ marginTop: '400px' }}>
+      <main className="max-w-7xl mx-auto px-4 pb-8" style={{ marginTop: valueCounts ? '400px' : '200px' }}>
         <h1 className="text-3xl font-semibold mb-8 mt-8" data-testid="heading-all-products">All Products</h1>
         {selected.length > 0 && (
           <p className="text-sm text-muted-foreground mb-4">
