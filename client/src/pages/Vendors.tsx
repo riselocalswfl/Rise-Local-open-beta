@@ -11,7 +11,7 @@ import type { Vendor } from "@shared/schema";
 import type { ValueTag } from "@/../../shared/values";
 
 export default function Vendors() {
-  const { data: vendors, isLoading } = useQuery<Vendor[]>({
+  const { data: vendors, isLoading} = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
   
@@ -44,12 +44,13 @@ export default function Vendors() {
       <div className="h-16" aria-hidden="true" />
       <FilterBar type="vendors" />
       {valueCounts && (
-        <div className="sticky top-[128px] z-30 bg-background pb-4">
+        <div className="fixed top-[156px] left-0 right-0 z-30 bg-background pb-4">
           <div className="max-w-7xl mx-auto px-4 pt-4">
             <ValueFilterBar valueCounts={valueCounts} context="vendors" />
           </div>
         </div>
       )}
+      <div className="h-[220px]" aria-hidden="true" />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold mb-8" data-testid="heading-local-vendors">Local Vendors</h1>
         {selected.length > 0 && (

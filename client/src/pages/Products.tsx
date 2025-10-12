@@ -69,12 +69,13 @@ export default function Products() {
       <div className="h-16" aria-hidden="true" />
       <FilterBar type="products" onCategoryChange={setSelectedCategory} />
       {valueCounts && (
-        <div className="sticky top-[128px] z-30 bg-background pb-4">
+        <div className="fixed top-[156px] left-0 right-0 z-30 bg-background pb-4">
           <div className="max-w-7xl mx-auto px-4 pt-4">
             <ValueFilterBar valueCounts={valueCounts} context="products" />
           </div>
         </div>
       )}
+      <div className="h-[220px]" aria-hidden="true" />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold mb-8" data-testid="heading-all-products">All Products</h1>
         {selected.length > 0 && (
