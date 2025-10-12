@@ -58,9 +58,11 @@ export default function Header() {
             Values
           </Link>
         </div>
-        <BrandButton variant="secondary" size="sm" data-testid="button-join">
-          Join the Movement
-        </BrandButton>
+        <Link href="/join" data-testid="link-join">
+          <BrandButton variant="secondary" size="sm" data-testid="button-join">
+            Join the Movement
+          </BrandButton>
+        </Link>
       </nav>
     </header>
   );
