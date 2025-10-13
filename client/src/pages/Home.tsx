@@ -8,6 +8,7 @@ import ValuesShowcase from "@/components/ValuesShowcase";
 import ProductCard from "@/components/ProductCard";
 import VendorCard from "@/components/VendorCard";
 import EventCard from "@/components/EventCard";
+import MobileCategoryNav from "@/components/MobileCategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
 import type { Vendor } from "@shared/schema";
@@ -63,12 +64,18 @@ export default function Home() {
               </p>
             </div>
             <Link href="/products" data-testid="link-view-all-products">
-              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition">
+              <button className="hidden md:flex text-sm text-primary hover:text-primary/80 items-center gap-1 transition">
                 View All
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </button>
             </Link>
           </div>
+          
+          <MobileCategoryNav
+            categories={["Bakery", "Beverages", "Plants", "Organic", "Artisan"]}
+            baseUrl="/products"
+            title="Shop by Category"
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {productsLoading ? (
               <>
@@ -114,12 +121,18 @@ export default function Home() {
               </p>
             </div>
             <Link href="/vendors" data-testid="link-view-all-vendors">
-              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition">
+              <button className="hidden md:flex text-sm text-primary hover:text-primary/80 items-center gap-1 transition">
                 View All
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </button>
             </Link>
           </div>
+          
+          <MobileCategoryNav
+            categories={["Food", "Beverages", "Home & Garden", "Crafts"]}
+            baseUrl="/vendors"
+            title="Browse Vendors"
+          />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {vendorsLoading ? (
               <>
