@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import HomeHero from "@/components/HomeHero";
-import ValuesShowcase from "@/components/ValuesShowcase";
 import ProductCard from "@/components/ProductCard";
 import VendorCard from "@/components/VendorCard";
 import EventCard from "@/components/EventCard";
@@ -47,13 +46,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg">
       <Header />
-      <div className="h-16" aria-hidden="true" />
       <main>
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-8">
           <HomeHero />
         </section>
-
-        <ValuesShowcase />
 
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
           <div className="flex items-center justify-between mb-6">
