@@ -52,7 +52,7 @@ export default function Vendors() {
                 bio={vendor.bio}
                 city={vendor.city}
                 categories={vendor.category ? [vendor.category, ...(vendor.subcategories || [])] : []}
-                businessValues={vendor.businessValues || undefined}
+                values={vendor.values as string[] || undefined}
                 isVerified={vendor.isVerified}
                 followerCount={vendor.followerCount}
                 avatarUrl={vendor.logoUrl || undefined}

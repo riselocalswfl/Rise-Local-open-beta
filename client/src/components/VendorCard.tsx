@@ -10,7 +10,7 @@ interface VendorCardProps {
   bio: string;
   city: string;
   categories: string[];
-  businessValues?: string;
+  values?: string[];
   isVerified: boolean;
   followerCount?: number;
   avatarUrl?: string;
@@ -22,7 +22,7 @@ export default function VendorCard({
   bio,
   city,
   categories,
-  businessValues,
+  values,
   isVerified,
   followerCount = 0,
   avatarUrl,
@@ -71,10 +71,24 @@ export default function VendorCard({
                     <span>{followerCount} followers</span>
                   </div>
                 )}
-                {businessValues && (
-                  <p className="text-xs text-muted-foreground italic line-clamp-2" data-testid={`text-vendor-values-${id}`}>
-                    {businessValues}
-                  </p>
+                {values && values.length > 0 && (
+                  <div className="flex flex-wrap gap-1" data-testid={`vendor-values-${id}`}>
+                    {values.slice(0, 4).map((value, idx) => (
+                      <Badge 
+                        key={idx} 
+                        variant="secondary" 
+                        className="text-xs rounded-pill"
+                        data-testid={`badge-value-${value}`}
+                      >
+                        {value}
+                      </Badge>
+                    ))}
+                    {values.length > 4 && (
+                      <Badge variant="secondary" className="text-xs rounded-pill">
+                        +{values.length - 4}
+                      </Badge>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

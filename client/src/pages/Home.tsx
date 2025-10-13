@@ -132,7 +132,7 @@ export default function Home() {
                   bio={vendor.bio || ""}
                   city={vendor.city}
                   categories={vendor.category ? [vendor.category] : []}
-                  businessValues={vendor.businessValues || undefined}
+                  values={vendor.values as string[] || undefined}
                   isVerified={vendor.isVerified}
                   followerCount={vendor.followerCount}
                 />
