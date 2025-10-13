@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { VALUE_META, ALL_VALUE_TAGS, type ValueTag } from "@shared/values";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -54,7 +53,7 @@ export default function VendorSignup() {
     locationType: "physical",
     serviceOptions: [] as string[],
     hours: "",
-    values: [] as string[],
+    businessValues: "",
     paymentMethod: "direct",
     paymentHandles: {} as Record<string, string>,
     hasLicense: false,
@@ -100,15 +99,6 @@ export default function VendorSignup() {
       ownerId: user.id,
       ...formData,
     });
-  };
-
-  const toggleValue = (value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      values: prev.values.includes(value)
-        ? prev.values.filter(v => v !== value)
-        : [...prev.values, value]
-    }));
   };
 
   const toggleServiceOption = (option: string) => {
@@ -418,27 +408,17 @@ export default function VendorSignup() {
               <div>
                 <h3 className="font-semibold mb-1">Business Values (optional)</h3>
                 <p className="text-sm text-muted-foreground">
-                  Help customers find you by selecting values that describe your business
+                  Describe what makes your business special - your values, principles, or what you stand for
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {ALL_VALUE_TAGS.map((tag) => {
-                  const meta = VALUE_META[tag];
-                  const isSelected = formData.values.includes(tag);
-                  return (
-                    <Badge
-                      key={tag}
-                      variant={isSelected ? "default" : "outline"}
-                      className="cursor-pointer hover-elevate active-elevate-2"
-                      onClick={() => toggleValue(tag)}
-                      data-testid={`badge-value-${tag}`}
-                    >
-                      {isSelected && <Check className="w-3 h-3 mr-1" />}
-                      {meta?.label || tag}
-                    </Badge>
-                  );
-                })}
-              </div>
+              <Textarea
+                id="businessValues"
+                value={formData.businessValues}
+                onChange={(e) => setFormData({ ...formData, businessValues: e.target.value })}
+                placeholder="e.g., We're a family-owned business committed to sustainability, using only organic ingredients sourced from local farms..."
+                rows={4}
+                data-testid="input-businessValues"
+              />
             </div>
 
             {/* Payment Method */}
