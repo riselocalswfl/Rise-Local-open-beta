@@ -77,7 +77,7 @@ export default function RestaurantSignup() {
     signupMutation.mutate({
       ownerId: user.id,
       businessName: formData.restaurantName,
-      contactName: parsed.contactName || "",
+      contactName: parsed.contactName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Owner",
       displayName: parsed.displayName || "",
       bio: formData.description,
       category: "Food & Beverage",
@@ -86,11 +86,11 @@ export default function RestaurantSignup() {
       zipCode: "33901", // Default Fort Myers zip
       locationType: "physical",
       serviceOptions: ["Pickup"],
-      values: formData.values,
+      values: formData.values || [],
       localMenuPercent: parseInt(formData.localPercent) || 0,
       restaurantSources: formData.farmPartners,
       paymentMethod: "direct",
-      paymentHandles: {},
+      paymentHandles: { Cash: "" },
     });
   };
 

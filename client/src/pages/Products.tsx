@@ -18,6 +18,7 @@ export default function Products() {
   useEffect(() => {
     if (categoryParam) {
       setSelectedCategory(categoryParam.toLowerCase());
+      setSelectedValues([]); // Reset value filters when category changes
     }
   }, [categoryParam]);
 
@@ -52,9 +53,9 @@ export default function Products() {
     filteredProducts = filteredProducts?.filter(p => p.category.toLowerCase() === selectedCategory);
   }
   
-  if (selectedValues.length > 0) {
+  if (selectedValues.length > 0 && vendors) {
     filteredProducts = filteredProducts?.filter(p => {
-      const vendor = vendors?.find(v => v.id === p.vendorId);
+      const vendor = vendors.find(v => v.id === p.vendorId);
       const vendorValues = (vendor?.values as string[]) || [];
       return selectedValues.some(sv => vendorValues.includes(sv));
     });

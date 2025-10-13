@@ -17,6 +17,7 @@ export default function Vendors() {
   useEffect(() => {
     if (categoryParam) {
       setSelectedCategory(categoryParam.toLowerCase());
+      setSelectedValues([]); // Reset value filters when category changes
     }
   }, [categoryParam]);
 
