@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import ValueFilterBar from "@/components/ValueFilterBar";
@@ -11,6 +12,16 @@ import type { Vendor } from "@shared/schema";
 import type { ValueTag } from "@/../../shared/values";
 
 export default function Vendors() {
+  const searchParams = new URLSearchParams(useSearch());
+  const categoryParam = searchParams.get("category");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategory(categoryParam.toLowerCase());
+    }
+  }, [categoryParam]);
+
   const { data: vendors, isLoading} = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
   });
@@ -23,11 +34,15 @@ export default function Vendors() {
     return getValueCounts(index);
   }, [vendors]);
   
+  const categoryFilteredVendors = selectedCategory === "all"
+    ? vendors
+    : vendors?.filter(v => v.category?.toLowerCase() === selectedCategory);
+  
   const filteredVendors = useMemo(() => {
-    if (!vendors) return [];
-    if (selected.length === 0) return vendors;
+    if (!categoryFilteredVendors) return [];
+    if (selected.length === 0) return categoryFilteredVendors;
     
-    return vendors.filter(vendor => {
+    return categoryFilteredVendors.filter(vendor => {
       const vendorValues = vendor.values as ValueTag[];
       
       if (matchMode === "all") {
@@ -36,12 +51,12 @@ export default function Vendors() {
         return selected.some(tag => vendorValues.includes(tag));
       }
     });
-  }, [vendors, selected, matchMode]);
+  }, [categoryFilteredVendors, selected, matchMode]);
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <FilterBar type="vendors" />
+      <FilterBar type="vendors" onCategoryChange={setSelectedCategory} selectedCategory={selectedCategory} />
       {valueCounts && (
         <div className="bg-background pb-4 border-b">
           <div className="max-w-7xl mx-auto px-4 pt-4">
