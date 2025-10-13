@@ -164,7 +164,7 @@ export default function VendorSignup() {
                 id="businessName"
                 value={formData.businessName}
                 onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                placeholder="Local Farm Fresh"
+                placeholder="The Harvest Table"
                 data-testid="input-businessName"
                 required
               />

@@ -11,7 +11,7 @@ export default function Admin() {
 
   // todo: remove mock functionality
   const [pendingVendors, setPendingVendors] = useState([
-    { id: "v4", name: "Fresh Harvest Farm", city: "Fort Myers", email: "farm@fresh.com" },
+    { id: "v4", name: "Farm Table Bistro", city: "Fort Myers", email: "bistro@farmtable.com" },
     { id: "v5", name: "Coastal Crafts", city: "Fort Myers", email: "coastal@crafts.com" },
   ]);
 
