@@ -127,7 +127,19 @@ export default function Home() {
                 <Skeleton className="h-40" />
               </>
             ) : (
-              featuredVendors.map((vendor) => <VendorCard key={vendor.id} {...vendor} />)
+              featuredVendors.map((vendor) => (
+                <VendorCard
+                  key={vendor.id}
+                  id={vendor.id}
+                  name={vendor.businessName}
+                  bio={vendor.bio || ""}
+                  city={vendor.city}
+                  categories={vendor.category ? [vendor.category] : []}
+                  values={vendor.values as ValueTag[]}
+                  isVerified={vendor.isVerified}
+                  followerCount={vendor.followerCount}
+                />
+              ))
             )}
           </div>
         </section>
