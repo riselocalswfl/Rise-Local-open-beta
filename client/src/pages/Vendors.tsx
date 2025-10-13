@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
+import ValueFilter from "@/components/ValueFilter";
 import VendorCard from "@/components/VendorCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Vendor } from "@shared/schema";
@@ -11,6 +12,7 @@ export default function Vendors() {
   const searchParams = new URLSearchParams(useSearch());
   const categoryParam = searchParams.get("category");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
   
   useEffect(() => {
     if (categoryParam) {
@@ -22,15 +24,47 @@ export default function Vendors() {
     queryKey: ["/api/vendors"],
   });
   
-  const filteredVendors = selectedCategory === "all"
-    ? vendors
-    : vendors?.filter(v => v.category?.toLowerCase() === selectedCategory);
+  // Get all unique values from all vendors
+  const allValues = Array.from(
+    new Set(
+      vendors?.flatMap(v => (v.values as string[]) || []) || []
+    )
+  ).sort();
+  
+  const handleValueToggle = (value: string) => {
+    setSelectedValues(prev => 
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+  
+  // Filter by category and values
+  let filteredVendors = vendors;
+  
+  if (selectedCategory !== "all") {
+    filteredVendors = filteredVendors?.filter(v => v.category?.toLowerCase() === selectedCategory);
+  }
+  
+  if (selectedValues.length > 0) {
+    filteredVendors = filteredVendors?.filter(v => {
+      const vendorValues = (v.values as string[]) || [];
+      return selectedValues.some(sv => vendorValues.includes(sv));
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <FilterBar type="vendors" onCategoryChange={setSelectedCategory} selectedCategory={selectedCategory} />
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {allValues.length > 0 && (
+          <ValueFilter
+            availableValues={allValues}
+            selectedValues={selectedValues}
+            onValueToggle={handleValueToggle}
+          />
+        )}
         <h1 className="text-3xl font-semibold mb-8 mt-8" data-testid="heading-local-vendors">Local Vendors</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isLoading ? (
