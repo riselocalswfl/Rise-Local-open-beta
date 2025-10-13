@@ -104,8 +104,8 @@ export const vendors = pgTable("vendors", {
   serviceRadius: integer("service_radius"), // miles
   hours: text("hours"), // JSON string of operating hours
   
-  // Values & Filtering
-  values: text("values").array().notNull().default(sql`'{}'::text[]`).$type<ValueTag[]>(),
+  // Business Values (custom text)
+  businessValues: text("business_values"), // vendors can describe their values in their own words
   
   // Payment
   paymentMethod: text("payment_method").notNull(), // Direct to Vendor or Through Platform
@@ -152,7 +152,6 @@ export const products = pgTable("products", {
   category: text("category").notNull(),
   inventory: integer("inventory").notNull(),
   description: text("description"),
-  values: text("values").array().notNull().default(sql`'{}'::text[]`).$type<ValueTag[]>(),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
