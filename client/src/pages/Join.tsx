@@ -10,7 +10,7 @@ export default function Join() {
         <div className="container mx-auto px-4 py-4">
           <Link href="/">
             <a className="text-2xl font-playfair font-bold text-primary" data-testid="link-home">
-              Local Choice
+              Local by Choice
             </a>
           </Link>
         </div>
@@ -20,7 +20,7 @@ export default function Join() {
         <div className="w-full max-w-5xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-playfair font-bold mb-4">
-              Join Local Choice
+              Join Local by Choice
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Choose how you'd like to join our community of local buyers and vendors in Fort Myers
