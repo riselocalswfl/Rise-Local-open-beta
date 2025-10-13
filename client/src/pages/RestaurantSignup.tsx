@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { TagInput } from "@/components/TagInput";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Check } from "lucide-react";
@@ -22,6 +23,7 @@ export default function RestaurantSignup() {
     description: "",
     localPercent: "",
     farmPartners: "",
+    values: [] as string[],
   });
 
   // Load data from VendorSignup if available
@@ -84,6 +86,7 @@ export default function RestaurantSignup() {
       zipCode: "33901", // Default Fort Myers zip
       locationType: "physical",
       serviceOptions: ["Pickup"],
+      values: formData.values,
       localMenuPercent: parseInt(formData.localPercent) || 0,
       restaurantSources: formData.farmPartners,
       paymentMethod: "direct",
@@ -176,6 +179,20 @@ export default function RestaurantSignup() {
             <p className="text-xs text-muted-foreground">
               List the local farms and producers you partner with
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Restaurant Values (optional)</Label>
+            <p className="text-sm text-muted-foreground mb-2">
+              Add custom value tags (e.g., "farm-to-table", "organic", "sustainable seafood")
+            </p>
+            <TagInput
+              tags={formData.values}
+              onChange={(newValues) => setFormData({ ...formData, values: newValues })}
+              placeholder="Type a value and press Enter..."
+              maxTags={10}
+              testId="input-restaurant-values"
+            />
           </div>
         </CardContent>
         <CardFooter className="flex justify-between gap-4">

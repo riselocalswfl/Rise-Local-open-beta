@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TagInput } from "@/components/TagInput";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
@@ -53,7 +54,7 @@ export default function VendorSignup() {
     locationType: "physical",
     serviceOptions: [] as string[],
     hours: "",
-    businessValues: "",
+    values: [] as string[],
     paymentMethod: "direct",
     paymentHandles: {} as Record<string, string>,
     hasLicense: false,
@@ -408,16 +409,15 @@ export default function VendorSignup() {
               <div>
                 <h3 className="font-semibold mb-1">Business Values (optional)</h3>
                 <p className="text-sm text-muted-foreground">
-                  Describe what makes your business special - your values, principles, or what you stand for
+                  Add custom value tags that represent your business (e.g., "organic", "family-owned", "sustainable"). Customers can filter by these values.
                 </p>
               </div>
-              <Textarea
-                id="businessValues"
-                value={formData.businessValues}
-                onChange={(e) => setFormData({ ...formData, businessValues: e.target.value })}
-                placeholder="e.g., We're a family-owned business committed to sustainability, using only organic ingredients sourced from local farms..."
-                rows={4}
-                data-testid="input-businessValues"
+              <TagInput
+                tags={formData.values}
+                onChange={(newValues) => setFormData({ ...formData, values: newValues })}
+                placeholder="Type a value and press Enter..."
+                maxTags={10}
+                testId="input-values"
               />
             </div>
 
