@@ -72,7 +72,7 @@ export default function VendorSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to Local by Choice!",
+        title: "Welcome to Local Choice!",
         description: "Your vendor account has been created and is pending verification.",
       });
       setLocation("/");
