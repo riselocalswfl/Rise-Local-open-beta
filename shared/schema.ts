@@ -104,8 +104,8 @@ export const vendors = pgTable("vendors", {
   serviceRadius: integer("service_radius"), // miles
   hours: text("hours"), // JSON string of operating hours
   
-  // Business Values (custom text)
-  businessValues: text("business_values"), // vendors can describe their values in their own words
+  // Business Values (custom tags created by vendor)
+  values: text("values").array().default(sql`'{}'::text[]`), // custom value tags vendors create themselves
   
   // Payment
   paymentMethod: text("payment_method").notNull(), // Direct to Vendor or Through Platform
