@@ -107,19 +107,12 @@ Preferred communication style: Simple, everyday language.
 - Displayed to buyers on vendor/product pages
 - Vendors manage their own payment collection (platform does not process payments)
 
-**Values-Based Shopping:**
-- "Local" is a core platform principle - ALL vendors and products on Local Exchange are local to Fort Myers by design
-- Being local is NOT a filter option because it's the foundation of the entire platform
-- Vendors can disclose additional business values and principles (optional) with 11 available filters:
-  - Environmental: organic, non-GMO, regenerative, low-waste, plastic-free
-  - Social: fair trade, woman-owned, veteran-owned
-  - Dietary: gluten-free, vegan
-  - Craft: artisan (small-batch, handcrafted)
-- Value filters defined in `shared/values.ts` with VALUE_META as source of truth
-- ALL_VALUE_TAGS array auto-generated from VALUE_META keys for consistency
-- Business values displayed on vendor/product cards as badges with tooltips
-- Helps buyers shop according to their personal values and principles
-- Defensive filtering implemented in components to gracefully handle invalid/unknown value tags
+**Platform Focus:**
+- "Local" is the core platform principle - ALL vendors and products on Local Exchange are local to Fort Myers by design
+- The platform emphasizes supporting local businesses and avoiding major corporations
+- Being local is the foundation of the entire platform, not a filter option
+- Focus on Fort Myers community connections and anti-corporate messaging
+- Vendors and products are displayed with category filtering and search capabilities
 
 **Loyalty System:**
 - Users earn 10 points per completed order
