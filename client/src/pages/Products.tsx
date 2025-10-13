@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearch } from "wouter";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import ValueFilterBar from "@/components/ValueFilterBar";
@@ -12,7 +13,15 @@ import type { Vendor, Product } from "@shared/schema";
 import type { ValueTag } from "@/../../shared/values";
 
 export default function Products() {
+  const searchParams = new URLSearchParams(useSearch());
+  const categoryParam = searchParams.get("category");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategory(categoryParam.toLowerCase());
+    }
+  }, [categoryParam]);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["/api/products-with-vendors"],
@@ -66,7 +75,7 @@ export default function Products() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <FilterBar type="products" onCategoryChange={setSelectedCategory} />
+      <FilterBar type="products" onCategoryChange={setSelectedCategory} selectedCategory={selectedCategory} />
       {valueCounts && (
         <div className="bg-background pb-4 border-b">
           <div className="max-w-7xl mx-auto px-4 pt-4">

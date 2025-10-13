@@ -9,18 +9,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface FilterBarProps {
   type: "products" | "vendors" | "events";
   onSearch?: (query: string) => void;
   onCategoryChange?: (category: string) => void;
   onSortChange?: (sort: string) => void;
+  selectedCategory?: string;
 }
 
-export default function FilterBar({ type, onSearch, onCategoryChange, onSortChange }: FilterBarProps) {
+export default function FilterBar({ type, onSearch, onCategoryChange, onSortChange, selectedCategory: externalCategory }: FilterBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>(externalCategory || "all");
+  
+  useEffect(() => {
+    if (externalCategory) {
+      setSelectedCategory(externalCategory);
+    }
+  }, [externalCategory]);
 
   const categories = {
     products: ["All", "Bakery", "Beverages", "Plants", "Organic", "Artisan"],
