@@ -57,15 +57,6 @@ export default function Header() {
           >
             Events
           </Link>
-          <Link
-            href="/values"
-            className={`text-text/80 hover:text-text transition ${
-              location === "/values" ? "text-text font-medium" : ""
-            }`}
-            data-testid="link-values"
-          >
-            Values
-          </Link>
         </div>
         <Link href="/join" data-testid="link-join">
           <BrandButton variant="secondary" size="sm" data-testid="button-join">
