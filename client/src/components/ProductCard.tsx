@@ -59,7 +59,7 @@ export default function ProductCard({
   return (
     <Card className="le-card overflow-hidden group">
       <Link href={`/products/${id}`} data-testid={`link-product-${id}`}>
-        <div className="aspect-square overflow-hidden bg-muted rounded-t-lg">
+        <div className="aspect-video overflow-hidden bg-muted rounded-t-lg">
           {image ? (
             <img
               src={image}
@@ -68,36 +68,36 @@ export default function ProductCard({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(91, 140, 90, 0.10)' }}>
-              <span className="text-6xl font-bold" style={{ color: 'var(--le-green)', opacity: 0.4 }}>{name[0]}</span>
+              <span className="text-3xl font-bold" style={{ color: 'var(--le-green)', opacity: 0.4 }}>{name[0]}</span>
             </div>
           )}
         </div>
-        <CardContent className="p-4">
-          <div className="space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-medium text-lg line-clamp-1" data-testid={`text-product-name-${id}`}>{name}</h3>
+        <CardContent className="p-3">
+          <div className="space-y-1">
+            <div className="flex items-start justify-between gap-1">
+              <h3 className="font-medium text-sm line-clamp-1" data-testid={`text-product-name-${id}`}>{name}</h3>
               {isVerifiedVendor && (
-                <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--le-green)' }} strokeWidth={1.75} />
+                <CheckCircle className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--le-green)' }} strokeWidth={1.75} />
               )}
             </div>
             <button
               type="button"
               onClick={handleVendorClick}
-              className="text-sm text-muted-foreground hover:text-foreground hover:underline text-left"
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline text-left"
               data-testid={`link-vendor-${vendorId}`}
             >
               {vendorName}
             </button>
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="le-chip text-xs">{category}</span>
-              <Badge variant={stockStatus.color as any} className="text-xs rounded-pill">
+            <div className="flex items-center justify-between gap-1 flex-wrap">
+              <span className="le-chip text-[10px]">{category}</span>
+              <Badge variant={stockStatus.color as any} className="text-[10px] rounded-pill">
                 {stockStatus.text}
               </Badge>
             </div>
           </div>
         </CardContent>
-        <CardFooter className="p-4 pt-0 flex items-center justify-between gap-2">
-          <span className="text-2xl font-semibold font-mono" data-testid={`text-price-${id}`}>
+        <CardFooter className="p-3 pt-0 flex items-center justify-between gap-2">
+          <span className="text-lg font-semibold font-mono" data-testid={`text-price-${id}`}>
             ${price.toFixed(2)}
           </span>
           <Button
@@ -108,7 +108,7 @@ export default function ProductCard({
             style={{ background: 'var(--le-clay)' }}
             data-testid={`button-add-to-cart-${id}`}
           >
-            <ShoppingCart className="w-4 h-4 mr-1" strokeWidth={1.75} />
+            <ShoppingCart className="w-3 h-3 mr-1" strokeWidth={1.75} />
             Add
           </Button>
         </CardFooter>
