@@ -3,13 +3,7 @@ import { ShoppingCart, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { addToCart } from "@/lib/cart";
-import { VALUE_META, type ValueTag } from "@/../../shared/values";
 
 interface ProductCardProps {
   id: string;
@@ -21,7 +15,6 @@ interface ProductCardProps {
   image?: string;
   inventory: number;
   isVerifiedVendor?: boolean;
-  values?: ValueTag[];
 }
 
 export default function ProductCard({
@@ -34,7 +27,6 @@ export default function ProductCard({
   image,
   inventory,
   isVerifiedVendor = false,
-  values = [],
 }: ProductCardProps) {
   const [, setLocation] = useLocation();
 
@@ -102,36 +94,6 @@ export default function ProductCard({
                 {stockStatus.text}
               </Badge>
             </div>
-            {(() => {
-              const validValues = values.filter(v => v in VALUE_META);
-              return validValues.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {validValues.slice(0, 3).map((value) => (
-                    <Tooltip key={value}>
-                      <TooltipTrigger asChild>
-                        <span className="inline-block">
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs cursor-help" 
-                            data-testid={`badge-product-value-${value}`}
-                          >
-                            {VALUE_META[value].label}
-                          </Badge>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{VALUE_META[value].description}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                  {validValues.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{validValues.length - 3}
-                    </Badge>
-                  )}
-                </div>
-              );
-            })()}
           </div>
         </CardContent>
         <CardFooter className="p-4 pt-0 flex items-center justify-between gap-2">

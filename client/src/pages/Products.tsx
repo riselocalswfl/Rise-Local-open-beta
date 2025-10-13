@@ -6,8 +6,6 @@ import FilterBar from "@/components/FilterBar";
 import ProductCard from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors } from "@/lib/api";
-import type { Vendor } from "@shared/schema";
-import type { ValueTag } from "@/../../shared/values";
 
 export default function Products() {
   const searchParams = new URLSearchParams(useSearch());
@@ -23,10 +21,6 @@ export default function Products() {
   const { data: products, isLoading } = useQuery({
     queryKey: ["/api/products-with-vendors"],
     queryFn: getProductsWithVendors,
-  });
-  
-  const { data: vendors } = useQuery<Vendor[]>({
-    queryKey: ["/api/vendors"],
   });
   
   const filteredProducts = selectedCategory === "all"
@@ -54,28 +48,19 @@ export default function Products() {
               <p className="text-muted-foreground">No products found matching your filters</p>
             </div>
           ) : (
-            filteredProducts?.map((product) => {
-              const displayValues = (product.values as ValueTag[]) || [];
-              const vendor = vendors?.find(v => v.id === product.vendorId);
-              const vendorValues = (vendor?.values as ValueTag[]) || [];
-              const combined = [...displayValues, ...vendorValues];
-              const allValues = Array.from(new Set(combined));
-              
-              return (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={parseFloat(product.price)}
-                  vendorName={product.vendorName}
-                  vendorId={product.vendorId}
-                  category={product.category}
-                  inventory={product.inventory}
-                  isVerifiedVendor={product.isVerifiedVendor}
-                  values={allValues}
-                />
-              );
-            })
+            filteredProducts?.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                price={parseFloat(product.price)}
+                vendorName={product.vendorName}
+                vendorId={product.vendorId}
+                category={product.category}
+                inventory={product.inventory}
+                isVerifiedVendor={product.isVerifiedVendor}
+              />
+            ))
           )}
         </div>
       </main>

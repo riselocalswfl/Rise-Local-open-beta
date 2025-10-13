@@ -11,7 +11,6 @@ import MobileCategoryNav from "@/components/MobileCategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
 import type { Vendor } from "@shared/schema";
-import type { ValueTag } from "@/../../shared/values";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -80,30 +79,19 @@ export default function Home() {
                 <Skeleton className="h-80" />
               </>
             ) : (
-              featuredProducts.map((product) => {
-                let displayValues = (product.values as ValueTag[]) || [];
-                const vendor = vendors?.find((v) => v.id === product.vendorId);
-                if (vendor) {
-                  const vendorValues = vendor.values as ValueTag[];
-                  const combined = [...displayValues, ...vendorValues];
-                  displayValues = Array.from(new Set(combined));
-                }
-
-                return (
-                  <ProductCard
-                    key={product.id}
-                    id={product.id}
-                    name={product.name}
-                    price={parseFloat(product.price)}
-                    vendorName={product.vendorName}
-                    vendorId={product.vendorId}
-                    category={product.category}
-                    inventory={product.inventory}
-                    isVerifiedVendor={product.isVerifiedVendor}
-                    values={displayValues}
-                  />
-                );
-              })
+              featuredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  price={parseFloat(product.price)}
+                  vendorName={product.vendorName}
+                  vendorId={product.vendorId}
+                  category={product.category}
+                  inventory={product.inventory}
+                  isVerifiedVendor={product.isVerifiedVendor}
+                />
+              ))
             )}
           </div>
         </section>
@@ -144,7 +132,7 @@ export default function Home() {
                   bio={vendor.bio || ""}
                   city={vendor.city}
                   categories={vendor.category ? [vendor.category] : []}
-                  values={vendor.values as ValueTag[]}
+                  businessValues={vendor.businessValues || undefined}
                   isVerified={vendor.isVerified}
                   followerCount={vendor.followerCount}
                 />

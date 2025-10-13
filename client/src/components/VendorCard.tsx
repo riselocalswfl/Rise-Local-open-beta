@@ -3,12 +3,6 @@ import { MapPin, CheckCircle, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { VALUE_META, type ValueTag } from "@/../../shared/values";
 
 interface VendorCardProps {
   id: string;
@@ -16,7 +10,7 @@ interface VendorCardProps {
   bio: string;
   city: string;
   categories: string[];
-  values?: ValueTag[];
+  businessValues?: string;
   isVerified: boolean;
   followerCount?: number;
   avatarUrl?: string;
@@ -28,7 +22,7 @@ export default function VendorCard({
   bio,
   city,
   categories,
-  values = [],
+  businessValues,
   isVerified,
   followerCount = 0,
   avatarUrl,
@@ -77,36 +71,11 @@ export default function VendorCard({
                     <span>{followerCount} followers</span>
                   </div>
                 )}
-                {(() => {
-                  const validValues = values.filter(v => v in VALUE_META);
-                  return validValues.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {validValues.slice(0, 4).map((value) => (
-                        <Tooltip key={value}>
-                          <TooltipTrigger asChild>
-                            <span className="inline-block">
-                              <Badge 
-                                variant="secondary" 
-                                className="text-xs cursor-help" 
-                                data-testid={`badge-vendor-value-${value}`}
-                              >
-                                {VALUE_META[value].label}
-                              </Badge>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{VALUE_META[value].description}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
-                      {validValues.length > 4 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{validValues.length - 4}
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })()}
+                {businessValues && (
+                  <p className="text-xs text-muted-foreground italic line-clamp-2" data-testid={`text-vendor-values-${id}`}>
+                    {businessValues}
+                  </p>
+                )}
               </div>
             </div>
           </div>

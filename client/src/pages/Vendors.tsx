@@ -6,7 +6,6 @@ import FilterBar from "@/components/FilterBar";
 import VendorCard from "@/components/VendorCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Vendor } from "@shared/schema";
-import type { ValueTag } from "@/../../shared/values";
 
 export default function Vendors() {
   const searchParams = new URLSearchParams(useSearch());
@@ -53,7 +52,7 @@ export default function Vendors() {
                 bio={vendor.bio}
                 city={vendor.city}
                 categories={vendor.category ? [vendor.category, ...(vendor.subcategories || [])] : []}
-                values={vendor.values as ValueTag[]}
+                businessValues={vendor.businessValues || undefined}
                 isVerified={vendor.isVerified}
                 followerCount={vendor.followerCount}
                 avatarUrl={vendor.logoUrl || undefined}
