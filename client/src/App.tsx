@@ -20,6 +20,7 @@ import BuyerSignup from "@/pages/BuyerSignup";
 import VendorSignup from "@/pages/VendorSignup";
 import RestaurantSignup from "@/pages/RestaurantSignup";
 import Admin from "@/pages/Admin";
+import NavMenu from "@/components/NavMenu";
 
 function Router() {
   return (
@@ -51,6 +52,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <NavMenu />
       </TooltipProvider>
     </QueryClientProvider>
   );
