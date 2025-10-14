@@ -8,10 +8,8 @@ export default function Join() {
     <div className="min-h-screen flex flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4">
-          <Link href="/">
-            <a className="text-2xl font-playfair font-bold text-primary" data-testid="link-home">
-              SHOP SMALL
-            </a>
+          <Link href="/" className="text-2xl font-playfair font-bold text-primary" data-testid="link-home">
+            SHOP SMALL
           </Link>
         </div>
       </header>
@@ -106,10 +104,8 @@ export default function Join() {
           <div className="text-center mt-8">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/login">
-                <a className="text-primary hover:underline" data-testid="link-login">
-                  Log in
-                </a>
+              <Link href="/login" className="text-primary hover:underline" data-testid="link-login">
+                Log in
               </Link>
             </p>
           </div>
