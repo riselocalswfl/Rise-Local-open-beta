@@ -9,6 +9,7 @@ import Products from "@/pages/Products";
 import Vendors from "@/pages/Vendors";
 import EatLocal from "@/pages/EatLocal";
 import Events from "@/pages/Events";
+import EventDetail from "@/pages/EventDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Spotlight from "@/pages/Spotlight";
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/products" component={Products} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/eat-local" component={EatLocal} />
+      <Route path="/events/:id" component={EventDetail} />
       <Route path="/events" component={Events} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />

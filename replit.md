@@ -197,6 +197,15 @@ All core entities are now implemented in the database:
 - **OrderItem** - Order reference, product reference, quantity, price at purchase
 - **Spotlight** - Featured content for Fort Myers with title, body, city, active status
 
+### Example Data
+
+**Lotus Wellness Studio** (Vendor):
+- Health & Wellness vendor in Fort Myers
+- Hosts community events and workshops
+- Example events include:
+  - "Sunrise Yoga & Mindfulness Workshop" - Beginner-friendly morning workshop with gentle flows, breathing exercises, and meditation
+  - "Master the Headstand Workshop" - Intermediate-level workshop focused on building strength and confidence for headstand inversions
+
 ### Build and Deployment
 
 **Development:**
