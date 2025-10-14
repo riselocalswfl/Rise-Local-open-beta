@@ -2,14 +2,15 @@ import { Link } from "wouter";
 import { ShoppingBag, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function Join() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4">
-          <Link href="/" className="text-2xl font-playfair font-bold text-primary" data-testid="link-home">
-            SHOP SMALL
+          <Link href="/" data-testid="link-home">
+            <BrandLogo />
           </Link>
         </div>
       </header>
