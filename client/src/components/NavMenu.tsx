@@ -1,4 +1,4 @@
-import { Menu, X, ShoppingBag, Store, UtensilsCrossed, Calendar } from "lucide-react";
+import { Menu, ShoppingBag, Store, UtensilsCrossed, Calendar } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export default function NavMenu() {
               return (
                 <li key={category.href}>
                   <Link href={category.href}>
-                    <button
+                    <a
                       onClick={() => setOpen(false)}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
                         isActive
@@ -57,7 +57,7 @@ export default function NavMenu() {
                     >
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
                       <span className="font-medium">{category.name}</span>
-                    </button>
+                    </a>
                   </Link>
                 </li>
               );
