@@ -1,4 +1,4 @@
-import { Menu, ShoppingBag, Store, UtensilsCrossed, Calendar } from "lucide-react";
+import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, Heart } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-const categories = [
+const navigationItems = [
+  { name: "Home", href: "/", icon: Home },
   { name: "Products", href: "/products", icon: ShoppingBag },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
+  { name: "Join the Movement", href: "/join", icon: Heart },
 ];
 
 export default function NavMenu() {
@@ -40,31 +42,31 @@ export default function NavMenu() {
       </SheetTrigger>
       <SheetContent side="right" className="w-72">
         <SheetHeader>
-          <SheetTitle className="text-left font-playfair text-2xl">Browse Categories</SheetTitle>
+          <SheetTitle className="text-left font-playfair text-2xl">Navigation</SheetTitle>
           <SheetDescription className="text-left">
-            Navigate to different sections of the marketplace
+            Browse SHOP SMALL marketplace
           </SheetDescription>
         </SheetHeader>
         <nav className="mt-8">
           <ul className="space-y-2">
-            {categories.map((category) => {
-              const Icon = category.icon;
-              const isActive = location === category.href;
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href;
               
               return (
-                <li key={category.href}>
-                  <Link href={category.href}>
+                <li key={item.href}>
+                  <Link href={item.href}>
                     <div
-                      onClick={() => handleNavigate(category.href)}
+                      onClick={() => handleNavigate(item.href)}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer ${
                         isActive
                           ? "bg-primary text-primary-foreground"
                           : "hover-elevate active-elevate-2"
                       }`}
-                      data-testid={`link-nav-${category.name.toLowerCase().replace(" ", "-")}`}
+                      data-testid={`link-nav-${item.name.toLowerCase().replace(/ /g, "-")}`}
                     >
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
-                      <span className="font-medium">{category.name}</span>
+                      <span className="font-medium">{item.name}</span>
                     </div>
                   </Link>
                 </li>
