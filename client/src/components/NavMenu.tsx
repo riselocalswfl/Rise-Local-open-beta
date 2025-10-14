@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -21,6 +22,10 @@ export default function NavMenu() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
 
+  const handleNavigate = (href: string) => {
+    setOpen(false);
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -36,6 +41,9 @@ export default function NavMenu() {
       <SheetContent side="right" className="w-72">
         <SheetHeader>
           <SheetTitle className="text-left font-playfair text-2xl">Browse Categories</SheetTitle>
+          <SheetDescription className="text-left">
+            Navigate to different sections of the marketplace
+          </SheetDescription>
         </SheetHeader>
         <nav className="mt-8">
           <ul className="space-y-2">
@@ -46,9 +54,9 @@ export default function NavMenu() {
               return (
                 <li key={category.href}>
                   <Link href={category.href}>
-                    <a
-                      onClick={() => setOpen(false)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${
+                    <div
+                      onClick={() => handleNavigate(category.href)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer ${
                         isActive
                           ? "bg-primary text-primary-foreground"
                           : "hover-elevate active-elevate-2"
@@ -57,7 +65,7 @@ export default function NavMenu() {
                     >
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
                       <span className="font-medium">{category.name}</span>
-                    </a>
+                    </div>
                   </Link>
                 </li>
               );
