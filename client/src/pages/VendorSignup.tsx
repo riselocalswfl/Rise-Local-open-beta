@@ -72,7 +72,7 @@ export default function VendorSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to iShopLocal!",
+        title: "Welcome to SHOP SMALL!",
         description: "Your vendor account has been created and is pending verification.",
       });
       setLocation("/");

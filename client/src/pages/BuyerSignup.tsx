@@ -47,7 +47,7 @@ export default function BuyerSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to iShopLocal!",
+        title: "Welcome to SHOP SMALL!",
         description: "Your buyer account has been created successfully.",
       });
       setLocation("/");
