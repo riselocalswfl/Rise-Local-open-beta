@@ -47,7 +47,7 @@ export default function BuyerSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to Local by Choice!",
+        title: "Welcome to iShopLocal!",
         description: "Your buyer account has been created successfully.",
       });
       setLocation("/");

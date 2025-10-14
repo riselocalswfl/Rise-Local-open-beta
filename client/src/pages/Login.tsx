@@ -20,7 +20,7 @@ export default function Login() {
     
     toast({
       title: "Login Successful",
-      description: "Welcome back to Local by Choice!",
+      description: "Welcome back to iShopLocal!",
     });
 
     setLocation("/");
@@ -37,7 +37,7 @@ export default function Login() {
           </div>
           <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
           <CardDescription className="text-center">
-            Sign in to your Local by Choice account
+            Sign in to your iShopLocal account
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>

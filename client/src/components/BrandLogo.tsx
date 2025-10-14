@@ -7,7 +7,7 @@ export default function BrandLogo({ size = 22 }: { size?: number }) {
         <Leaf size={size} className="text-primary" />
       </div>
       <div className="leading-tight">
-        <div className="font-heading text-xl text-text">Local by Choice</div>
+        <div className="font-heading text-xl text-text">iShopLocal</div>
         <div className="text-xs text-text/60 -mt-0.5">Shop your values</div>
       </div>
     </div>
