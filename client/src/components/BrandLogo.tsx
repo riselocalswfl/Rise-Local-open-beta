@@ -1,15 +1,13 @@
-import { Leaf } from "lucide-react";
+import logoImg from "@assets/ChatGPT Image Oct 13, 2025, 09_50_24 PM_1760406630036.png";
 
-export default function BrandLogo({ size = 22 }: { size?: number }) {
+export default function BrandLogo({ className = "" }: { className?: string }) {
   return (
-    <div className="inline-flex items-center gap-2">
-      <div className="h-9 w-9 rounded-full border border-primary/30 bg-white grid place-items-center shadow-soft">
-        <Leaf size={size} className="text-primary" />
-      </div>
-      <div className="leading-tight">
-        <div className="font-heading text-xl text-text">iShopLocal</div>
-        <div className="text-xs text-text/60 -mt-0.5">Shop your values</div>
-      </div>
+    <div className={`inline-flex items-center ${className}`}>
+      <img 
+        src={logoImg} 
+        alt="SHOP SMALL" 
+        className="h-12 w-auto"
+      />
     </div>
   );
 }
