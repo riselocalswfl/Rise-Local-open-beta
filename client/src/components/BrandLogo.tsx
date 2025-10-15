@@ -5,7 +5,7 @@ export default function BrandLogo({ className = "" }: { className?: string }) {
     <div className={`inline-flex items-center ${className}`}>
       <img 
         src={logoImg} 
-        alt="SHOP SMALL" 
+        alt="Local Exchange" 
         className="h-16 w-auto"
       />
     </div>

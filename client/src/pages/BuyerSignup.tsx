@@ -47,7 +47,7 @@ export default function BuyerSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to SHOP SMALL!",
+        title: "Welcome to Local Exchange!",
         description: "Your buyer account has been created successfully.",
       });
       setLocation("/");

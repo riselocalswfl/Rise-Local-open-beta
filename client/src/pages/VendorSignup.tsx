@@ -72,7 +72,7 @@ export default function VendorSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to SHOP SMALL!",
+        title: "Welcome to Local Exchange!",
         description: "Your vendor account has been created and is pending verification.",
       });
       setLocation("/");

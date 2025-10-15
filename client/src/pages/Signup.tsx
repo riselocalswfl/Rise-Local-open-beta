@@ -168,7 +168,7 @@ export default function Signup() {
       title: "Account Created!",
       description: role === "vendor" 
         ? "Your vendor account is pending verification."
-        : "Welcome to SHOP SMALL!",
+        : "Welcome to Local Exchange!",
     });
 
     setLocation("/");
@@ -185,7 +185,7 @@ export default function Signup() {
           </div>
           <CardTitle className="text-2xl text-center">Create Account</CardTitle>
           <CardDescription className="text-center">
-            Join the SHOP SMALL community
+            Join the Local Exchange community
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>

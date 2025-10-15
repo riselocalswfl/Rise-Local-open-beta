@@ -19,7 +19,7 @@ export default function Join() {
         <div className="w-full max-w-5xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-playfair font-bold mb-4">
-              Join SHOP SMALL
+              Join Local Exchange
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Choose how you'd like to join our community of local buyers and vendors in Fort Myers
