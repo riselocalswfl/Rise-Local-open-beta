@@ -11,7 +11,7 @@ export default function Header() {
         <Link href="/" data-testid="link-home">
           <BrandLogo />
         </Link>
-        <div className="hidden md:flex items-center gap-6 text-sm">
+        <div className="hidden md:flex items-center gap-6 text-base">
           <Link
             href="/"
             className={`text-text/80 hover:text-text transition ${
