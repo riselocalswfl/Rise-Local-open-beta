@@ -44,7 +44,7 @@ export default function NavMenu() {
         <SheetHeader>
           <SheetTitle className="text-left font-playfair text-2xl text-foreground">Navigation</SheetTitle>
           <SheetDescription className="text-left text-muted-foreground">
-            Browse Local Exchange marketplace
+            Browse Rise Local marketplace
           </SheetDescription>
         </SheetHeader>
         <nav className="mt-8">

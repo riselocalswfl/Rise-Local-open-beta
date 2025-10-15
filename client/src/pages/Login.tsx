@@ -20,7 +20,7 @@ export default function Login() {
     
     toast({
       title: "Login Successful",
-      description: "Welcome back to Local Exchange!",
+      description: "Welcome back to Rise Local!",
     });
 
     setLocation("/");
@@ -32,12 +32,12 @@ export default function Login() {
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">LE</span>
+              <span className="text-primary-foreground font-bold text-xl">RL</span>
             </div>
           </div>
           <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
           <CardDescription className="text-center">
-            Sign in to your Local Exchange account
+            Sign in to your Rise Local account
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
@@ -47,7 +47,7 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="buyer@local.exchange"
+                placeholder="buyer@riselocal.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

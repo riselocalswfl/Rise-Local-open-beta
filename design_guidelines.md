@@ -1,9 +1,9 @@
-# Local Exchange MVP - Design Guidelines
+# Rise Local MVP - Design Guidelines
 
 ## Design Approach: Marketplace-Optimized System
 
 **Selected Approach**: Material Design-inspired system with community warmth
-**Justification**: Local Exchange is utility-focused with clear commerce goals - users need efficient browsing, clear product information, and straightforward transactions. The platform balances marketplace functionality with community features, requiring trust-building visual design without visual overload.
+**Justification**: Rise Local is utility-focused with clear commerce goals - users need efficient browsing, clear product information, and straightforward transactions. The platform balances marketplace functionality with community features, requiring trust-building visual design without visual overload.
 
 **Key Design Principles**:
 - Clarity over decoration - every element serves a purpose

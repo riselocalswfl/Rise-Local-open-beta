@@ -1,8 +1,8 @@
-# Local Exchange - Fort Myers Marketplace & Community
+# Rise Local - Fort Myers Marketplace & Community
 
 ## Overview
 
-Local Exchange is a local marketplace and community platform focused on Fort Myers, Florida. It connects local vendors, artisans, and farmers with buyers through a two-pillar system: a marketplace for browsing and purchasing products, and a community hub for events and social features. The platform emphasizes sustainability, local commerce, and community engagement with a counterculture yet polished brand aesthetic.
+Rise Local is a local marketplace and community platform focused on Fort Myers, Florida. It connects local vendors, artisans, and farmers with buyers through a two-pillar system: a marketplace for browsing and purchasing products, and a community hub for events and social features. The platform emphasizes sustainability, local commerce, and community engagement with a counterculture yet polished brand aesthetic.
 
 The application is built as a full-stack web application with React frontend and Express backend, designed to run entirely on Replit with minimal setup.
 

@@ -119,7 +119,7 @@ export default function Checkout() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="buyer@local.exchange"
+                    placeholder="buyer@riselocal.com"
                     defaultValue="buyer@test.com"
                     data-testid="input-email"
                   />

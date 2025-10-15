@@ -47,7 +47,7 @@ export default function BuyerSignup() {
     },
     onSuccess: () => {
       toast({
-        title: "Welcome to Local Exchange!",
+        title: "Welcome to Rise Local!",
         description: "Your buyer account has been created successfully.",
       });
       setLocation("/");

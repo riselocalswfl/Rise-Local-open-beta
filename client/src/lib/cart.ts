@@ -6,7 +6,7 @@ export interface CartItem {
   quantity: number;
 }
 
-const CART_STORAGE_KEY = 'local-exchange-cart';
+const CART_STORAGE_KEY = 'rise-local-cart';
 
 export function getCart(): CartItem[] {
   if (typeof window === 'undefined') return [];

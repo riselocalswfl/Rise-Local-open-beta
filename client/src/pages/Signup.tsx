@@ -168,7 +168,7 @@ export default function Signup() {
       title: "Account Created!",
       description: role === "vendor" 
         ? "Your vendor account is pending verification."
-        : "Welcome to Local Exchange!",
+        : "Welcome to Rise Local!",
     });
 
     setLocation("/");
@@ -180,12 +180,12 @@ export default function Signup() {
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">LE</span>
+              <span className="text-primary-foreground font-bold text-xl">RL</span>
             </div>
           </div>
           <CardTitle className="text-2xl text-center">Create Account</CardTitle>
           <CardDescription className="text-center">
-            Join the Local Exchange community
+            Join the Rise Local community
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
