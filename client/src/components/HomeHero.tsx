@@ -31,7 +31,7 @@ export default function HomeHero() {
               </BrandButton>
             </Link>
             <Link href="/vendors">
-              <BrandButton variant="ghost" data-testid="button-meet-makers">
+              <BrandButton data-testid="button-meet-makers">
                 Meet Local Makers
               </BrandButton>
             </Link>
