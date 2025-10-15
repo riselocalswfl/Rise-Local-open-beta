@@ -58,11 +58,7 @@ export default function NavMenu() {
                   <Link href={item.href}>
                     <div
                       onClick={() => handleNavigate(item.href)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer ${
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-foreground hover-elevate active-elevate-2"
-                      }`}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer bg-primary text-primary-foreground hover-elevate active-elevate-2"
                       data-testid={`link-nav-${item.name.toLowerCase().replace(/ /g, "-")}`}
                     >
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
