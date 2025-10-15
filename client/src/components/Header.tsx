@@ -59,7 +59,7 @@ export default function Header() {
           </Link>
         </div>
         <Link href="/join" data-testid="link-join">
-          <BrandButton variant="secondary" size="sm" data-testid="button-join">
+          <BrandButton size="sm" data-testid="button-join">
             Join the Movement
           </BrandButton>
         </Link>
