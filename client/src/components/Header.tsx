@@ -9,7 +9,7 @@ export default function Header() {
     <header className="backdrop-blur bg-bg/70 border-b border-black/5">
       <nav className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
         <Link href="/" data-testid="link-home">
-          <BrandLogo className="mt-2" />
+          <BrandLogo className="mt-3" />
         </Link>
         <div className="hidden md:flex items-center gap-6 text-base">
           <Link
