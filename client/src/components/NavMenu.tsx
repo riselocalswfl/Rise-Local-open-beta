@@ -40,7 +40,7 @@ export default function NavMenu() {
           <Menu className="h-6 w-6" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-72">
+      <SheetContent side="right" className="w-72 bg-white">
         <SheetHeader>
           <SheetTitle className="text-left font-playfair text-2xl text-foreground">Navigation</SheetTitle>
           <SheetDescription className="text-left text-muted-foreground">
