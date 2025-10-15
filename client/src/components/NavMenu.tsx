@@ -42,8 +42,8 @@ export default function NavMenu() {
       </SheetTrigger>
       <SheetContent side="right" className="w-72">
         <SheetHeader>
-          <SheetTitle className="text-left font-playfair text-2xl">Navigation</SheetTitle>
-          <SheetDescription className="text-left">
+          <SheetTitle className="text-left font-playfair text-2xl text-foreground">Navigation</SheetTitle>
+          <SheetDescription className="text-left text-muted-foreground">
             Browse SHOP SMALL marketplace
           </SheetDescription>
         </SheetHeader>
@@ -61,7 +61,7 @@ export default function NavMenu() {
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer ${
                         isActive
                           ? "bg-primary text-primary-foreground"
-                          : "hover-elevate active-elevate-2"
+                          : "text-foreground hover-elevate active-elevate-2"
                       }`}
                       data-testid={`link-nav-${item.name.toLowerCase().replace(/ /g, "-")}`}
                     >
