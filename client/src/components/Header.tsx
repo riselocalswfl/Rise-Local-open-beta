@@ -28,16 +28,7 @@ export default function Header() {
             }`}
             data-testid="link-products"
           >
-            Products
-          </Link>
-          <Link
-            href="/vendors"
-            className={`text-text/80 hover:text-text transition ${
-              location === "/vendors" ? "text-text font-medium" : ""
-            }`}
-            data-testid="link-vendors"
-          >
-            Vendors
+            Shop Local
           </Link>
           <Link
             href="/eat-local"
@@ -56,6 +47,15 @@ export default function Header() {
             data-testid="link-events"
           >
             Events
+          </Link>
+          <Link
+            href="/vendors"
+            className={`text-text/80 hover:text-text transition ${
+              location === "/vendors" ? "text-text font-medium" : ""
+            }`}
+            data-testid="link-vendors"
+          >
+            Vendors
           </Link>
         </div>
         <Link href="/join" data-testid="link-join">

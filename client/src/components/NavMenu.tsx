@@ -13,10 +13,10 @@ import {
 
 const navigationItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Products", href: "/products", icon: ShoppingBag },
-  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "Shop Local", href: "/products", icon: ShoppingBag },
   { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
+  { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Join the Movement", href: "/join", icon: Heart },
 ];
 
