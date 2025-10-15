@@ -73,7 +73,7 @@ export default function Products() {
             onValueToggle={handleValueToggle}
           />
         )}
-        <h1 className="text-3xl font-semibold mb-8 mt-8" data-testid="heading-all-products">All Products</h1>
+        <h1 className="text-3xl font-semibold mb-8 mt-8" data-testid="heading-all-products">Shop Local</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
             <>
