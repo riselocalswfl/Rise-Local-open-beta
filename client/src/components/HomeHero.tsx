@@ -14,6 +14,7 @@ export default function HomeHero() {
           </p>
           <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6">
             When you shop local, you're not just buying products — you're investing in your neighbors, your town, and the heartbeat of your community.
+            Rise Local is where your purchases make a difference — right here at home.
           </p>
           <div className="flex gap-3">
             <Link href="/products">
