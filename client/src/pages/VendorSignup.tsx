@@ -194,16 +194,16 @@ export default function VendorSignup() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="businessType">Business Type *</Label>
+            <div className="bg-primary text-primary-foreground p-4 rounded-md space-y-2">
+              <Label htmlFor="businessType" className="text-primary-foreground">Business Type *</Label>
               <Select 
                 value={formData.businessType} 
                 onValueChange={(value) => setFormData({ ...formData, businessType: value })}
               >
-                <SelectTrigger id="businessType" data-testid="select-businessType">
+                <SelectTrigger id="businessType" data-testid="select-businessType" className="bg-primary text-primary-foreground border-primary-foreground/20">
                   <SelectValue placeholder="Select business type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   <SelectItem value="vendors">Vendors (Products & Services)</SelectItem>
                   <SelectItem value="eat-local">Eat Local (Restaurants)</SelectItem>
                 </SelectContent>
@@ -220,7 +220,7 @@ export default function VendorSignup() {
                   <SelectTrigger id="category" data-testid="select-category">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
@@ -324,7 +324,7 @@ export default function VendorSignup() {
                   <SelectTrigger id="locationType" data-testid="select-locationType">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     <SelectItem value="physical">Physical Location</SelectItem>
                     <SelectItem value="mobile">Mobile/Delivery Only</SelectItem>
                     <SelectItem value="online">Online Only</SelectItem>
@@ -634,7 +634,7 @@ export default function VendorSignup() {
                     <SelectTrigger id="restaurantType" data-testid="select-restaurantType">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       <SelectItem value="full-service">Full Service</SelectItem>
                       <SelectItem value="fast-casual">Fast Casual</SelectItem>
                       <SelectItem value="cafe">Cafe/Coffee Shop</SelectItem>
