@@ -29,7 +29,7 @@ export default function HomeHero() {
               </BrandButton>
             </Link>
           </div>
-          <img src={logoImg} alt="Rise Local" className="absolute bottom-6 right-0 h-32 w-auto" />
+          <img src={logoImg} alt="Rise Local" className="absolute bottom-6 right-0 h-28 w-auto" />
         </BrandCardBody>
         <div className="relative h-[300px] md:h-auto">
           <img
