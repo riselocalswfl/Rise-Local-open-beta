@@ -9,11 +9,11 @@ export default function HomeHero() {
     <BrandCard className="overflow-hidden">
       <div className="grid md:grid-cols-2 gap-0">
         <BrandCardBody className="relative flex flex-col justify-center py-12 md:py-16">
-          <h2 className="font-heading text-3xl md:text-4xl text-text mb-3">Why Rise Local?</h2>
-          <p className="text-xl md:text-2xl text-primary font-medium mb-4">
+          <h2 className="font-heading text-3xl md:text-4xl text-text mb-3 font-bold">Why Rise Local?</h2>
+          <p className="text-xl md:text-2xl text-primary font-bold mb-4">
             Because local should come first.
           </p>
-          <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6">
+          <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6 font-medium">
             When you shop local, you're not just buying products — you're investing in your neighbors, your town, and the heartbeat of your community.
             Rise Local is where your purchases make a difference — right here at home.
           </p>
