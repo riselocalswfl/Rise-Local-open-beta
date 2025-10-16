@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandCard, BrandCardBody } from "@/components/ui/BrandCard";
-import farmersMarketImg from "@assets/stock_images/happy_people_smiling_a06b24b5.jpg";
+import farmersMarketImg from "@assets/stock_images/diverse_group_smilin_b8aa6946.jpg";
 
 export default function HomeHero() {
   return (
