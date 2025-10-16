@@ -11,7 +11,7 @@ export default function HomeHero() {
         <BrandCardBody className="flex flex-col justify-center py-12 md:py-16">
           <div className="flex items-center gap-4 mb-3">
             <h2 className="font-heading text-3xl md:text-4xl text-text">Why Rise Local?</h2>
-            <img src={logoImg} alt="Rise Local" className="h-12 w-auto" />
+            <img src={logoImg} alt="Rise Local" className="h-24 w-auto" />
           </div>
           <p className="text-xl md:text-2xl text-primary font-medium mb-4">
             Because local should come first.
