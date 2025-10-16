@@ -8,11 +8,8 @@ export default function HomeHero() {
   return (
     <BrandCard className="overflow-hidden">
       <div className="grid md:grid-cols-2 gap-0">
-        <BrandCardBody className="flex flex-col justify-center py-12 md:py-16">
-          <div className="flex items-center gap-4 mb-3">
-            <h2 className="font-heading text-3xl md:text-4xl text-text">Why Rise Local?</h2>
-            <img src={logoImg} alt="Rise Local" className="h-24 w-auto" />
-          </div>
+        <BrandCardBody className="relative flex flex-col justify-center py-12 md:py-16">
+          <h2 className="font-heading text-3xl md:text-4xl text-text mb-3">Why Rise Local?</h2>
           <p className="text-xl md:text-2xl text-primary font-medium mb-4">
             Because local should come first.
           </p>
@@ -32,6 +29,7 @@ export default function HomeHero() {
               </BrandButton>
             </Link>
           </div>
+          <img src={logoImg} alt="Rise Local" className="absolute bottom-6 right-6 h-24 w-auto" />
         </BrandCardBody>
         <div className="relative h-[300px] md:h-auto">
           <img
