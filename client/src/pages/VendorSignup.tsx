@@ -200,7 +200,7 @@ export default function VendorSignup() {
                 value={formData.businessType} 
                 onValueChange={(value) => setFormData({ ...formData, businessType: value })}
               >
-                <SelectTrigger id="businessType" data-testid="select-businessType" className="bg-primary text-primary-foreground border-primary-foreground/20">
+                <SelectTrigger id="businessType" data-testid="select-businessType" className="bg-white text-foreground border-input">
                   <SelectValue placeholder="Select business type" />
                 </SelectTrigger>
                 <SelectContent className="bg-primary">
