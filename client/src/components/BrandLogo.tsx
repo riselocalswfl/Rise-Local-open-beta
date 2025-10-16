@@ -6,7 +6,7 @@ export default function BrandLogo({ className = "" }: { className?: string }) {
       <img 
         src={logoImg} 
         alt="Rise Local" 
-        className="h-20 w-auto"
+        className="h-24 w-auto"
       />
     </div>
   );
