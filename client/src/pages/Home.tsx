@@ -50,6 +50,16 @@ export default function Home() {
           <HomeHero />
         </section>
 
+        <section className="max-w-4xl mx-auto px-4 md:px-6 py-16 text-center">
+          <h2 className="font-heading text-4xl md:text-5xl text-text mb-4">Why Rise Local?</h2>
+          <p className="text-2xl md:text-3xl text-primary font-medium mb-6">
+            Because local should come first.
+          </p>
+          <p className="text-lg md:text-xl text-text/80 leading-relaxed max-w-3xl mx-auto">
+            When you shop local, you're not just buying products — you're investing in your neighbors, your town, and the heartbeat of your community. Rise Local exists to make that easier, more visible, and more rewarding.
+          </p>
+        </section>
+
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
           <div className="flex items-center justify-between mb-6">
             <div>
