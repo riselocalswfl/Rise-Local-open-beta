@@ -326,8 +326,7 @@ export default function VendorSignup() {
                   </SelectTrigger>
                   <SelectContent className="bg-white">
                     <SelectItem value="physical">Physical Location</SelectItem>
-                    <SelectItem value="mobile">Mobile/Delivery Only</SelectItem>
-                    <SelectItem value="online">Online Only</SelectItem>
+                    <SelectItem value="online">Online Store Only</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
