@@ -203,9 +203,9 @@ export default function VendorSignup() {
                 <SelectTrigger id="businessType" data-testid="select-businessType">
                   <SelectValue placeholder="Select business type" />
                 </SelectTrigger>
-                <SelectContent className="bg-primary">
-                  <SelectItem value="vendors" className="text-primary-foreground focus:bg-primary-foreground/20 focus:text-primary-foreground">Vendors (Products & Services)</SelectItem>
-                  <SelectItem value="eat-local" className="text-primary-foreground focus:bg-primary-foreground/20 focus:text-primary-foreground">Eat Local (Restaurants)</SelectItem>
+                <SelectContent className="bg-white">
+                  <SelectItem value="vendors">Vendors (Products & Services)</SelectItem>
+                  <SelectItem value="eat-local">Eat Local (Restaurants)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
