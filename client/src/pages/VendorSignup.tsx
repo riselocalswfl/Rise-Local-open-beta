@@ -60,6 +60,8 @@ export default function VendorSignup() {
     hasLicense: false,
     hasInsurance: false,
     hasPermits: false,
+    insuranceDocument: null as File | null,
+    otherDocuments: null as File | null,
     isRestaurant: false,
     restaurantType: "",
     servesAlcohol: false,
@@ -608,6 +610,56 @@ export default function VendorSignup() {
             </div>
           </div>
 
+          {/* Document Uploads */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold mb-1">Required Documents</h3>
+              <p className="text-sm text-muted-foreground">
+                Upload proof of business insurance and any other applicable documents
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="insuranceDocument">Proof of Business Insurance *</Label>
+                <Input
+                  id="insuranceDocument"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setFormData({ ...formData, insuranceDocument: e.target.files?.[0] || null })}
+                  data-testid="input-insuranceDocument"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Upload a copy of your current business insurance policy (PDF, JPG, or PNG)
+                </p>
+                {formData.insuranceDocument && (
+                  <p className="text-xs text-primary">
+                    ✓ {formData.insuranceDocument.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="otherDocuments">Other Documents (Optional)</Label>
+                <Input
+                  id="otherDocuments"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setFormData({ ...formData, otherDocuments: e.target.files?.[0] || null })}
+                  data-testid="input-otherDocuments"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Upload business license, permits, or other relevant documents (PDF, JPG, or PNG)
+                </p>
+                {formData.otherDocuments && (
+                  <p className="text-xs text-primary">
+                    ✓ {formData.otherDocuments.name}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Restaurant Details */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -683,7 +735,7 @@ export default function VendorSignup() {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={signupMutation.isPending}
+            disabled={signupMutation.isPending || !formData.insuranceDocument}
             data-testid="button-complete-vendor-signup"
           >
             {signupMutation.isPending ? "Creating Account..." : "Complete Signup"}
