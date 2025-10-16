@@ -6,37 +6,35 @@ import fortMyersImg from "@assets/generated_images/Fort_Myers_local_market_hero_
 export default function HomeHero() {
   return (
     <BrandCard className="overflow-hidden">
-      <div className="relative h-[360px] md:h-[460px]">
-        <img
-          src={fortMyersImg}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-tr from-black/55 via-black/20 to-transparent" />
-        <BrandCardBody className="relative h-full flex flex-col justify-end max-w-4xl text-white">
-          <span className="inline-flex items-center gap-2 mb-3 text-sm bg-white/15 px-3 py-1 rounded-xl backdrop-blur w-fit">
-            Fort Myers Spotlight
-          </span>
-          <h1 className="font-heading text-4xl md:text-5xl leading-tight">
-            Discover Fort Myers' Local Treasures
-          </h1>
-          <p className="mt-3 max-w-2xl text-white/90">
-            Locally made. Mindfully traded. Support artisans, farmers, and makers
-            bringing sustainable products to your neighborhood.
+      <div className="grid md:grid-cols-2 gap-0">
+        <BrandCardBody className="flex flex-col justify-center py-12 md:py-16">
+          <h2 className="font-heading text-3xl md:text-4xl text-text mb-3">Why Rise Local?</h2>
+          <p className="text-xl md:text-2xl text-primary font-medium mb-4">
+            Because local should come first.
           </p>
-          <div className="mt-6 flex gap-3">
-            <Link href="/spotlight">
-              <BrandButton data-testid="button-explore-spotlight">
-                Explore Spotlight
+          <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6">
+            When you shop local, you're not just buying products — you're investing in your neighbors, your town, and the heartbeat of your community.
+          </p>
+          <div className="flex gap-3">
+            <Link href="/products">
+              <BrandButton data-testid="button-shop-local">
+                Shop Local
               </BrandButton>
             </Link>
             <Link href="/vendors">
               <BrandButton data-testid="button-meet-makers">
-                Meet Local Makers
+                Meet Makers
               </BrandButton>
             </Link>
           </div>
         </BrandCardBody>
+        <div className="relative h-[300px] md:h-auto">
+          <img
+            src={fortMyersImg}
+            alt="Fort Myers local market"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
       </div>
     </BrandCard>
   );
