@@ -207,7 +207,7 @@ export default function BuyerSignup() {
                   data-testid="input-travelRadius"
                 />
                 <p className="text-xs text-muted-foreground">
-                  How far you're willing to travel for pickup/delivery
+                  How far you're willing to travel for pickup
                 </p>
               </div>
             </div>
