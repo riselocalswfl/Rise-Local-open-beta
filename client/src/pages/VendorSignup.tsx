@@ -481,11 +481,12 @@ export default function VendorSignup() {
                       <div key={method} className="flex items-center gap-2">
                         <Checkbox
                           id={`payment-${method}`}
-                          checked={!!formData.paymentHandles[method]}
+                          checked={method in formData.paymentHandles}
                           onCheckedChange={(checked) => {
+                            const isChecked = checked === true;
                             setFormData(prev => ({
                               ...prev,
-                              paymentHandles: checked
+                              paymentHandles: isChecked
                                 ? { ...prev.paymentHandles, [method]: "" }
                                 : Object.fromEntries(
                                     Object.entries(prev.paymentHandles).filter(([k]) => k !== method)
