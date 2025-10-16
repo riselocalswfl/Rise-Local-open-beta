@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandCard, BrandCardBody } from "@/components/ui/BrandCard";
-import fortMyersImg from "@assets/generated_images/Fort_Myers_local_market_hero_09220f3f.png";
+import farmersMarketImg from "@assets/stock_images/farmers_market_golde_c7adf4e7.jpg";
 
 export default function HomeHero() {
   return (
@@ -30,8 +30,8 @@ export default function HomeHero() {
         </BrandCardBody>
         <div className="relative h-[300px] md:h-auto">
           <img
-            src={fortMyersImg}
-            alt="Fort Myers local market"
+            src={farmersMarketImg}
+            alt="Local farmers market community"
             className="absolute inset-0 h-full w-full object-cover"
           />
         </div>
