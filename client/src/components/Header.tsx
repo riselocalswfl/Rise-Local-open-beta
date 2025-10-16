@@ -11,11 +11,11 @@ export default function Header() {
         <Link href="/" data-testid="link-home">
           <BrandLogo className="mt-5" />
         </Link>
-        <div className="hidden md:flex items-center gap-6 text-base">
+        <div className="hidden md:flex items-center gap-6 text-base font-semibold">
           <Link
             href="/"
             className={`text-text/80 hover:text-text transition ${
-              location === "/" ? "text-text font-medium" : ""
+              location === "/" ? "text-text font-bold" : ""
             }`}
             data-testid="link-nav-home"
           >
@@ -24,7 +24,7 @@ export default function Header() {
           <Link
             href="/products"
             className={`text-text/80 hover:text-text transition ${
-              location === "/products" ? "text-text font-medium" : ""
+              location === "/products" ? "text-text font-bold" : ""
             }`}
             data-testid="link-products"
           >
@@ -33,7 +33,7 @@ export default function Header() {
           <Link
             href="/eat-local"
             className={`text-text/80 hover:text-text transition ${
-              location === "/eat-local" ? "text-text font-medium" : ""
+              location === "/eat-local" ? "text-text font-bold" : ""
             }`}
             data-testid="link-eat-local"
           >
@@ -42,7 +42,7 @@ export default function Header() {
           <Link
             href="/events"
             className={`text-text/80 hover:text-text transition ${
-              location === "/events" ? "text-text font-medium" : ""
+              location === "/events" ? "text-text font-bold" : ""
             }`}
             data-testid="link-events"
           >
@@ -51,7 +51,7 @@ export default function Header() {
           <Link
             href="/vendors"
             className={`text-text/80 hover:text-text transition ${
-              location === "/vendors" ? "text-text font-medium" : ""
+              location === "/vendors" ? "text-text font-bold" : ""
             }`}
             data-testid="link-vendors"
           >
