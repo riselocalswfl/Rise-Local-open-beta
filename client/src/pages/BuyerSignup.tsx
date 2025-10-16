@@ -30,6 +30,7 @@ export default function BuyerSignup() {
 
   // Form state
   const [formData, setFormData] = useState({
+    email: "",
     firstName: "",
     lastName: "",
     phone: "",
@@ -142,6 +143,19 @@ export default function BuyerSignup() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="you@example.com"
+                data-testid="input-email"
+                required
+              />
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>
@@ -223,7 +237,7 @@ export default function BuyerSignup() {
             </Button>
             <Button
               onClick={() => setStep(3)}
-              disabled={!formData.firstName || !formData.lastName || !formData.phone || !formData.zipCode}
+              disabled={!formData.email || !formData.firstName || !formData.lastName || !formData.phone || !formData.zipCode}
               data-testid="button-next-to-preferences"
             >
               Next: Preferences
