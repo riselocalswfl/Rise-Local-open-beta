@@ -194,13 +194,13 @@ export default function VendorSignup() {
               </div>
             </div>
 
-            <div className="bg-primary text-primary-foreground p-4 rounded-md space-y-2">
-              <Label htmlFor="businessType" className="text-primary-foreground">Business Type *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="businessType">Business Type *</Label>
               <Select 
                 value={formData.businessType} 
                 onValueChange={(value) => setFormData({ ...formData, businessType: value })}
               >
-                <SelectTrigger id="businessType" data-testid="select-businessType" className="bg-white text-foreground border-input">
+                <SelectTrigger id="businessType" data-testid="select-businessType">
                   <SelectValue placeholder="Select business type" />
                 </SelectTrigger>
                 <SelectContent className="bg-primary">
