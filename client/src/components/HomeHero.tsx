@@ -2,13 +2,17 @@ import { Link } from "wouter";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandCard, BrandCardBody } from "@/components/ui/BrandCard";
 import fortMyersImg from "@assets/generated_images/Fort_Myers_local_market_hero_09220f3f.png";
+import logoImg from "@assets/Support Local Business Emblem (1)_1760548313502.png";
 
 export default function HomeHero() {
   return (
     <BrandCard className="overflow-hidden">
       <div className="grid md:grid-cols-2 gap-0">
         <BrandCardBody className="flex flex-col justify-center py-12 md:py-16">
-          <h2 className="font-heading text-3xl md:text-4xl text-text mb-3">Why Rise Local?</h2>
+          <div className="flex items-center gap-4 mb-3">
+            <h2 className="font-heading text-3xl md:text-4xl text-text">Why Rise Local?</h2>
+            <img src={logoImg} alt="Rise Local" className="h-12 w-auto" />
+          </div>
           <p className="text-xl md:text-2xl text-primary font-medium mb-4">
             Because local should come first.
           </p>
