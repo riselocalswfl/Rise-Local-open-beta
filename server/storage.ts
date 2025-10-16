@@ -35,6 +35,7 @@ export interface IStorage {
   getVendor(id: string): Promise<Vendor | undefined>;
   getVendors(): Promise<Vendor[]>;
   getVerifiedVendors(): Promise<Vendor[]>;
+  getAllVendorValues(): Promise<string[]>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   updateVendor(id: string, data: Partial<InsertVendor>): Promise<void>;
   deleteVendor(id: string): Promise<void>;
@@ -165,6 +166,23 @@ export class DbStorage implements IStorage {
 
   async getVerifiedVendors(): Promise<Vendor[]> {
     return await db.select().from(vendors).where(eq(vendors.isVerified, true));
+  }
+
+  async getAllVendorValues(): Promise<string[]> {
+    const allVendors = await db.select().from(vendors);
+    const allValues = new Set<string>();
+    
+    for (const vendor of allVendors) {
+      if (vendor.values && Array.isArray(vendor.values)) {
+        vendor.values.forEach((value: string) => {
+          if (value && value.trim()) {
+            allValues.add(value.trim().toLowerCase());
+          }
+        });
+      }
+    }
+    
+    return Array.from(allValues).sort();
   }
 
   async createVendor(vendor: InsertVendor): Promise<Vendor> {

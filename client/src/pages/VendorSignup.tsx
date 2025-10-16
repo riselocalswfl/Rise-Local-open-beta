@@ -12,7 +12,7 @@ import { TagInput } from "@/components/TagInput";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const CATEGORIES = [
@@ -33,6 +33,11 @@ export default function VendorSignup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
+
+  // Fetch all vendor values dynamically for suggestions
+  const { data: vendorValues = [] } = useQuery<string[]>({
+    queryKey: ["/api/vendors/values/all"],
+  });
   
   // Update step when user auth status changes
   useEffect(() => {
@@ -419,6 +424,7 @@ export default function VendorSignup() {
                 placeholder="Type a value and press Enter..."
                 maxTags={10}
                 testId="input-values"
+                suggestions={vendorValues}
               />
             </div>
 

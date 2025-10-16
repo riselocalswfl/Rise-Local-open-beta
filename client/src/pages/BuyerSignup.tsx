@@ -9,17 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { VALUE_META, ALL_VALUE_TAGS, type ValueTag } from "@shared/values";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
-const DIETARY_OPTIONS = ["vegan", "vegetarian", "glutenFree", "dairyFree", "nutFree", "lowSugar"] as const;
+const DIETARY_OPTIONS = ["vegan", "vegetarian", "gluten-free", "dairy-free", "nut-free", "low-sugar"] as const;
 
 export default function BuyerSignup() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
+
+  // Fetch all vendor values dynamically
+  const { data: vendorValues = [], isLoading: valuesLoading } = useQuery<string[]>({
+    queryKey: ["/api/vendors/values/all"],
+  });
   
   // Update step when user auth status changes
   useEffect(() => {
@@ -273,8 +277,10 @@ export default function BuyerSignup() {
             </div>
             <div className="flex flex-wrap gap-2">
               {DIETARY_OPTIONS.map((option) => {
-                const meta = VALUE_META[option as ValueTag];
                 const isSelected = formData.dietaryPreferences.includes(option);
+                const displayLabel = option.split('-').map(word => 
+                  word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
                 return (
                   <Badge
                     key={option}
@@ -284,7 +290,7 @@ export default function BuyerSignup() {
                     data-testid={`badge-dietary-${option}`}
                   >
                     {isSelected && <Check className="w-3 h-3 mr-1" />}
-                    {meta?.label || option}
+                    {displayLabel}
                   </Badge>
                 );
               })}
@@ -299,24 +305,34 @@ export default function BuyerSignup() {
                 What matters to you when shopping? Select all that apply.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {ALL_VALUE_TAGS.filter(tag => !DIETARY_OPTIONS.includes(tag as any)).map((tag) => {
-                const meta = VALUE_META[tag];
-                const isSelected = formData.userValues.includes(tag);
-                return (
-                  <Badge
-                    key={tag}
-                    variant={isSelected ? "default" : "outline"}
-                    className="cursor-pointer hover-elevate active-elevate-2"
-                    onClick={() => toggleValue(tag)}
-                    data-testid={`badge-value-${tag}`}
-                  >
-                    {isSelected && <Check className="w-3 h-3 mr-1" />}
-                    {meta?.label || tag}
-                  </Badge>
-                );
-              })}
-            </div>
+            {valuesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading values...</p>
+            ) : vendorValues.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No vendor values available yet. Check back once vendors start adding their values!</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {vendorValues
+                  .filter(value => !DIETARY_OPTIONS.includes(value as any))
+                  .map((value) => {
+                    const isSelected = formData.userValues.includes(value);
+                    const displayLabel = value.split('-').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ');
+                    return (
+                      <Badge
+                        key={value}
+                        variant={isSelected ? "default" : "outline"}
+                        className="cursor-pointer hover-elevate active-elevate-2"
+                        onClick={() => toggleValue(value)}
+                        data-testid={`badge-value-${value}`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 mr-1" />}
+                        {displayLabel}
+                      </Badge>
+                    );
+                  })}
+              </div>
+            )}
           </div>
 
           {/* Notifications */}

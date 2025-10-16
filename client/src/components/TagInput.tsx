@@ -10,6 +10,7 @@ interface TagInputProps {
   placeholder?: string;
   maxTags?: number;
   testId?: string;
+  suggestions?: string[];
 }
 
 export function TagInput({ 
@@ -17,7 +18,8 @@ export function TagInput({
   onChange, 
   placeholder = "Add a tag...",
   maxTags = 10,
-  testId = "input-tags"
+  testId = "input-tags",
+  suggestions = []
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState("");
 
@@ -96,6 +98,28 @@ export function TagInput({
         <p className="text-xs text-muted-foreground">
           {tags.length}/{maxTags} tags
         </p>
+      )}
+
+      {suggestions.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Popular values:</p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions
+              .filter(suggestion => !tags.some(t => t.toLowerCase() === suggestion.toLowerCase()))
+              .slice(0, 15)
+              .map((suggestion) => (
+                <Badge
+                  key={suggestion}
+                  variant="outline"
+                  className="cursor-pointer hover-elevate active-elevate-2"
+                  onClick={() => addTag(suggestion)}
+                  data-testid={`badge-suggestion-${suggestion}`}
+                >
+                  {suggestion}
+                </Badge>
+              ))}
+          </div>
+        </div>
       )}
     </div>
   );

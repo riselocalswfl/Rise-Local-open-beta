@@ -57,6 +57,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/vendors/values/all", async (req, res) => {
+    try {
+      const values = await storage.getAllVendorValues();
+      res.json(values);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor values" });
+    }
+  });
+
   app.get("/api/vendors/:id", async (req, res) => {
     try {
       const vendor = await storage.getVendor(req.params.id);
@@ -372,19 +381,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users/buyer/signup", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { firstName, lastName, phone, zipCode, travelRadius, dietaryPreferences, userValues, emailNotifications, smsNotifications } = req.body;
+      const { email, firstName, lastName, phone, zipCode, travelRadius, dietaryPreferences, userValues } = req.body;
       
       // Update user with buyer info
       await storage.updateUser(userId, {
+        email,
         firstName,
         lastName,
         phone,
         zipCode,
         travelRadius,
-        dietaryPreferences,
+        dietaryPrefs: dietaryPreferences,
         userValues,
-        emailNotifications,
-        smsNotifications,
         role: "buyer"
       });
 
