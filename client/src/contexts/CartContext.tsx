@@ -27,6 +27,7 @@ interface CartContextType {
   updateQty: (productId: string, quantity: number, variantId?: string, options?: Record<string, string>) => void;
   clearCart: () => void;
   cartTotals: () => CartTotals;
+  openMiniCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -134,6 +135,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const openMiniCart = () => {
+    window.dispatchEvent(new CustomEvent("openMiniCart"));
+  };
+
   const value: CartContextType = {
     items,
     itemCount,
@@ -142,6 +147,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     updateQty,
     clearCart,
     cartTotals,
+    openMiniCart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

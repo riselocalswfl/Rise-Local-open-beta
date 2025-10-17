@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
-import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   id: string;
@@ -30,8 +29,7 @@ export default function ProductCard({
   isVerifiedVendor = false,
 }: ProductCardProps) {
   const [, setLocation] = useLocation();
-  const { addItem } = useCart();
-  const { toast } = useToast();
+  const { addItem, openMiniCart } = useCart();
 
   const getStockStatus = () => {
     if (inventory === 0) return { color: "destructive", text: "Out of Stock" };
@@ -54,10 +52,8 @@ export default function ProductCard({
       image,
     });
     
-    toast({
-      title: "Added to cart",
-      description: `${name} has been added to your cart`,
-    });
+    // Open the MiniCart drawer
+    openMiniCart();
   };
 
   const handleVendorClick = (e: React.MouseEvent) => {
