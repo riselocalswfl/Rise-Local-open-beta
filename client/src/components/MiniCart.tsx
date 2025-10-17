@@ -11,12 +11,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function MiniCart() {
   const { items, itemCount, removeItem, cartTotals } = useCart();
   const [open, setOpen] = useState(false);
   const totals = cartTotals();
+
+  useEffect(() => {
+    const handleOpenMiniCart = () => {
+      setOpen(true);
+    };
+
+    window.addEventListener("openMiniCart", handleOpenMiniCart);
+    return () => {
+      window.removeEventListener("openMiniCart", handleOpenMiniCart);
+    };
+  }, []);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
