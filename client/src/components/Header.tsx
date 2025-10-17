@@ -58,6 +58,15 @@ export default function Header() {
           >
             Vendors
           </Link>
+          <Link
+            href="/cart"
+            className={`text-text/80 hover:text-text transition ${
+              location === "/cart" ? "text-text font-bold" : ""
+            }`}
+            data-testid="link-cart"
+          >
+            Cart
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           <MiniCart />
