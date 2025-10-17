@@ -10,9 +10,9 @@ export default function Cart() {
   const totals = cartTotals();
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div className="min-h-screen bg-white dark:bg-gray-950 relative">
       <Header />
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 relative z-10">
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-heading text-3xl md:text-4xl text-text flex items-center gap-3" data-testid="heading-shopping-cart">
             <ShoppingCart className="w-8 h-8" strokeWidth={1.75} />
