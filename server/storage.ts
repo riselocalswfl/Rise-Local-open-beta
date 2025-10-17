@@ -62,8 +62,9 @@ export interface IStorage {
 
   // Order operations
   getOrder(id: string): Promise<Order | undefined>;
-  getOrdersByUser(userId: string): Promise<Order[]>;
-  createOrderWithItems(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
+  getOrders(): Promise<Order[]>;
+  getOrdersByEmail(email: string): Promise<Order[]>;
+  createOrder(order: InsertOrder): Promise<Order>;
   updateOrderStatus(id: string, status: string): Promise<void>;
   deleteOrder(id: string): Promise<void>;
 
@@ -233,8 +234,8 @@ export class DbStorage implements IStorage {
     await db.delete(products).where(eq(products.id, id));
   }
 
-  async updateProductInventory(id: string, inventory: number): Promise<void> {
-    await db.update(products).set({ inventory }).where(eq(products.id, id));
+  async updateProductInventory(id: string, stock: number): Promise<void> {
+    await db.update(products).set({ stock }).where(eq(products.id, id));
   }
 
   // Event operations
@@ -278,32 +279,19 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async getOrdersByUser(userId: string): Promise<Order[]> {
+  async getOrders(): Promise<Order[]> {
+    return await db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+
+  async getOrdersByEmail(email: string): Promise<Order[]> {
     return await db.select().from(orders)
-      .where(eq(orders.buyerId, userId))
+      .where(eq(orders.email, email))
       .orderBy(desc(orders.createdAt));
   }
 
-  async createOrderWithItems(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
-    const result = await db.transaction(async (tx) => {
-      const [createdOrder] = await tx.insert(orders).values(order).returning();
-      
-      if (items.length > 0) {
-        const itemsWithOrderId = items.map(item => ({
-          ...item,
-          orderId: createdOrder.id
-        }));
-        await tx.insert(orderItems).values(itemsWithOrderId);
-      }
-      
-      await tx.update(users)
-        .set({ loyaltyPoints: sql`${users.loyaltyPoints} + 10` })
-        .where(eq(users.id, order.buyerId));
-      
-      return createdOrder;
-    });
-    
-    return result;
+  async createOrder(order: InsertOrder): Promise<Order> {
+    const result = await db.insert(orders).values(order).returning();
+    return result[0];
   }
 
   async updateOrderStatus(id: string, status: string): Promise<void> {
@@ -311,16 +299,7 @@ export class DbStorage implements IStorage {
   }
 
   async deleteOrder(id: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      const [order] = await tx.select().from(orders).where(eq(orders.id, id));
-      if (order) {
-        await tx.update(users)
-          .set({ loyaltyPoints: sql`GREATEST(0, ${users.loyaltyPoints} - 10)` })
-          .where(eq(users.id, order.buyerId));
-      }
-      await tx.delete(orderItems).where(eq(orderItems.orderId, id));
-      await tx.delete(orders).where(eq(orders.id, id));
-    });
+    await db.delete(orders).where(eq(orders.id, id));
   }
 
   // Order item operations
