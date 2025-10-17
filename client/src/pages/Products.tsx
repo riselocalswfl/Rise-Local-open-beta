@@ -50,7 +50,7 @@ export default function Products() {
   let filteredProducts = products;
   
   if (selectedCategory !== "all") {
-    filteredProducts = filteredProducts?.filter(p => p.category.toLowerCase() === selectedCategory);
+    filteredProducts = filteredProducts?.filter(p => p.category?.toLowerCase() === selectedCategory);
   }
   
   if (selectedValues.length > 0 && vendors) {
@@ -94,11 +94,11 @@ export default function Products() {
                 key={product.id}
                 id={product.id}
                 name={product.name}
-                price={parseFloat(product.price)}
+                price={product.priceCents / 100}
                 vendorName={product.vendorName}
                 vendorId={product.vendorId}
-                category={product.category}
-                inventory={product.inventory}
+                category={product.category || ""}
+                inventory={product.stock}
                 isVerifiedVendor={product.isVerifiedVendor}
               />
             ))
