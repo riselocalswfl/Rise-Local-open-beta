@@ -3,7 +3,8 @@ import { ShoppingCart, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { addToCart } from "@/lib/cart";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   id: string;
@@ -29,6 +30,8 @@ export default function ProductCard({
   isVerifiedVendor = false,
 }: ProductCardProps) {
   const [, setLocation] = useLocation();
+  const { addItem } = useCart();
+  const { toast } = useToast();
 
   const getStockStatus = () => {
     if (inventory === 0) return { color: "destructive", text: "Out of Stock" };
@@ -42,11 +45,18 @@ export default function ProductCard({
     e.preventDefault();
     e.stopPropagation();
     
-    addToCart({
-      productId: id,
+    addItem({
+      id,
       name,
       price,
       vendorName,
+      vendorId,
+      image,
+    });
+    
+    toast({
+      title: "Added to cart",
+      description: `${name} has been added to your cart`,
     });
   };
 

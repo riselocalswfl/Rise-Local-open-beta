@@ -23,8 +23,8 @@ interface CartContextType {
   items: CartItem[];
   itemCount: number;
   addItem: (product: Omit<CartItem, "quantity">, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQty: (productId: string, quantity: number) => void;
+  removeItem: (productId: string, variantId?: string, options?: Record<string, string>) => void;
+  updateQty: (productId: string, quantity: number, variantId?: string, options?: Record<string, string>) => void;
   clearCart: () => void;
   cartTotals: () => CartTotals;
 }
@@ -56,11 +56,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((current) => {
       const existingIndex = current.findIndex((item) => {
         if (item.id !== product.id) return false;
-        if (item.variantId && product.variantId && item.variantId !== product.variantId) return false;
-        if (item.options && product.options) {
-          const sameOptions = JSON.stringify(item.options) === JSON.stringify(product.options);
-          if (!sameOptions) return false;
-        }
+        const itemVariantId = item.variantId ?? null;
+        const productVariantId = product.variantId ?? null;
+        if (itemVariantId !== productVariantId) return false;
+        const itemOptions = JSON.stringify(item.options ?? {});
+        const productOptions = JSON.stringify(product.options ?? {});
+        if (itemOptions !== productOptions) return false;
         return true;
       });
 
@@ -77,20 +78,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeItem = (productId: string) => {
-    setItems((current) => current.filter((item) => item.id !== productId));
+  const removeItem = (productId: string, variantId?: string, options?: Record<string, string>) => {
+    setItems((current) =>
+      current.filter((item) => {
+        if (item.id !== productId) return true;
+        const itemVariantId = item.variantId ?? null;
+        const targetVariantId = variantId ?? null;
+        if (itemVariantId !== targetVariantId) return true;
+        const itemOptions = JSON.stringify(item.options ?? {});
+        const targetOptions = JSON.stringify(options ?? {});
+        if (itemOptions !== targetOptions) return true;
+        return false;
+      })
+    );
   };
 
-  const updateQty = (productId: string, quantity: number) => {
+  const updateQty = (productId: string, quantity: number, variantId?: string, options?: Record<string, string>) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(productId, variantId, options);
       return;
     }
 
     setItems((current) =>
-      current.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
-      )
+      current.map((item) => {
+        if (item.id !== productId) return item;
+        const itemVariantId = item.variantId ?? null;
+        const targetVariantId = variantId ?? null;
+        if (itemVariantId !== targetVariantId) return item;
+        const itemOptions = JSON.stringify(item.options ?? {});
+        const targetOptions = JSON.stringify(options ?? {});
+        if (itemOptions !== targetOptions) return item;
+        return { ...item, quantity };
+      })
     );
   };
 

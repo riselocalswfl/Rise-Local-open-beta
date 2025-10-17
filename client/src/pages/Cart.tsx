@@ -77,7 +77,7 @@ export default function Cart() {
                             )}
                           </div>
                           <button
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => removeItem(item.id, item.variantId, item.options)}
                             className="p-2 text-text/40 hover:text-destructive transition flex-shrink-0"
                             data-testid={`button-remove-${item.id}`}
                           >
@@ -90,7 +90,7 @@ export default function Cart() {
                             <Button
                               size="icon"
                               variant="outline"
-                              onClick={() => updateQty(item.id, item.quantity - 1)}
+                              onClick={() => updateQty(item.id, item.quantity - 1, item.variantId, item.options)}
                               disabled={item.quantity <= 1}
                               data-testid={`button-decrease-${item.id}`}
                             >
@@ -102,7 +102,7 @@ export default function Cart() {
                             <Button
                               size="icon"
                               variant="outline"
-                              onClick={() => updateQty(item.id, item.quantity + 1)}
+                              onClick={() => updateQty(item.id, item.quantity + 1, item.variantId, item.options)}
                               data-testid={`button-increase-${item.id}`}
                             >
                               <Plus className="w-4 h-4" />

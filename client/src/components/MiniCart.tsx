@@ -87,7 +87,7 @@ export default function MiniCart() {
                           ${item.price.toFixed(2)} × {item.quantity}
                         </p>
                         <button
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(item.id, item.variantId, item.options)}
                           className="p-1 text-text/40 hover:text-destructive transition"
                           data-testid={`button-remove-${item.id}`}
                         >
