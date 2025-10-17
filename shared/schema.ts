@@ -148,10 +148,11 @@ export const products = pgTable("products", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
   name: text("name").notNull(),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  category: text("category").notNull(),
-  inventory: integer("inventory").notNull(),
+  priceCents: integer("price_cents").notNull(),
+  stock: integer("stock").notNull(),
+  category: text("category"),
   description: text("description"),
+  imageUrl: text("image_url"),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
@@ -183,12 +184,18 @@ export type Event = typeof events.$inferSelect;
 
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  buyerId: varchar("buyer_id").notNull().references(() => users.id),
   status: text("status").notNull().default("pending"),
-  fulfillmentMethod: text("fulfillment_method").notNull(),
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  buyerFee: decimal("buyer_fee", { precision: 10, scale: 2 }).notNull(),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  email: text("email").notNull(),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  shippingMethod: text("shipping_method").notNull(),
+  addressJson: jsonb("address_json"),
+  itemsJson: jsonb("items_json").notNull(),
+  subtotalCents: integer("subtotal_cents").notNull(),
+  taxCents: integer("tax_cents").notNull(),
+  feesCents: integer("fees_cents").notNull(),
+  totalCents: integer("total_cents").notNull(),
+  paymentId: text("payment_id"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
