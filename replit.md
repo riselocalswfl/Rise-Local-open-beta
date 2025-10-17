@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
 **State Management Approach:**
 - Server state: TanStack Query with custom query client
 - Local UI state: React useState/useReducer hooks
+- Shopping cart: React Context (CartContext) with localStorage persistence
 - No global state management library (Redux, Zustand, etc.) - keeping it simple
 - Toast notifications via shadcn/ui toast system
 
@@ -127,6 +128,17 @@ Preferred communication style: Simple, everyday language.
 - Featured content system highlighting local vendors and events
 - City-specific (Fort Myers focus)
 - Banner/hero display on home page
+
+**Shopping Cart System:**
+- React Context-based cart (CartContext) with localStorage persistence
+- Supports product variants and custom options for flexible product configurations
+- Cart operations: addItem, removeItem, updateQty, clearCart, cartTotals
+- Automatic calculation of subtotal, tax (7% FL sales tax), buyer fee (3%), and grand total
+- MiniCart drawer component for quick cart preview from header
+- Full cart page (/cart) with quantity controls and detailed order summary
+- Cart badge in header shows real-time item count
+- Persists across page reloads and browser sessions
+- Normalized variant/option matching ensures products with different variants are treated as separate line items
 
 ### External Dependencies
 
