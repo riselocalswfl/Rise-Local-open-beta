@@ -179,14 +179,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/products/:id/inventory", async (req, res) => {
+  app.patch("/api/products/:id/stock", async (req, res) => {
     try {
-      const schema = z.object({ inventory: z.number().int().min(0) });
-      const { inventory } = schema.parse(req.body);
-      await storage.updateProductInventory(req.params.id, inventory);
+      const schema = z.object({ stock: z.number().int().min(0) });
+      const { stock } = schema.parse(req.body);
+      await storage.updateProductInventory(req.params.id, stock);
       res.json({ success: true });
     } catch (error) {
-      res.status(400).json({ error: "Invalid inventory data" });
+      res.status(400).json({ error: "Invalid stock data" });
     }
   });
 
@@ -274,22 +274,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/orders/user/:userId", async (req, res) => {
+  app.get("/api/orders", async (req, res) => {
     try {
-      const orders = await storage.getOrdersByUser(req.params.userId);
+      const { email } = req.query;
+      let orders;
+      if (email) {
+        orders = await storage.getOrdersByEmail(email as string);
+      } else {
+        orders = await storage.getOrders();
+      }
       res.json(orders);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch user orders" });
+      res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
 
   app.post("/api/orders", async (req, res) => {
     try {
-      const { order: orderData, items } = req.body;
-      const validatedOrder = insertOrderSchema.parse(orderData);
-      const validatedItems = items.map((item: any) => insertOrderItemWithoutOrderIdSchema.parse(item));
-      
-      const order = await storage.createOrderWithItems(validatedOrder, validatedItems);
+      const validatedOrder = insertOrderSchema.parse(req.body);
+      const order = await storage.createOrder(validatedOrder);
       res.status(201).json(order);
     } catch (error) {
       res.status(400).json({ error: "Invalid order data" });
