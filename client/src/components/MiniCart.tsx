@@ -36,7 +36,7 @@ export default function MiniCart() {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md bg-white dark:bg-gray-950">
+      <SheetContent className="w-full sm:max-w-md !bg-bg">
         <SheetHeader>
           <SheetTitle className="font-heading text-2xl">Your Cart</SheetTitle>
           <SheetDescription>
