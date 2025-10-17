@@ -36,7 +36,7 @@ export default function MiniCart() {
           )}
         </button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md !bg-bg">
+      <SheetContent className="w-full sm:max-w-md !bg-bg flex flex-col">
         <SheetHeader>
           <SheetTitle className="font-heading text-2xl">Your Cart</SheetTitle>
           <SheetDescription>
@@ -46,7 +46,7 @@ export default function MiniCart() {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-col h-full mt-6">
+        <div className="flex flex-col flex-1 min-h-0 mt-6">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 text-center py-12">
               <ShoppingCart className="w-16 h-16 text-text/20 mb-4" strokeWidth={1.5} />
