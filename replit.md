@@ -203,10 +203,10 @@ Preferred communication style: Simple, everyday language.
 All core entities are now implemented in the database:
 - **User** - Authentication, role-based access (buyer/vendor/admin), loyalty points balance
 - **Vendor** - Owner reference, business name, bio, categories (array), payment methods (array), business values (array), city, verification status, follower count
-- **Product** - Vendor association, name, price, category, inventory, description
+- **Product** - Vendor association, name, priceCents (integer), stock, category, description, imageUrl. Uses cents-based pricing for precision.
 - **Event** - Organizer (vendor) reference, title, description, date/time, location, category, ticket availability, RSVP count
-- **Order** - Buyer reference, status, fulfillment method, subtotal, buyer fee, total, created timestamp
-- **OrderItem** - Order reference, product reference, quantity, price at purchase
+- **Order** - Contact info (email, name, phone), status, shippingMethod, addressJson, itemsJson (cart stored as JSON), subtotalCents, taxCents, feesCents, totalCents, paymentId, createdAt. All amounts in cents for precision.
+- **OrderItem** - Legacy table (items now stored as JSON in Order.itemsJson)
 - **Spotlight** - Featured content for Fort Myers with title, body, city, active status
 
 ### Example Data
@@ -236,6 +236,7 @@ All core entities are now implemented in the database:
 
 **Database:**
 - `npm run db:push` - Push schema changes to database via Drizzle
+- `npx tsx server/seed.ts` - Seed database with example products (requires existing vendors)
 
 **Environment Requirements:**
 - `DATABASE_URL` - PostgreSQL connection string (validated at build time)
