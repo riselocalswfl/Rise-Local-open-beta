@@ -1,4 +1,4 @@
-import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, Heart } from "lucide-react";
+import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ const navigationItems = [
   { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "Join the Movement", href: "/join", icon: Heart },
 ];
 
