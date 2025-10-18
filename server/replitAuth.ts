@@ -103,16 +103,37 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    // Store the intended role in the session before authentication
+    // Store the intended role in both session and cookie for reliability across OIDC redirects
     const intendedRole = req.query.intended_role as string;
+    console.log("[AUTH] /api/login - intended_role query param:", intendedRole);
     if (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant") {
       (req.session as any).intendedRole = intendedRole;
+      // Also store in cookie as backup (expires in 5 minutes)
+      res.cookie("intended_role", intendedRole, { 
+        maxAge: 5 * 60 * 1000, 
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax"
+      });
+      console.log("[AUTH] Stored intended_role in session and cookie:", intendedRole);
+      
+      // Save session before redirect to ensure it persists across OIDC flow
+      req.session.save((err) => {
+        if (err) {
+          console.error("[AUTH] Failed to save session:", err);
+        }
+        console.log("[AUTH] Session saved, initiating OIDC flow");
+        passport.authenticate(`replitauth:${req.hostname}`, {
+          prompt: "login consent",
+          scope: ["openid", "email", "profile", "offline_access"],
+        })(req, res, next);
+      });
+    } else {
+      passport.authenticate(`replitauth:${req.hostname}`, {
+        prompt: "login consent",
+        scope: ["openid", "email", "profile", "offline_access"],
+      })(req, res, next);
     }
-    
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
@@ -135,13 +156,19 @@ export async function setupAuth(app: Express) {
 
         // After successful authentication, determine redirect based on user role
         const userId = user.claims.sub;
-        const intendedRole = (req.session as any).intendedRole;
+        // Try to get intended role from session first, then cookie as fallback
+        let intendedRole = (req.session as any).intendedRole || req.cookies.intended_role;
+        console.log("[AUTH] /api/callback - userId:", userId);
+        console.log("[AUTH] /api/callback - intendedRole from session:", (req.session as any).intendedRole);
+        console.log("[AUTH] /api/callback - intendedRole from cookie:", req.cookies.intended_role);
+        console.log("[AUTH] /api/callback - using intendedRole:", intendedRole);
         let redirectUrl = "/";
         let userRole = null;
         
         try {
           // If an intended role was set during login, update the user's role
           if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant")) {
+            console.log("[AUTH] Updating user role to:", intendedRole);
             await storage.updateUser(userId, { role: intendedRole });
             userRole = intendedRole;
             
@@ -191,12 +218,14 @@ export async function setupAuth(app: Express) {
               }
             }
             
-            // Clear the intended role from session
+            // Clear the intended role from session and cookie
             delete (req.session as any).intendedRole;
+            res.clearCookie("intended_role");
           } else {
             // Otherwise, fetch the user's existing role from the database
             const existingUser = await storage.getUser(userId);
             userRole = existingUser?.role;
+            console.log("[AUTH] Retrieved existing user role:", userRole);
           }
           
           // Redirect based on role
@@ -205,6 +234,7 @@ export async function setupAuth(app: Express) {
           } else if (userRole === "vendor" || userRole === "restaurant") {
             redirectUrl = "/dashboard";
           }
+          console.log("[AUTH] Redirecting to:", redirectUrl, "for role:", userRole);
         } catch (error) {
           console.error("Failed to process user role:", error);
         }
