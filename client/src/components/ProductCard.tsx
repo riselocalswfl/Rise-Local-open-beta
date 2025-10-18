@@ -124,7 +124,7 @@ export default function ProductCard({
         <CardFooter className="p-3 pt-0 flex flex-col gap-2">
           <div className="flex items-center justify-between w-full">
             <span className="text-lg font-semibold font-mono" data-testid={`text-price-${id}`}>
-              ${price.toFixed(2)}
+              ${(price ?? 0).toFixed(2)}
             </span>
           </div>
           <div className="flex items-center gap-2 w-full">
