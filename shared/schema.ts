@@ -293,3 +293,144 @@ export const insertVendorFAQSchema = createInsertSchema(vendorFAQs).omit({
 
 export type InsertVendorFAQ = z.infer<typeof insertVendorFAQSchema>;
 export type VendorFAQ = typeof vendorFAQs.$inferSelect;
+
+// ===== RESTAURANT TABLES =====
+
+export const restaurants = pgTable("restaurants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => users.id),
+  
+  // Restaurant Profile
+  restaurantName: text("restaurant_name").notNull(),
+  displayName: text("display_name"),
+  tagline: text("tagline"),
+  contactName: text("contact_name").notNull(),
+  bio: text("bio").notNull(),
+  
+  // Cuisine & Dining
+  cuisineType: text("cuisine_type").notNull(), // Italian, Mexican, Farm-to-Table, etc.
+  cuisineTypes: text("cuisine_types").array().default(sql`'{}'::text[]`),
+  dietaryOptions: text("dietary_options").array().default(sql`'{}'::text[]`), // Vegan, Gluten-Free, Keto, etc.
+  priceRange: text("price_range"), // $, $$, $$$, $$$$
+  
+  // Media
+  logoUrl: text("logo_url"),
+  heroImageUrl: text("hero_image_url"),
+  gallery: text("gallery").array().default(sql`'{}'::text[]`),
+  
+  // Online Presence
+  website: text("website"),
+  instagram: text("instagram"),
+  facebook: text("facebook"),
+  
+  // Location & Service
+  locationType: text("location_type").notNull(), // Dine-in, Takeout only, Food truck
+  address: text("address"),
+  city: text("city").notNull().default("Fort Myers"),
+  state: text("state").notNull().default("FL"),
+  zipCode: text("zip_code").notNull(),
+  serviceOptions: text("service_options").array().notNull(), // Dine-in, Takeout, Delivery, Catering
+  hours: jsonb("hours"),
+  
+  // Dining Details
+  seatingCapacity: integer("seating_capacity"),
+  reservationsRequired: boolean("reservations_required").default(false),
+  reservationsUrl: text("reservations_url"),
+  reservationsPhone: text("reservations_phone"),
+  
+  // Values & Trust Signals
+  badges: text("badges").array().default(sql`'{}'::text[]`), // Farm-to-Table, Locally Sourced, Woman-Owned, etc.
+  localSourcingPercent: integer("local_sourcing_percent"),
+  certifications: jsonb("certifications"),
+  
+  // Contact & Policies
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  policies: jsonb("policies"), // {reservations, cancellation, parking, accessibility}
+  
+  // Payment
+  paymentMethod: text("payment_method").notNull(),
+  paymentMethods: text("payment_methods").array().default(sql`'{}'::text[]`),
+  
+  // Membership & Verification
+  isFoundingMember: boolean("is_founding_member").notNull().default(false),
+  isVerified: boolean("is_verified").notNull().default(false),
+  isFeatured: boolean("is_featured").default(false),
+  
+  // Compliance
+  termsAccepted: boolean("terms_accepted").notNull().default(true),
+  privacyAccepted: boolean("privacy_accepted").notNull().default(true),
+  paidUntil: timestamp("paid_until"),
+  
+  // Analytics
+  followerCount: integer("follower_count").notNull().default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
+  id: true,
+  followerCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
+export type Restaurant = typeof restaurants.$inferSelect;
+
+export const menuItems = pgTable("menu_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  priceCents: integer("price_cents").notNull(),
+  category: text("category").notNull(), // Appetizers, Entrees, Desserts, Drinks, etc.
+  dietaryTags: text("dietary_tags").array().default(sql`'{}'::text[]`), // Vegan, Gluten-Free, Spicy, etc.
+  ingredients: text("ingredients"),
+  allergens: text("allergens").array().default(sql`'{}'::text[]`),
+  imageUrl: text("image_url"),
+  isAvailable: boolean("is_available").default(true),
+  isFeatured: boolean("is_featured").default(false),
+  displayOrder: integer("display_order").default(0),
+});
+
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+  id: true,
+});
+
+export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
+export type MenuItem = typeof menuItems.$inferSelect;
+
+export const restaurantReviews = pgTable("restaurant_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+  authorName: text("author_name").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertRestaurantReviewSchema = createInsertSchema(restaurantReviews).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRestaurantReview = z.infer<typeof insertRestaurantReviewSchema>;
+export type RestaurantReview = typeof restaurantReviews.$inferSelect;
+
+export const restaurantFAQs = pgTable("restaurant_faqs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  displayOrder: integer("display_order").default(0),
+});
+
+export const insertRestaurantFAQSchema = createInsertSchema(restaurantFAQs).omit({
+  id: true,
+});
+
+export type InsertRestaurantFAQ = z.infer<typeof insertRestaurantFAQSchema>;
+export type RestaurantFAQ = typeof restaurantFAQs.$inferSelect;
