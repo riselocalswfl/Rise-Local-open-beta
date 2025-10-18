@@ -77,6 +77,7 @@ export const vendors = pgTable("vendors", {
   // Business Profile
   businessName: text("business_name").notNull(),
   displayName: text("display_name"), // defaults to businessName if not provided
+  tagline: text("tagline"), // short description (e.g., "Seasonal produce grown with regenerative practices")
   contactName: text("contact_name").notNull(),
   bio: text("bio").notNull(), // min 280 chars enforced in validation
   
@@ -87,6 +88,8 @@ export const vendors = pgTable("vendors", {
   // Media
   logoUrl: text("logo_url"),
   bannerUrl: text("banner_url"),
+  heroImageUrl: text("hero_image_url"), // large header image for profile
+  gallery: text("gallery").array().default(sql`'{}'::text[]`), // array of image URLs
   
   // Online Presence
   website: text("website"),
@@ -102,10 +105,20 @@ export const vendors = pgTable("vendors", {
   zipCode: text("zip_code").notNull(),
   serviceOptions: text("service_options").array().notNull(), // Pickup, Delivery, Ship, On-site dining
   serviceRadius: integer("service_radius"), // miles
-  hours: text("hours"), // JSON string of operating hours
+  hours: jsonb("hours"), // operating hours as JSON object
   
-  // Business Values (custom tags created by vendor)
+  // Business Values & Trust Signals
   values: text("values").array().default(sql`'{}'::text[]`), // custom value tags vendors create themselves
+  badges: text("badges").array().default(sql`'{}'::text[]`), // e.g., ["Family-Owned", "Women-Led", "Regenerative"]
+  localSourcingPercent: integer("local_sourcing_percent"), // 0-100% of products sourced locally
+  certifications: jsonb("certifications"), // [{name, type, issuedOn, docUrl}]
+  
+  // Fulfillment & Contact
+  fulfillmentOptions: jsonb("fulfillment_options"), // [{type, name, address, days, time, fee}]
+  contact: jsonb("contact"), // {email, phone, preferredContact}
+  
+  // Policies
+  policies: jsonb("policies"), // {refund, cancellation, allergen, safety}
   
   // Payment
   paymentMethod: text("payment_method").notNull(), // Direct to Vendor or Through Platform
@@ -153,6 +166,13 @@ export const products = pgTable("products", {
   category: text("category"),
   description: text("description"),
   imageUrl: text("image_url"),
+  
+  // Sourcing & Transparency
+  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // e.g., ["Organic", "No-Spray", "Regenerative"]
+  sourceFarm: text("source_farm"), // where product is sourced from
+  harvestDate: timestamp("harvest_date"), // when product was harvested
+  leadTimeDays: integer("lead_time_days").default(0), // days needed to prepare order
+  inventoryStatus: text("inventory_status").default("in_stock"), // "in_stock", "limited", "out_of_stock"
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
@@ -241,3 +261,35 @@ export const insertSpotlightSchema = createInsertSchema(spotlight).omit({
 
 export type InsertSpotlight = z.infer<typeof insertSpotlightSchema>;
 export type Spotlight = typeof spotlight.$inferSelect;
+
+export const vendorReviews = pgTable("vendor_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  authorName: text("author_name").notNull(),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertVendorReviewSchema = createInsertSchema(vendorReviews).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertVendorReview = z.infer<typeof insertVendorReviewSchema>;
+export type VendorReview = typeof vendorReviews.$inferSelect;
+
+export const vendorFAQs = pgTable("vendor_faqs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  displayOrder: integer("display_order").default(0), // for custom ordering
+});
+
+export const insertVendorFAQSchema = createInsertSchema(vendorFAQs).omit({
+  id: true,
+});
+
+export type InsertVendorFAQ = z.infer<typeof insertVendorFAQSchema>;
+export type VendorFAQ = typeof vendorFAQs.$inferSelect;
