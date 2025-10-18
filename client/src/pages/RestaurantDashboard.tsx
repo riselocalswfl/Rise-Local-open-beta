@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,25 +16,59 @@ export default function RestaurantDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
 
-  // For demo purposes, using a hardcoded restaurant ID
+  // For demo purposes, using The Harvest Table restaurant ID from seed data
   // In real app, this would come from auth context
-  const restaurantId = "demo-restaurant-id";
+  // Run `npx tsx server/seed-restaurants.ts` to create demo restaurants
+  const restaurantId = "8727f363-3752-4885-a7c1-3794b2547297";
 
-  const { data: restaurant } = useQuery<Restaurant>({
+  const { data: restaurant, isLoading, isError } = useQuery<Restaurant>({
     queryKey: ["/api/restaurants", restaurantId],
   });
 
   const { data: menuItems = [] } = useQuery<MenuItem[]>({
     queryKey: ["/api/restaurants", restaurantId, "menu-items"],
+    enabled: !!restaurant,
   });
 
   const { data: events = [] } = useQuery<Event[]>({
     queryKey: ["/api/restaurants", restaurantId, "events"],
+    enabled: !!restaurant,
   });
 
   const { data: faqs = [] } = useQuery<RestaurantFAQ[]>({
     queryKey: ["/api/restaurants", restaurantId, "faqs"],
+    enabled: !!restaurant,
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading restaurant data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !restaurant) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <Card className="max-w-lg">
+          <CardHeader>
+            <CardTitle>Restaurant Not Found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              The restaurant could not be found. Make sure to run the seed script:
+            </p>
+            <code className="block bg-muted p-2 rounded text-sm">
+              npx tsx server/seed-restaurants.ts
+            </code>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-bg">
@@ -85,24 +119,44 @@ export default function RestaurantDashboard() {
 function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    restaurantName: restaurant?.restaurantName || "",
-    tagline: restaurant?.tagline || "",
-    bio: restaurant?.bio || "",
-    cuisineType: restaurant?.cuisineType || "",
-    priceRange: restaurant?.priceRange || "",
-    contactEmail: restaurant?.contactEmail || "",
-    contactPhone: restaurant?.contactPhone || "",
-    address: restaurant?.address || "",
-    city: restaurant?.city || "Fort Myers",
-    zipCode: restaurant?.zipCode || "",
+    restaurantName: "",
+    tagline: "",
+    bio: "",
+    cuisineType: "",
+    priceRange: "",
+    contactEmail: "",
+    contactPhone: "",
+    address: "",
+    city: "Fort Myers",
+    zipCode: "",
   });
+
+  // Hydrate form when restaurant data loads
+  useEffect(() => {
+    if (restaurant) {
+      setFormData({
+        restaurantName: restaurant.restaurantName || "",
+        tagline: restaurant.tagline || "",
+        bio: restaurant.bio || "",
+        cuisineType: restaurant.cuisineType || "",
+        priceRange: restaurant.priceRange || "",
+        contactEmail: restaurant.contactEmail || "",
+        contactPhone: restaurant.contactPhone || "",
+        address: restaurant.address || "",
+        city: restaurant.city || "Fort Myers",
+        zipCode: restaurant.zipCode || "",
+      });
+    }
+  }, [restaurant]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest(`/api/restaurants/${restaurant?.id}`, "PATCH", data);
     },
     onSuccess: () => {
+      // Invalidate both list and detail queries
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurant?.id] });
       toast({ title: "Profile updated successfully" });
     },
     onError: () => {
@@ -112,6 +166,10 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!restaurant?.id) {
+      toast({ title: "Restaurant data not loaded", variant: "destructive" });
+      return;
+    }
     updateMutation.mutate(formData);
   };
 
