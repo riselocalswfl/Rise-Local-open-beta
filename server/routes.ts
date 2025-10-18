@@ -11,7 +11,11 @@ import {
   insertOrderItemWithoutOrderIdSchema,
   insertSpotlightSchema,
   insertVendorReviewSchema,
-  insertVendorFAQSchema
+  insertVendorFAQSchema,
+  insertRestaurantSchema,
+  insertMenuItemSchema,
+  insertRestaurantReviewSchema,
+  insertRestaurantFAQSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -558,6 +562,228 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(events);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch vendor events" });
+    }
+  });
+
+  // ===== RESTAURANT ROUTES =====
+
+  app.get("/api/restaurants", async (req, res) => {
+    try {
+      const restaurants = await storage.getRestaurants();
+      res.json(restaurants);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch restaurants" });
+    }
+  });
+
+  app.get("/api/restaurants/verified", async (req, res) => {
+    try {
+      const restaurants = await storage.getVerifiedRestaurants();
+      res.json(restaurants);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch verified restaurants" });
+    }
+  });
+
+  app.get("/api/restaurants/:id", async (req, res) => {
+    try {
+      const restaurant = await storage.getRestaurant(req.params.id);
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+      res.json(restaurant);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch restaurant" });
+    }
+  });
+
+  app.post("/api/restaurants", async (req, res) => {
+    try {
+      const validatedData = insertRestaurantSchema.parse(req.body);
+      const restaurant = await storage.createRestaurant(validatedData);
+      res.status(201).json(restaurant);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid restaurant data" });
+    }
+  });
+
+  app.patch("/api/restaurants/:id", async (req, res) => {
+    try {
+      const validatedData = insertRestaurantSchema.partial().parse(req.body);
+      await storage.updateRestaurant(req.params.id, validatedData);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid restaurant update data" });
+    }
+  });
+
+  app.delete("/api/restaurants/:id", async (req, res) => {
+    try {
+      await storage.deleteRestaurant(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete restaurant" });
+    }
+  });
+
+  app.patch("/api/restaurants/:id/verify", async (req, res) => {
+    try {
+      const schema = z.object({ isVerified: z.boolean() });
+      const { isVerified } = schema.parse(req.body);
+      await storage.updateRestaurantVerification(req.params.id, isVerified);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid verification data" });
+    }
+  });
+
+  // Menu Item routes
+  app.get("/api/menu-items", async (req, res) => {
+    try {
+      const menuItems = await storage.getMenuItems();
+      res.json(menuItems);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch menu items" });
+    }
+  });
+
+  app.get("/api/restaurants/:restaurantId/menu-items", async (req, res) => {
+    try {
+      const menuItems = await storage.getMenuItemsByRestaurant(req.params.restaurantId);
+      res.json(menuItems);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch menu items" });
+    }
+  });
+
+  app.get("/api/restaurants/:restaurantId/menu-items/category/:category", async (req, res) => {
+    try {
+      const menuItems = await storage.getMenuItemsByCategory(
+        req.params.restaurantId, 
+        req.params.category
+      );
+      res.json(menuItems);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch menu items by category" });
+    }
+  });
+
+  app.get("/api/menu-items/:id", async (req, res) => {
+    try {
+      const menuItem = await storage.getMenuItem(req.params.id);
+      if (!menuItem) {
+        return res.status(404).json({ error: "Menu item not found" });
+      }
+      res.json(menuItem);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch menu item" });
+    }
+  });
+
+  app.post("/api/menu-items", async (req, res) => {
+    try {
+      const validatedData = insertMenuItemSchema.parse(req.body);
+      const menuItem = await storage.createMenuItem(validatedData);
+      res.status(201).json(menuItem);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid menu item data" });
+    }
+  });
+
+  app.patch("/api/menu-items/:id", async (req, res) => {
+    try {
+      const validatedData = insertMenuItemSchema.partial().parse(req.body);
+      await storage.updateMenuItem(req.params.id, validatedData);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid menu item update data" });
+    }
+  });
+
+  app.delete("/api/menu-items/:id", async (req, res) => {
+    try {
+      await storage.deleteMenuItem(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete menu item" });
+    }
+  });
+
+  // Restaurant Review routes
+  app.get("/api/restaurants/:restaurantId/reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getRestaurantReviews(req.params.restaurantId);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+
+  app.post("/api/restaurant-reviews", async (req, res) => {
+    try {
+      const validatedData = insertRestaurantReviewSchema.parse(req.body);
+      const review = await storage.createRestaurantReview(validatedData);
+      res.status(201).json(review);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid review data" });
+    }
+  });
+
+  app.delete("/api/restaurant-reviews/:id", async (req, res) => {
+    try {
+      await storage.deleteRestaurantReview(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete review" });
+    }
+  });
+
+  // Restaurant FAQ routes
+  app.get("/api/restaurants/:restaurantId/faqs", async (req, res) => {
+    try {
+      const faqs = await storage.getRestaurantFAQs(req.params.restaurantId);
+      res.json(faqs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch FAQs" });
+    }
+  });
+
+  app.post("/api/restaurant-faqs", async (req, res) => {
+    try {
+      const validatedData = insertRestaurantFAQSchema.parse(req.body);
+      const faq = await storage.createRestaurantFAQ(validatedData);
+      res.status(201).json(faq);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid FAQ data" });
+    }
+  });
+
+  app.patch("/api/restaurant-faqs/:id", async (req, res) => {
+    try {
+      const validatedData = insertRestaurantFAQSchema.partial().parse(req.body);
+      await storage.updateRestaurantFAQ(req.params.id, validatedData);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid FAQ update data" });
+    }
+  });
+
+  app.delete("/api/restaurant-faqs/:id", async (req, res) => {
+    try {
+      await storage.deleteRestaurantFAQ(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete FAQ" });
+    }
+  });
+
+  // Extended restaurant routes
+  app.get("/api/restaurants/:restaurantId/events", async (req, res) => {
+    try {
+      const events = await storage.getEventsByRestaurant(req.params.restaurantId);
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch restaurant events" });
     }
   });
 
