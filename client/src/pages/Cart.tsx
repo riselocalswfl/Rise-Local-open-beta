@@ -110,10 +110,10 @@ export default function Cart() {
                           </div>
                           <div className="text-right">
                             <p className="font-mono text-lg font-semibold text-text" data-testid={`text-item-total-${item.id}`}>
-                              ${(item.price * item.quantity).toFixed(2)}
+                              ${((item.price ?? 0) * item.quantity).toFixed(2)}
                             </p>
                             <p className="text-xs text-text/50">
-                              ${item.price.toFixed(2)} each
+                              ${(item.price ?? 0).toFixed(2)} each
                             </p>
                           </div>
                         </div>
