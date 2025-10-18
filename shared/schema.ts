@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, decimal, integer, timestamp, boolean, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import type { ValueTag } from "./values";
 
 // Session storage table for Replit Auth
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
@@ -39,7 +38,7 @@ export const users = pgTable("users", {
   // Buyer-specific fields
   zipCode: text("zip_code"),
   travelRadius: integer("travel_radius").default(15), // miles
-  userValues: text("user_values").array().default(sql`'{}'::text[]`).$type<ValueTag[]>(), // buyer's value preferences
+  userValues: text("user_values").array().default(sql`'{}'::text[]`), // buyer's value preferences (custom tags)
   dietaryPrefs: text("dietary_prefs").array().default(sql`'{}'::text[]`), // gluten-free, dairy-free, vegan, etc.
   notifyNewVendors: boolean("notify_new_vendors").default(false),
   notifyWeeklyPicks: boolean("notify_weekly_picks").default(false),
@@ -108,7 +107,7 @@ export const vendors = pgTable("vendors", {
   hours: jsonb("hours"), // operating hours as JSON object
   
   // Business Values & Trust Signals
-  values: text("values").array().default(sql`'{}'::text[]`).$type<ValueTag[]>(), // predefined value tags from shared/values.ts
+  values: text("values").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
   badges: text("badges").array().default(sql`'{}'::text[]`), // e.g., ["Family-Owned", "Women-Led", "Regenerative"]
   localSourcingPercent: integer("local_sourcing_percent"), // 0-100% of products sourced locally
   certifications: jsonb("certifications"), // [{name, type, issuedOn, docUrl}]
@@ -168,7 +167,7 @@ export const products = pgTable("products", {
   imageUrl: text("image_url"),
   
   // Sourcing & Transparency
-  valueTags: text("value_tags").array().default(sql`'{}'::text[]`).$type<ValueTag[]>(), // predefined value tags from shared/values.ts
+  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
   sourceFarm: text("source_farm"), // where product is sourced from
   harvestDate: timestamp("harvest_date"), // when product was harvested
   leadTimeDays: integer("lead_time_days").default(0), // days needed to prepare order
@@ -343,7 +342,7 @@ export const restaurants = pgTable("restaurants", {
   reservationsPhone: text("reservations_phone"),
   
   // Values & Trust Signals
-  badges: text("badges").array().default(sql`'{}'::text[]`).$type<ValueTag[]>(), // predefined value tags from shared/values.ts
+  badges: text("badges").array().default(sql`'{}'::text[]`), // custom value tags defined by restaurant
   localSourcingPercent: integer("local_sourcing_percent"),
   certifications: jsonb("certifications"),
   
