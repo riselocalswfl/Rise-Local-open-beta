@@ -107,11 +107,16 @@ Preferred communication style: Simple, everyday language.
 3. System stores intended role in session, initiates OIDC flow
 4. After successful authentication:
    - New users: Role is assigned and persisted to database
+   - Vendor/Restaurant first login: Auto-creates business profile with default data
    - Existing users: Existing role is respected (no accidental reassignment)
 5. User is redirected based on role:
    - buyer → /profile (customer profile with orders, loyalty rewards)
    - vendor → /dashboard (vendor dashboard with products, events, FAQs)
    - restaurant → /dashboard (restaurant dashboard with menu, events, FAQs)
+
+**Auto-Generated Profile Defaults:**
+- Vendors: Business name from user's name, "Other" category, home-based location, pickup service
+- Restaurants: Restaurant name from user's name, "American" cuisine, dine-in service, Fort Myers location
 
 **API Endpoints:**
 - /api/login - Initiates authentication with optional intended_role parameter

@@ -144,6 +144,53 @@ export async function setupAuth(app: Express) {
           if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant")) {
             await storage.updateUser(userId, { role: intendedRole });
             userRole = intendedRole;
+            
+            // Auto-create business profile for vendors and restaurants
+            const existingUser = await storage.getUser(userId);
+            const userName = existingUser?.firstName && existingUser?.lastName 
+              ? `${existingUser.firstName} ${existingUser.lastName}`
+              : existingUser?.email?.split('@')[0] || "Business Owner";
+            
+            if (intendedRole === "vendor") {
+              // Check if vendor profile already exists
+              const existingVendor = await storage.getVendorByOwnerId(userId);
+              if (!existingVendor) {
+                // Create default vendor profile
+                await storage.createVendor({
+                  ownerId: userId,
+                  businessName: `${userName}'s Vendor`,
+                  contactName: userName,
+                  bio: "Welcome to my vendor profile! I'm excited to share my products with the Fort Myers community.",
+                  category: "Other",
+                  locationType: "Home-based",
+                  city: "Fort Myers",
+                  state: "FL",
+                  zipCode: "33901",
+                  serviceOptions: ["Pickup"],
+                  paymentMethod: "Direct to Vendor",
+                });
+              }
+            } else if (intendedRole === "restaurant") {
+              // Check if restaurant profile already exists
+              const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
+              if (!existingRestaurant) {
+                // Create default restaurant profile
+                await storage.createRestaurant({
+                  ownerId: userId,
+                  restaurantName: `${userName}'s Restaurant`,
+                  contactName: userName,
+                  bio: "Welcome to my restaurant! We're passionate about serving fresh, local food to the Fort Myers community.",
+                  cuisineType: "American",
+                  locationType: "Dine-in",
+                  city: "Fort Myers",
+                  state: "FL",
+                  zipCode: "33901",
+                  serviceOptions: ["Dine-in"],
+                  paymentMethod: "Direct to Restaurant",
+                });
+              }
+            }
+            
             // Clear the intended role from session
             delete (req.session as any).intendedRole;
           } else {
