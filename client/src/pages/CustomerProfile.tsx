@@ -14,7 +14,7 @@ export default function CustomerProfile() {
   const { user, isLoading: userLoading } = useAuth();
   
   const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ["/api/orders"],
+    queryKey: ["/api/orders/me"],
     enabled: !!user,
   });
 
@@ -53,7 +53,7 @@ export default function CustomerProfile() {
     );
   }
 
-  const userOrders = orders?.filter(order => order.email === user.email) || [];
+  const userOrders = orders || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {

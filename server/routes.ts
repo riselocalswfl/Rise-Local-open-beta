@@ -442,6 +442,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get authenticated user's orders only
+  app.get("/api/orders/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userEmail = req.user.claims.email;
+      if (!userEmail) {
+        return res.status(400).json({ error: "User email not found" });
+      }
+      const orders = await storage.getOrdersByEmail(userEmail);
+      res.json(orders);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch orders" });
+    }
+  });
+
   app.get("/api/orders", async (req, res) => {
     try {
       const { email } = req.query;
