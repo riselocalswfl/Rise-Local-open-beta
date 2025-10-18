@@ -3,11 +3,21 @@ import BrandLogo from "@/components/BrandLogo";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, LogOut, User } from "lucide-react";
+import { LogIn, LogOut, User, ShoppingBag, Store } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useState } from "react";
 
 export default function Header() {
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
+  const [signInDialogOpen, setSignInDialogOpen] = useState(false);
 
   return (
     <header className="backdrop-blur bg-bg/70 border-b border-black/5">
@@ -99,12 +109,62 @@ export default function Header() {
             </>
           ) : (
             <>
-              <a href="/api/login" data-testid="link-login">
-                <BrandButton size="sm" data-testid="button-sign-in">
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Sign In
-                </BrandButton>
-              </a>
+              <Dialog open={signInDialogOpen} onOpenChange={setSignInDialogOpen}>
+                <DialogTrigger asChild>
+                  <BrandButton size="sm" data-testid="button-sign-in">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign In
+                  </BrandButton>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md" data-testid="dialog-sign-in">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl">Welcome to Rise Local</DialogTitle>
+                    <DialogDescription>
+                      Choose how you'd like to sign in
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <a 
+                      href="/api/login?intended_role=buyer" 
+                      className="block"
+                      data-testid="link-login-buyer"
+                    >
+                      <Button 
+                        variant="outline" 
+                        className="w-full h-auto flex flex-col items-start p-6 gap-2 hover-elevate"
+                        data-testid="button-login-buyer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ShoppingBag className="h-6 w-6 text-primary" />
+                          <span className="text-lg font-semibold">Sign In as Customer</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground text-left">
+                          Shop local products, support Fort Myers vendors, and earn rewards
+                        </p>
+                      </Button>
+                    </a>
+                    <a 
+                      href="/api/login?intended_role=vendor" 
+                      className="block"
+                      data-testid="link-login-vendor"
+                    >
+                      <Button 
+                        variant="outline" 
+                        className="w-full h-auto flex flex-col items-start p-6 gap-2 hover-elevate"
+                        data-testid="button-login-vendor"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Store className="h-6 w-6 text-primary" />
+                          <span className="text-lg font-semibold">Sign In as Business Owner</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground text-left">
+                          Manage your vendor or restaurant profile, products, and events
+                        </p>
+                      </Button>
+                    </a>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Link href="/join" data-testid="link-join">
                 <Button variant="outline" size="sm" data-testid="button-join">
                   Join the Movement

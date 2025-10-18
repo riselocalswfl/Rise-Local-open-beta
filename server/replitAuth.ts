@@ -103,6 +103,12 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    // Store the intended role in the session before authentication
+    const intendedRole = req.query.intended_role as string;
+    if (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant") {
+      (req.session as any).intendedRole = intendedRole;
+    }
+    
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
@@ -110,9 +116,39 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(`replitauth:${req.hostname}`, async (err: any, user: any) => {
+      if (err) {
+        console.error("Authentication error:", err);
+        return res.redirect("/api/login");
+      }
+      
+      if (!user) {
+        return res.redirect("/api/login");
+      }
+
+      // Log the user in
+      req.logIn(user, async (loginErr) => {
+        if (loginErr) {
+          console.error("Login error:", loginErr);
+          return res.redirect("/api/login");
+        }
+
+        // After successful authentication, apply the intended role if it was set
+        const intendedRole = (req.session as any).intendedRole;
+        if (intendedRole) {
+          const userId = user.claims.sub;
+          try {
+            await storage.updateUser(userId, { role: intendedRole });
+            // Clear the intended role from session
+            delete (req.session as any).intendedRole;
+          } catch (error) {
+            console.error("Failed to update user role:", error);
+          }
+        }
+
+        // Redirect to home page
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 
