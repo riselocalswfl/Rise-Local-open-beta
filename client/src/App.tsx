@@ -25,6 +25,7 @@ import VendorProfile from "@/pages/VendorProfile";
 import VendorDashboard from "@/pages/VendorDashboard";
 import RestaurantProfile from "@/pages/RestaurantProfile";
 import RestaurantDashboard from "@/pages/RestaurantDashboard";
+import BusinessDashboard from "@/pages/BusinessDashboard";
 import NavMenu from "@/components/NavMenu";
 
 function Router() {
@@ -34,7 +35,8 @@ function Router() {
       <Route path="/products" component={Products} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/vendor/:id" component={VendorProfile} />
-      <Route path="/dashboard" component={VendorDashboard} />
+      <Route path="/dashboard" component={BusinessDashboard} />
+      <Route path="/vendor-dashboard" component={VendorDashboard} />
       <Route path="/restaurant/:id" component={RestaurantProfile} />
       <Route path="/restaurant-dashboard" component={RestaurantDashboard} />
       <Route path="/eat-local" component={EatLocal} />
