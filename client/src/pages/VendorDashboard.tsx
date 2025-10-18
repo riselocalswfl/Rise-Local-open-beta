@@ -11,13 +11,12 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Store, Package, Calendar, HelpCircle, Settings } from "lucide-react";
 import type { Vendor, Product, Event, VendorFAQ } from "@shared/schema";
-import type { ValueTag } from "@/../../shared/values";
-import ValueTagSelector from "@/components/ValueTagSelector";
+import { TagInput } from "@/components/TagInput";
 
 export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
-  const [localValues, setLocalValues] = useState<ValueTag[]>([]);
+  const [localValues, setLocalValues] = useState<string[]>([]);
 
   // Fetch the authenticated user's vendor
   const { data: vendor, isLoading: vendorLoading, isError } = useQuery<Vendor>({
@@ -27,7 +26,7 @@ export default function VendorDashboard() {
   // Sync local values when vendor data loads
   useEffect(() => {
     if (vendor) {
-      setLocalValues((vendor.values as ValueTag[]) || []);
+      setLocalValues(vendor.values || []);
     }
   }, [vendor]);
 
@@ -264,8 +263,8 @@ export default function VendorDashboard() {
                   />
                 </div>
 
-                <ValueTagSelector
-                  selectedValues={localValues}
+                <TagInput
+                  tags={localValues}
                   onChange={(values) => {
                     const previousValues = localValues;
                     setLocalValues(values); // Optimistic update
@@ -278,6 +277,7 @@ export default function VendorDashboard() {
                       }
                     );
                   }}
+                  placeholder="Add a value tag and press Enter (e.g., organic, local, sustainable)"
                 />
               </CardContent>
             </Card>

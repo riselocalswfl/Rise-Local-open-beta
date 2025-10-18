@@ -10,9 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2, Save } from "lucide-react";
 import type { Restaurant, MenuItem, Event, RestaurantFAQ } from "@shared/schema";
-import type { ValueTag } from "@/../../shared/values";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import ValueTagSelector from "@/components/ValueTagSelector";
+import { TagInput } from "@/components/TagInput";
 
 export default function RestaurantDashboard() {
   const { toast } = useToast();
@@ -116,7 +115,7 @@ export default function RestaurantDashboard() {
 // Profile Editor Component
 function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
   const { toast } = useToast();
-  const [localBadges, setLocalBadges] = useState<ValueTag[]>([]);
+  const [localBadges, setLocalBadges] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     restaurantName: "",
     tagline: "",
@@ -145,7 +144,7 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
         city: restaurant.city || "Fort Myers",
         zipCode: restaurant.zipCode || "",
       });
-      setLocalBadges((restaurant.badges as ValueTag[]) || []);
+      setLocalBadges(restaurant.badges || []);
     }
   }, [restaurant]);
 
@@ -295,8 +294,12 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
           </div>
 
           <div className="pt-6 border-t">
-            <ValueTagSelector
-              selectedValues={localBadges}
+            <Label>Restaurant Values</Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              Add custom value tags that represent your restaurant's identity and practices
+            </p>
+            <TagInput
+              tags={localBadges}
               onChange={(badges) => {
                 const previousBadges = localBadges;
                 setLocalBadges(badges); // Optimistic update
@@ -311,8 +314,7 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
                   );
                 }
               }}
-              label="Restaurant Values"
-              description="Select values that best represent your restaurant's identity and practices"
+              placeholder="Add a value tag and press Enter (e.g., farm-to-table, sustainable, family-owned)"
             />
           </div>
 

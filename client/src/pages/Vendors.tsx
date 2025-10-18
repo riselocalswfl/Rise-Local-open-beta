@@ -7,13 +7,12 @@ import ValueFilter from "@/components/ValueFilter";
 import VendorCard from "@/components/VendorCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Vendor } from "@shared/schema";
-import type { ValueTag } from "@/../../shared/values";
 
 export default function Vendors() {
   const searchParams = new URLSearchParams(useSearch());
   const categoryParam = searchParams.get("category");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedValues, setSelectedValues] = useState<ValueTag[]>([]);
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
   
   useEffect(() => {
     if (categoryParam) {
@@ -29,11 +28,11 @@ export default function Vendors() {
   // Get all unique values from all vendors
   const allValues = Array.from(
     new Set(
-      vendors?.flatMap(v => (v.values as ValueTag[]) || []) || []
+      vendors?.flatMap(v => v.values || []) || []
     )
-  ).sort() as ValueTag[];
+  ).sort();
   
-  const handleValueToggle = (value: ValueTag) => {
+  const handleValueToggle = (value: string) => {
     setSelectedValues(prev => 
       prev.includes(value)
         ? prev.filter(v => v !== value)
@@ -50,7 +49,7 @@ export default function Vendors() {
   
   if (selectedValues.length > 0) {
     filteredVendors = filteredVendors?.filter(v => {
-      const vendorValues = (v.values as ValueTag[]) || [];
+      const vendorValues = v.values || [];
       return selectedValues.some(sv => vendorValues.includes(sv));
     });
   }
