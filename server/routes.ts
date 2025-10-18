@@ -118,6 +118,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to transform product data for frontend
+  const transformProduct = (product: any) => ({
+    ...product,
+    price: product.priceCents !== undefined && product.priceCents !== null 
+      ? (product.priceCents / 100).toFixed(2) 
+      : null,
+    inventory: product.stock,
+  });
+
   // Product routes
   app.get("/api/products", async (req, res) => {
     try {
@@ -132,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         products = await storage.getProducts();
       }
       
-      res.json(products);
+      res.json(products.map(transformProduct));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch products" });
     }
@@ -144,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
-      res.json(product);
+      res.json(transformProduct(product));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch product" });
     }
