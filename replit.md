@@ -68,8 +68,17 @@ Preferred communication style: Simple, everyday language.
 - Migration management via drizzle-kit
 
 **Current Schema:**
-- Users table with id, username, password fields
+- **Users** - Authentication with id, username, password, role, loyalty points
+- **Vendors** - Comprehensive business profiles with contact info, categories, payment methods, certifications, badges, policies, hours, gallery images, hero images
+- **Products** - Product catalog with pricing (cents-based), stock, categories, images, plus sourcing fields (value tags, source farm, harvest date, lead time, inventory status)
+- **Events** - Community events organized by vendors with RSVP tracking
+- **Orders** - Order management with cart data stored as JSON, contact info, fulfillment method, and pricing breakdown
+- **VendorReviews** - Customer reviews for vendors with ratings and comments
+- **VendorFAQs** - Vendor-managed frequently asked questions
+- **Spotlight** - Featured content system for Fort Myers
 - Uses PostgreSQL's `gen_random_uuid()` for primary keys
+- JSONB columns for flexible data (hours, certifications, policies, address)
+- Array columns for multi-value fields (categories, badges, payment methods, gallery)
 - Zod schemas generated from Drizzle tables for runtime validation
 
 **Session Management:**
@@ -186,6 +195,7 @@ Preferred communication style: Simple, everyday language.
 - `/` - Home page with spotlight banner, featured products/vendors/events
 - `/products` - Product listing with filters
 - `/vendors` - Vendor directory
+- `/vendor/:id` - Comprehensive vendor profile page with hero, products, events, reviews, FAQs, gallery
 - `/events` - Community events calendar
 - `/spotlight` - Fort Myers spotlight detailed view
 - `/login` - Authentication
@@ -194,6 +204,9 @@ Preferred communication style: Simple, everyday language.
 **User Routes:**
 - `/cart` - Shopping cart
 - `/checkout` - Order completion with fulfillment selection
+
+**Vendor Routes:**
+- `/dashboard` - Vendor dashboard with tabs for profile editing, product management, event management, FAQ management
 
 **Admin Routes:**
 - `/admin` - Dashboard for vendor verification, platform stats
@@ -211,12 +224,23 @@ All core entities are now implemented in the database:
 
 ### Example Data
 
-**Lotus Wellness Studio** (Vendor):
-- Health & Wellness vendor in Fort Myers
-- Hosts community events and workshops
-- Example events include:
-  - "Sunrise Yoga & Mindfulness Workshop" - Beginner-friendly morning workshop with gentle flows, breathing exercises, and meditation
-  - "Master the Headstand Workshop" - Intermediate-level workshop focused on building strength and confidence for headstand inversions
+**Sunshine Grove Farm** (Vendor):
+- Comprehensive example vendor created via seed script
+- 15-acre family farm specializing in certified organic vegetables, herbs, and seasonal fruits
+- Features showcase the full vendor profile system:
+  - **Profile**: Tagline, detailed bio, contact information (Maria Martinez)
+  - **Badges**: Certified Organic, Woman-Owned, Carbon Neutral, Living Wage Employer
+  - **Certifications**: USDA Organic (2016), Certified Naturally Grown (2015)
+  - **Products**: 4 products with sourcing details (Heirloom Tomato Mix, Baby Lettuce Mix, Fresh Basil, Rainbow Carrots)
+  - **Events**: 3 community events (Farm Tour & Tasting, Seed Saving Workshop, Harvest Festival)
+  - **Reviews**: 4 customer reviews with 4-5 star ratings
+  - **FAQs**: 5 frequently asked questions about CSA, pesticides, farm visits, delivery, and storage
+  - **Gallery**: 6 farm photos
+  - **Hours**: Monday-Saturday with varying hours
+  - **Fulfillment**: Pickup and Delivery options
+  - **Policies**: Returns, delivery, pickup, and cancellation policies
+- Vendor ID: 5b89e710-b90d-49a7-92d0-4d39d88bbfc4
+- Access via: `/vendor/5b89e710-b90d-49a7-92d0-4d39d88bbfc4` or `/dashboard`
 
 ### Build and Deployment
 
