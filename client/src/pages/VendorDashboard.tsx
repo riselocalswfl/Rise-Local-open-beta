@@ -40,7 +40,7 @@ export default function VendorDashboard() {
   const updateVendorMutation = useMutation({
     mutationFn: async (data: Partial<Vendor>) => {
       if (!vendor?.id) throw new Error("No vendor ID");
-      return await apiRequest("PATCH", `/api/vendors/${vendor.id}`, data);
+      return await apiRequest(`/api/vendors/${vendor.id}`, "PATCH", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/my-vendor"] });
@@ -55,7 +55,7 @@ export default function VendorDashboard() {
   const createProductMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!vendor?.id) throw new Error("No vendor ID");
-      return await apiRequest("POST", "/api/products", { ...data, vendorId: vendor.id });
+      return await apiRequest("/api/products", "POST", { ...data, vendorId: vendor.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -65,7 +65,7 @@ export default function VendorDashboard() {
 
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest("PATCH", `/api/products/${id}`, data);
+      return await apiRequest(`/api/products/${id}`, "PATCH", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -75,7 +75,7 @@ export default function VendorDashboard() {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/products/${id}`);
+      return await apiRequest(`/api/products/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -87,7 +87,7 @@ export default function VendorDashboard() {
   const createEventMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!vendor?.id) throw new Error("No vendor ID");
-      return await apiRequest("POST", "/api/events", { ...data, vendorId: vendor.id });
+      return await apiRequest("/api/events", "POST", { ...data, vendorId: vendor.id });
     },
     onSuccess: () => {
       if (vendor?.id) {
@@ -99,7 +99,7 @@ export default function VendorDashboard() {
 
   const deleteEventMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/events/${id}`);
+      return await apiRequest(`/api/events/${id}`, "DELETE");
     },
     onSuccess: () => {
       if (vendor?.id) {
@@ -113,7 +113,7 @@ export default function VendorDashboard() {
   const createFAQMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!vendor?.id) throw new Error("No vendor ID");
-      return await apiRequest("POST", "/api/vendor-faqs", { ...data, vendorId: vendor.id });
+      return await apiRequest("/api/vendor-faqs", "POST", { ...data, vendorId: vendor.id });
     },
     onSuccess: () => {
       if (vendor?.id) {
@@ -125,7 +125,7 @@ export default function VendorDashboard() {
 
   const deleteFAQMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/vendor-faqs/${id}`);
+      return await apiRequest(`/api/vendor-faqs/${id}`, "DELETE");
     },
     onSuccess: () => {
       if (vendor?.id) {

@@ -124,8 +124,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/vendors/:id", async (req, res) => {
+  app.patch("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      
+      // Verify ownership
+      if (vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to update this vendor" });
+      }
+      
       const validatedData = insertVendorSchema.partial().parse(req.body);
       await storage.updateVendor(req.params.id, validatedData);
       res.json({ success: true });
@@ -134,8 +144,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/vendors/:id", async (req, res) => {
+  app.delete("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      
+      // Verify ownership
+      if (vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to delete this vendor" });
+      }
+      
       await storage.deleteVendor(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -195,9 +215,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products", async (req, res) => {
+  app.post("/api/products", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertProductSchema.parse(req.body);
+      
+      // Verify the user owns the vendor
+      const vendor = await storage.getVendor(validatedData.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to create products for this vendor" });
+      }
+      
       const product = await storage.createProduct(validatedData);
       res.status(201).json(product);
     } catch (error) {
@@ -205,8 +232,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/products/:id", async (req, res) => {
+  app.patch("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const product = await storage.getProduct(req.params.id);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(product.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to update this product" });
+      }
+      
       const validatedData = insertProductSchema.partial().parse(req.body);
       await storage.updateProduct(req.params.id, validatedData);
       res.json({ success: true });
@@ -215,8 +253,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/products/:id", async (req, res) => {
+  app.delete("/api/products/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const product = await storage.getProduct(req.params.id);
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(product.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to delete this product" });
+      }
+      
       await storage.deleteProduct(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -266,9 +315,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/events", async (req, res) => {
+  app.post("/api/events", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertEventSchema.parse(req.body);
+      
+      // Verify the user owns the vendor
+      const vendor = await storage.getVendor(validatedData.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to create events for this vendor" });
+      }
+      
       const event = await storage.createEvent(validatedData);
       res.status(201).json(event);
     } catch (error) {
@@ -276,8 +332,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/events/:id", async (req, res) => {
+  app.patch("/api/events/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(event.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to update this event" });
+      }
+      
       const validatedData = insertEventSchema.partial().parse(req.body);
       await storage.updateEvent(req.params.id, validatedData);
       res.json({ success: true });
@@ -286,8 +353,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/events/:id", async (req, res) => {
+  app.delete("/api/events/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const event = await storage.getEvent(req.params.id);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(event.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to delete this event" });
+      }
+      
       await storage.deleteEvent(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -556,9 +634,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/vendor-faqs", async (req, res) => {
+  app.post("/api/vendor-faqs", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertVendorFAQSchema.parse(req.body);
+      
+      // Verify the user owns the vendor
+      const vendor = await storage.getVendor(validatedData.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to create FAQs for this vendor" });
+      }
+      
       const faq = await storage.createVendorFAQ(validatedData);
       res.status(201).json(faq);
     } catch (error) {
@@ -566,8 +651,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/vendor-faqs/:id", async (req, res) => {
+  app.patch("/api/vendor-faqs/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const faq = await storage.getVendorFAQ(req.params.id);
+      if (!faq) {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(faq.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to update this FAQ" });
+      }
+      
       const validatedData = insertVendorFAQSchema.partial().parse(req.body);
       await storage.updateVendorFAQ(req.params.id, validatedData);
       res.json({ success: true });
@@ -576,8 +672,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/vendor-faqs/:id", async (req, res) => {
+  app.delete("/api/vendor-faqs/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const faq = await storage.getVendorFAQ(req.params.id);
+      if (!faq) {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(faq.vendorId);
+      if (!vendor || vendor.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to delete this FAQ" });
+      }
+      
       await storage.deleteVendorFAQ(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -637,8 +744,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/restaurants/:id", async (req, res) => {
+  app.patch("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const restaurant = await storage.getRestaurant(req.params.id);
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+      
+      // Verify ownership
+      if (restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to update this restaurant" });
+      }
+      
       const validatedData = insertRestaurantSchema.partial().parse(req.body);
       await storage.updateRestaurant(req.params.id, validatedData);
       res.json({ success: true });
@@ -647,8 +764,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/restaurants/:id", async (req, res) => {
+  app.delete("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const restaurant = await storage.getRestaurant(req.params.id);
+      if (!restaurant) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+      
+      // Verify ownership
+      if (restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to delete this restaurant" });
+      }
+      
       await storage.deleteRestaurant(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -710,9 +837,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/menu-items", async (req, res) => {
+  app.post("/api/menu-items", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertMenuItemSchema.parse(req.body);
+      
+      // Verify the user owns the restaurant
+      const restaurant = await storage.getRestaurant(validatedData.restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to create menu items for this restaurant" });
+      }
+      
       const menuItem = await storage.createMenuItem(validatedData);
       res.status(201).json(menuItem);
     } catch (error) {
@@ -720,8 +854,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/menu-items/:id", async (req, res) => {
+  app.patch("/api/menu-items/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const menuItem = await storage.getMenuItem(req.params.id);
+      if (!menuItem) {
+        return res.status(404).json({ error: "Menu item not found" });
+      }
+      
+      // Verify ownership through restaurant
+      const restaurant = await storage.getRestaurant(menuItem.restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to update this menu item" });
+      }
+      
       const validatedData = insertMenuItemSchema.partial().parse(req.body);
       await storage.updateMenuItem(req.params.id, validatedData);
       res.json({ success: true });
@@ -730,8 +875,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/menu-items/:id", async (req, res) => {
+  app.delete("/api/menu-items/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const menuItem = await storage.getMenuItem(req.params.id);
+      if (!menuItem) {
+        return res.status(404).json({ error: "Menu item not found" });
+      }
+      
+      // Verify ownership through restaurant
+      const restaurant = await storage.getRestaurant(menuItem.restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to delete this menu item" });
+      }
+      
       await storage.deleteMenuItem(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -778,9 +934,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/restaurant-faqs", async (req, res) => {
+  app.post("/api/restaurant-faqs", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertRestaurantFAQSchema.parse(req.body);
+      
+      // Verify the user owns the restaurant
+      const restaurant = await storage.getRestaurant(validatedData.restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to create FAQs for this restaurant" });
+      }
+      
       const faq = await storage.createRestaurantFAQ(validatedData);
       res.status(201).json(faq);
     } catch (error) {
@@ -788,8 +951,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/restaurant-faqs/:id", async (req, res) => {
+  app.patch("/api/restaurant-faqs/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const faq = await storage.getRestaurantFAQ(req.params.id);
+      if (!faq) {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      
+      // Verify ownership through restaurant
+      const restaurant = await storage.getRestaurant(faq.restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to update this FAQ" });
+      }
+      
       const validatedData = insertRestaurantFAQSchema.partial().parse(req.body);
       await storage.updateRestaurantFAQ(req.params.id, validatedData);
       res.json({ success: true });
@@ -798,8 +972,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/restaurant-faqs/:id", async (req, res) => {
+  app.delete("/api/restaurant-faqs/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const faq = await storage.getRestaurantFAQ(req.params.id);
+      if (!faq) {
+        return res.status(404).json({ error: "FAQ not found" });
+      }
+      
+      // Verify ownership through restaurant
+      const restaurant = await storage.getRestaurant(faq.restaurantId);
+      if (!restaurant || restaurant.ownerId !== req.user.sub) {
+        return res.status(403).json({ error: "Unauthorized to delete this FAQ" });
+      }
+      
       await storage.deleteRestaurantFAQ(req.params.id);
       res.json({ success: true });
     } catch (error) {
