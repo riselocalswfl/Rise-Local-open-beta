@@ -6,7 +6,9 @@ import {
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem,
   type Spotlight, type InsertSpotlight,
-  users, vendors, products, events, orders, orderItems, spotlight
+  type VendorReview, type InsertVendorReview,
+  type VendorFAQ, type InsertVendorFAQ,
+  users, vendors, products, events, orders, orderItems, spotlight, vendorReviews, vendorFAQs
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -77,6 +79,20 @@ export interface IStorage {
   createSpotlight(spotlightData: InsertSpotlight): Promise<Spotlight>;
   updateSpotlight(id: string, data: Partial<InsertSpotlight>): Promise<void>;
   deleteSpotlight(id: string): Promise<void>;
+
+  // Vendor Review operations
+  getVendorReviews(vendorId: string): Promise<VendorReview[]>;
+  createVendorReview(review: InsertVendorReview): Promise<VendorReview>;
+  deleteVendorReview(id: string): Promise<void>;
+
+  // Vendor FAQ operations
+  getVendorFAQs(vendorId: string): Promise<VendorFAQ[]>;
+  createVendorFAQ(faq: InsertVendorFAQ): Promise<VendorFAQ>;
+  updateVendorFAQ(id: string, data: Partial<InsertVendorFAQ>): Promise<void>;
+  deleteVendorFAQ(id: string): Promise<void>;
+
+  // Extended Event operations
+  getEventsByVendor(vendorId: string): Promise<Event[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -330,6 +346,49 @@ export class DbStorage implements IStorage {
 
   async deleteSpotlight(id: string): Promise<void> {
     await db.delete(spotlight).where(eq(spotlight.id, id));
+  }
+
+  // Vendor Review operations
+  async getVendorReviews(vendorId: string): Promise<VendorReview[]> {
+    return await db.select().from(vendorReviews)
+      .where(eq(vendorReviews.vendorId, vendorId))
+      .orderBy(desc(vendorReviews.createdAt));
+  }
+
+  async createVendorReview(review: InsertVendorReview): Promise<VendorReview> {
+    const result = await db.insert(vendorReviews).values(review).returning();
+    return result[0];
+  }
+
+  async deleteVendorReview(id: string): Promise<void> {
+    await db.delete(vendorReviews).where(eq(vendorReviews.id, id));
+  }
+
+  // Vendor FAQ operations
+  async getVendorFAQs(vendorId: string): Promise<VendorFAQ[]> {
+    return await db.select().from(vendorFAQs)
+      .where(eq(vendorFAQs.vendorId, vendorId))
+      .orderBy(vendorFAQs.displayOrder);
+  }
+
+  async createVendorFAQ(faq: InsertVendorFAQ): Promise<VendorFAQ> {
+    const result = await db.insert(vendorFAQs).values(faq).returning();
+    return result[0];
+  }
+
+  async updateVendorFAQ(id: string, data: Partial<InsertVendorFAQ>): Promise<void> {
+    await db.update(vendorFAQs).set(data).where(eq(vendorFAQs.id, id));
+  }
+
+  async deleteVendorFAQ(id: string): Promise<void> {
+    await db.delete(vendorFAQs).where(eq(vendorFAQs.id, id));
+  }
+
+  // Extended Event operations
+  async getEventsByVendor(vendorId: string): Promise<Event[]> {
+    return await db.select().from(events)
+      .where(eq(events.organizerId, vendorId))
+      .orderBy(events.dateTime);
   }
 }
 
