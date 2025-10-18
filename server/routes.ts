@@ -356,9 +356,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertEventSchema.parse(req.body);
       
       // Verify the user owns the vendor
-      const vendor = await storage.getVendor(validatedData.vendorId);
-      if (!vendor || vendor.ownerId !== userId) {
-        return res.status(403).json({ error: "Unauthorized to create events for this vendor" });
+      if (validatedData.vendorId) {
+        const vendor = await storage.getVendor(validatedData.vendorId);
+        if (!vendor || vendor.ownerId !== userId) {
+          return res.status(403).json({ error: "Unauthorized to create events for this vendor" });
+        }
       }
       
       const event = await storage.createEvent(validatedData);
@@ -377,9 +379,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify ownership through vendor
-      const vendor = await storage.getVendor(event.vendorId);
-      if (!vendor || vendor.ownerId !== userId) {
-        return res.status(403).json({ error: "Unauthorized to update this event" });
+      if (event.vendorId) {
+        const vendor = await storage.getVendor(event.vendorId);
+        if (!vendor || vendor.ownerId !== userId) {
+          return res.status(403).json({ error: "Unauthorized to update this event" });
+        }
       }
       
       const validatedData = insertEventSchema.partial().parse(req.body);
@@ -399,9 +403,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify ownership through vendor
-      const vendor = await storage.getVendor(event.vendorId);
-      if (!vendor || vendor.ownerId !== userId) {
-        return res.status(403).json({ error: "Unauthorized to delete this event" });
+      if (event.vendorId) {
+        const vendor = await storage.getVendor(event.vendorId);
+        if (!vendor || vendor.ownerId !== userId) {
+          return res.status(403).json({ error: "Unauthorized to delete this event" });
+        }
       }
       
       await storage.deleteEvent(req.params.id);

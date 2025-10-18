@@ -97,6 +97,7 @@ export interface IStorage {
   deleteVendorReview(id: string): Promise<void>;
 
   // Vendor FAQ operations
+  getVendorFAQ(id: string): Promise<VendorFAQ | undefined>;
   getVendorFAQs(vendorId: string): Promise<VendorFAQ[]>;
   createVendorFAQ(faq: InsertVendorFAQ): Promise<VendorFAQ>;
   updateVendorFAQ(id: string, data: Partial<InsertVendorFAQ>): Promise<void>;
@@ -134,6 +135,7 @@ export interface IStorage {
   deleteRestaurantReview(id: string): Promise<void>;
 
   // Restaurant FAQ operations
+  getRestaurantFAQ(id: string): Promise<RestaurantFAQ | undefined>;
   getRestaurantFAQs(restaurantId: string): Promise<RestaurantFAQ[]>;
   createRestaurantFAQ(faq: InsertRestaurantFAQ): Promise<RestaurantFAQ>;
   updateRestaurantFAQ(id: string, data: Partial<InsertRestaurantFAQ>): Promise<void>;
@@ -427,6 +429,11 @@ export class DbStorage implements IStorage {
   }
 
   // Vendor FAQ operations
+  async getVendorFAQ(id: string): Promise<VendorFAQ | undefined> {
+    const result = await db.select().from(vendorFAQs).where(eq(vendorFAQs.id, id));
+    return result[0];
+  }
+
   async getVendorFAQs(vendorId: string): Promise<VendorFAQ[]> {
     return await db.select().from(vendorFAQs)
       .where(eq(vendorFAQs.vendorId, vendorId))
@@ -561,6 +568,11 @@ export class DbStorage implements IStorage {
   }
 
   // Restaurant FAQ operations
+  async getRestaurantFAQ(id: string): Promise<RestaurantFAQ | undefined> {
+    const result = await db.select().from(restaurantFAQs).where(eq(restaurantFAQs.id, id));
+    return result[0];
+  }
+
   async getRestaurantFAQs(restaurantId: string): Promise<RestaurantFAQ[]> {
     return await db.select().from(restaurantFAQs)
       .where(eq(restaurantFAQs.restaurantId, restaurantId))
