@@ -133,21 +133,37 @@ export async function setupAuth(app: Express) {
           return res.redirect("/api/login");
         }
 
-        // After successful authentication, apply the intended role if it was set
+        // After successful authentication, determine redirect based on user role
+        const userId = user.claims.sub;
         const intendedRole = (req.session as any).intendedRole;
-        if (intendedRole) {
-          const userId = user.claims.sub;
-          try {
+        let redirectUrl = "/";
+        let userRole = null;
+        
+        try {
+          // If an intended role was set during login, update the user's role
+          if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant")) {
             await storage.updateUser(userId, { role: intendedRole });
+            userRole = intendedRole;
             // Clear the intended role from session
             delete (req.session as any).intendedRole;
-          } catch (error) {
-            console.error("Failed to update user role:", error);
+          } else {
+            // Otherwise, fetch the user's existing role from the database
+            const existingUser = await storage.getUser(userId);
+            userRole = existingUser?.role;
           }
+          
+          // Redirect based on role
+          if (userRole === "buyer") {
+            redirectUrl = "/profile";
+          } else if (userRole === "vendor" || userRole === "restaurant") {
+            redirectUrl = "/dashboard";
+          }
+        } catch (error) {
+          console.error("Failed to process user role:", error);
         }
 
-        // Redirect to home page
-        return res.redirect("/");
+        // Redirect to appropriate page
+        return res.redirect(redirectUrl);
       });
     })(req, res, next);
   });
