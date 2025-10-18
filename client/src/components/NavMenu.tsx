@@ -1,7 +1,8 @@
-import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard } from "lucide-react";
+import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sheet,
   SheetContent,
@@ -11,24 +12,64 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-const navigationItems = [
+const publicNavigationItems = [
   { name: "Home", href: "/", icon: Home },
   { name: "Shop Local", href: "/products", icon: ShoppingBag },
   { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
-  { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
   { name: "Join the Movement", href: "/join", icon: Heart },
+];
+
+const buyerNavigationItems = [
+  { name: "Home", href: "/", icon: Home },
+  { name: "Shop Local", href: "/products", icon: ShoppingBag },
+  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Events", href: "/events", icon: Calendar },
+  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "Cart", href: "/cart", icon: ShoppingCart },
+  { name: "My Account", href: "/profile", icon: UserCircle },
+];
+
+const vendorNavigationItems = [
+  { name: "Home", href: "/", icon: Home },
+  { name: "Shop Local", href: "/products", icon: ShoppingBag },
+  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Events", href: "/events", icon: Calendar },
+  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
+];
+
+const restaurantNavigationItems = [
+  { name: "Home", href: "/", icon: Home },
+  { name: "Shop Local", href: "/products", icon: ShoppingBag },
+  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Events", href: "/events", icon: Calendar },
+  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
 ];
 
 export default function NavMenu() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
+  const { user } = useAuth();
 
   const handleNavigate = (href: string) => {
     setOpen(false);
   };
+
+  // Determine which navigation items to show based on user role
+  let navigationItems = publicNavigationItems;
+  if (user) {
+    if (user.role === "buyer") {
+      navigationItems = buyerNavigationItems;
+    } else if (user.role === "vendor") {
+      navigationItems = vendorNavigationItems;
+    } else if (user.role === "restaurant") {
+      navigationItems = restaurantNavigationItems;
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
