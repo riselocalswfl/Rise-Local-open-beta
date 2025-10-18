@@ -3,7 +3,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, LogOut, User, ShoppingBag, Store } from "lucide-react";
+import { LogIn, LogOut, User, ShoppingBag, Store, Utensils } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -123,7 +123,7 @@ export default function Header() {
                       Choose how you'd like to sign in
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
+                  <div className="grid gap-3 py-4">
                     <a 
                       href="/api/login?intended_role=buyer" 
                       className="block"
@@ -131,15 +131,15 @@ export default function Header() {
                     >
                       <Button 
                         variant="outline" 
-                        className="w-full h-auto flex flex-col items-start p-6 gap-2 hover-elevate"
+                        className="w-full h-auto flex flex-col items-start p-5 gap-2 hover-elevate"
                         data-testid="button-login-buyer"
                       >
                         <div className="flex items-center gap-3">
-                          <ShoppingBag className="h-6 w-6 text-primary" />
-                          <span className="text-lg font-semibold">Sign In as Customer</span>
+                          <ShoppingBag className="h-5 w-5 text-primary" />
+                          <span className="text-base font-semibold">Customer</span>
                         </div>
-                        <p className="text-sm text-muted-foreground text-left">
-                          Shop local products, support Fort Myers vendors, and earn rewards
+                        <p className="text-xs text-muted-foreground text-left">
+                          Shop local products, support vendors, and earn rewards
                         </p>
                       </Button>
                     </a>
@@ -150,15 +150,34 @@ export default function Header() {
                     >
                       <Button 
                         variant="outline" 
-                        className="w-full h-auto flex flex-col items-start p-6 gap-2 hover-elevate"
+                        className="w-full h-auto flex flex-col items-start p-5 gap-2 hover-elevate"
                         data-testid="button-login-vendor"
                       >
                         <div className="flex items-center gap-3">
-                          <Store className="h-6 w-6 text-primary" />
-                          <span className="text-lg font-semibold">Sign In as Business Owner</span>
+                          <Store className="h-5 w-5 text-primary" />
+                          <span className="text-base font-semibold">Vendor</span>
                         </div>
-                        <p className="text-sm text-muted-foreground text-left">
-                          Manage your vendor or restaurant profile, products, and events
+                        <p className="text-xs text-muted-foreground text-left">
+                          Manage your vendor profile, products, and events
+                        </p>
+                      </Button>
+                    </a>
+                    <a 
+                      href="/api/login?intended_role=restaurant" 
+                      className="block"
+                      data-testid="link-login-restaurant"
+                    >
+                      <Button 
+                        variant="outline" 
+                        className="w-full h-auto flex flex-col items-start p-5 gap-2 hover-elevate"
+                        data-testid="button-login-restaurant"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Utensils className="h-5 w-5 text-primary" />
+                          <span className="text-base font-semibold">Restaurant</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-left">
+                          Manage your restaurant profile, menu, and dining events
                         </p>
                       </Button>
                     </a>
