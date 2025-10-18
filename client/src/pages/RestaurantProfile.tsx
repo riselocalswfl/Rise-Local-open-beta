@@ -392,12 +392,18 @@ export default function RestaurantProfile() {
                       Hours
                     </div>
                     <div className="text-sm space-y-1">
-                      {Object.entries(hours).map(([day, time]) => (
-                        <div key={day} className="flex justify-between">
-                          <span className="text-muted-foreground capitalize">{day}:</span>
-                          <span>{time as string}</span>
-                        </div>
-                      ))}
+                      {Object.entries(hours).map(([day, time]) => {
+                        const timeObj = time as { open: string; close: string };
+                        const displayTime = timeObj.open === "Closed" && timeObj.close === "Closed"
+                          ? "Closed"
+                          : `${timeObj.open} - ${timeObj.close}`;
+                        return (
+                          <div key={day} className="flex justify-between">
+                            <span className="text-muted-foreground capitalize">{day}:</span>
+                            <span>{displayTime}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
