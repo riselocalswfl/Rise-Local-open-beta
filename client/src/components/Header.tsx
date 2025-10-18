@@ -107,7 +107,7 @@ export default function Header() {
               </a>
               <Link href="/join" data-testid="link-join">
                 <Button variant="outline" size="sm" data-testid="button-join">
-                  Join
+                  Join the Movement
                 </Button>
               </Link>
             </>
