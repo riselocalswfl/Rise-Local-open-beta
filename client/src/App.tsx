@@ -21,6 +21,8 @@ import BuyerSignup from "@/pages/BuyerSignup";
 import VendorSignup from "@/pages/VendorSignup";
 import RestaurantSignup from "@/pages/RestaurantSignup";
 import Admin from "@/pages/Admin";
+import VendorProfile from "@/pages/VendorProfile";
+import VendorDashboard from "@/pages/VendorDashboard";
 import NavMenu from "@/components/NavMenu";
 
 function Router() {
@@ -29,6 +31,8 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
       <Route path="/vendors" component={Vendors} />
+      <Route path="/vendor/:id" component={VendorProfile} />
+      <Route path="/dashboard" component={VendorDashboard} />
       <Route path="/eat-local" component={EatLocal} />
       <Route path="/events/:id" component={EventDetail} />
       <Route path="/events" component={Events} />

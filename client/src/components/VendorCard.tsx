@@ -29,7 +29,7 @@ export default function VendorCard({
 }: VendorCardProps) {
   return (
     <Card className="le-card transition-all duration-200">
-      <Link href={`/vendors/${id}`} data-testid={`link-vendor-${id}`}>
+      <Link href={`/vendor/${id}`} data-testid={`link-vendor-${id}`}>
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="w-16 h-16">
