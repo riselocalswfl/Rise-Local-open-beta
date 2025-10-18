@@ -1,0 +1,331 @@
+Example Vendor Profile (what it should look/feel like)
+
+Header
+
+Logo: round, 512×512 recommended
+
+Vendor name: Sunshine Grove Farm
+
+Tagline: “Seasonal produce grown with regenerative practices in Fort Myers, FL”
+
+Action buttons: Follow • Message • View Products • Order for Pickup/Delivery
+
+Fast Facts (badges)
+
+Family-Owned • Women-Led • Regenerative • Pesticide-Free • SWFL Native-Owned
+
+Local Sourcing: 100% (farm-grown)
+
+Payment: Card, Apple Pay, Venmo
+
+Fulfillment: Farm Pickup (free), Saturday Farmers’ Market, Local Delivery (≤15 mi, $5)
+
+About / Bio
+
+We’re the Knight family behind Sunshine Grove Farm—three acres of seasonal veggies, pasture-raised eggs, and small-batch honeys. We farm regeneratively: no synthetic pesticides, heavy composting, cover crops, and pollinator habitat. Our goal is to keep food dollars in SWFL and make it easy for busy families to eat fresh, local produce.
+
+Values & Certifications
+
+Values: Sustainable, Organic-Practices, No-Till, Humane, Plastic-Lite Packaging, Student-Friendly Pricing
+
+Documentation: FSMA Produce Safety trained; FL Cottage Food compliant (for honey); Water test certificate (2025)
+
+Products & Categories
+
+Categories: Vegetables, Eggs, Honey, Herbs, Seasonal Boxes
+
+Featured Products:
+
+Sunshine Veggie Box (Medium) — $25 — feeds 2–3 for a week
+
+Pasture-Raised Eggs (dozen) — $7 — limited supply, Wed/Fri pickup
+
+Wildflower Honey (12 oz) — $12 — unfiltered, 2025 spring harvest
+
+Availability & Lead Times
+
+Order window: Mon–Thu (for Sat pickup/delivery)
+
+Same-day: limited, message us first
+
+Lead time: 24–48 hrs for boxes; eggs replenish Wed/Fri
+
+Pickup / Delivery / Shipping
+
+Pickup: Farm gate (Fort Myers, 33912) 4–7 pm, Wed & Fri
+
+Market pickup: Lakes Park Farmers’ Market, Saturdays 8–1
+
+Delivery: Within 15 miles (map), flat $5; free over $50
+
+Third option: Community drop-spot at Green Cup Café, Thu 5 pm (free)
+
+Operating Hours
+
+Mon–Fri: 9–6 (messages)
+
+Sat (Market): 8–1
+
+Sun: closed
+
+Contact & Social
+
+Website: sunshinegrove.farm (on-platform profile link)
+
+Instagram: @sunshinegrovefarm
+
+Email: hello@sunshinegrove.farm
+
+Phone: (239) 555-0149 (SMS ok)
+
+Story Timeline (optional, but engaging)
+
+2023: Broke ground on first half-acre
+
+2024: Added hens + pollinator corridor
+
+2025: Launching CSA-style veggie boxes
+
+Sourcing Transparency
+
+Grown on our farm (90–100% most weeks)
+
+Occasional partner farms for gaps: Caloosa Greens (microgreens), Gulfside Mushrooms
+
+Each product card shows: farm source, harvest date, and distance
+
+Events
+
+10/25/2025 — “Meet the Hens” Tour (free, RSVP)
+
+11/08/2025 — Soil Health 101 (workshop, $10)
+
+Reviews (pull quotes)
+
+“The veggie box changed our weeknight dinners.” — Laura M.
+
+“Eggs are unreal, bright yolks.” — Jordan P.
+
+FAQ
+
+Are you certified organic?
+
+Not certified (small scale), but we follow USDA organic and no-spray practices.
+
+Do you wash produce?
+
+Light rinse only to maximize shelf life; wash before eating.
+
+Allergens?
+
+Honey is raw; facility processes eggs.
+
+Policies
+
+Returns/Refunds: If something’s off, tell us within 24 hrs; we’ll replace in your next order.
+
+Cancellations: >24 hrs full refund; <24 hrs 50% (harvest already queued).
+
+Safety: Cold chain for eggs maintained; cooler packs in delivery when >85°F.
+
+Photo/Video Gallery
+
+6–10 images: fields, harvest, team, hen coop, close-ups of boxes, short vertical video of harvest day.
+
+Team (optional)
+
+Ashlee Knight — Grower / Customer Care
+
+Todd — Deliveries & Market Lead
+
+What fields we’ll build (so dev knows exactly what to render)
+
+Core
+
+logo_url (512×512), name, tagline, bio_md
+
+badges[] (values tags)
+
+local_sourcing_percent (0–100)
+
+payments[] (e.g., card, cash, Venmo handle)
+
+fulfillment: { pickup[], delivery?, drop_spot? }
+
+hours: { mon: "9–6", ... }
+
+contact: { email, phone, socials{} }
+
+Commerce
+
+categories[]
+
+featured_products[] with id, title, price, unit, inventory_status, value_tags[], source_farm, harvest_date, lead_time_days, fulfillment_options[]
+
+Trust & Proof
+
+certifications[] (name, type, file/image link, issued_on)
+
+sourcing_notes + partner_sources[] (name, distance_miles, products)
+
+events[] (title, date, price, rsvp_link/on-platform RSVP)
+
+reviews[] (author, quote, rating)
+
+Policies
+
+refund_policy_md, cancellation_policy_md, allergen_notice_md
+
+Media
+
+gallery[] (images/video), hero_image_url (1920×1080)
+
+Computed
+
+local_score (e.g., based on sourcing %, distance, values proofs)
+
+response_time_avg_minutes (messages)
+
+on_time_delivery_rate
+
+Suggested layout (clean + mobile-first)
+
+Sticky Header Bar: logo, name, follow/message buttons
+
+Hero: hero image with tagline and badges overlay
+
+Quick Info Cards: Local % • Payments • Pickup/Delivery • Hours
+
+About (expandable)
+
+Featured Products (3–6 cards + “View All”)
+
+Events
+
+Sourcing & Certifications (icons + links to docs/photos)
+
+Reviews
+
+FAQ & Policies (accordion)
+
+Gallery
+
+Footer: contact + social + report/listing verification
+
+Copy/paste example content (ready for seeding a test profile)
+
+Vendor Name: Sunshine Grove Farm
+Tagline: Seasonal produce grown with regenerative practices in Fort Myers, FL
+Badges/Values: ["Family-Owned","Women-Led","Regenerative","Pesticide-Free","SWFL Native-Owned","Plastic-Lite Packaging"]
+Local Sourcing: 100
+Payments: ["Card","Apple Pay","Venmo:@sunshinegrove"]
+Fulfillment:
+
+Pickup: {"type":"farm","address":"Fort Myers, FL 33912","days":["Wed","Fri"],"time":"4–7 pm","fee":0}
+
+Market: {"type":"market","name":"Lakes Park Farmers’ Market","day":"Sat","time":"8–1","fee":0}
+
+Delivery: {"type":"delivery","radius_miles":15,"fee":5,"free_over":50}
+
+Drop-Spot: {"type":"drop_spot","name":"Green Cup Café","day":"Thu","time":"5 pm","fee":0}
+
+Bio (Markdown):
+
+We’re the Knight family behind Sunshine Grove Farm—three acres of seasonal veggies, pasture-raised eggs, and small-batch honeys. We farm regeneratively (no synthetic pesticides, heavy compost & cover crops), and we partner with nearby micro-growers when we’re short on supply. Our mission: delicious food, transparent sourcing, stronger SWFL communities.
+
+Categories: ["Vegetables","Eggs","Honey","Herbs","Seasonal Boxes"]
+Featured Products:
+
+[
+  {
+    "id":"vegbox-medium",
+    "title":"Sunshine Veggie Box (Medium)",
+    "price":25,
+    "unit":"per box",
+    "inventory_status":"in_stock",
+    "value_tags":["Seasonal","No-Spray","Regenerative"],
+    "source_farm":"Sunshine Grove Farm",
+    "harvest_date":"2025-10-18",
+    "lead_time_days":1,
+    "fulfillment_options":["pickup","market","delivery"]
+  },
+  {
+    "id":"eggs-dozen",
+    "title":"Pasture-Raised Eggs (dozen)",
+    "price":7,
+    "unit":"per dozen",
+    "inventory_status":"limited",
+    "value_tags":["Pasture-Raised","Humane"],
+    "source_farm":"Sunshine Grove Farm",
+    "harvest_date":"2025-10-17",
+    "lead_time_days":0,
+    "fulfillment_options":["pickup","market"]
+  },
+  {
+    "id":"honey-12oz",
+    "title":"Wildflower Honey (12 oz)",
+    "price":12,
+    "unit":"per jar",
+    "inventory_status":"in_stock",
+    "value_tags":["Raw","Unfiltered","Local"],
+    "source_farm":"Sunshine Grove Farm",
+    "harvest_date":"2025-05-20",
+    "lead_time_days":0,
+    "fulfillment_options":["pickup","market","delivery"]
+  }
+]
+
+
+Certifications:
+
+{"name":"FSMA Produce Safety","type":"training","issued_on":"2025-04-01","doc_url":"/files/fsma.pdf"}
+
+{"name":"FL Cottage Food","type":"compliance","issued_on":"2025-01-15","doc_url":"/files/cottage.pdf"}
+
+Sourcing Notes:
+
+“90–100% of produce harvested on-farm; supplement microgreens from Caloosa Greens (4.2 miles) and oyster mushrooms from Gulfside Mushrooms (18.7 miles).”
+
+Events:
+
+{"title":"Meet the Hens Tour","date":"2025-10-25","price":0,"rsvp":"on-platform"}
+
+{"title":"Soil Health 101","date":"2025-11-08","price":10,"rsvp":"on-platform"}
+
+FAQ:
+
+“Are you certified organic?” → “Not certified; we follow organic methods and no-spray.”
+
+“Do you ship?” → “Not yet; local only.”
+
+“Allergens?” → “Raw honey; eggs; wash produce before eating.”
+
+Policies (Markdown):
+
+Refunds: Report issues within 24 hrs for replacement/credit.
+
+Cancellations: >24 hrs full refund; <24 hrs 50%.
+
+Safety: Cold chain maintained for eggs; cooler packs >85°F.
+
+Contact & Social:
+
+Email: hello@sunshinegrove.farm
+
+Phone: (239) 555-0149 (SMS ok)
+
+IG: @sunshinegrovefarm
+
+Gallery: 8 images (farm, harvest, team, products)
+
+Content tips vendors will see when filling this out
+
+Bio: 80–160 words, mission → practices → what to buy → how to get it.
+
+Logo: square PNG/SVG, 512×512 min; avoid text-heavy marks.
+
+Photos: 6–10 high-res (minimum 1200px wide), mix of people + products; 1 short vertical video (10–20s).
+
+Values: Only pick what you can prove (upload docs or add proof notes).
+
+Sourcing %: Show your exact % for each product when possible; weekly average on profile.
