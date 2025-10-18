@@ -1,23 +1,14 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MapPin, Sprout } from "lucide-react";
-import type { Vendor } from "@shared/schema";
+import { Leaf } from "lucide-react";
+import RestaurantCard from "@/components/RestaurantCard";
+import type { Restaurant } from "@shared/schema";
 
 export default function EatLocal() {
-  const { data: allVendors, isLoading } = useQuery<Vendor[]>({
-    queryKey: ["/api/vendors"],
+  const { data: restaurants = [], isLoading } = useQuery<Restaurant[]>({
+    queryKey: ["/api/restaurants"],
   });
-  
-  // Filter for Food & Beverage restaurants only
-  const restaurants = useMemo(() => {
-    if (!allVendors) return [];
-    return allVendors.filter(vendor => {
-      return vendor.category === "Food & Beverage";
-    });
-  }, [allVendors]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,61 +31,24 @@ export default function EatLocal() {
       </div>
 
       {/* Restaurant List */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <div className="space-y-4">
-          {isLoading ? (
-            <>
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-            </>
-          ) : restaurants.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No restaurants currently listed. Check back soon!</p>
-            </div>
-          ) : (
-            restaurants.map((restaurant) => (
-              <Card key={restaurant.id} data-testid={`card-restaurant-${restaurant.id}`}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-xl font-semibold mb-2" data-testid={`text-restaurant-name-${restaurant.id}`}>
-                        {restaurant.displayName || restaurant.businessName}
-                      </h3>
-                      
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
-                        <MapPin className="w-3.5 h-3.5" strokeWidth={1.75} />
-                        <span data-testid={`text-restaurant-city-${restaurant.id}`}>{restaurant.city}</span>
-                      </div>
-                      
-                      <p className="text-sm text-text/70 mb-3 line-clamp-2" data-testid={`text-restaurant-bio-${restaurant.id}`}>
-                        {restaurant.bio}
-                      </p>
-                      
-                      {restaurant.restaurantSources && (
-                        <p className="text-sm text-muted-foreground mb-2" data-testid={`text-restaurant-partners-${restaurant.id}`}>
-                          <span className="font-medium">Partners with:</span> {restaurant.restaurantSources}
-                        </p>
-                      )}
-                    </div>
-                    
-                    {restaurant.localMenuPercent != null && (
-                      <div className="flex-shrink-0 text-right">
-                        <div className="flex items-center gap-2 text-primary" data-testid={`text-local-percent-${restaurant.id}`}>
-                          <Sprout className="w-5 h-5" strokeWidth={1.75} />
-                          <div>
-                            <div className="text-2xl font-semibold">~{restaurant.localMenuPercent}%</div>
-                            <div className="text-xs text-muted-foreground">locally sourced</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Skeleton className="h-96" />
+            <Skeleton className="h-96" />
+            <Skeleton className="h-96" />
+          </div>
+        ) : restaurants.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No restaurants currently listed. Check back soon!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="restaurant-grid">
+            {restaurants.map((restaurant) => (
+              <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
