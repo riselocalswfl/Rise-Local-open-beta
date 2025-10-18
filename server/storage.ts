@@ -8,7 +8,12 @@ import {
   type Spotlight, type InsertSpotlight,
   type VendorReview, type InsertVendorReview,
   type VendorFAQ, type InsertVendorFAQ,
-  users, vendors, products, events, orders, orderItems, spotlight, vendorReviews, vendorFAQs
+  type Restaurant, type InsertRestaurant,
+  type MenuItem, type InsertMenuItem,
+  type RestaurantReview, type InsertRestaurantReview,
+  type RestaurantFAQ, type InsertRestaurantFAQ,
+  users, vendors, products, events, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
+  restaurants, menuItems, restaurantReviews, restaurantFAQs
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -96,6 +101,38 @@ export interface IStorage {
 
   // Extended Event operations
   getEventsByVendor(vendorId: string): Promise<Event[]>;
+
+  // Restaurant operations
+  getRestaurant(id: string): Promise<Restaurant | undefined>;
+  getRestaurants(): Promise<Restaurant[]>;
+  getVerifiedRestaurants(): Promise<Restaurant[]>;
+  createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
+  updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<void>;
+  deleteRestaurant(id: string): Promise<void>;
+  updateRestaurantVerification(id: string, isVerified: boolean): Promise<void>;
+
+  // Menu Item operations
+  getMenuItem(id: string): Promise<MenuItem | undefined>;
+  getMenuItems(): Promise<MenuItem[]>;
+  getMenuItemsByRestaurant(restaurantId: string): Promise<MenuItem[]>;
+  getMenuItemsByCategory(restaurantId: string, category: string): Promise<MenuItem[]>;
+  createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
+  updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<void>;
+  deleteMenuItem(id: string): Promise<void>;
+
+  // Restaurant Review operations
+  getRestaurantReviews(restaurantId: string): Promise<RestaurantReview[]>;
+  createRestaurantReview(review: InsertRestaurantReview): Promise<RestaurantReview>;
+  deleteRestaurantReview(id: string): Promise<void>;
+
+  // Restaurant FAQ operations
+  getRestaurantFAQs(restaurantId: string): Promise<RestaurantFAQ[]>;
+  createRestaurantFAQ(faq: InsertRestaurantFAQ): Promise<RestaurantFAQ>;
+  updateRestaurantFAQ(id: string, data: Partial<InsertRestaurantFAQ>): Promise<void>;
+  deleteRestaurantFAQ(id: string): Promise<void>;
+
+  // Extended Restaurant Event operations
+  getEventsByRestaurant(restaurantId: string): Promise<Event[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -391,6 +428,118 @@ export class DbStorage implements IStorage {
   async getEventsByVendor(vendorId: string): Promise<Event[]> {
     return await db.select().from(events)
       .where(eq(events.organizerId, vendorId))
+      .orderBy(events.dateTime);
+  }
+
+  // Restaurant operations
+  async getRestaurant(id: string): Promise<Restaurant | undefined> {
+    const result = await db.select().from(restaurants).where(eq(restaurants.id, id));
+    return result[0];
+  }
+
+  async getRestaurants(): Promise<Restaurant[]> {
+    return await db.select().from(restaurants);
+  }
+
+  async getVerifiedRestaurants(): Promise<Restaurant[]> {
+    return await db.select().from(restaurants).where(eq(restaurants.isVerified, true));
+  }
+
+  async createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant> {
+    const result = await db.insert(restaurants).values(restaurant).returning();
+    return result[0];
+  }
+
+  async updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<void> {
+    await db.update(restaurants).set(data).where(eq(restaurants.id, id));
+  }
+
+  async deleteRestaurant(id: string): Promise<void> {
+    await db.delete(restaurants).where(eq(restaurants.id, id));
+  }
+
+  async updateRestaurantVerification(id: string, isVerified: boolean): Promise<void> {
+    await db.update(restaurants).set({ isVerified }).where(eq(restaurants.id, id));
+  }
+
+  // Menu Item operations
+  async getMenuItem(id: string): Promise<MenuItem | undefined> {
+    const result = await db.select().from(menuItems).where(eq(menuItems.id, id));
+    return result[0];
+  }
+
+  async getMenuItems(): Promise<MenuItem[]> {
+    return await db.select().from(menuItems);
+  }
+
+  async getMenuItemsByRestaurant(restaurantId: string): Promise<MenuItem[]> {
+    return await db.select().from(menuItems)
+      .where(eq(menuItems.restaurantId, restaurantId))
+      .orderBy(menuItems.displayOrder);
+  }
+
+  async getMenuItemsByCategory(restaurantId: string, category: string): Promise<MenuItem[]> {
+    return await db.select().from(menuItems)
+      .where(and(
+        eq(menuItems.restaurantId, restaurantId),
+        eq(menuItems.category, category)
+      ))
+      .orderBy(menuItems.displayOrder);
+  }
+
+  async createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem> {
+    const result = await db.insert(menuItems).values(menuItem).returning();
+    return result[0];
+  }
+
+  async updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<void> {
+    await db.update(menuItems).set(data).where(eq(menuItems.id, id));
+  }
+
+  async deleteMenuItem(id: string): Promise<void> {
+    await db.delete(menuItems).where(eq(menuItems.id, id));
+  }
+
+  // Restaurant Review operations
+  async getRestaurantReviews(restaurantId: string): Promise<RestaurantReview[]> {
+    return await db.select().from(restaurantReviews)
+      .where(eq(restaurantReviews.restaurantId, restaurantId))
+      .orderBy(desc(restaurantReviews.createdAt));
+  }
+
+  async createRestaurantReview(review: InsertRestaurantReview): Promise<RestaurantReview> {
+    const result = await db.insert(restaurantReviews).values(review).returning();
+    return result[0];
+  }
+
+  async deleteRestaurantReview(id: string): Promise<void> {
+    await db.delete(restaurantReviews).where(eq(restaurantReviews.id, id));
+  }
+
+  // Restaurant FAQ operations
+  async getRestaurantFAQs(restaurantId: string): Promise<RestaurantFAQ[]> {
+    return await db.select().from(restaurantFAQs)
+      .where(eq(restaurantFAQs.restaurantId, restaurantId))
+      .orderBy(restaurantFAQs.displayOrder);
+  }
+
+  async createRestaurantFAQ(faq: InsertRestaurantFAQ): Promise<RestaurantFAQ> {
+    const result = await db.insert(restaurantFAQs).values(faq).returning();
+    return result[0];
+  }
+
+  async updateRestaurantFAQ(id: string, data: Partial<InsertRestaurantFAQ>): Promise<void> {
+    await db.update(restaurantFAQs).set(data).where(eq(restaurantFAQs.id, id));
+  }
+
+  async deleteRestaurantFAQ(id: string): Promise<void> {
+    await db.delete(restaurantFAQs).where(eq(restaurantFAQs.id, id));
+  }
+
+  // Extended Restaurant Event operations
+  async getEventsByRestaurant(restaurantId: string): Promise<Event[]> {
+    return await db.select().from(events)
+      .where(eq(events.organizerId, restaurantId))
       .orderBy(events.dateTime);
   }
 }
