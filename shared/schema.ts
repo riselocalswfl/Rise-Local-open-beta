@@ -184,7 +184,8 @@ export type Product = typeof products.$inferSelect;
 
 export const events = pgTable("events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizerId: varchar("organizer_id").notNull().references(() => vendors.id),
+  vendorId: varchar("vendor_id").references(() => vendors.id),
+  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
   dateTime: timestamp("date_time").notNull(),
@@ -192,7 +193,10 @@ export const events = pgTable("events", {
   category: text("category").notNull(),
   ticketsAvailable: integer("tickets_available").notNull(),
   rsvpCount: integer("rsvp_count").notNull().default(0),
-});
+}, (table) => ({
+  // Check constraint: exactly one of vendorId or restaurantId must be set
+  organizerCheck: sql`CHECK ((vendor_id IS NOT NULL AND restaurant_id IS NULL) OR (vendor_id IS NULL AND restaurant_id IS NOT NULL))`
+}));
 
 export const insertEventSchema = createInsertSchema(events).omit({
   id: true,

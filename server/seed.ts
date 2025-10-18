@@ -161,7 +161,7 @@ Beyond growing food, we're passionate about education. We offer weekly farm tour
     // Create events
     const eventData = [
       {
-        organizerId: vendor.id,
+        vendorId: vendor.id,
         title: "Farm Tour & Tasting",
         description: "Join us for a guided tour of our farm followed by a tasting of seasonal produce. Learn about our regenerative farming practices and meet the farmers!",
         dateTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
@@ -171,7 +171,7 @@ Beyond growing food, we're passionate about education. We offer weekly farm tour
         rsvpCount: 12
       },
       {
-        organizerId: vendor.id,
+        vendorId: vendor.id,
         title: "Seed Saving Workshop",
         description: "Learn the art of saving seeds from your garden. We'll cover selection, harvesting, cleaning, and storage techniques for various vegetable seeds.",
         dateTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2 weeks from now
@@ -181,7 +181,7 @@ Beyond growing food, we're passionate about education. We offer weekly farm tour
         rsvpCount: 8
       },
       {
-        organizerId: vendor.id,
+        vendorId: vendor.id,
         title: "Harvest Festival",
         description: "Celebrate the fall harvest with us! Family-friendly activities, live music, farm-to-table food, and U-pick vegetables. Bring the whole family!",
         dateTime: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 1 month from now
