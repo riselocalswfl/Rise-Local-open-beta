@@ -92,17 +92,38 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication and Authorization
 
-**Planned Authentication Flow:**
-- Email + password authentication
-- JWT token-based sessions
-- Three user roles: buyer, vendor, admin
-- Vendor onboarding with admin verification workflow
+**Authentication System:**
+- Replit Auth via OpenID Connect (OIDC) integration
+- PostgreSQL-backed sessions via connect-pg-simple
+- Three user roles: buyer (customer), vendor, restaurant
+- Role-based redirects after authentication
 
-**Current Implementation Status:**
-- Login and Signup pages exist with UI mockups
-- No actual authentication logic implemented yet
-- Mock toast notifications on login/signup
-- Routes are not currently protected
+**Authentication Flow:**
+1. User clicks "Sign In" → Modal dialog shows three role options:
+   - Customer: For shoppers and buyers
+   - Vendor: For business owners managing vendor profiles
+   - Restaurant: For restaurant owners managing restaurant profiles
+2. User selects role → Redirected to /api/login?intended_role={role}
+3. System stores intended role in session, initiates OIDC flow
+4. After successful authentication:
+   - New users: Role is assigned and persisted to database
+   - Existing users: Existing role is respected (no accidental reassignment)
+5. User is redirected based on role:
+   - buyer → /profile (customer profile with orders, loyalty rewards)
+   - vendor → /dashboard (vendor dashboard with products, events, FAQs)
+   - restaurant → /dashboard (restaurant dashboard with menu, events, FAQs)
+
+**API Endpoints:**
+- /api/login - Initiates authentication with optional intended_role parameter
+- /api/callback - OIDC callback, assigns/reads role, redirects appropriately
+- /api/logout - Logs out user and redirects to OIDC logout
+- /api/auth/user - Returns authenticated user info
+- /api/auth/my-vendor - Returns vendor profile for authenticated vendor
+- /api/auth/my-restaurant - Returns restaurant profile for authenticated restaurant
+
+**Route Protection:**
+- isAuthenticated middleware protects authenticated routes
+- Token refresh handled automatically when access token expires
 
 ### Key Business Logic
 
