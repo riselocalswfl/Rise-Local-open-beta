@@ -35,6 +35,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current user's vendor business
+  app.get('/api/auth/my-vendor', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(404).json({ message: "No vendor profile found for this user" });
+      }
+      res.json(vendor);
+    } catch (error) {
+      console.error("Error fetching user's vendor:", error);
+      res.status(500).json({ message: "Failed to fetch vendor profile" });
+    }
+  });
+
+  // Get current user's restaurant business
+  app.get('/api/auth/my-restaurant', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const restaurant = await storage.getRestaurantByOwnerId(userId);
+      if (!restaurant) {
+        return res.status(404).json({ message: "No restaurant profile found for this user" });
+      }
+      res.json(restaurant);
+    } catch (error) {
+      console.error("Error fetching user's restaurant:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant profile" });
+    }
+  });
+
   // Vendor routes
   app.get("/api/vendors", async (req, res) => {
     try {
