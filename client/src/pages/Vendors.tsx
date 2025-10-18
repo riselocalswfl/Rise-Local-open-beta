@@ -25,12 +25,10 @@ export default function Vendors() {
     queryKey: ["/api/vendors"],
   });
   
-  // Get all unique values from all vendors
-  const allValues = Array.from(
-    new Set(
-      vendors?.flatMap(v => v.values || []) || []
-    )
-  ).sort();
+  // Get all unique values from both vendors and restaurants
+  const { data: allValues = [] } = useQuery<string[]>({
+    queryKey: ["/api/values/unique"],
+  });
   
   const handleValueToggle = (value: string) => {
     setSelectedValues(prev => 
