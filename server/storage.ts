@@ -12,8 +12,10 @@ import {
   type MenuItem, type InsertMenuItem,
   type RestaurantReview, type InsertRestaurantReview,
   type RestaurantFAQ, type InsertRestaurantFAQ,
+  type LoyaltyTier, type InsertLoyaltyTier,
+  type LoyaltyTransaction, type InsertLoyaltyTransaction,
   users, vendors, products, events, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
-  restaurants, menuItems, restaurantReviews, restaurantFAQs
+  restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -139,6 +141,15 @@ export interface IStorage {
 
   // Extended Restaurant Event operations
   getEventsByRestaurant(restaurantId: string): Promise<Event[]>;
+
+  // Loyalty operations
+  getLoyaltyTiers(): Promise<LoyaltyTier[]>;
+  getLoyaltyTier(id: string): Promise<LoyaltyTier | undefined>;
+  createLoyaltyTier(tier: InsertLoyaltyTier): Promise<LoyaltyTier>;
+  getUserTier(userId: string): Promise<LoyaltyTier | undefined>;
+  getLoyaltyTransactions(userId: string): Promise<LoyaltyTransaction[]>;
+  addLoyaltyTransaction(transaction: InsertLoyaltyTransaction): Promise<LoyaltyTransaction>;
+  earnPoints(userId: string, points: number, type: string, description: string, relatedOrderId?: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -438,7 +449,7 @@ export class DbStorage implements IStorage {
   // Extended Event operations
   async getEventsByVendor(vendorId: string): Promise<Event[]> {
     return await db.select().from(events)
-      .where(eq(events.organizerId, vendorId))
+      .where(eq(events.vendorId, vendorId))
       .orderBy(events.dateTime);
   }
 
@@ -583,8 +594,74 @@ export class DbStorage implements IStorage {
   // Extended Restaurant Event operations
   async getEventsByRestaurant(restaurantId: string): Promise<Event[]> {
     return await db.select().from(events)
-      .where(eq(events.organizerId, restaurantId))
+      .where(eq(events.restaurantId, restaurantId))
       .orderBy(events.dateTime);
+  }
+
+  // Loyalty operations
+  async getLoyaltyTiers(): Promise<LoyaltyTier[]> {
+    return await db.select().from(loyaltyTiers).orderBy(loyaltyTiers.displayOrder);
+  }
+
+  async getLoyaltyTier(id: string): Promise<LoyaltyTier | undefined> {
+    const result = await db.select().from(loyaltyTiers).where(eq(loyaltyTiers.id, id));
+    return result[0];
+  }
+
+  async createLoyaltyTier(tier: InsertLoyaltyTier): Promise<LoyaltyTier> {
+    const result = await db.insert(loyaltyTiers).values(tier).returning();
+    return result[0];
+  }
+
+  async getUserTier(userId: string): Promise<LoyaltyTier | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+
+    const points = user.loyaltyPoints;
+    const tiers = await this.getLoyaltyTiers();
+    
+    // Find the highest tier the user qualifies for
+    let currentTier = tiers[0]; // Default to first tier (Bronze)
+    for (const tier of tiers) {
+      if (points >= tier.minPoints) {
+        if (!tier.maxPoints || points <= tier.maxPoints) {
+          currentTier = tier;
+        }
+      }
+    }
+    
+    return currentTier;
+  }
+
+  async getLoyaltyTransactions(userId: string): Promise<LoyaltyTransaction[]> {
+    return await db.select().from(loyaltyTransactions)
+      .where(eq(loyaltyTransactions.userId, userId))
+      .orderBy(desc(loyaltyTransactions.createdAt));
+  }
+
+  async addLoyaltyTransaction(transaction: InsertLoyaltyTransaction): Promise<LoyaltyTransaction> {
+    const result = await db.insert(loyaltyTransactions).values(transaction).returning();
+    return result[0];
+  }
+
+  async earnPoints(userId: string, points: number, type: string, description: string, relatedOrderId?: string): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+
+    const newBalance = user.loyaltyPoints + points;
+    
+    // Update user's points
+    await this.updateUserLoyaltyPoints(userId, points);
+    
+    // Record transaction
+    await this.addLoyaltyTransaction({
+      userId,
+      points,
+      type,
+      description,
+      relatedOrderId: relatedOrderId || null,
+      balanceAfter: newBalance,
+    });
   }
 }
 
