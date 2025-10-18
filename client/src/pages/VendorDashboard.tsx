@@ -17,7 +17,8 @@ export default function VendorDashboard() {
   const [activeTab, setActiveTab] = useState("profile");
 
   // Mock vendor ID - in production, get from auth context
-  const vendorId = "df5b3a4f-d94b-4cd8-b6d8-3490359df01c"; // Roots & Harvest
+  // Using Sunshine Grove Farm from seed data
+  const vendorId = "5b89e710-b90d-49a7-92d0-4d39d88bbfc4";
 
   const { data: vendor, isLoading: vendorLoading } = useQuery<Vendor>({
     queryKey: ["/api/vendors", vendorId],
