@@ -95,7 +95,7 @@ export default function MiniCart() {
                       )}
                       <div className="flex items-center justify-between mt-1">
                         <p className="text-sm font-medium font-mono">
-                          ${item.price.toFixed(2)} × {item.quantity}
+                          ${(item.price ?? 0).toFixed(2)} × {item.quantity}
                         </p>
                         <button
                           onClick={() => removeItem(item.id, item.variantId, item.options)}
