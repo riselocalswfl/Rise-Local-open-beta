@@ -108,7 +108,7 @@ export const vendors = pgTable("vendors", {
   hours: jsonb("hours"), // operating hours as JSON object
   
   // Business Values & Trust Signals
-  values: text("values").array().default(sql`'{}'::text[]`), // custom value tags vendors create themselves
+  values: text("values").array().default(sql`'{}'::text[]`).$type<ValueTag[]>(), // predefined value tags from shared/values.ts
   badges: text("badges").array().default(sql`'{}'::text[]`), // e.g., ["Family-Owned", "Women-Led", "Regenerative"]
   localSourcingPercent: integer("local_sourcing_percent"), // 0-100% of products sourced locally
   certifications: jsonb("certifications"), // [{name, type, issuedOn, docUrl}]
@@ -168,7 +168,7 @@ export const products = pgTable("products", {
   imageUrl: text("image_url"),
   
   // Sourcing & Transparency
-  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // e.g., ["Organic", "No-Spray", "Regenerative"]
+  valueTags: text("value_tags").array().default(sql`'{}'::text[]`).$type<ValueTag[]>(), // predefined value tags from shared/values.ts
   sourceFarm: text("source_farm"), // where product is sourced from
   harvestDate: timestamp("harvest_date"), // when product was harvested
   leadTimeDays: integer("lead_time_days").default(0), // days needed to prepare order
@@ -343,7 +343,7 @@ export const restaurants = pgTable("restaurants", {
   reservationsPhone: text("reservations_phone"),
   
   // Values & Trust Signals
-  badges: text("badges").array().default(sql`'{}'::text[]`), // Farm-to-Table, Locally Sourced, Woman-Owned, etc.
+  badges: text("badges").array().default(sql`'{}'::text[]`).$type<ValueTag[]>(), // predefined value tags from shared/values.ts
   localSourcingPercent: integer("local_sourcing_percent"),
   certifications: jsonb("certifications"),
   

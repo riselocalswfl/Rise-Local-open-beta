@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2, Save } from "lucide-react";
 import type { Restaurant, MenuItem, Event, RestaurantFAQ } from "@shared/schema";
+import type { ValueTag } from "@/../../shared/values";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import ValueTagSelector from "@/components/ValueTagSelector";
 
 export default function RestaurantDashboard() {
   const { toast } = useToast();
@@ -114,6 +116,7 @@ export default function RestaurantDashboard() {
 // Profile Editor Component
 function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
   const { toast } = useToast();
+  const [localBadges, setLocalBadges] = useState<ValueTag[]>([]);
   const [formData, setFormData] = useState({
     restaurantName: "",
     tagline: "",
@@ -142,6 +145,7 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
         city: restaurant.city || "Fort Myers",
         zipCode: restaurant.zipCode || "",
       });
+      setLocalBadges((restaurant.badges as ValueTag[]) || []);
     }
   }, [restaurant]);
 
@@ -150,9 +154,10 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
       return await apiRequest(`/api/restaurants/${restaurant?.id}`, "PATCH", data);
     },
     onSuccess: () => {
-      // Invalidate both list and detail queries
+      // Invalidate both list, detail, and auth queries
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants"] });
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurant?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/my-restaurant"] });
       toast({ title: "Profile updated successfully" });
     },
     onError: () => {
@@ -287,6 +292,28 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
                 data-testid="input-zip-code"
               />
             </div>
+          </div>
+
+          <div className="pt-6 border-t">
+            <ValueTagSelector
+              selectedValues={localBadges}
+              onChange={(badges) => {
+                const previousBadges = localBadges;
+                setLocalBadges(badges); // Optimistic update
+                if (restaurant?.id) {
+                  updateMutation.mutate(
+                    { badges },
+                    {
+                      onError: () => {
+                        setLocalBadges(previousBadges); // Rollback on error
+                      },
+                    }
+                  );
+                }
+              }}
+              label="Restaurant Values"
+              description="Select values that best represent your restaurant's identity and practices"
+            />
           </div>
 
           <Button type="submit" disabled={updateMutation.isPending} data-testid="button-save-profile">

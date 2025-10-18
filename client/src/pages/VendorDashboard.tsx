@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,15 +11,25 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Store, Package, Calendar, HelpCircle, Settings } from "lucide-react";
 import type { Vendor, Product, Event, VendorFAQ } from "@shared/schema";
+import type { ValueTag } from "@/../../shared/values";
+import ValueTagSelector from "@/components/ValueTagSelector";
 
 export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
+  const [localValues, setLocalValues] = useState<ValueTag[]>([]);
 
   // Fetch the authenticated user's vendor
   const { data: vendor, isLoading: vendorLoading, isError } = useQuery<Vendor>({
     queryKey: ["/api/auth/my-vendor"],
   });
+
+  // Sync local values when vendor data loads
+  useEffect(() => {
+    if (vendor) {
+      setLocalValues((vendor.values as ValueTag[]) || []);
+    }
+  }, [vendor]);
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products", { vendorId: vendor?.id }],
@@ -254,17 +264,21 @@ export default function VendorDashboard() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Current Badges</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {vendor.badges && vendor.badges.map((badge, i) => (
-                      <Badge key={i} variant="secondary" data-testid={`badge-${i}`}>{badge}</Badge>
-                    ))}
-                    {(!vendor.badges || vendor.badges.length === 0) && (
-                      <p className="text-sm text-muted-foreground">No badges added yet</p>
-                    )}
-                  </div>
-                </div>
+                <ValueTagSelector
+                  selectedValues={localValues}
+                  onChange={(values) => {
+                    const previousValues = localValues;
+                    setLocalValues(values); // Optimistic update
+                    updateVendorMutation.mutate(
+                      { values },
+                      {
+                        onError: () => {
+                          setLocalValues(previousValues); // Rollback on error
+                        },
+                      }
+                    );
+                  }}
+                />
               </CardContent>
             </Card>
           </TabsContent>

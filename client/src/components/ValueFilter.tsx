@@ -1,10 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Tag } from "lucide-react";
+import { VALUE_META, type ValueTag } from "@/../../shared/values";
 
 interface ValueFilterProps {
-  availableValues: string[];
-  selectedValues: string[];
-  onValueToggle: (value: string) => void;
+  availableValues: ValueTag[];
+  selectedValues: ValueTag[];
+  onValueToggle: (value: ValueTag) => void;
 }
 
 export default function ValueFilter({ 
@@ -25,6 +26,8 @@ export default function ValueFilter({
       <div className="flex flex-wrap gap-2">
         {availableValues.map((value) => {
           const isSelected = selectedValues.includes(value);
+          const meta = VALUE_META[value];
+          
           return (
             <Badge
               key={value}
@@ -32,8 +35,9 @@ export default function ValueFilter({
               className="cursor-pointer hover-elevate active-elevate-2 rounded-pill"
               onClick={() => onValueToggle(value)}
               data-testid={`badge-filter-value-${value}`}
+              title={meta?.description || value}
             >
-              {value}
+              {meta?.label || value}
             </Badge>
           );
         })}
