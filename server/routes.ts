@@ -9,7 +9,9 @@ import {
   insertEventSchema,
   insertOrderSchema,
   insertOrderItemWithoutOrderIdSchema,
-  insertSpotlightSchema
+  insertSpotlightSchema,
+  insertVendorReviewSchema,
+  insertVendorFAQSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -478,6 +480,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // Vendor Review routes
+  app.get("/api/vendors/:vendorId/reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getVendorReviews(req.params.vendorId);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+  });
+
+  app.post("/api/vendor-reviews", async (req, res) => {
+    try {
+      const validatedData = insertVendorReviewSchema.parse(req.body);
+      const review = await storage.createVendorReview(validatedData);
+      res.status(201).json(review);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid review data" });
+    }
+  });
+
+  app.delete("/api/vendor-reviews/:id", async (req, res) => {
+    try {
+      await storage.deleteVendorReview(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete review" });
+    }
+  });
+
+  // Vendor FAQ routes
+  app.get("/api/vendors/:vendorId/faqs", async (req, res) => {
+    try {
+      const faqs = await storage.getVendorFAQs(req.params.vendorId);
+      res.json(faqs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch FAQs" });
+    }
+  });
+
+  app.post("/api/vendor-faqs", async (req, res) => {
+    try {
+      const validatedData = insertVendorFAQSchema.parse(req.body);
+      const faq = await storage.createVendorFAQ(validatedData);
+      res.status(201).json(faq);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid FAQ data" });
+    }
+  });
+
+  app.patch("/api/vendor-faqs/:id", async (req, res) => {
+    try {
+      const validatedData = insertVendorFAQSchema.partial().parse(req.body);
+      await storage.updateVendorFAQ(req.params.id, validatedData);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid FAQ update data" });
+    }
+  });
+
+  app.delete("/api/vendor-faqs/:id", async (req, res) => {
+    try {
+      await storage.deleteVendorFAQ(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete FAQ" });
+    }
+  });
+
+  // Extended vendor routes
+  app.get("/api/vendors/:vendorId/events", async (req, res) => {
+    try {
+      const events = await storage.getEventsByVendor(req.params.vendorId);
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch vendor events" });
     }
   });
 
