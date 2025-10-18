@@ -16,28 +16,24 @@ export default function RestaurantDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
 
-  // For demo purposes, using The Harvest Table restaurant ID from seed data
-  // In real app, this would come from auth context
-  // Run `npx tsx server/seed-restaurants.ts` to create demo restaurants
-  const restaurantId = "8727f363-3752-4885-a7c1-3794b2547297";
-
+  // Fetch the authenticated user's restaurant
   const { data: restaurant, isLoading, isError } = useQuery<Restaurant>({
-    queryKey: ["/api/restaurants", restaurantId],
+    queryKey: ["/api/auth/my-restaurant"],
   });
 
   const { data: menuItems = [] } = useQuery<MenuItem[]>({
-    queryKey: ["/api/restaurants", restaurantId, "menu-items"],
-    enabled: !!restaurant,
+    queryKey: ["/api/restaurants", restaurant?.id, "menu-items"],
+    enabled: !!restaurant?.id,
   });
 
   const { data: events = [] } = useQuery<Event[]>({
-    queryKey: ["/api/restaurants", restaurantId, "events"],
-    enabled: !!restaurant,
+    queryKey: ["/api/restaurants", restaurant?.id, "events"],
+    enabled: !!restaurant?.id,
   });
 
   const { data: faqs = [] } = useQuery<RestaurantFAQ[]>({
-    queryKey: ["/api/restaurants", restaurantId, "faqs"],
-    enabled: !!restaurant,
+    queryKey: ["/api/restaurants", restaurant?.id, "faqs"],
+    enabled: !!restaurant?.id,
   });
 
   if (isLoading) {
@@ -55,15 +51,15 @@ export default function RestaurantDashboard() {
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <Card className="max-w-lg">
           <CardHeader>
-            <CardTitle>Restaurant Not Found</CardTitle>
+            <CardTitle>No Restaurant Profile Found</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              The restaurant could not be found. Make sure to run the seed script:
+              You don't have a restaurant profile yet. Please sign up as a restaurant owner to create your profile.
             </p>
-            <code className="block bg-muted p-2 rounded text-sm">
-              npx tsx server/seed-restaurants.ts
-            </code>
+            <p className="text-sm text-muted-foreground">
+              For demo purposes, you can use one of the seeded restaurant owner accounts.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -97,17 +93,17 @@ export default function RestaurantDashboard() {
 
           {/* Menu Tab */}
           <TabsContent value="menu">
-            <MenuManager restaurantId={restaurantId} menuItems={menuItems} />
+            <MenuManager restaurantId={restaurant.id} menuItems={menuItems} />
           </TabsContent>
 
           {/* Events Tab */}
           <TabsContent value="events">
-            <EventManager restaurantId={restaurantId} events={events} />
+            <EventManager restaurantId={restaurant.id} events={events} />
           </TabsContent>
 
           {/* FAQs Tab */}
           <TabsContent value="faqs">
-            <FAQManager restaurantId={restaurantId} faqs={faqs} />
+            <FAQManager restaurantId={restaurant.id} faqs={faqs} />
           </TabsContent>
         </Tabs>
       </div>

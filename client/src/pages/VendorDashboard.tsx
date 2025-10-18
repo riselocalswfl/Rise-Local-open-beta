@@ -16,33 +16,34 @@ export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
 
-  // Mock vendor ID - in production, get from auth context
-  // Using Sunshine Grove Farm from seed data
-  const vendorId = "5b89e710-b90d-49a7-92d0-4d39d88bbfc4";
-
-  const { data: vendor, isLoading: vendorLoading } = useQuery<Vendor>({
-    queryKey: ["/api/vendors", vendorId],
+  // Fetch the authenticated user's vendor
+  const { data: vendor, isLoading: vendorLoading, isError } = useQuery<Vendor>({
+    queryKey: ["/api/auth/my-vendor"],
   });
 
   const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products", { vendorId }],
+    queryKey: ["/api/products", { vendorId: vendor?.id }],
+    enabled: !!vendor?.id,
   });
 
   const { data: events = [] } = useQuery<Event[]>({
-    queryKey: ["/api/vendors", vendorId, "events"],
+    queryKey: ["/api/vendors", vendor?.id, "events"],
+    enabled: !!vendor?.id,
   });
 
   const { data: faqs = [] } = useQuery<VendorFAQ[]>({
-    queryKey: ["/api/vendors", vendorId, "faqs"],
+    queryKey: ["/api/vendors", vendor?.id, "faqs"],
+    enabled: !!vendor?.id,
   });
 
   // Profile Edit Mutation
   const updateVendorMutation = useMutation({
     mutationFn: async (data: Partial<Vendor>) => {
-      return await apiRequest("PATCH", `/api/vendors/${vendorId}`, data);
+      if (!vendor?.id) throw new Error("No vendor ID");
+      return await apiRequest("PATCH", `/api/vendors/${vendor.id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/my-vendor"] });
       toast({ title: "Profile updated successfully" });
     },
     onError: () => {
@@ -53,7 +54,8 @@ export default function VendorDashboard() {
   // Product Mutations
   const createProductMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("POST", "/api/products", { ...data, vendorId });
+      if (!vendor?.id) throw new Error("No vendor ID");
+      return await apiRequest("POST", "/api/products", { ...data, vendorId: vendor.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
@@ -84,10 +86,13 @@ export default function VendorDashboard() {
   // Event Mutations
   const createEventMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("POST", "/api/events", { ...data, organizerId: vendorId });
+      if (!vendor?.id) throw new Error("No vendor ID");
+      return await apiRequest("POST", "/api/events", { ...data, vendorId: vendor.id });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendorId, "events"] });
+      if (vendor?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "events"] });
+      }
       toast({ title: "Event created successfully" });
     },
   });
@@ -97,7 +102,9 @@ export default function VendorDashboard() {
       return await apiRequest("DELETE", `/api/events/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendorId, "events"] });
+      if (vendor?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "events"] });
+      }
       toast({ title: "Event deleted successfully" });
     },
   });
@@ -105,10 +112,13 @@ export default function VendorDashboard() {
   // FAQ Mutations
   const createFAQMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("POST", "/api/vendor-faqs", { ...data, vendorId });
+      if (!vendor?.id) throw new Error("No vendor ID");
+      return await apiRequest("POST", "/api/vendor-faqs", { ...data, vendorId: vendor.id });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendorId, "faqs"] });
+      if (vendor?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "faqs"] });
+      }
       toast({ title: "FAQ created successfully" });
     },
   });
@@ -118,7 +128,9 @@ export default function VendorDashboard() {
       return await apiRequest("DELETE", `/api/vendor-faqs/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendorId, "faqs"] });
+      if (vendor?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "faqs"] });
+      }
       toast({ title: "FAQ deleted successfully" });
     },
   });
@@ -134,12 +146,20 @@ export default function VendorDashboard() {
     );
   }
 
-  if (!vendor) {
+  if (isError || !vendor) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground">Vendor profile not found</p>
+        <Card className="max-w-lg">
+          <CardHeader>
+            <CardTitle>No Vendor Profile Found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              You don't have a vendor profile yet. Please sign up as a vendor to create your profile.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              For demo purposes, you can use one of the seeded vendor owner accounts.
+            </p>
           </CardContent>
         </Card>
       </div>
