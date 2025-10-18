@@ -1,7 +1,6 @@
 import { Link, useLocation } from "wouter";
 import BrandLogo from "@/components/BrandLogo";
 import { BrandButton } from "@/components/ui/BrandButton";
-import MiniCart from "@/components/MiniCart";
 
 export default function Header() {
   const [location] = useLocation();
@@ -69,7 +68,6 @@ export default function Header() {
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          <MiniCart />
           <Link href="/join" data-testid="link-join">
             <BrandButton size="sm" data-testid="button-join">
               Join the Movement
