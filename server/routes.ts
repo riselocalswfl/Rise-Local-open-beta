@@ -102,6 +102,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all unique values from both vendors and restaurants
+  app.get("/api/values/unique", async (req, res) => {
+    try {
+      const values = await storage.getAllUniqueValues();
+      res.json(values);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch unique values" });
+    }
+  });
+
   app.get("/api/vendors/:id", async (req, res) => {
     try {
       const vendor = await storage.getVendor(req.params.id);

@@ -108,10 +108,14 @@ export interface IStorage {
   getRestaurantByOwnerId(ownerId: string): Promise<Restaurant | undefined>;
   getRestaurants(): Promise<Restaurant[]>;
   getVerifiedRestaurants(): Promise<Restaurant[]>;
+  getAllRestaurantValues(): Promise<string[]>;
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
   updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<void>;
   deleteRestaurant(id: string): Promise<void>;
   updateRestaurantVerification(id: string, isVerified: boolean): Promise<void>;
+  
+  // Combined operations
+  getAllUniqueValues(): Promise<string[]>;
 
   // Menu Item operations
   getMenuItem(id: string): Promise<MenuItem | undefined>;
@@ -457,6 +461,23 @@ export class DbStorage implements IStorage {
     return await db.select().from(restaurants).where(eq(restaurants.isVerified, true));
   }
 
+  async getAllRestaurantValues(): Promise<string[]> {
+    const allRestaurants = await db.select().from(restaurants);
+    const allValues = new Set<string>();
+    
+    for (const restaurant of allRestaurants) {
+      if (restaurant.badges && Array.isArray(restaurant.badges)) {
+        restaurant.badges.forEach((value: string) => {
+          if (value && value.trim()) {
+            allValues.add(value.trim().toLowerCase());
+          }
+        });
+      }
+    }
+    
+    return Array.from(allValues).sort();
+  }
+
   async createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant> {
     const result = await db.insert(restaurants).values(restaurant).returning();
     return result[0];
@@ -546,6 +567,17 @@ export class DbStorage implements IStorage {
 
   async deleteRestaurantFAQ(id: string): Promise<void> {
     await db.delete(restaurantFAQs).where(eq(restaurantFAQs.id, id));
+  }
+
+  // Combined operations
+  async getAllUniqueValues(): Promise<string[]> {
+    const [vendorValues, restaurantValues] = await Promise.all([
+      this.getAllVendorValues(),
+      this.getAllRestaurantValues()
+    ]);
+    
+    const allValues = new Set([...vendorValues, ...restaurantValues]);
+    return Array.from(allValues).sort();
   }
 
   // Extended Restaurant Event operations
