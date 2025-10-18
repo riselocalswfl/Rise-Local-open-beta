@@ -19,6 +19,9 @@ const connectionString = process.env.DATABASE_URL!;
 const client = neon(connectionString);
 const db = drizzle(client);
 
+// Export db for seed scripts
+export { db };
+
 const SALT_ROUNDS = 10;
 
 export interface IStorage {
