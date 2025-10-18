@@ -27,6 +27,7 @@ import RestaurantProfile from "@/pages/RestaurantProfile";
 import RestaurantDashboard from "@/pages/RestaurantDashboard";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import LoyaltyHistory from "@/pages/LoyaltyHistory";
+import CustomerProfile from "@/pages/CustomerProfile";
 import NavMenu from "@/components/NavMenu";
 
 function Router() {
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/join/vendor" component={VendorSignup} />
       <Route path="/join/restaurant" component={RestaurantSignup} />
       <Route path="/loyalty" component={LoyaltyHistory} />
+      <Route path="/profile" component={CustomerProfile} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
