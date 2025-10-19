@@ -150,7 +150,7 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/restaurants/${restaurant?.id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/restaurants/${restaurant?.id}`, data);
     },
     onSuccess: () => {
       // Invalidate both list, detail, and auth queries
@@ -336,7 +336,7 @@ function MenuManager({ restaurantId, menuItems }: { restaurantId: string; menuIt
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/menu-items", "POST", { ...data, restaurantId });
+      return await apiRequest("POST", "/api/menu-items", { ...data, restaurantId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurantId, "menu-items"] });
@@ -347,7 +347,7 @@ function MenuManager({ restaurantId, menuItems }: { restaurantId: string; menuIt
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest(`/api/menu-items/${id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/menu-items/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurantId, "menu-items"] });
@@ -358,7 +358,7 @@ function MenuManager({ restaurantId, menuItems }: { restaurantId: string; menuIt
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/menu-items/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/menu-items/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurantId, "menu-items"] });
@@ -550,7 +550,7 @@ function FAQManager({ restaurantId, faqs }: { restaurantId: string; faqs: Restau
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/restaurant-faqs", "POST", { ...data, restaurantId });
+      return await apiRequest("POST", "/api/restaurant-faqs", { ...data, restaurantId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurantId, "faqs"] });
@@ -561,7 +561,7 @@ function FAQManager({ restaurantId, faqs }: { restaurantId: string; faqs: Restau
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest(`/api/restaurant-faqs/${id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/restaurant-faqs/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurantId, "faqs"] });
@@ -572,7 +572,7 @@ function FAQManager({ restaurantId, faqs }: { restaurantId: string; faqs: Restau
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/restaurant-faqs/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/restaurant-faqs/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurants", restaurantId, "faqs"] });

@@ -137,21 +137,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log("[PATCH /api/vendors/:id] userId:", userId, "vendorId:", req.params.id, "body:", req.body);
+      
       const vendor = await storage.getVendor(req.params.id);
       if (!vendor) {
+        console.log("[PATCH /api/vendors/:id] Vendor not found");
         return res.status(404).json({ error: "Vendor not found" });
       }
       
       // Verify ownership
       if (vendor.ownerId !== userId) {
+        console.log("[PATCH /api/vendors/:id] Ownership mismatch - vendor.ownerId:", vendor.ownerId, "userId:", userId);
         return res.status(403).json({ error: "Unauthorized to update this vendor" });
       }
       
       const validatedData = insertVendorSchema.partial().parse(req.body);
+      console.log("[PATCH /api/vendors/:id] Validated data:", validatedData);
       await storage.updateVendor(req.params.id, validatedData);
+      console.log("[PATCH /api/vendors/:id] Update successful");
       res.json({ success: true });
     } catch (error) {
-      res.status(400).json({ error: "Invalid vendor update data" });
+      console.error("[PATCH /api/vendors/:id] Error:", error);
+      res.status(400).json({ error: "Invalid vendor update data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
