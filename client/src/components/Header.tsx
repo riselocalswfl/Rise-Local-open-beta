@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useState } from "react";
+import MiniCart from "@/components/MiniCart";
 
 export default function Header() {
   const [location] = useLocation();
@@ -71,17 +72,9 @@ export default function Header() {
           >
             Vendors
           </Link>
-          <Link
-            href="/cart"
-            className={`text-text/80 hover:text-text transition ${
-              location === "/cart" ? "text-text font-bold" : ""
-            }`}
-            data-testid="link-cart"
-          >
-            Cart
-          </Link>
         </div>
         <div className="flex items-center gap-3">
+          <MiniCart />
           {isAuthenticated ? (
             <>
               {user?.role === "buyer" && (

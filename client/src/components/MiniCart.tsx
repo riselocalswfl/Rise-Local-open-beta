@@ -11,26 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
-import { useState, useEffect } from "react";
 
 export default function MiniCart() {
-  const { items, itemCount, removeItem, cartTotals } = useCart();
-  const [open, setOpen] = useState(false);
+  const { items, itemCount, removeItem, cartTotals, isCartOpen, setCartOpen } = useCart();
   const totals = cartTotals();
 
-  useEffect(() => {
-    const handleOpenMiniCart = () => {
-      setOpen(true);
-    };
-
-    window.addEventListener("openMiniCart", handleOpenMiniCart);
-    return () => {
-      window.removeEventListener("openMiniCart", handleOpenMiniCart);
-    };
-  }, []);
-
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={isCartOpen} onOpenChange={setCartOpen}>
       <SheetTrigger asChild>
         <button
           className="relative p-2 text-text/80 hover:text-text transition"
@@ -63,7 +50,7 @@ export default function MiniCart() {
               <ShoppingCart className="w-16 h-16 text-text/20 mb-4" strokeWidth={1.5} />
               <p className="text-text/60 mb-4">Start shopping to add items</p>
               <Link href="/products">
-                <Button onClick={() => setOpen(false)} data-testid="button-browse-products">
+                <Button onClick={() => setCartOpen(false)} data-testid="button-browse-products">
                   Browse Products
                 </Button>
               </Link>
@@ -137,7 +124,7 @@ export default function MiniCart() {
                 <Link href="/cart" className="block">
                   <Button
                     className="w-full"
-                    onClick={() => setOpen(false)}
+                    onClick={() => setCartOpen(false)}
                     data-testid="button-view-cart"
                   >
                     View Cart

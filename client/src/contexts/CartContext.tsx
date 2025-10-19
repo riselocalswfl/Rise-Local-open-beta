@@ -28,6 +28,8 @@ interface CartContextType {
   clearCart: () => void;
   cartTotals: () => CartTotals;
   openMiniCart: () => void;
+  isCartOpen: boolean;
+  setCartOpen: (open: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -46,6 +48,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [];
     }
   });
+
+  const [isCartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
@@ -136,7 +140,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const openMiniCart = () => {
-    window.dispatchEvent(new CustomEvent("openMiniCart"));
+    setCartOpen(true);
   };
 
   const value: CartContextType = {
@@ -148,6 +152,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCart,
     cartTotals,
     openMiniCart,
+    isCartOpen,
+    setCartOpen,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
