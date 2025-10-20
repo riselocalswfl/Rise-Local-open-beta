@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
 
 interface FilterBarProps {
   type: "products" | "vendors" | "events";
@@ -17,33 +16,29 @@ interface FilterBarProps {
   onCategoryChange?: (category: string) => void;
   onSortChange?: (sort: string) => void;
   selectedCategory?: string;
+  searchQuery?: string;
+  sortOrder?: string;
 }
 
-export default function FilterBar({ type, onSearch, onCategoryChange, onSortChange, selectedCategory: externalCategory }: FilterBarProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>(externalCategory || "all");
-  
-  useEffect(() => {
-    if (externalCategory) {
-      setSelectedCategory(externalCategory);
-    }
-  }, [externalCategory]);
-
+export default function FilterBar({ 
+  type, 
+  onSearch, 
+  onCategoryChange, 
+  onSortChange, 
+  selectedCategory,
+  searchQuery,
+  sortOrder
+}: FilterBarProps) {
   const categories = {
     products: ["All", "Bakery", "Beverages", "Plants", "Organic", "Artisan"],
     vendors: ["All", "Food", "Beverages", "Home & Garden", "Crafts"],
     events: ["All", "Workshop", "Market", "Festival", "Community"],
   };
 
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    onSearch?.(value);
-  };
-
   const handleCategoryToggle = (category: string) => {
     const categoryValue = category.toLowerCase();
-    const newCategory = selectedCategory === categoryValue ? "all" : categoryValue;
-    setSelectedCategory(newCategory);
+    const currentCategory = selectedCategory || "all";
+    const newCategory = currentCategory === categoryValue ? "all" : categoryValue;
     onCategoryChange?.(newCategory);
   };
 
@@ -56,13 +51,16 @@ export default function FilterBar({ type, onSearch, onCategoryChange, onSortChan
             <Input
               type="search"
               placeholder={`Search ${type}...`}
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
+              {...(searchQuery !== undefined ? { value: searchQuery } : {})}
+              onChange={(e) => onSearch?.(e.target.value)}
               className="pl-10 rounded-lg"
               data-testid={`input-filter-search-${type}`}
             />
           </div>
-          <Select onValueChange={onSortChange} defaultValue="newest">
+          <Select 
+            onValueChange={onSortChange} 
+            {...(sortOrder !== undefined ? { value: sortOrder } : { defaultValue: "newest" })}
+          >
             <SelectTrigger className="w-full sm:w-[180px] rounded-pill" data-testid="select-sort">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -80,7 +78,7 @@ export default function FilterBar({ type, onSearch, onCategoryChange, onSortChan
           {categories[type].map((category) => (
             <Badge
               key={category}
-              variant={selectedCategory === category.toLowerCase() ? "default" : "outline"}
+              variant={(selectedCategory || "all") === category.toLowerCase() ? "default" : "outline"}
               className="cursor-pointer whitespace-nowrap hover-elevate rounded-pill"
               onClick={() => handleCategoryToggle(category.toLowerCase())}
               data-testid={`badge-category-${category.toLowerCase()}`}
