@@ -478,30 +478,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders", async (req: any, res) => {
+  app.post("/api/orders", isAuthenticated, async (req: any, res) => {
     try {
-      const validatedOrder = insertOrderSchema.parse(req.body);
-      const order = await storage.createOrder(validatedOrder);
+      const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       
-      // Award loyalty points if user is authenticated (10 points per $1 spent)
-      if (req.user && req.user.claims && req.user.claims.sub) {
-        const userId = req.user.claims.sub;
-        const totalDollars = order.totalCents / 100;
-        const pointsEarned = Math.floor(totalDollars * 10);
-        
-        if (pointsEarned > 0) {
-          await storage.earnPoints(
-            userId,
-            pointsEarned,
-            "purchase",
-            `Order #${order.id.substring(0, 8)} - $${totalDollars.toFixed(2)}`,
-            order.id
-          );
-        }
+      // Strictly require email from authentication claims
+      if (!userEmail) {
+        return res.status(400).json({ error: "User email not available in authentication token" });
+      }
+      
+      // Get user data for name
+      const user = await storage.getUser(userId);
+      const userName = user && user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : userEmail.split('@')[0];
+      
+      // Validate order data (phone, shipping, items, etc.)
+      // We use a partial schema that omits email/name since we'll provide those from auth
+      const orderDataSchema = insertOrderSchema.omit({ email: true, name: true });
+      const validatedOrder = orderDataSchema.parse(req.body);
+      
+      // Create order with server-trusted user identity
+      // Email and name come exclusively from authenticated session, not from client
+      const order = await storage.createOrder({
+        ...validatedOrder,
+        email: userEmail,  // Always from auth token
+        name: userName,    // Always from database/auth token
+      });
+      
+      // Award loyalty points (10 points per $1 spent)
+      const totalDollars = order.totalCents / 100;
+      const pointsEarned = Math.floor(totalDollars * 10);
+      
+      if (pointsEarned > 0) {
+        await storage.earnPoints(
+          userId,
+          pointsEarned,
+          "purchase",
+          `Order #${order.id.substring(0, 8)} - $${totalDollars.toFixed(2)}`,
+          order.id
+        );
       }
       
       res.status(201).json(order);
     } catch (error) {
+      console.error("Order creation error:", error);
       res.status(400).json({ error: "Invalid order data" });
     }
   });

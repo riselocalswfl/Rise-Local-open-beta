@@ -3,17 +3,19 @@ import { Separator } from "@/components/ui/separator";
 
 interface OrderSummaryProps {
   subtotal: number;
+  tax?: number;
   buyerFeePercentage?: number;
   showFees?: boolean;
 }
 
 export default function OrderSummary({
   subtotal,
+  tax = 0,
   buyerFeePercentage = 3,
   showFees = true,
 }: OrderSummaryProps) {
   const buyerFee = subtotal * (buyerFeePercentage / 100);
-  const total = subtotal + buyerFee;
+  const total = subtotal + tax + buyerFee;
 
   return (
     <Card className="le-card transition-all duration-200">
@@ -26,6 +28,14 @@ export default function OrderSummary({
             <span>Subtotal</span>
             <span className="font-mono" data-testid="text-subtotal">${subtotal.toFixed(2)}</span>
           </div>
+          {tax > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax (7%)</span>
+              <span className="font-mono text-muted-foreground" data-testid="text-tax">
+                ${tax.toFixed(2)}
+              </span>
+            </div>
+          )}
           {showFees && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Buyer Fee ({buyerFeePercentage}%)</span>

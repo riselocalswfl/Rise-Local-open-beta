@@ -103,9 +103,12 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    // Store the intended role in both session and cookie for reliability across OIDC redirects
+    // Store the intended role and returnTo URL in both session and cookie for reliability across OIDC redirects
     const intendedRole = req.query.intended_role as string;
+    const returnTo = req.query.returnTo as string;
     console.log("[AUTH] /api/login - intended_role query param:", intendedRole);
+    console.log("[AUTH] /api/login - returnTo query param:", returnTo);
+    
     if (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant") {
       (req.session as any).intendedRole = intendedRole;
       // Also store in cookie as backup (expires in 5 minutes)
@@ -116,24 +119,31 @@ export async function setupAuth(app: Express) {
         sameSite: "lax"
       });
       console.log("[AUTH] Stored intended_role in session and cookie:", intendedRole);
-      
-      // Save session before redirect to ensure it persists across OIDC flow
-      req.session.save((err) => {
-        if (err) {
-          console.error("[AUTH] Failed to save session:", err);
-        }
-        console.log("[AUTH] Session saved, initiating OIDC flow");
-        passport.authenticate(`replitauth:${req.hostname}`, {
-          prompt: "login consent",
-          scope: ["openid", "email", "profile", "offline_access"],
-        })(req, res, next);
+    }
+    
+    // Store returnTo URL if provided
+    if (returnTo) {
+      (req.session as any).returnTo = returnTo;
+      res.cookie("return_to", returnTo, {
+        maxAge: 5 * 60 * 1000,
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax"
       });
-    } else {
+      console.log("[AUTH] Stored returnTo in session and cookie:", returnTo);
+    }
+    
+    // Save session before redirect to ensure it persists across OIDC flow
+    req.session.save((err) => {
+      if (err) {
+        console.error("[AUTH] Failed to save session:", err);
+      }
+      console.log("[AUTH] Session saved, initiating OIDC flow");
       passport.authenticate(`replitauth:${req.hostname}`, {
         prompt: "login consent",
         scope: ["openid", "email", "profile", "offline_access"],
       })(req, res, next);
-    }
+    });
   });
 
   app.get("/api/callback", (req, res, next) => {
@@ -154,14 +164,18 @@ export async function setupAuth(app: Express) {
           return res.redirect("/api/login");
         }
 
-        // After successful authentication, determine redirect based on user role
+        // After successful authentication, determine redirect based on user role or returnTo
         const userId = user.claims.sub;
-        // Try to get intended role from session first, then cookie as fallback
+        // Try to get intended role and returnTo from session first, then cookie as fallback
         let intendedRole = (req.session as any).intendedRole || req.cookies.intended_role;
+        let returnTo = (req.session as any).returnTo || req.cookies.return_to;
         console.log("[AUTH] /api/callback - userId:", userId);
         console.log("[AUTH] /api/callback - intendedRole from session:", (req.session as any).intendedRole);
         console.log("[AUTH] /api/callback - intendedRole from cookie:", req.cookies.intended_role);
         console.log("[AUTH] /api/callback - using intendedRole:", intendedRole);
+        console.log("[AUTH] /api/callback - returnTo from session:", (req.session as any).returnTo);
+        console.log("[AUTH] /api/callback - returnTo from cookie:", req.cookies.return_to);
+        console.log("[AUTH] /api/callback - using returnTo:", returnTo);
         let redirectUrl = "/";
         let userRole = null;
         
@@ -228,13 +242,22 @@ export async function setupAuth(app: Express) {
             console.log("[AUTH] Retrieved existing user role:", userRole);
           }
           
-          // Redirect based on role
-          if (userRole === "buyer") {
-            redirectUrl = "/profile";
-          } else if (userRole === "vendor" || userRole === "restaurant") {
-            redirectUrl = "/dashboard";
+          // If returnTo is provided, use it; otherwise redirect based on role
+          if (returnTo) {
+            redirectUrl = returnTo;
+            // Clear the returnTo from session and cookie
+            delete (req.session as any).returnTo;
+            res.clearCookie("return_to");
+            console.log("[AUTH] Redirecting to returnTo URL:", redirectUrl);
+          } else {
+            // Redirect based on role
+            if (userRole === "buyer") {
+              redirectUrl = "/profile";
+            } else if (userRole === "vendor" || userRole === "restaurant") {
+              redirectUrl = "/dashboard";
+            }
+            console.log("[AUTH] Redirecting to:", redirectUrl, "for role:", userRole);
           }
-          console.log("[AUTH] Redirecting to:", redirectUrl, "for role:", userRole);
         } catch (error) {
           console.error("Failed to process user role:", error);
         }

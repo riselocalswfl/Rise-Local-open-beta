@@ -9,57 +9,80 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { getCart, clearCart, getCartSubtotal, type CartItem } from "@/lib/cart";
+import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/contexts/CartContext";
 import { apiRequest } from "@/lib/queryClient";
+import { Loader2 } from "lucide-react";
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { items: cartItems, clearCart, cartTotals } = useCart();
   const [fulfillmentMethod, setFulfillmentMethod] = useState<"pickup" | "delivery">("pickup");
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
 
+  // Check authentication status
+  const { user, isLoading: isCheckingAuth } = useAuth();
+
+  // Pre-fill email from user profile
   useEffect(() => {
-    setCartItems(getCart());
-    
-    const handleCartUpdate = () => {
-      setCartItems(getCart());
-    };
-    
-    window.addEventListener('cart-updated', handleCartUpdate);
-    return () => window.removeEventListener('cart-updated', handleCartUpdate);
-  }, []);
+    if (user?.email) {
+      setEmail(user.email);
+    }
+    if (user?.firstName && user?.lastName) {
+      setName(`${user.firstName} ${user.lastName}`);
+    }
+  }, [user]);
 
-  const subtotal = getCartSubtotal(cartItems);
-  const buyerFee = subtotal * 0.03;
-  const total = subtotal + buyerFee;
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isCheckingAuth && !user) {
+      window.location.href = '/api/login?returnTo=/checkout';
+    }
+  }, [user, isCheckingAuth]);
+
+  const { subtotal, tax, buyerFee, grandTotal: total } = cartTotals();
 
   const createOrderMutation = useMutation({
     mutationFn: async () => {
-      const latestCart = getCart();
-      const latestSubtotal = getCartSubtotal(latestCart);
-      const latestBuyerFee = latestSubtotal * 0.03;
-      const latestTotal = latestSubtotal + latestBuyerFee;
-      
-      const order = {
-        buyerId: "e2b77df8-61aa-4002-88f4-955f3da3ddfe",
-        status: "pending",
-        fulfillmentMethod,
-        subtotal: latestSubtotal.toString(),
-        buyerFee: latestBuyerFee.toString(),
-        total: latestTotal.toString(),
-      };
+      if (!user?.id) {
+        throw new Error("User not authenticated");
+      }
 
-      const items = latestCart.map(item => ({
-        productId: item.productId,
+      if (!phone) {
+        throw new Error("Please fill in your phone number");
+      }
+
+      // Get fresh cart totals
+      const latestTotals = cartTotals();
+      
+      // Convert cart items to the format expected by the server
+      const itemsJson = cartItems.map(item => ({
+        productId: item.id,
+        productName: item.name,
         quantity: item.quantity,
-        priceAtPurchase: item.price.toString(),
+        priceCents: Math.round(item.price * 100),
       }));
 
-      return apiRequest("POST", "/api/orders", { order, items });
+      // Server will use authenticated user's email and name from session
+      // We only send phone, shipping method, items, and amounts
+      const order = {
+        status: "pending",
+        phone,
+        shippingMethod: fulfillmentMethod,
+        itemsJson,
+        subtotalCents: Math.round(latestTotals.subtotal * 100),
+        taxCents: Math.round(latestTotals.tax * 100),
+        feesCents: Math.round(latestTotals.buyerFee * 100),
+        totalCents: Math.round(latestTotals.grandTotal * 100),
+      };
+
+      return apiRequest("POST", "/api/orders", order);
     },
     onSuccess: () => {
       clearCart();
-      setCartItems([]);
       
       toast({
         title: "Order Placed Successfully!",
@@ -82,6 +105,20 @@ export default function Checkout() {
   const handleCheckout = async () => {
     await createOrderMutation.mutateAsync();
   };
+
+  // Show loading state while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" data-testid="loader-auth-check" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -115,14 +152,28 @@ export default function Checkout() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={name}
+                    data-testid="input-name"
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">From your account</p>
+                </div>
+                <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="buyer@riselocal.com"
-                    defaultValue="buyer@test.com"
+                    value={email}
                     data-testid="input-email"
+                    disabled
+                    className="bg-muted"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">From your account</p>
                 </div>
                 <div>
                   <Label htmlFor="phone">Phone Number</Label>
@@ -130,7 +181,10 @@ export default function Checkout() {
                     id="phone"
                     type="tel"
                     placeholder="(239) 555-0123"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     data-testid="input-phone"
+                    required
                   />
                 </div>
               </CardContent>
@@ -178,7 +232,7 @@ export default function Checkout() {
           </div>
 
           <div className="space-y-4">
-            <OrderSummary subtotal={subtotal} />
+            <OrderSummary subtotal={subtotal} tax={tax} />
             <Button
               onClick={handleCheckout}
               className="w-full"
