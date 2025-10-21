@@ -109,7 +109,7 @@ export default function Header() {
                     Sign In
                   </BrandButton>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md" data-testid="dialog-sign-in">
+                <DialogContent className="sm:max-w-md bg-white" data-testid="dialog-sign-in">
                   <DialogHeader>
                     <DialogTitle className="text-2xl">Welcome to Rise Local</DialogTitle>
                     <DialogDescription>
