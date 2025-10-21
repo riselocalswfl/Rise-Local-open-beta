@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -7,16 +9,39 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus } from "lucide-react";
 import type { Vendor, Product, Event, VendorFAQ } from "@shared/schema";
+import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
+import { z } from "zod";
+
+// Form schemas for validation
+const productFormSchema = insertProductSchema.omit({ vendorId: true }).extend({
+  priceCents: z.number().min(0, "Price must be positive"),
+  stock: z.number().int().min(0, "Stock must be a positive number"),
+});
+
+const eventFormSchema = insertEventSchema.omit({ vendorId: true, restaurantId: true }).extend({
+  dateTime: z.string().min(1, "Date is required"),
+  ticketsAvailable: z.number().int().min(0, "Tickets must be a positive number"),
+});
+
+const faqFormSchema = insertVendorFAQSchema.omit({ vendorId: true });
 
 export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
   const [localValues, setLocalValues] = useState<string[]>([]);
+  
+  // Dialog states
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [faqDialogOpen, setFaqDialogOpen] = useState(false);
 
   // Fetch the authenticated user's vendor
   const { data: vendor, isLoading: vendorLoading, isError } = useQuery<Vendor>({
@@ -31,7 +56,7 @@ export default function VendorDashboard() {
   }, [vendor]);
 
   const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products", { vendorId: vendor?.id }],
+    queryKey: [`/api/products?vendorId=${vendor?.id}`],
     enabled: !!vendor?.id,
   });
 
@@ -67,7 +92,13 @@ export default function VendorDashboard() {
       return await apiRequest("POST", "/api/products", { ...data, vendorId: vendor.id });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/products');
+        }
+      });
+      setProductDialogOpen(false);
       toast({ title: "Product created successfully" });
     },
   });
@@ -77,7 +108,12 @@ export default function VendorDashboard() {
       return await apiRequest("PATCH", `/api/products/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/products');
+        }
+      });
       toast({ title: "Product updated successfully" });
     },
   });
@@ -87,7 +123,12 @@ export default function VendorDashboard() {
       return await apiRequest("DELETE", `/api/products/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/products');
+        }
+      });
       toast({ title: "Product deleted successfully" });
     },
   });
@@ -96,12 +137,17 @@ export default function VendorDashboard() {
   const createEventMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!vendor?.id) throw new Error("No vendor ID");
-      return await apiRequest("POST", "/api/events", { ...data, vendorId: vendor.id });
+      return await apiRequest("POST", "/api/events", { 
+        ...data, 
+        vendorId: vendor.id, 
+        restaurantId: null  // Explicitly set to satisfy CHECK constraint
+      });
     },
     onSuccess: () => {
       if (vendor?.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "events"] });
       }
+      setEventDialogOpen(false);
       toast({ title: "Event created successfully" });
     },
   });
@@ -128,6 +174,7 @@ export default function VendorDashboard() {
       if (vendor?.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "faqs"] });
       }
+      setFaqDialogOpen(false);
       toast({ title: "FAQ created successfully" });
     },
   });
@@ -303,7 +350,23 @@ export default function VendorDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Manage Products</CardTitle>
-                <Button size="sm" data-testid="button-add-product">Add Product</Button>
+                <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-product">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Product
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Product</DialogTitle>
+                    </DialogHeader>
+                    <AddProductForm 
+                      onSubmit={createProductMutation.mutate}
+                      isPending={createProductMutation.isPending}
+                    />
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 {products.length === 0 ? (
@@ -348,7 +411,23 @@ export default function VendorDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Manage Events</CardTitle>
-                <Button size="sm" data-testid="button-add-event">Add Event</Button>
+                <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-event">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Event
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New Event</DialogTitle>
+                    </DialogHeader>
+                    <AddEventForm 
+                      onSubmit={createEventMutation.mutate}
+                      isPending={createEventMutation.isPending}
+                    />
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 {events.length === 0 ? (
@@ -393,7 +472,23 @@ export default function VendorDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Manage FAQs</CardTitle>
-                <Button size="sm" data-testid="button-add-faq">Add FAQ</Button>
+                <Dialog open={faqDialogOpen} onOpenChange={setFaqDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-faq">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add FAQ
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Add New FAQ</DialogTitle>
+                    </DialogHeader>
+                    <AddFAQForm 
+                      onSubmit={createFAQMutation.mutate}
+                      isPending={createFAQMutation.isPending}
+                    />
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent>
                 {faqs.length === 0 ? (
@@ -502,5 +597,365 @@ export default function VendorDashboard() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+// ========== FORM COMPONENTS ==========
+
+function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
+  const form = useForm<z.infer<typeof productFormSchema>>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: {
+      name: "",
+      priceCents: 0,
+      stock: 0,
+      category: "",
+      description: "",
+      imageUrl: "",
+      valueTags: [],
+      sourceFarm: "",
+      harvestDate: undefined,
+      leadTimeDays: 0,
+      inventoryStatus: "in_stock",
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof productFormSchema>) => {
+    onSubmit(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Product Name *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Heirloom Tomato Mix" {...field} data-testid="input-product-name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="priceCents"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Price (cents) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="599 = $5.99"
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    data-testid="input-product-price"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="stock"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Stock *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="50"
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    data-testid="input-product-stock"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-product-category">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Produce">Produce</SelectItem>
+                  <SelectItem value="Dairy">Dairy</SelectItem>
+                  <SelectItem value="Meat">Meat</SelectItem>
+                  <SelectItem value="Baked Goods">Baked Goods</SelectItem>
+                  <SelectItem value="Preserves">Preserves</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Describe your product..."
+                  rows={3}
+                  {...field}
+                  value={field.value || ""}
+                  data-testid="input-product-description"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Image URL</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="https://example.com/image.jpg" 
+                  {...field} 
+                  value={field.value || ""}
+                  data-testid="input-product-image" 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="submit" disabled={isPending} data-testid="button-submit-product">
+            {isPending ? "Creating..." : "Create Product"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+function AddEventForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
+  const form = useForm<z.infer<typeof eventFormSchema>>({
+    resolver: zodResolver(eventFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      dateTime: "",
+      location: "",
+      category: "",
+      ticketsAvailable: 0,
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof eventFormSchema>) => {
+    onSubmit({
+      ...data,
+      dateTime: new Date(data.dateTime).toISOString(),
+    });
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Event Title *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Farm Tour & Tasting" {...field} data-testid="input-event-title" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description *</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Describe your event..."
+                  rows={3}
+                  {...field}
+                  data-testid="input-event-description"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="dateTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date & Time *</FormLabel>
+                <FormControl>
+                  <Input type="datetime-local" {...field} data-testid="input-event-datetime" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="ticketsAvailable"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tickets Available *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="20"
+                    {...field}
+                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    data-testid="input-event-tickets"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="location"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Location *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., 123 Farm Road, Fort Myers, FL" {...field} data-testid="input-event-location" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category *</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-event-category">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="Workshop">Workshop</SelectItem>
+                  <SelectItem value="Tour">Tour</SelectItem>
+                  <SelectItem value="Tasting">Tasting</SelectItem>
+                  <SelectItem value="Market">Market</SelectItem>
+                  <SelectItem value="Festival">Festival</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="submit" disabled={isPending} data-testid="button-submit-event">
+            {isPending ? "Creating..." : "Create Event"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
+  const form = useForm<z.infer<typeof faqFormSchema>>({
+    resolver: zodResolver(faqFormSchema),
+    defaultValues: {
+      question: "",
+      answer: "",
+      displayOrder: 0,
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof faqFormSchema>) => {
+    onSubmit(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="question"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Question *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Do you offer delivery?" {...field} data-testid="input-faq-question" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="answer"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Answer *</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Provide a detailed answer..."
+                  rows={4}
+                  {...field}
+                  data-testid="input-faq-answer"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="submit" disabled={isPending} data-testid="button-submit-faq">
+            {isPending ? "Creating..." : "Create FAQ"}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

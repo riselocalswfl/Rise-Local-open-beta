@@ -200,6 +200,14 @@ export const events = pgTable("events", {
 export const insertEventSchema = createInsertSchema(events).omit({
   id: true,
   rsvpCount: true,
+}).extend({
+  // Accept ISO date strings and convert to Date objects, with validation
+  dateTime: z.union([
+    z.date(),
+    z.string().refine((str) => !isNaN(Date.parse(str)), {
+      message: "Invalid date format"
+    }).transform((str) => new Date(str))
+  ]),
 });
 
 export type InsertEvent = z.infer<typeof insertEventSchema>;
