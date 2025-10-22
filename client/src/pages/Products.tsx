@@ -14,6 +14,7 @@ export default function Products() {
   const categoryParam = searchParams.get("category");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [sortOrder, setSortOrder] = useState<string>("newest");
   
   useEffect(() => {
     if (categoryParam) {
@@ -59,10 +60,38 @@ export default function Products() {
     });
   }
 
+  // Apply sorting
+  if (filteredProducts && sortOrder !== "newest") {
+    filteredProducts = [...filteredProducts].sort((a, b) => {
+      switch (sortOrder) {
+        case "price-low":
+          // Parse price strings to numbers for comparison
+          const priceA = parseFloat(a.price || "0");
+          const priceB = parseFloat(b.price || "0");
+          return priceA - priceB;
+        case "price-high":
+          const priceHighA = parseFloat(a.price || "0");
+          const priceHighB = parseFloat(b.price || "0");
+          return priceHighB - priceHighA;
+        case "popular":
+          // Lower inventory = more popular (more sold)
+          return a.inventory - b.inventory;
+        default:
+          return 0; // newest - keep default order
+      }
+    });
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <FilterBar type="products" onCategoryChange={setSelectedCategory} selectedCategory={selectedCategory} />
+      <FilterBar 
+        type="products" 
+        onCategoryChange={setSelectedCategory} 
+        selectedCategory={selectedCategory}
+        onSortChange={setSortOrder}
+        sortOrder={sortOrder}
+      />
       <main className="max-w-7xl mx-auto px-4 py-8">
         {allValues.length > 0 && (
           <ValueFilter
@@ -92,11 +121,11 @@ export default function Products() {
                 key={product.id}
                 id={product.id}
                 name={product.name}
-                price={product.priceCents / 100}
+                price={parseFloat(product.price || "0")}
                 vendorName={product.vendorName}
                 vendorId={product.vendorId}
                 category={product.category || ""}
-                inventory={product.stock}
+                inventory={product.inventory}
                 isVerifiedVendor={product.isVerifiedVendor}
               />
             ))
