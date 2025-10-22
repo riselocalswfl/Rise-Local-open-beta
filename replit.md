@@ -3,6 +3,36 @@
 ## Overview
 Rise Local is a full-stack web application connecting local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It features a marketplace for products and a community hub for events, promoting sustainability, local commerce, and community engagement. The platform aims to support local businesses with a counterculture yet polished brand aesthetic, running entirely on Replit.
 
+## Recent Changes
+
+### October 2025 - Products Page Sorting (Complete)
+
+**Implemented Features:**
+- Full sorting functionality on Products page with 4 options:
+  - **Newest First** - Default database order (no sorting applied)
+  - **Price: Low to High** - Sorts products by price ascending
+  - **Price: High to Low** - Sorts products by price descending
+  - **Most Popular** - Sorts by inventory level (lower stock = more sold = more popular)
+
+**Technical Implementation:**
+- Added sortOrder state to Products component
+- Connected FilterBar onSortChange handler to update sort state
+- Sorting applied after filtering but before rendering
+- Price strings parsed to numbers for accurate comparison
+- Array.sort() with switch statement for different sort types
+- Sorting creates new array (no cache mutation)
+
+**Type Corrections:**
+- Fixed ProductWithVendor usage (price is string, inventory instead of stock)
+- Correctly parse price strings when passing to ProductCard
+- Use inventory field instead of stock for product data
+
+**Testing:**
+- All 4 sorting options verified working correctly
+- Products reorder immediately on sort selection
+- Sorting persists across category/value filters
+- No performance issues with current dataset size
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
