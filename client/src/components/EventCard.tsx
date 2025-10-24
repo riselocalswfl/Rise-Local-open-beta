@@ -1,9 +1,14 @@
 import { Link } from "wouter";
-import { Calendar, MapPin, Users, Ticket } from "lucide-react";
+import { Calendar, MapPin, Users, Ticket, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+import type { EventRsvp } from "@/../../shared/schema";
 
 interface EventCardProps {
   id: string;
@@ -30,10 +35,48 @@ export default function EventCard({
 }: EventCardProps) {
   const eventDate = new Date(dateTime);
   const isUpcoming = eventDate > new Date();
+  const { isAuthenticated } = useAuth();
+  const [optimisticRsvpCount, setOptimisticRsvpCount] = useState(rsvpCount);
+
+  // Fetch user's RSVPs if authenticated
+  const { data: userRsvps = [] } = useQuery<EventRsvp[]>({
+    queryKey: ["/api/events/rsvps/me"],
+    enabled: isAuthenticated,
+  });
+
+  // Check if user has RSVPed to this event
+  const isRsvped = userRsvps.some((rsvp) => rsvp.eventId === id);
+
+  // Mutation to toggle RSVP
+  const rsvpMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest(`/api/events/${id}/rsvp`, {
+        method: "POST",
+      });
+    },
+    onMutate: async () => {
+      // Optimistic update
+      setOptimisticRsvpCount((prev) => (isRsvped ? prev - 1 : prev + 1));
+    },
+    onSuccess: () => {
+      // Invalidate queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/events/rsvps/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+    },
+    onError: () => {
+      // Revert optimistic update on error
+      setOptimisticRsvpCount(rsvpCount);
+    },
+  });
 
   const handleRSVP = (e: React.MouseEvent) => {
     e.preventDefault();
-    console.log(`RSVP to event: ${title}`);
+    if (!isAuthenticated) {
+      // Redirect to login
+      window.location.href = "/login";
+      return;
+    }
+    rsvpMutation.mutate();
   };
 
   return (
@@ -68,7 +111,9 @@ export default function EventCard({
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-1">
                   <Users className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
-                  <span className="text-muted-foreground">{rsvpCount} going</span>
+                  <span className="text-muted-foreground" data-testid={`text-rsvp-count-${id}`}>
+                    {optimisticRsvpCount} going
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Ticket className="w-4 h-4 text-muted-foreground" strokeWidth={1.75} />
@@ -78,12 +123,21 @@ export default function EventCard({
               <Button
                 size="sm"
                 onClick={handleRSVP}
-                disabled={ticketsAvailable === 0 || !isUpcoming}
+                disabled={ticketsAvailable === 0 || !isUpcoming || rsvpMutation.isPending}
                 className="rounded-pill"
-                style={{ background: 'var(--le-clay)' }}
+                style={{ background: isRsvped ? 'var(--le-wheat)' : 'var(--le-clay)' }}
                 data-testid={`button-rsvp-${id}`}
               >
-                RSVP
+                {rsvpMutation.isPending ? (
+                  "..."
+                ) : isRsvped ? (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    Going
+                  </>
+                ) : (
+                  "RSVP"
+                )}
               </Button>
             </div>
 
