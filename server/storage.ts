@@ -3,6 +3,7 @@ import {
   type Vendor, type InsertVendor,
   type Product, type InsertProduct,
   type Event, type InsertEvent,
+  type EventRsvp, type InsertEventRsvp,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem,
   type Spotlight, type InsertSpotlight,
@@ -14,7 +15,7 @@ import {
   type RestaurantFAQ, type InsertRestaurantFAQ,
   type LoyaltyTier, type InsertLoyaltyTier,
   type LoyaltyTransaction, type InsertLoyaltyTransaction,
-  users, vendors, products, events, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
+  users, vendors, products, events, eventRsvps, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
   restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -72,6 +73,12 @@ export interface IStorage {
   updateEvent(id: string, data: Partial<InsertEvent>): Promise<void>;
   deleteEvent(id: string): Promise<void>;
   updateEventRsvp(id: string, increment: number): Promise<void>;
+
+  // Event RSVP operations
+  createEventRsvp(rsvp: InsertEventRsvp): Promise<EventRsvp>;
+  deleteEventRsvp(userId: string, eventId: string): Promise<void>;
+  getUserEventRsvp(userId: string, eventId: string): Promise<EventRsvp | undefined>;
+  getUserRsvps(userId: string): Promise<EventRsvp[]>;
 
   // Order operations
   getOrder(id: string): Promise<Order | undefined>;
@@ -352,6 +359,28 @@ export class DbStorage implements IStorage {
     await db.update(events)
       .set({ rsvpCount: sql`${events.rsvpCount} + ${increment}` })
       .where(eq(events.id, id));
+  }
+
+  // Event RSVP operations
+  async createEventRsvp(rsvp: InsertEventRsvp): Promise<EventRsvp> {
+    const result = await db.insert(eventRsvps).values(rsvp).returning();
+    return result[0];
+  }
+
+  async deleteEventRsvp(userId: string, eventId: string): Promise<void> {
+    await db.delete(eventRsvps)
+      .where(and(eq(eventRsvps.userId, userId), eq(eventRsvps.eventId, eventId)));
+  }
+
+  async getUserEventRsvp(userId: string, eventId: string): Promise<EventRsvp | undefined> {
+    const result = await db.select().from(eventRsvps)
+      .where(and(eq(eventRsvps.userId, userId), eq(eventRsvps.eventId, eventId)));
+    return result[0];
+  }
+
+  async getUserRsvps(userId: string): Promise<EventRsvp[]> {
+    return await db.select().from(eventRsvps)
+      .where(eq(eventRsvps.userId, userId));
   }
 
   // Order operations
