@@ -424,15 +424,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/events/:id/rsvp", isAuthenticated, async (req: any, res) => {
+  app.post("/api/events/:id/rsvp", isAuthenticated, async (req: any, res) => {
     try {
-      // Any authenticated user can RSVP to events
-      const schema = z.object({ increment: z.number().int() });
-      const { increment } = schema.parse(req.body);
-      await storage.updateEventRsvp(req.params.id, increment);
-      res.json({ success: true });
+      const userId = req.user.claims.sub;
+      const eventId = req.params.id;
+      
+      // Check if user already RSVPed
+      const existingRsvp = await storage.getUserEventRsvp(userId, eventId);
+      
+      if (existingRsvp) {
+        // Un-RSVP: delete the RSVP and decrement count
+        await storage.deleteEventRsvp(userId, eventId);
+        await storage.updateEventRsvp(eventId, -1);
+        res.json({ success: true, isRsvped: false });
+      } else {
+        // RSVP: create the RSVP and increment count
+        await storage.createEventRsvp({ userId, eventId });
+        await storage.updateEventRsvp(eventId, 1);
+        res.json({ success: true, isRsvped: true });
+      }
     } catch (error) {
-      res.status(400).json({ error: "Invalid RSVP data" });
+      res.status(500).json({ error: "Failed to update RSVP" });
+    }
+  });
+
+  // Get user's RSVPs
+  app.get("/api/events/rsvps/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rsvps = await storage.getUserRsvps(userId);
+      res.json(rsvps);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch RSVPs" });
     }
   });
 
