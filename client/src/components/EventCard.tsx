@@ -50,9 +50,7 @@ export default function EventCard({
   // Mutation to toggle RSVP
   const rsvpMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/events/${id}/rsvp`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/events/${id}/rsvp`);
     },
     onMutate: async () => {
       // Optimistic update
