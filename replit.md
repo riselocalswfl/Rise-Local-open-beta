@@ -5,6 +5,46 @@ Rise Local is a full-stack web application connecting local vendors, artisans, a
 
 ## Recent Changes
 
+### October 2025 - Event RSVP Functionality (Complete)
+
+**Implemented Features:**
+- Full RSVP system for events with toggle functionality
+- Users can RSVP to events and un-RSVP with single click
+- Different button states showing RSVP status
+- Prevents duplicate RSVPs per user per event
+- RSVP count updates in real-time
+- Persistence across page refreshes
+
+**Database Changes:**
+- Created `eventRsvps` table to track user-event relationships
+- Unique constraint on (userId, eventId) prevents duplicates
+- Foreign keys to users and events tables
+- createdAt timestamp for RSVP records
+
+**Backend Implementation:**
+- POST /api/events/:id/rsvp - Toggle RSVP (create if not exists, delete if exists)
+- GET /api/events/rsvps/me - Fetch current user's RSVPs
+- Both endpoints require authentication
+- Atomic counter updates (increment on RSVP, decrement on un-RSVP)
+- Storage methods: createEventRsvp, deleteEventRsvp, getUserEventRsvp, getUserRsvps
+
+**Frontend Implementation:**
+- EventCard component fetches user's RSVPs on mount (if authenticated)
+- Checks if current event is RSVPed
+- Button states:
+  - Unauthenticated: "RSVP" (redirects to login)
+  - Not RSVPed: "RSVP" button with clay background
+  - RSVPed: "Going" button with check icon and wheat background
+- Optimistic updates for instant UI feedback
+- Cache invalidation to refresh data after mutations
+- Disabled when no tickets, event passed, or mutation pending
+
+**Testing:**
+- End-to-end tests pass successfully
+- RSVP toggle verified working
+- Persistence confirmed across page refreshes
+- Multiple events can be RSVPed simultaneously
+
 ### October 2025 - Products Page Sorting (Complete)
 
 **Implemented Features:**
@@ -53,7 +93,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL via Neon serverless driver.
 - **ORM**: Drizzle ORM for type-safe queries and schema management, drizzle-kit for migrations.
-- **Schema**: Users, Vendors, Products, Events, Orders, VendorReviews, VendorFAQs, Spotlight. Utilizes `gen_random_uuid()` for primary keys, JSONB for flexible data, and array columns for multi-value fields. Zod schemas generated from Drizzle tables for validation.
+- **Schema**: Users, Vendors, Products, Events, EventRsvps, Orders, VendorReviews, VendorFAQs, Spotlight. Utilizes `gen_random_uuid()` for primary keys, JSONB for flexible data, and array columns for multi-value fields. Zod schemas generated from Drizzle tables for validation.
 
 ### Authentication and Authorization
 - **Authentication**: Replit Auth via OpenID Connect (OIDC).
