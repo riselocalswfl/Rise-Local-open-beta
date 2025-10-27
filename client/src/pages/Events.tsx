@@ -51,10 +51,10 @@ export default function Events() {
     });
   }
 
-  // Filter by organizer values
+  // Filter by organizer values (vendors/restaurants)
   if (selectedValues.length > 0 && vendors) {
     filteredEvents = filteredEvents?.filter(e => {
-      const vendor = vendors.find(v => v.id === e.organizerId);
+      const vendor = vendors.find(v => v.id === e.vendorId || v.id === e.restaurantId);
       const vendorValues = vendor?.values || [];
       return selectedValues.some(sv => vendorValues.includes(sv));
     });
