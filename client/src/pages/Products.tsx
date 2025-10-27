@@ -105,10 +105,10 @@ export default function Products() {
             {selectedValues.map(v => (
               <Badge 
                 key={v} 
-                variant="default" 
+                variant="outline" 
                 role="button"
                 tabIndex={0}
-                className="cursor-pointer hover-elevate active-elevate-2 pr-1"
+                className="cursor-pointer hover-elevate active-elevate-2 pr-1 border-primary text-primary"
                 onClick={() => {
                   const next = selectedValues.filter(x => x !== v);
                   setSelectedValues(next);

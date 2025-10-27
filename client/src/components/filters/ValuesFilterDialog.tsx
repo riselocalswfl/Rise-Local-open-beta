@@ -41,14 +41,14 @@ export default function ValuesFilterDialog({ allValues, selected, onChange, butt
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
-          variant="default" 
-          className={buttonClassName}
+          variant="outline" 
+          className={`border-primary text-primary hover:bg-primary/10 ${buttonClassName}`}
           data-testid="button-filter-values"
         >
           <Filter className="w-4 h-4 mr-2" strokeWidth={1.75} />
           Filter by Values
           {selCount > 0 && (
-            <Badge variant="secondary" className="ml-2 px-2 py-0.5 text-xs bg-background text-foreground">
+            <Badge className="ml-2 px-2 py-0.5 text-xs bg-primary text-primary-foreground">
               {selCount}
             </Badge>
           )}
