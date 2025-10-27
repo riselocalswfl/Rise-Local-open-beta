@@ -563,9 +563,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         eventIds = attendances.map(a => a.eventId);
       } else {
         // "all" - union of both
-        const rsvpedIds = new Set(filteredRsvps.map(r => r.eventId));
-        const attendedIds = new Set(attendances.map(a => a.eventId));
-        eventIds = Array.from(new Set([...rsvpedIds, ...attendedIds]));
+        const rsvpedIds = filteredRsvps.map(r => r.eventId);
+        const attendedIds = attendances.map(a => a.eventId);
+        const allIds = [...rsvpedIds, ...attendedIds];
+        eventIds = Array.from(new Set(allIds));
       }
 
       // Fetch events
