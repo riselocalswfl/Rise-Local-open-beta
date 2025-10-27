@@ -19,7 +19,7 @@ export default function EventsLayout() {
               <Link href="/events">
                 <TabsTrigger
                   value="browse"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
+                  className="inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent mt-[5px] mb-[5px] text-[15px]"
                   data-testid="tab-browse-events"
                 >
                   Browse Events
@@ -28,7 +28,7 @@ export default function EventsLayout() {
               <Link href="/events/my">
                 <TabsTrigger
                   value="my"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
+                  className="inline-flex items-center justify-center whitespace-nowrap px-3 py-1.5 font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent mt-[5px] mb-[5px] text-[15px]"
                   data-testid="tab-my-events"
                 >
                   My Events
