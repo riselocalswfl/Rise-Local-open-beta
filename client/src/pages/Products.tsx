@@ -3,11 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
-import ValueFilter from "@/components/ValueFilter";
+import ValuesFilterDialog from "@/components/filters/ValuesFilterDialog";
 import ProductCard from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getProductsWithVendors } from "@/lib/api";
 import type { Vendor } from "@shared/schema";
+import { X } from "lucide-react";
 
 export default function Products() {
   const searchParams = new URLSearchParams(useSearch());
@@ -93,14 +96,45 @@ export default function Products() {
         sortOrder={sortOrder}
       />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {allValues.length > 0 && (
-          <ValueFilter
-            availableValues={allValues}
-            selectedValues={selectedValues}
-            onValueToggle={handleValueToggle}
-          />
+        <div className="flex items-center gap-3 mb-6">
+          <h1 className="text-3xl font-semibold" data-testid="heading-all-products">Shop Local</h1>
+          {allValues.length > 0 && (
+            <ValuesFilterDialog
+              allValues={allValues}
+              selected={selectedValues}
+              onChange={setSelectedValues}
+            />
+          )}
+        </div>
+
+        {selectedValues.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Active filters:</span>
+            {selectedValues.map(v => (
+              <Badge 
+                key={v} 
+                variant="secondary" 
+                className="cursor-pointer hover-elevate active-elevate-2 pr-1"
+                onClick={() => {
+                  const next = selectedValues.filter(x => x !== v);
+                  setSelectedValues(next);
+                }}
+                data-testid={`badge-active-filter-${v}`}
+              >
+                {v}
+                <X className="w-3 h-3 ml-1.5" strokeWidth={2} />
+              </Badge>
+            ))}
+            <Button 
+              variant="link" 
+              className="px-1 h-auto py-0 text-sm" 
+              onClick={() => setSelectedValues([])}
+              data-testid="button-clear-all-filters"
+            >
+              Clear all
+            </Button>
+          </div>
         )}
-        <h1 className="text-3xl font-semibold mb-8 mt-8" data-testid="heading-all-products">Shop Local</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
             <>
