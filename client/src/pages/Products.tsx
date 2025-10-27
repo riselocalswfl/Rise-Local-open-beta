@@ -126,8 +126,8 @@ export default function Products() {
               </Badge>
             ))}
             <Button 
-              variant="link" 
-              className="px-1 h-auto py-0 text-sm" 
+              variant="ghost" 
+              className="px-2 h-auto py-0.5 text-sm" 
               onClick={() => setSelectedValues([])}
               data-testid="button-clear-all-filters"
             >
