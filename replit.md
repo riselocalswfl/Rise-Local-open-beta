@@ -5,6 +5,44 @@ Rise Local is a full-stack web application connecting local vendors, artisans, a
 
 ## Recent Changes
 
+### October 2025 - Filter Dialog Visual Improvements & Events Filtering (Complete)
+
+**Implemented Changes:**
+- Fixed ValuesFilterDialog text readability issues
+- Changed Apply button from filled primary to outline variant with sage green border
+- Added explicit text-foreground colors to dialog title and checkbox labels
+- Added bg-background to dialog content for proper background color
+- Extended value filtering to Events page using same ValuesFilterDialog component
+- Added active filter badges to Events page with removable functionality
+
+**Visual Improvements:**
+- Apply button: Now uses outline variant with border-primary and text-primary (instead of filled sage green background)
+- Dialog title: Explicit text-foreground color for readability
+- Checkbox labels: Explicit text-foreground color for readability
+- Dialog background: Proper bg-background color
+- Active filter badges: Outline variant with sage green borders for consistency
+
+**Events Page Updates:**
+- Added ValuesFilterDialog next to "Community Events" heading
+- Active filters displayed as removable badges below heading
+- Filters events by organizer values (both vendors and restaurants)
+- Loads both vendor and restaurant data to support filtering for all event types
+- Individual badge click removes that filter
+- "Clear all" button removes all filters at once
+
+**Technical Implementation:**
+- ValuesFilterDialog now has consistent styling across Products and Events pages
+- Events.tsx queries both vendors and restaurants data
+- Filtering logic checks vendor values for vendor-organized events
+- Filtering logic checks restaurant values for restaurant-organized events
+- Properly handles events organized by either entity type
+
+**User Experience:**
+- Clear, readable text in filter dialogs across all pages
+- Better color contrast on all buttons and labels
+- Consistent filter interface between Products and Events
+- Easy filter management with visual feedback
+
 ### October 2025 - Product Filter UI Enhancement (Complete)
 
 **Implemented Changes:**
