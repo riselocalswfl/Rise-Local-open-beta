@@ -5,6 +5,37 @@ Rise Local is a full-stack web application connecting local vendors, artisans, a
 
 ## Recent Changes
 
+### October 2025 - Product Filter UI Enhancement (Complete)
+
+**Implemented Changes:**
+- Replaced inline value filter chips with condensed dialog modal
+- Created reusable ValuesFilterDialog component
+- Added active filters display with removable badges
+- Improved accessibility with keyboard navigation support
+
+**Component: ValuesFilterDialog**
+- Location: `client/src/components/filters/ValuesFilterDialog.tsx`
+- Features:
+  - Dialog with checkbox grid (responsive 2-column layout)
+  - Local state management (changes only apply on "Apply")
+  - Clear/Cancel/Apply action buttons
+  - Count badge on trigger button showing number of active filters
+  - Proper ARIA labels for accessibility
+
+**Products Page Updates:**
+- Filter button positioned next to "Shop Local" heading
+- Active filters displayed as removable badges below heading
+- Individual badge click removes that filter
+- "Clear all" button removes all filters at once
+- Preserved all existing filtering logic (no behavior changes)
+- URL query parameter syncing unchanged
+
+**User Experience:**
+- Cleaner, more condensed filter interface
+- Clear visual indication of active filters
+- Easy filter management with click-to-remove badges
+- Accessible via keyboard navigation (Tab, Enter, Space)
+
 ### October 2025 - Events Routing Restructure (Complete)
 
 **Implemented Changes:**
