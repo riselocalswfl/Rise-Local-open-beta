@@ -40,14 +40,6 @@ export default function Products() {
     queryKey: ["/api/values/unique"],
   });
   
-  const handleValueToggle = (value: string) => {
-    setSelectedValues(prev => 
-      prev.includes(value)
-        ? prev.filter(v => v !== value)
-        : [...prev, value]
-    );
-  };
-  
   // Filter by category and vendor values
   let filteredProducts = products;
   
@@ -114,10 +106,19 @@ export default function Products() {
               <Badge 
                 key={v} 
                 variant="secondary" 
+                role="button"
+                tabIndex={0}
                 className="cursor-pointer hover-elevate active-elevate-2 pr-1"
                 onClick={() => {
                   const next = selectedValues.filter(x => x !== v);
                   setSelectedValues(next);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const next = selectedValues.filter(x => x !== v);
+                    setSelectedValues(next);
+                  }
                 }}
                 data-testid={`badge-active-filter-${v}`}
               >
