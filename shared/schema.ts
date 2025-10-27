@@ -217,6 +217,7 @@ export const eventRsvps = pgTable("event_rsvps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   eventId: varchar("event_id").notNull().references(() => events.id),
+  status: text("status").notNull().default("GOING"), // GOING, INTERESTED, NOT_GOING
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   // Unique constraint: one RSVP per user per event
@@ -230,6 +231,24 @@ export const insertEventRsvpSchema = createInsertSchema(eventRsvps).omit({
 
 export type InsertEventRsvp = z.infer<typeof insertEventRsvpSchema>;
 export type EventRsvp = typeof eventRsvps.$inferSelect;
+
+export const attendances = pgTable("attendances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  eventId: varchar("event_id").notNull().references(() => events.id),
+  checkedInAt: timestamp("checked_in_at").defaultNow(),
+}, (table) => ({
+  // Unique constraint: one attendance record per user per event
+  uniqueUserEvent: sql`UNIQUE (user_id, event_id)`
+}));
+
+export const insertAttendanceSchema = createInsertSchema(attendances).omit({
+  id: true,
+  checkedInAt: true,
+});
+
+export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
+export type Attendance = typeof attendances.$inferSelect;
 
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
