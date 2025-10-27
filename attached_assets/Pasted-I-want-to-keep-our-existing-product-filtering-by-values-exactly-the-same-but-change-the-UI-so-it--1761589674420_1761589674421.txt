@@ -1,0 +1,164 @@
+I want to keep our existing product filtering by “values” exactly the same, but change the UI so it’s condensed behind a button. Replace the inline tag list with a single button that opens a modal (Dialog) containing the same options as checkboxes. The selection should apply the same filtering function we already use, and keep URL/query-param syncing working as before.
+
+Requirements
+
+Use shadcn/ui Dialog, Button, Checkbox, and Badge (already in the project).
+
+Desktop: Dialog centered. Mobile: use Sheet on md:hidden for a nicer experience (optional; Dialog fallback is fine).
+
+Show the count of selected values on the button (e.g., “Filter by Values (3)”).
+
+Include “Apply”, “Clear”, and “Cancel” actions.
+
+Preserve our existing selectedValues state, filtering function, and any URL syncing we already have. If we currently read/write ?values=..., keep doing that.
+
+Keep the “All / category chips / sort menu” exactly as-is; we’re only changing the values filter UI.
+
+Implementation
+Create a reusable component client/src/components/filters/ValuesFilterDialog.tsx:
+
+// client/src/components/filters/ValuesFilterDialog.tsx
+import * as React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+
+type Props = {
+  allValues: string[];                 // the same list we currently render as chips
+  selected: string[];                  // our current selectedValues
+  onChange: (next: string[]) => void;  // call with the final list on Apply
+  buttonClassName?: string;
+};
+
+export default function ValuesFilterDialog({ allValues, selected, onChange, buttonClassName }: Props) {
+  const [open, setOpen] = React.useState(false);
+  const [localSel, setLocalSel] = React.useState<string[]>(selected);
+
+  React.useEffect(() => { setLocalSel(selected); }, [selected, open]);
+
+  const toggle = (val: string) => {
+    setLocalSel(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
+  };
+
+  const apply = () => {
+    onChange(localSel);
+    setOpen(false);
+  };
+
+  const clear = () => setLocalSel([]);
+
+  const selCount = selected.length;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className={buttonClassName}>
+          Filter by Values {selCount > 0 && <Badge className="ml-2">{selCount}</Badge>}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Filter by Values</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-auto pr-1">
+          {allValues.map(v => (
+            <label key={v} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50">
+              <Checkbox
+                checked={localSel.includes(v)}
+                onCheckedChange={() => toggle(v)}
+                aria-label={v}
+              />
+              <span className="text-sm">{v}</span>
+            </label>
+          ))}
+        </div>
+
+        <DialogFooter className="justify-between sm:justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={clear}>Clear</Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={apply}>Apply</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+Update the products page where the inline values chips currently render (e.g., client/src/pages/Products.tsx or ShopLocal.tsx). Remove the visible list of value badges and render the new button:
+
+// Replace the old inline values chips block:
+import ValuesFilterDialog from "@/components/filters/ValuesFilterDialog";
+
+// existing state we already have:
+const [selectedValues, setSelectedValues] = React.useState<string[]>(initialSelectedValues);
+
+// Keep existing URL sync utilities if present:
+const updateUrlFromValues = (vals: string[]) => {
+  // if this already exists in our codebase, keep using that.
+  const params = new URLSearchParams(window.location.search);
+  if (vals.length) { params.set("values", vals.join(",")); } else { params.delete("values"); }
+  const next = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState(null, "", next);
+};
+
+// Wherever the filters header lives (right above “Shop Local”):
+<div className="flex items-center gap-3 flex-wrap">
+  {/* existing category chips, sort dropdown, etc. stay the same */}
+
+  <ValuesFilterDialog
+    allValues={ALL_VALUES}            // the same array we used to render the chips
+    selected={selectedValues}
+    onChange={(next) => {
+      setSelectedValues(next);
+      updateUrlFromValues(next);      // keep URL in sync if we already do this
+      // trigger the same fetch/filtering we currently trigger when chips change
+      // e.g., refetchProducts() or applyFilterLocally(next)
+    }}
+  />
+</div>
+
+
+Ensure the filtering logic uses selectedValues exactly as before (same predicate). No data or algorithm changes—only the UI surface changed.
+
+Optionally, show a compact “active filters” summary under the header (no list, just removable badges):
+
+{selectedValues.length > 0 && (
+  <div className="mt-2 flex flex-wrap gap-2">
+    {selectedValues.map(v => (
+      <Badge key={v} variant="secondary" className="cursor-pointer" onClick={() => {
+        const next = selectedValues.filter(x => x !== v);
+        setSelectedValues(next);
+        updateUrlFromValues(next);
+      }}>
+        {v} ✕
+      </Badge>
+    ))}
+    <Button variant="link" className="px-1" onClick={() => { setSelectedValues([]); updateUrlFromValues([]); }}>
+      Clear all
+    </Button>
+  </div>
+)}
+
+
+Data source
+Use the exact same ALL_VALUES array you’re currently rendering (e.g., “100% plant-based”, “locally-sourced”, “sustainable”, etc.). No changes to names or keys.
+
+Accessibility
+
+Every checkbox has an accessible label (the value text).
+
+Dialog trap focus; Escape closes; buttons have clear text.
+
+Styling
+
+Match our current Tailwind/shadcn styles.
+
+Keep spacing consistent with the rest of the filter header.
+
+On small screens the dialog body scrolls (max-h-[60vh] overflow-auto).
+
+After this change, nothing about filtering behavior, categories, or sorting changes. Only the values UI is condensed behind a button that opens a mod
