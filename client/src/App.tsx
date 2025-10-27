@@ -42,8 +42,9 @@ function Router() {
       <Route path="/restaurant/:id" component={RestaurantProfile} />
       <Route path="/restaurant-dashboard" component={RestaurantDashboard} />
       <Route path="/eat-local" component={EatLocal} />
+      <Route path="/events" component={EventsLayout} />
+      <Route path="/events/my" component={EventsLayout} />
       <Route path="/events/:id" component={EventDetail} />
-      <Route path="/events/:rest*" component={EventsLayout} />
       <Route path="/my-events">
         {() => <Redirect to="/events/my" />}
       </Route>
