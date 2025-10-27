@@ -1,0 +1,200 @@
+Build a minimal full-stack feature called “My Events” so authenticated users can view:
+
+events they RSVP’d to, and
+
+events they attended (checked in).
+
+Tech
+
+Frontend: React + TypeScript.
+
+Backend: Node + Express.
+
+DB: SQLite via Prisma (file: ./prisma/dev.db) for easy local dev.
+
+Auth: simple mock session (assume req.user.id from middleware). I’ll swap later.
+
+Data model (Prisma)
+
+Create these models:
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  rsvps     RSVP[]
+  attendances Attendance[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime
+  location    String?
+  rsvps       RSVP[]
+  attendances Attendance[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum RSVPStatus {
+  GOING
+  INTERESTED
+  NOT_GOING
+}
+
+model RSVP {
+  id        String     @id @default(cuid())
+  userId    String
+  eventId   String
+  status    RSVPStatus
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId, eventId]) // one RSVP per user per event
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model Attendance {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  checkedInAt DateTime @default(now())
+
+  @@unique([userId, eventId]) // one attendance record per event
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+Backend
+
+Create Express routes under /api with a mock auth middleware that sets req.user = { id: "demo-user-1" }:
+
+GET /api/my-events
+Query params:
+
+type=all|rsvped|attended (default: all)
+
+rsvpStatus=GOING|INTERESTED|NOT_GOING (optional, only when type=rsvped)
+Behavior:
+
+rsvped: return events where user has an RSVP (filter by rsvpStatus if provided).
+
+attended: return events where user has an Attendance.
+
+all: return union of both with a relations object for each event:
+
+{
+  "rsvped": true/false,
+  "rsvpStatus": "GOING|INTERESTED|NOT_GOING|null",
+  "attended": true/false
+}
+
+
+Sort: upcoming first (by startsAt), then past by most recent.
+
+POST /api/rsvp
+Body: { "eventId": string, "status": "GOING"|"INTERESTED"|"NOT_GOING" }
+Upsert the RSVP for the current user. Return updated RSVP + event.
+
+POST /api/attend
+Body: { "eventId": string }
+Upsert Attendance (create if missing, keep earliest checkedInAt). Return Attendance + event.
+
+(Optional) GET /api/my-stats
+Return counts: totalRsvped, goingCount, interestedCount, attendedCount.
+
+Include input validation, 400s for missing fields, and 404s for bad event IDs.
+
+Frontend (React)
+
+Create a page/component MyEvents.tsx with:
+
+Tabs or segmented control:
+
+All
+
+RSVP’d
+
+Attended
+
+For the RSVP’d tab add a dropdown to filter by GOING / INTERESTED / NOT_GOING / (All).
+
+Fetch from /api/my-events?type=... (and rsvpStatus=... when applicable).
+
+Each event card shows:
+
+title, date/time range (format nicely), location
+
+badges: “RSVP: Going/Interested/Not Going” and/or “Attended”
+
+Empty states for each tab.
+
+Skeleton loaders while fetching.
+
+Add a small stats bar at the top that calls /api/my-stats:
+“RSVP’d: X (Going Y / Interested Z) • Attended: N”.
+
+Create a hook useMyEvents(params) that handles fetching + errors.
+
+Seed script
+
+Add a prisma/seed.ts to insert:
+
+1 demo user (id: demo-user-1)
+
+~5–8 events (mix past and future)
+
+A few RSVP and Attendance rows for demo-user-1 so lists aren’t empty.
+
+Dev scripts
+
+"prisma:generate": "prisma generate"
+
+"prisma:migrate": "prisma migrate dev --name init"
+
+"prisma:seed": "ts-node prisma/seed.ts"
+
+"dev": "tsx watch server.ts" (or your entry point)
+Make sure CORS or same-origin works for the React dev server.
+
+Quality & edge cases
+
+If an event is both RSVP’d and attended, show both badges and dedupe in “All”.
+
+Past vs upcoming formatting:
+
+Upcoming: “Today”, “Tomorrow”, or date (weekday, month day).
+
+Past: relative like “3 days ago”.
+
+Handle no auth (future): return 401 json and show a login nudge in UI.
+
+Defensive: if type is invalid → 400.
+
+All routes must be typed; no any.
+
+Deliverables
+
+Prisma schema + migration + seed
+
+Express server with the three routes above and mock auth
+
+React MyEvents.tsx page + useMyEvents hook + minimal styles
+
+README with how to run:
+
+npm i
+
+npm run prisma:generate && npm run prisma:migrate && npm run prisma:seed
+
+start server and frontend
+
+visit /my-events
+
+Please generate all files and working code now.
