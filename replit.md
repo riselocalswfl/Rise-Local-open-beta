@@ -5,6 +5,66 @@ Rise Local is a full-stack web application connecting local vendors, artisans, a
 
 ## Recent Changes
 
+### October 2025 - My Events Feature (Complete)
+
+**Implemented Features:**
+- Full "My Events" page for authenticated users to view their event activity
+- Three tabs: All, RSVP'd, Attended with filtering and stats
+- RSVP status support (GOING, INTERESTED, NOT_GOING)
+- Event attendance/check-in tracking
+- Stats dashboard showing RSVP and attendance counts
+
+**Database Changes:**
+- Added `status` field to `eventRsvps` table (GOING/INTERESTED/NOT_GOING) with default "GOING"
+- Created `attendances` table for event check-ins
+  - Columns: id, userId, eventId, checkedInAt
+  - Unique constraint on (userId, eventId) prevents duplicate check-ins
+  - Foreign keys to users and events tables
+
+**Backend Implementation:**
+- POST /api/rsvp - Upsert RSVP with status {eventId, status}
+  - Creates new RSVP if doesn't exist, updates status if exists
+  - Validates status is GOING/INTERESTED/NOT_GOING
+  - Returns RSVP and event data
+- POST /api/attend - Check in to event {eventId}
+  - Creates attendance record (idempotent, keeps earliest check-in)
+  - Returns attendance and event data
+- GET /api/my-events - Fetch user's events with filtering
+  - Query params: type (all/rsvped/attended), rsvpStatus (GOING/INTERESTED/NOT_GOING)
+  - Returns events with relations: {rsvped, rsvpStatus, attended}
+  - Sorts upcoming first (chronological), then past (reverse chronological)
+  - Deduplicates events that are both RSVP'd and attended
+- GET /api/my-stats - Get event counts
+  - Returns: totalRsvped, goingCount, interestedCount, notGoingCount, attendedCount
+- Updated POST /api/events/:id/rsvp to default status to "GOING" for backward compatibility
+- Storage methods: updateEventRsvpStatus, createAttendance, getUserAttendance, getUserAttendances
+
+**Frontend Implementation:**
+- Created MyEvents page at /my-events (authenticated users only)
+- Three tabs with distinct content:
+  - All: Shows union of RSVP'd and attended events
+  - RSVP'd: Shows only RSVP'd events with status filter dropdown
+  - Attended: Shows only attended events
+- Stats bar displays RSVP and attendance counts
+- RSVP status filter (GOING/INTERESTED/NOT_GOING) on RSVP'd tab
+- Event cards show:
+  - Event title, date/time, location, RSVP count
+  - Badge for RSVP status (colored by type)
+  - Badge for attendance (green with check icon)
+  - "Past Event" indicator for events that have passed
+- Empty states for each tab with links to browse events
+- Loading skeletons during data fetch
+- Added "My Events" link to buyer navigation menu
+- Comprehensive data-testid attributes for testing
+
+**Key Design Decisions:**
+- Backward compatibility: Existing RSVP toggle defaults to "GOING" status
+- Idempotent check-ins: Multiple check-in attempts keep earliest timestamp
+- Event deduplication: Events appear once in "All" tab even if both RSVP'd and attended
+- Smart sorting: Upcoming events first (by date), then past events (most recent first)
+- Authentication guard: Shows login prompt for unauthenticated users
+- Type safety: Full TypeScript coverage with proper Zod validation
+
 ### October 2025 - Event RSVP Functionality (Complete)
 
 **Implemented Features:**
