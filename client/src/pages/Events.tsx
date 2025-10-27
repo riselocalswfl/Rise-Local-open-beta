@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getEventsWithOrganizers } from "@/lib/api";
-import type { Vendor } from "@shared/schema";
+import type { Vendor, Restaurant } from "@shared/schema";
 import { X } from "lucide-react";
 
 export default function Events() {
@@ -23,6 +23,10 @@ export default function Events() {
 
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
+  });
+
+  const { data: restaurants } = useQuery<Restaurant[]>({
+    queryKey: ["/api/restaurants"],
   });
 
   // Get all unique values from vendors and restaurants
@@ -52,11 +56,21 @@ export default function Events() {
   }
 
   // Filter by organizer values (vendors/restaurants)
-  if (selectedValues.length > 0 && vendors) {
+  if (selectedValues.length > 0 && (vendors || restaurants)) {
     filteredEvents = filteredEvents?.filter(e => {
-      const vendor = vendors.find(v => v.id === e.vendorId || v.id === e.restaurantId);
-      const vendorValues = vendor?.values || [];
-      return selectedValues.some(sv => vendorValues.includes(sv));
+      // Check if event is organized by a vendor
+      const vendor = vendors?.find(v => v.id === e.vendorId);
+      if (vendor) {
+        const vendorValues = vendor.values || [];
+        return selectedValues.some(sv => vendorValues.includes(sv));
+      }
+      // Check if event is organized by a restaurant
+      const restaurant = restaurants?.find(r => r.id === e.restaurantId);
+      if (restaurant) {
+        const restaurantValues = restaurant.values || [];
+        return selectedValues.some(sv => restaurantValues.includes(sv));
+      }
+      return false;
     });
   }
 
