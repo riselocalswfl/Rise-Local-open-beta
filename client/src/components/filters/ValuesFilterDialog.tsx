@@ -54,9 +54,9 @@ export default function ValuesFilterDialog({ allValues, selected, onChange, butt
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-background">
         <DialogHeader>
-          <DialogTitle>Filter by Values</DialogTitle>
+          <DialogTitle className="text-foreground">Filter by Values</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-auto pr-1">
@@ -71,7 +71,7 @@ export default function ValuesFilterDialog({ allValues, selected, onChange, butt
                 aria-label={v}
                 data-testid={`checkbox-value-${v}`}
               />
-              <span className="text-sm">{v}</span>
+              <span className="text-sm text-foreground">{v}</span>
             </label>
           ))}
         </div>
@@ -96,6 +96,8 @@ export default function ValuesFilterDialog({ allValues, selected, onChange, butt
             </Button>
             <Button 
               type="button" 
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary/10"
               onClick={apply}
               data-testid="button-apply-filters"
             >
