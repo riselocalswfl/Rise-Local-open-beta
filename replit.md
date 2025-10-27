@@ -5,6 +5,38 @@ Rise Local is a full-stack web application connecting local vendors, artisans, a
 
 ## Recent Changes
 
+### October 2025 - Events Routing Restructure (Complete)
+
+**Implemented Changes:**
+- Nested My Events under Events section at `/events/my`
+- Created EventsLayout component with tab navigation (Browse Events | My Events)
+- Tab-based navigation allows switching between browsing all events and viewing personal events
+- Backward compatibility: `/my-events` redirects to `/events/my`
+
+**Routing Structure:**
+- `/events` - Browse all community events (with FilterBar)
+- `/events/my` - View personal events (RSVP'd and attended)
+- `/events/{id}` - Individual event detail page
+- `/my-events` - Redirects to `/events/my` (legacy URL support)
+
+**Technical Implementation:**
+- EventsLayout component centralizes Header and tab navigation
+- Conditional rendering based on route: Events (browse) or MyEvents (personal)
+- Routes ordered explicitly before dynamic `/events/:id` to prevent conflicts
+- Tab navigation uses wouter's Link component for client-side routing
+- Sticky tab bar below header with active state styling
+
+**Components:**
+- EventsLayout: Header + tabs + conditional content rendering
+- Events: FilterBar + event grid (no header, as parent provides it)
+- MyEvents: Personal event management (uses parent's header)
+
+**User Experience:**
+- Single header across all event-related pages
+- Clear visual indication of active tab
+- Smooth client-side navigation between Browse and My Events
+- Event detail pages remain accessible at `/events/{uuid}`
+
 ### October 2025 - My Events Feature (Complete)
 
 **Implemented Features:**
