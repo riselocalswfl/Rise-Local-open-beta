@@ -438,8 +438,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateEventRsvp(eventId, -1);
         res.json({ success: true, isRsvped: false });
       } else {
-        // RSVP: create the RSVP and increment count
-        await storage.createEventRsvp({ userId, eventId });
+        // RSVP: create the RSVP and increment count (default to GOING for backward compatibility)
+        await storage.createEventRsvp({ userId, eventId, status: "GOING" });
         await storage.updateEventRsvp(eventId, 1);
         res.json({ success: true, isRsvped: true });
       }
@@ -456,6 +456,187 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(rsvps);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch RSVPs" });
+    }
+  });
+
+  // Upsert RSVP with status
+  app.post("/api/rsvp", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { eventId, status } = req.body;
+
+      if (!eventId || !status) {
+        return res.status(400).json({ error: "eventId and status are required" });
+      }
+
+      if (!["GOING", "INTERESTED", "NOT_GOING"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be GOING, INTERESTED, or NOT_GOING" });
+      }
+
+      // Check if event exists
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+
+      // Check if RSVP exists
+      const existingRsvp = await storage.getUserEventRsvp(userId, eventId);
+      
+      if (existingRsvp) {
+        // Update existing RSVP status
+        await storage.updateEventRsvpStatus(userId, eventId, status);
+        const updated = await storage.getUserEventRsvp(userId, eventId);
+        res.json({ rsvp: updated, event });
+      } else {
+        // Create new RSVP and increment count
+        const newRsvp = await storage.createEventRsvp({ userId, eventId, status });
+        await storage.updateEventRsvp(eventId, 1);
+        res.json({ rsvp: newRsvp, event });
+      }
+    } catch (error) {
+      console.error("Error upserting RSVP:", error);
+      res.status(500).json({ error: "Failed to update RSVP" });
+    }
+  });
+
+  // Create attendance (check-in)
+  app.post("/api/attend", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { eventId } = req.body;
+
+      if (!eventId) {
+        return res.status(400).json({ error: "eventId is required" });
+      }
+
+      // Check if event exists
+      const event = await storage.getEvent(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+
+      // Check if already attended (keep earliest check-in time)
+      const existingAttendance = await storage.getUserAttendance(userId, eventId);
+      if (existingAttendance) {
+        return res.json({ attendance: existingAttendance, event });
+      }
+
+      // Create new attendance
+      const attendance = await storage.createAttendance({ userId, eventId });
+      res.json({ attendance, event });
+    } catch (error) {
+      console.error("Error creating attendance:", error);
+      res.status(500).json({ error: "Failed to check in" });
+    }
+  });
+
+  // Get my events (RSVPed and/or attended)
+  app.get("/api/my-events", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { type = "all", rsvpStatus } = req.query;
+
+      if (!["all", "rsvped", "attended"].includes(type as string)) {
+        return res.status(400).json({ error: "Invalid type. Must be all, rsvped, or attended" });
+      }
+
+      if (rsvpStatus && !["GOING", "INTERESTED", "NOT_GOING"].includes(rsvpStatus as string)) {
+        return res.status(400).json({ error: "Invalid rsvpStatus" });
+      }
+
+      // Fetch user's RSVPs and attendances
+      const [rsvps, attendances] = await Promise.all([
+        storage.getUserRsvps(userId),
+        storage.getUserAttendances(userId)
+      ]);
+
+      // Filter RSVPs by status if provided
+      const filteredRsvps = rsvpStatus 
+        ? rsvps.filter(r => r.status === rsvpStatus)
+        : rsvps;
+
+      // Get unique event IDs based on type
+      let eventIds: string[] = [];
+      if (type === "rsvped") {
+        eventIds = filteredRsvps.map(r => r.eventId);
+      } else if (type === "attended") {
+        eventIds = attendances.map(a => a.eventId);
+      } else {
+        // "all" - union of both
+        const rsvpedIds = new Set(filteredRsvps.map(r => r.eventId));
+        const attendedIds = new Set(attendances.map(a => a.eventId));
+        eventIds = Array.from(new Set([...rsvpedIds, ...attendedIds]));
+      }
+
+      // Fetch events
+      const events = await Promise.all(
+        eventIds.map(id => storage.getEvent(id))
+      );
+
+      // Filter out undefined events and add relation info
+      const eventsWithRelations = events
+        .filter((e): e is NonNullable<typeof e> => e !== undefined)
+        .map(event => {
+          const rsvp = rsvps.find(r => r.eventId === event.id);
+          const attendance = attendances.find(a => a.eventId === event.id);
+          
+          return {
+            ...event,
+            relations: {
+              rsvped: !!rsvp,
+              rsvpStatus: rsvp?.status || null,
+              attended: !!attendance
+            }
+          };
+        });
+
+      // Sort: upcoming first (by dateTime), then past by most recent
+      const now = new Date();
+      eventsWithRelations.sort((a, b) => {
+        const aTime = new Date(a.dateTime).getTime();
+        const bTime = new Date(b.dateTime).getTime();
+        const aIsFuture = aTime > now.getTime();
+        const bIsFuture = bTime > now.getTime();
+
+        if (aIsFuture && !bIsFuture) return -1;
+        if (!aIsFuture && bIsFuture) return 1;
+        if (aIsFuture && bIsFuture) return aTime - bTime; // earlier upcoming first
+        return bTime - aTime; // more recent past first
+      });
+
+      res.json(eventsWithRelations);
+    } catch (error) {
+      console.error("Error fetching my events:", error);
+      res.status(500).json({ error: "Failed to fetch events" });
+    }
+  });
+
+  // Get my event stats
+  app.get("/api/my-stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const [rsvps, attendances] = await Promise.all([
+        storage.getUserRsvps(userId),
+        storage.getUserAttendances(userId)
+      ]);
+
+      const goingCount = rsvps.filter(r => r.status === "GOING").length;
+      const interestedCount = rsvps.filter(r => r.status === "INTERESTED").length;
+      const notGoingCount = rsvps.filter(r => r.status === "NOT_GOING").length;
+      const attendedCount = attendances.length;
+      const totalRsvped = rsvps.length;
+
+      res.json({
+        totalRsvped,
+        goingCount,
+        interestedCount,
+        notGoingCount,
+        attendedCount
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
 

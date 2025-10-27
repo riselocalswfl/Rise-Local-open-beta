@@ -4,6 +4,7 @@ import {
   type Product, type InsertProduct,
   type Event, type InsertEvent,
   type EventRsvp, type InsertEventRsvp,
+  type Attendance, type InsertAttendance,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem,
   type Spotlight, type InsertSpotlight,
@@ -15,7 +16,7 @@ import {
   type RestaurantFAQ, type InsertRestaurantFAQ,
   type LoyaltyTier, type InsertLoyaltyTier,
   type LoyaltyTransaction, type InsertLoyaltyTransaction,
-  users, vendors, products, events, eventRsvps, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
+  users, vendors, products, events, eventRsvps, attendances, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
   restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -76,9 +77,15 @@ export interface IStorage {
 
   // Event RSVP operations
   createEventRsvp(rsvp: InsertEventRsvp): Promise<EventRsvp>;
+  updateEventRsvpStatus(userId: string, eventId: string, status: string): Promise<void>;
   deleteEventRsvp(userId: string, eventId: string): Promise<void>;
   getUserEventRsvp(userId: string, eventId: string): Promise<EventRsvp | undefined>;
   getUserRsvps(userId: string): Promise<EventRsvp[]>;
+  
+  // Event Attendance operations
+  createAttendance(attendance: InsertAttendance): Promise<Attendance>;
+  getUserAttendance(userId: string, eventId: string): Promise<Attendance | undefined>;
+  getUserAttendances(userId: string): Promise<Attendance[]>;
 
   // Order operations
   getOrder(id: string): Promise<Order | undefined>;
@@ -367,6 +374,12 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  async updateEventRsvpStatus(userId: string, eventId: string, status: string): Promise<void> {
+    await db.update(eventRsvps)
+      .set({ status })
+      .where(and(eq(eventRsvps.userId, userId), eq(eventRsvps.eventId, eventId)));
+  }
+
   async deleteEventRsvp(userId: string, eventId: string): Promise<void> {
     await db.delete(eventRsvps)
       .where(and(eq(eventRsvps.userId, userId), eq(eventRsvps.eventId, eventId)));
@@ -381,6 +394,23 @@ export class DbStorage implements IStorage {
   async getUserRsvps(userId: string): Promise<EventRsvp[]> {
     return await db.select().from(eventRsvps)
       .where(eq(eventRsvps.userId, userId));
+  }
+
+  // Event Attendance operations
+  async createAttendance(attendance: InsertAttendance): Promise<Attendance> {
+    const result = await db.insert(attendances).values(attendance).returning();
+    return result[0];
+  }
+
+  async getUserAttendance(userId: string, eventId: string): Promise<Attendance | undefined> {
+    const result = await db.select().from(attendances)
+      .where(and(eq(attendances.userId, userId), eq(attendances.eventId, eventId)));
+    return result[0];
+  }
+
+  async getUserAttendances(userId: string): Promise<Attendance[]> {
+    return await db.select().from(attendances)
+      .where(eq(attendances.userId, userId));
   }
 
   // Order operations
