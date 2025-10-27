@@ -36,6 +36,8 @@ Rise Local is a full-stack web application connecting local vendors, artisans, a
 - Clear visual indication of active tab
 - Smooth client-side navigation between Browse and My Events
 - Event detail pages remain accessible at `/events/{uuid}`
+- "My Events" removed from navigation menu (accessible via tabs instead)
+- Navigation menu shows "Events" only for cleaner UI
 
 ### October 2025 - My Events Feature (Complete)
 

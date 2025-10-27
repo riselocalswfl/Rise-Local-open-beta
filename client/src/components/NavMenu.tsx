@@ -27,7 +27,6 @@ const buyerNavigationItems = [
   { name: "Shop Local", href: "/products", icon: ShoppingBag },
   { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "My Events", href: "/events/my", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "My Account", href: "/profile", icon: UserCircle },
