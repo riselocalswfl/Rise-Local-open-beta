@@ -105,7 +105,7 @@ export default function Products() {
             {selectedValues.map(v => (
               <Badge 
                 key={v} 
-                variant="secondary" 
+                variant="default" 
                 role="button"
                 tabIndex={0}
                 className="cursor-pointer hover-elevate active-elevate-2 pr-1"
