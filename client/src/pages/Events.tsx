@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import EventCard from "@/components/EventCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,8 +49,7 @@ export default function Events() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <>
       <FilterBar
         type="events"
         onSearch={setSearchQuery}
@@ -96,6 +94,6 @@ export default function Events() {
           )}
         </div>
       </main>
-    </div>
+    </>
   );
 }

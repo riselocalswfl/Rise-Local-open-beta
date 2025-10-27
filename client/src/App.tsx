@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,9 +9,8 @@ import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import Vendors from "@/pages/Vendors";
 import EatLocal from "@/pages/EatLocal";
-import Events from "@/pages/Events";
+import EventsLayout from "@/pages/EventsLayout";
 import EventDetail from "@/pages/EventDetail";
-import MyEvents from "@/pages/MyEvents";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import Spotlight from "@/pages/Spotlight";
@@ -44,8 +43,10 @@ function Router() {
       <Route path="/restaurant-dashboard" component={RestaurantDashboard} />
       <Route path="/eat-local" component={EatLocal} />
       <Route path="/events/:id" component={EventDetail} />
-      <Route path="/events" component={Events} />
-      <Route path="/my-events" component={MyEvents} />
+      <Route path="/events/:rest*" component={EventsLayout} />
+      <Route path="/my-events">
+        {() => <Redirect to="/events/my" />}
+      </Route>
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/spotlight" component={Spotlight} />
