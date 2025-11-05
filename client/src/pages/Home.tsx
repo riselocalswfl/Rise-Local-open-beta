@@ -139,6 +139,14 @@ export default function Home() {
               ))
             )}
           </div>
+          
+          <div className="flex justify-center mt-8">
+            <Link href="/register" data-testid="join-movement-cta">
+              <button className="bg-secondary hover:bg-secondary/90 text-white px-8 py-3 rounded-md font-medium transition">
+                Join the Movement
+              </button>
+            </Link>
+          </div>
         </section>
 
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12 pb-16">
