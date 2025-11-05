@@ -17,19 +17,19 @@ export default function HomeHero() {
             When you shop local, you're not just buying products — you're investing in your neighbors, your town, and the heartbeat of your community.
             Rise Local is where your purchases make a difference — right here at home.
           </p>
-          <div className="flex gap-3 mb-4">
-            <Link href="/products">
-              <BrandButton data-testid="button-shop-local">
-                Shop Local
-              </BrandButton>
-            </Link>
-            <Link href="/vendors">
-              <BrandButton data-testid="button-meet-makers">
-                Meet Makers
-              </BrandButton>
-            </Link>
-          </div>
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex gap-3">
+              <Link href="/products">
+                <BrandButton data-testid="button-shop-local">
+                  Shop Local
+                </BrandButton>
+              </Link>
+              <Link href="/vendors">
+                <BrandButton data-testid="button-meet-makers">
+                  Meet Makers
+                </BrandButton>
+              </Link>
+            </div>
             <Link href="/join" data-testid="link-join">
               <BrandButton data-testid="button-join">
                 Join the Movement
