@@ -177,11 +177,6 @@ export default function Header() {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Link href="/join" data-testid="link-join">
-                <Button variant="outline" size="sm" data-testid="button-join">
-                  Join the Movement
-                </Button>
-              </Link>
             </>
           )}
         </div>
