@@ -168,16 +168,27 @@ export const products = pgTable("products", {
   description: text("description"),
   imageUrl: text("image_url"),
   
+  // Product Display
+  unitType: text("unit_type").default("per item"), // per lb, per dozen, per item, etc.
+  status: text("status").notNull().default("active"), // active or hidden
+  isFeatured: boolean("is_featured").notNull().default(false),
+  
   // Sourcing & Transparency
   valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
   sourceFarm: text("source_farm"), // where product is sourced from
   harvestDate: timestamp("harvest_date"), // when product was harvested
   leadTimeDays: integer("lead_time_days").default(0), // days needed to prepare order
   inventoryStatus: text("inventory_status").default("in_stock"), // "in_stock", "limited", "out_of_stock"
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertProduct = z.infer<typeof insertProductSchema>;
