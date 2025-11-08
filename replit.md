@@ -4,6 +4,26 @@
 Rise Local is a full-stack web application designed to connect local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It features a marketplace for products and a community hub for events, aiming to foster sustainability, local commerce, and community engagement. The platform supports local businesses with a counterculture yet polished brand aesthetic, running entirely on Replit, and includes features like product filtering, event management with RSVP and attendance tracking, and a loyalty system.
 
 ## Recent Changes
+- **November 8, 2025**: Enhanced VendorDashboard Products tab with improved functionality:
+  - Updated product schema: Added unitType, status (active/hidden), isFeatured flag, createdAt/updatedAt timestamps
+  - Redesigned Add Product Form:
+    - Dollar-based pricing input (e.g., $5.99) with automatic conversion to cents on backend
+    - Unit type dropdown (per item, per lb, per dozen, per bunch, per pint, per quart, per gallon)
+    - Product status toggle (Active/Hidden) to control visibility without deletion
+    - Featured product checkbox for promotional highlighting
+    - Product tags input using shared TagInput component
+    - Preview button to show ProductPreview modal before publishing
+    - Cleaned data submission to exclude empty optional fields and prevent validation errors
+  - Redesigned Manage Products View:
+    - Card-based layout with product images, name, price with unit type, and stock count
+    - Low stock indicator (warning badge) when stock < 5 items
+    - Featured badge on featured products
+    - Inline status toggle on each card for quick visibility changes
+    - Edit and delete buttons on each card
+    - Empty state with encouraging message when no products exist
+  - Added ProductPreview component showing public-facing product display with vendor info
+  - All changes tested with e2e Playwright tests confirming product creation, status toggling, and low stock indicators work correctly
+
 - **November 8, 2025**: Redesigned VendorDashboard Profile tab with organized sections:
   - Business Info: Business name, category dropdown (Farm/Artisan/Restaurant/Wellness/Market/Other), tagline, bio (300 char max)
   - Location & Contact: City, zip code, contact email, website, Instagram, Facebook
