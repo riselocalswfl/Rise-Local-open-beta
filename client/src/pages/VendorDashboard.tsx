@@ -10,22 +10,36 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle } from "lucide-react";
 import type { Vendor, Product, Event, VendorFAQ } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
 import { z } from "zod";
 
 // Form schemas for validation
-const productFormSchema = insertProductSchema.omit({ vendorId: true }).extend({
-  priceCents: z.number().min(0, "Price must be positive"),
+const productFormSchema = z.object({
+  name: z.string().min(1, "Product name is required"),
+  price: z.number().min(0, "Price must be positive"), // In dollars for the form
   stock: z.number().int().min(0, "Stock must be a positive number"),
+  category: z.string().optional(),
+  description: z.string().optional(),
+  imageUrl: z.string().optional(),
+  unitType: z.string().default("per item"),
+  status: z.string().default("active"),
+  isFeatured: z.boolean().default(false),
+  valueTags: z.array(z.string()).default([]),
+  sourceFarm: z.string().optional(),
+  harvestDate: z.string().optional(),
+  leadTimeDays: z.number().int().default(0),
+  inventoryStatus: z.string().default("in_stock"),
 });
 
 const eventFormSchema = insertEventSchema.omit({ vendorId: true, restaurantId: true }).extend({
@@ -41,6 +55,8 @@ export default function VendorDashboard() {
   const [localValues, setLocalValues] = useState<string[]>([]);
   const [localSourcingPercent, setLocalSourcingPercent] = useState<number>(0);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [productPreviewDialogOpen, setProductPreviewDialogOpen] = useState(false);
+  const [previewProductData, setPreviewProductData] = useState<any>(null);
   
   // Dialog states
   const [productDialogOpen, setProductDialogOpen] = useState(false);
@@ -640,41 +656,126 @@ export default function VendorDashboard() {
                     <AddProductForm 
                       onSubmit={createProductMutation.mutate}
                       isPending={createProductMutation.isPending}
+                      onPreview={(data) => {
+                        setPreviewProductData(data);
+                        setProductPreviewDialogOpen(true);
+                      }}
                     />
                   </DialogContent>
                 </Dialog>
               </CardHeader>
               <CardContent>
                 {products.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No products yet. Add your first product to get started!</p>
+                  <div className="text-center py-16">
+                    <div className="mx-auto w-24 h-24 mb-4 rounded-full bg-muted flex items-center justify-center">
+                      <Package className="w-12 h-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">No Products Yet</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Add your first product and start reaching your local customers!
+                    </p>
+                    <Button 
+                      variant="default" 
+                      onClick={() => setProductDialogOpen(true)}
+                      data-testid="button-add-first-product"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Your First Product
+                    </Button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {products.map((product) => (
-                      <div key={product.id} className="flex items-center justify-between border rounded-md p-4" data-testid={`product-${product.id}`}>
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{product.name}</h3>
-                          <p className="text-sm text-muted-foreground">{product.description}</p>
-                          <div className="flex items-center gap-4 mt-2">
-                            <span className="text-sm font-medium">${((product.priceCents || 0) / 100).toFixed(2)}</span>
-                            <span className="text-sm text-muted-foreground">Stock: {product.stock}</span>
-                            <Badge variant="secondary">{product.category}</Badge>
+                      <Card key={product.id} className="overflow-hidden" data-testid={`product-card-${product.id}`}>
+                        {product.imageUrl && (
+                          <div className="aspect-square overflow-hidden bg-muted">
+                            <img 
+                              src={product.imageUrl} 
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" data-testid={`button-edit-${product.id}`}>Edit</Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => deleteProductMutation.mutate(product.id)}
-                            data-testid={`button-delete-${product.id}`}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
+                        )}
+                        {!product.imageUrl && (
+                          <div className="aspect-square bg-muted flex items-center justify-center">
+                            <Package className="w-12 h-12 text-muted-foreground" />
+                          </div>
+                        )}
+                        <CardContent className="p-4 space-y-3">
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <h3 className="font-semibold line-clamp-1" data-testid={`product-name-${product.id}`}>{product.name}</h3>
+                              {product.isFeatured && (
+                                <Badge variant="default" className="shrink-0">Featured</Badge>
+                              )}
+                            </div>
+                            {product.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-bold" data-testid={`product-price-${product.id}`}>
+                              ${((product.priceCents || 0) / 100).toFixed(2)}
+                            </span>
+                            {product.unitType && product.unitType !== "per item" && (
+                              <span className="text-sm text-muted-foreground">/ {product.unitType.replace('per ', '')}</span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm" data-testid={`product-stock-${product.id}`}>
+                              Stock: {product.stock}
+                            </span>
+                            {product.stock < 5 && product.stock > 0 && (
+                              <Badge variant="outline" className="gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Low Stock
+                              </Badge>
+                            )}
+                            {product.stock === 0 && (
+                              <Badge variant="destructive">Out of Stock</Badge>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Status:</span>
+                              <Switch
+                                checked={product.status === "active"}
+                                onCheckedChange={(checked) => {
+                                  updateProductMutation.mutate({
+                                    id: product.id,
+                                    data: { status: checked ? "active" : "hidden" }
+                                  });
+                                }}
+                                data-testid={`switch-status-${product.id}`}
+                              />
+                              <span className="text-xs">{product.status === "active" ? "Active" : "Hidden"}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              data-testid={`button-edit-${product.id}`}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => deleteProductMutation.mutate(product.id)}
+                              data-testid={`button-delete-${product.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -871,6 +972,16 @@ export default function VendorDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Product Preview Dialog */}
+        <Dialog open={productPreviewDialogOpen} onOpenChange={setProductPreviewDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Product Preview</DialogTitle>
+            </DialogHeader>
+            {previewProductData && <ProductPreview product={previewProductData} vendor={vendor} />}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
@@ -878,26 +989,47 @@ export default function VendorDashboard() {
 
 // ========== FORM COMPONENTS ==========
 
-function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
+function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: any) => void; isPending: boolean; onPreview: (data: any) => void }) {
+  const [productTags, setProductTags] = useState<string[]>([]);
+  
   const form = useForm<z.infer<typeof productFormSchema>>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: "",
-      priceCents: 0,
+      price: 0,
       stock: 0,
       category: "",
       description: "",
       imageUrl: "",
+      unitType: "per item",
+      status: "active",
+      isFeatured: false,
       valueTags: [],
       sourceFarm: "",
-      harvestDate: undefined,
+      harvestDate: "",
       leadTimeDays: 0,
       inventoryStatus: "in_stock",
     },
   });
 
   const handleSubmit = (data: z.infer<typeof productFormSchema>) => {
-    onSubmit(data);
+    const { price, ...rest } = data;
+    const productData = {
+      ...rest,
+      priceCents: Math.round(price * 100),
+      valueTags: productTags,
+    };
+    onSubmit(productData);
+  };
+
+  const handlePreview = () => {
+    const data = form.getValues();
+    const previewData = {
+      ...data,
+      priceCents: Math.round(data.price * 100),
+      valueTags: productTags,
+    };
+    onPreview(previewData);
   };
 
   return (
@@ -920,16 +1052,17 @@ function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="priceCents"
+            name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price (cents) *</FormLabel>
+                <FormLabel>Price ($) *</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="599 = $5.99"
-                    {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    step="0.01"
+                    placeholder="5.99"
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     data-testid="input-product-price"
                   />
                 </FormControl>
@@ -940,6 +1073,35 @@ function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
 
           <FormField
             control={form.control}
+            name="unitType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Unit Type *</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-unit-type">
+                      <SelectValue placeholder="Select unit type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="per item">Per Item</SelectItem>
+                    <SelectItem value="per lb">Per Pound</SelectItem>
+                    <SelectItem value="per dozen">Per Dozen</SelectItem>
+                    <SelectItem value="per bunch">Per Bunch</SelectItem>
+                    <SelectItem value="per pint">Per Pint</SelectItem>
+                    <SelectItem value="per quart">Per Quart</SelectItem>
+                    <SelectItem value="per gallon">Per Gallon</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
             name="stock"
             render={({ field }) => (
               <FormItem>
@@ -948,7 +1110,7 @@ function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
                   <Input
                     type="number"
                     placeholder="50"
-                    {...field}
+                    value={field.value || ""}
                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                     data-testid="input-product-stock"
                   />
@@ -957,33 +1119,33 @@ function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
               </FormItem>
             )}
           />
-        </div>
 
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-product-category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="Produce">Produce</SelectItem>
-                  <SelectItem value="Dairy">Dairy</SelectItem>
-                  <SelectItem value="Meat">Meat</SelectItem>
-                  <SelectItem value="Baked Goods">Baked Goods</SelectItem>
-                  <SelectItem value="Preserves">Preserves</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-product-category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Produce">Produce</SelectItem>
+                    <SelectItem value="Dairy">Dairy</SelectItem>
+                    <SelectItem value="Meat">Meat</SelectItem>
+                    <SelectItem value="Baked Goods">Baked Goods</SelectItem>
+                    <SelectItem value="Preserves">Preserves</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -1010,7 +1172,7 @@ function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Image URL</FormLabel>
+              <FormLabel>Image URL (optional)</FormLabel>
               <FormControl>
                 <Input 
                   placeholder="https://example.com/image.jpg" 
@@ -1019,12 +1181,68 @@ function AddProductForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
                   data-testid="input-product-image" 
                 />
               </FormControl>
+              <FormDescription>Upload feature coming soon - use URL for now</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="space-y-2">
+          <Label>Product Tags (optional)</Label>
+          <TagInput
+            tags={productTags}
+            onChange={setProductTags}
+            placeholder="Add tags (e.g., organic, local, fresh)"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-md border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel>Product Status</FormLabel>
+                  <FormDescription>Show or hide this product</FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value === "active"}
+                    onCheckedChange={(checked) => field.onChange(checked ? "active" : "hidden")}
+                    data-testid="switch-product-status"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="isFeatured"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-md border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel>Featured Product</FormLabel>
+                  <FormDescription>Highlight on your profile</FormDescription>
+                </div>
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-product-featured"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex justify-between gap-2 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={handlePreview} data-testid="button-preview-product">
+            <Eye className="w-4 h-4 mr-2" />
+            Preview
+          </Button>
           <Button type="submit" disabled={isPending} data-testid="button-submit-product">
             {isPending ? "Creating..." : "Create Product"}
           </Button>
@@ -1337,6 +1555,106 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
       {/* Member Since */}
       <div className="text-sm text-muted-foreground border-t pt-4">
         Member since {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
+      </div>
+    </div>
+  );
+}
+
+// Product Preview Component
+function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
+  return (
+    <div className="space-y-6">
+      {/* Product Image */}
+      <div className="aspect-square overflow-hidden rounded-md bg-muted flex items-center justify-center">
+        {product.imageUrl ? (
+          <img 
+            src={product.imageUrl} 
+            alt={product.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <Package className="w-24 h-24 text-muted-foreground" />
+        )}
+      </div>
+
+      {/* Product Details */}
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h2 className="text-2xl font-bold">{product.name}</h2>
+            {product.isFeatured && (
+              <Badge variant="default">Featured</Badge>
+            )}
+          </div>
+          {product.description && (
+            <p className="text-muted-foreground">{product.description}</p>
+          )}
+        </div>
+
+        {/* Price and Unit */}
+        <div className="flex items-baseline gap-2">
+          <span className="text-3xl font-bold">${((product.priceCents || 0) / 100).toFixed(2)}</span>
+          {product.unitType && product.unitType !== "per item" && (
+            <span className="text-lg text-muted-foreground">/ {product.unitType.replace('per ', '')}</span>
+          )}
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-center">
+                <div className="text-xl font-bold">{product.stock || 0}</div>
+                <div className="text-xs text-muted-foreground">In Stock</div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-center">
+                <div className="text-sm font-medium">{product.category || 'Uncategorized'}</div>
+                <div className="text-xs text-muted-foreground">Category</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tags */}
+        {product.valueTags && product.valueTags.length > 0 && (
+          <div>
+            <h3 className="font-semibold mb-2">Product Tags</h3>
+            <div className="flex flex-wrap gap-2">
+              {product.valueTags.map((tag: string, i: number) => (
+                <Badge key={i} variant="outline">{tag}</Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Vendor Info */}
+        <div className="border-t pt-4">
+          <h3 className="font-semibold mb-2">Sold By</h3>
+          <div className="flex items-center gap-3">
+            {vendor.logoUrl && (
+              <img 
+                src={vendor.logoUrl}
+                alt={vendor.businessName}
+                className="w-12 h-12 rounded-full object-cover border-2 border-border"
+              />
+            )}
+            <div>
+              <div className="font-medium">{vendor.businessName}</div>
+              {vendor.city && vendor.state && (
+                <div className="text-sm text-muted-foreground">{vendor.city}, {vendor.state}</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Status Info */}
+        <div className="border-t pt-4 text-sm text-muted-foreground">
+          Status: {product.status === "active" ? "Active (Visible to customers)" : "Hidden (Not visible to customers)"}
+        </div>
       </div>
     </div>
   );
