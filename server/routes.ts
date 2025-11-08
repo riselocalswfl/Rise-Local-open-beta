@@ -256,6 +256,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const product = await storage.createProduct(validatedData);
       res.status(201).json(product);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid product data", details: error.errors });
+      }
       res.status(400).json({ error: "Invalid product data" });
     }
   });

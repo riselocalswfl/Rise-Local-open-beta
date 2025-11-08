@@ -1014,12 +1014,28 @@ function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: a
 
   const handleSubmit = (data: z.infer<typeof productFormSchema>) => {
     const { price, ...rest } = data;
-    const productData = {
-      ...rest,
+    
+    // Clean up optional fields - remove empty strings and zero values for optional fields
+    const cleanData: any = {
+      name: rest.name,
+      stock: rest.stock,
       priceCents: Math.round(price * 100),
       valueTags: productTags,
+      unitType: rest.unitType || "per item",
+      status: rest.status || "active",
+      isFeatured: rest.isFeatured || false,
     };
-    onSubmit(productData);
+    
+    // Only include optional fields if they have values
+    if (rest.category) cleanData.category = rest.category;
+    if (rest.description) cleanData.description = rest.description;
+    if (rest.imageUrl) cleanData.imageUrl = rest.imageUrl;
+    if (rest.sourceFarm) cleanData.sourceFarm = rest.sourceFarm;
+    if (rest.harvestDate) cleanData.harvestDate = rest.harvestDate;
+    if (rest.leadTimeDays && rest.leadTimeDays > 0) cleanData.leadTimeDays = rest.leadTimeDays;
+    if (rest.inventoryStatus) cleanData.inventoryStatus = rest.inventoryStatus;
+    
+    onSubmit(cleanData);
   };
 
   const handlePreview = () => {
