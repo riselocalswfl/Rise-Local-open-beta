@@ -115,12 +115,14 @@ export const vendors = pgTable("vendors", {
   // Fulfillment & Contact
   fulfillmentOptions: jsonb("fulfillment_options"), // [{type, name, address, days, time, fee}]
   contact: jsonb("contact"), // {email, phone, preferredContact}
+  contactEmail: text("contact_email"), // Direct contact email for vendor
   
   // Policies
   policies: jsonb("policies"), // {refund, cancellation, allergen, safety}
   
   // Payment
   paymentMethod: text("payment_method").notNull(), // Direct to Vendor or Through Platform
+  paymentPreference: text("payment_preference"), // Preferred payment method: Direct, Venmo, Zelle, CashApp, Other
   paymentHandles: jsonb("payment_handles"), // {venmo: "@username", square: "id", etc.}
   
   // Membership & Verification

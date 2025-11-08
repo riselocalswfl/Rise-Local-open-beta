@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon } from "lucide-react";
 import type { Vendor, Product, Event, VendorFAQ } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
@@ -37,6 +39,8 @@ export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
   const [localValues, setLocalValues] = useState<string[]>([]);
+  const [localSourcingPercent, setLocalSourcingPercent] = useState<number>(0);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   
   // Dialog states
   const [productDialogOpen, setProductDialogOpen] = useState(false);
@@ -52,6 +56,7 @@ export default function VendorDashboard() {
   useEffect(() => {
     if (vendor) {
       setLocalValues(vendor.values || []);
+      setLocalSourcingPercent(vendor.localSourcingPercent || 0);
     }
   }, [vendor]);
 
@@ -255,14 +260,34 @@ export default function VendorDashboard() {
           </TabsList>
 
           {/* Profile Tab */}
-          <TabsContent value="profile">
+          <TabsContent value="profile" className="space-y-6">
+            {/* Preview Button at Top */}
+            <div className="flex justify-end">
+              <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-preview-profile">
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview Public Profile
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Public Profile Preview</DialogTitle>
+                  </DialogHeader>
+                  <ProfilePreview vendor={vendor} />
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Business Info Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Edit Profile</CardTitle>
+                <CardTitle>Business Info</CardTitle>
+                <CardDescription>Tell customers about your business</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="businessName">Business Name</Label>
+                  <Label htmlFor="businessName">Business Name <span className="text-destructive">*</span></Label>
                   <Input
                     id="businessName"
                     defaultValue={vendor.businessName || ""}
@@ -274,6 +299,30 @@ export default function VendorDashboard() {
                       }
                     }}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Business Category</Label>
+                  <Select
+                    defaultValue={vendor.category}
+                    onValueChange={(value) => {
+                      if (value !== vendor.category) {
+                        updateVendorMutation.mutate({ category: value });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="category" data-testid="select-category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Farm">Farm</SelectItem>
+                      <SelectItem value="Artisan">Artisan</SelectItem>
+                      <SelectItem value="Restaurant">Restaurant</SelectItem>
+                      <SelectItem value="Wellness">Wellness</SelectItem>
+                      <SelectItem value="Market">Market</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -292,11 +341,12 @@ export default function VendorDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
+                  <Label htmlFor="bio">Bio (max 300 characters)</Label>
                   <Textarea
                     id="bio"
                     defaultValue={vendor.bio}
-                    rows={6}
+                    maxLength={300}
+                    rows={4}
                     placeholder="Tell your story..."
                     data-testid="input-bio"
                     onBlur={(e) => {
@@ -305,42 +355,268 @@ export default function VendorDashboard() {
                       }
                     }}
                   />
+                  <p className="text-xs text-muted-foreground">{vendor.bio?.length || 0}/300 characters</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Location & Contact Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Location & Contact</CardTitle>
+                <CardDescription>Help customers reach and find you</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      defaultValue={vendor.city || "Fort Myers"}
+                      placeholder="Fort Myers"
+                      data-testid="input-city"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.city) {
+                          updateVendorMutation.mutate({ city: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="zipCode">Zip Code</Label>
+                    <Input
+                      id="zipCode"
+                      defaultValue={vendor.zipCode || ""}
+                      placeholder="33901"
+                      data-testid="input-zip-code"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.zipCode) {
+                          updateVendorMutation.mutate({ zipCode: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="localSourcing">Local Sourcing %</Label>
+                  <Label htmlFor="contactEmail">Contact Email (optional)</Label>
                   <Input
-                    id="localSourcing"
-                    type="number"
-                    min="0"
-                    max="100"
-                    defaultValue={vendor.localSourcingPercent || 0}
-                    data-testid="input-local-sourcing"
+                    id="contactEmail"
+                    type="email"
+                    defaultValue={vendor.contactEmail || ""}
+                    placeholder="contact@example.com"
+                    data-testid="input-contact-email"
                     onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (value !== vendor.localSourcingPercent) {
-                        updateVendorMutation.mutate({ localSourcingPercent: value });
+                      if (e.target.value !== vendor.contactEmail) {
+                        updateVendorMutation.mutate({ contactEmail: e.target.value });
                       }
                     }}
                   />
                 </div>
 
-                <TagInput
-                  tags={localValues}
-                  onChange={(values) => {
-                    const previousValues = localValues;
-                    setLocalValues(values); // Optimistic update
-                    updateVendorMutation.mutate(
-                      { values },
-                      {
-                        onError: () => {
-                          setLocalValues(previousValues); // Rollback on error
-                        },
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website Link (optional)</Label>
+                  <Input
+                    id="website"
+                    type="url"
+                    defaultValue={vendor.website || ""}
+                    placeholder="https://yourwebsite.com"
+                    data-testid="input-website"
+                    onBlur={(e) => {
+                      if (e.target.value !== vendor.website) {
+                        updateVendorMutation.mutate({ website: e.target.value });
                       }
-                    );
-                  }}
-                  placeholder="Add a value tag and press Enter (e.g., organic, local, sustainable)"
-                />
+                    }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram">Instagram (optional)</Label>
+                    <Input
+                      id="instagram"
+                      defaultValue={vendor.instagram || ""}
+                      placeholder="@yourbusiness"
+                      data-testid="input-instagram"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.instagram) {
+                          updateVendorMutation.mutate({ instagram: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="facebook">Facebook (optional)</Label>
+                    <Input
+                      id="facebook"
+                      defaultValue={vendor.facebook || ""}
+                      placeholder="YourBusinessPage"
+                      data-testid="input-facebook"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.facebook) {
+                          updateVendorMutation.mutate({ facebook: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Local Values Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Local Values</CardTitle>
+                <CardDescription>Show your commitment to the local community</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Label htmlFor="localSourcing">Local Sourcing: {localSourcingPercent}%</Label>
+                  <Slider
+                    id="localSourcing"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={[localSourcingPercent]}
+                    onValueChange={([value]) => setLocalSourcingPercent(value)}
+                    onValueCommit={([value]) => {
+                      if (value !== vendor.localSourcingPercent) {
+                        updateVendorMutation.mutate({ localSourcingPercent: value });
+                      }
+                    }}
+                    data-testid="slider-local-sourcing"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Percentage of products sourced locally
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Value Tags</Label>
+                  <TagInput
+                    tags={localValues}
+                    onChange={(values) => {
+                      const previousValues = localValues;
+                      setLocalValues(values);
+                      updateVendorMutation.mutate(
+                        { values },
+                        {
+                          onError: () => {
+                            setLocalValues(previousValues);
+                          },
+                        }
+                      );
+                    }}
+                    placeholder="Add value tags (e.g., organic, sustainable, fair-trade)"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="paymentPreference">Payment Preference</Label>
+                  <Select
+                    defaultValue={vendor.paymentPreference || ""}
+                    onValueChange={(value) => {
+                      if (value !== vendor.paymentPreference) {
+                        updateVendorMutation.mutate({ paymentPreference: value });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="paymentPreference" data-testid="select-payment-preference">
+                      <SelectValue placeholder="Select payment preference" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Direct">Direct</SelectItem>
+                      <SelectItem value="Venmo">Venmo</SelectItem>
+                      <SelectItem value="Zelle">Zelle</SelectItem>
+                      <SelectItem value="CashApp">CashApp</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Visual Identity Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Visual Identity</CardTitle>
+                <CardDescription>Add images to make your profile stand out</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <Label>Profile Image</Label>
+                  {vendor.logoUrl && (
+                    <div className="flex items-center gap-4 mb-4">
+                      <img 
+                        src={vendor.logoUrl} 
+                        alt="Profile" 
+                        className="w-24 h-24 rounded-full object-cover border-2 border-border"
+                        data-testid="img-profile-preview"
+                      />
+                      <p className="text-sm text-muted-foreground">Current profile image</p>
+                    </div>
+                  )}
+                  <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Image upload coming soon
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      For now, use a URL in the logoUrl field via Settings tab
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <Label>Header/Banner Image (optional)</Label>
+                  {vendor.bannerUrl && (
+                    <div className="mb-4">
+                      <img 
+                        src={vendor.bannerUrl} 
+                        alt="Banner" 
+                        className="w-full h-32 object-cover rounded-md border-2 border-border"
+                        data-testid="img-banner-preview"
+                      />
+                      <p className="text-sm text-muted-foreground mt-2">Current banner image</p>
+                    </div>
+                  )}
+                  <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
+                    <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Banner upload coming soon
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      For now, use a URL in the bannerUrl field via Settings tab
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* System Info Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>System Info</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Member Since</span>
+                    <span className="text-sm text-muted-foreground" data-testid="text-member-since">
+                      {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Profile Status</span>
+                    <Badge variant={vendor.isVerified ? "default" : "secondary"} data-testid="badge-status">
+                      {vendor.isVerified ? "Verified" : "Pending Verification"}
+                    </Badge>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -957,5 +1233,111 @@ function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; is
         </div>
       </form>
     </Form>
+  );
+}
+
+// Profile Preview Component
+function ProfilePreview({ vendor }: { vendor: Vendor }) {
+  return (
+    <div className="space-y-6">
+      {/* Hero/Banner */}
+      {vendor.bannerUrl && (
+        <div className="relative h-40 bg-muted rounded-md overflow-hidden">
+          <img 
+            src={vendor.bannerUrl} 
+            alt={vendor.businessName}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      {/* Profile Header */}
+      <div className="flex items-start gap-4">
+        {vendor.logoUrl && (
+          <img 
+            src={vendor.logoUrl}
+            alt={`${vendor.businessName} logo`}
+            className="w-20 h-20 rounded-full object-cover border-2 border-border"
+          />
+        )}
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold mb-1">{vendor.businessName}</h2>
+          {vendor.tagline && (
+            <p className="text-muted-foreground mb-2">{vendor.tagline}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {vendor.isVerified && (
+              <Badge variant="default">Verified</Badge>
+            )}
+            <Badge variant="secondary">{vendor.category}</Badge>
+          </div>
+        </div>
+      </div>
+
+      {/* Bio */}
+      {vendor.bio && (
+        <div>
+          <h3 className="font-semibold mb-2">About</h3>
+          <p className="text-sm text-muted-foreground">{vendor.bio}</p>
+        </div>
+      )}
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold">{vendor.localSourcingPercent || 0}%</div>
+              <div className="text-xs text-muted-foreground">Local Sourcing</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="text-center">
+              <div className="text-sm font-medium">{vendor.paymentPreference || 'N/A'}</div>
+              <div className="text-xs text-muted-foreground">Payment Method</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Values */}
+      {vendor.values && vendor.values.length > 0 && (
+        <div>
+          <h3 className="font-semibold mb-2">Values</h3>
+          <div className="flex flex-wrap gap-2">
+            {vendor.values.map((value, i) => (
+              <Badge key={i} variant="outline">{value}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Contact Info */}
+      <div>
+        <h3 className="font-semibold mb-2">Contact</h3>
+        <div className="space-y-2 text-sm">
+          {vendor.contactEmail && (
+            <div>Email: {vendor.contactEmail}</div>
+          )}
+          {vendor.website && (
+            <div>Website: {vendor.website}</div>
+          )}
+          {vendor.instagram && (
+            <div>Instagram: @{vendor.instagram.replace('@', '')}</div>
+          )}
+          {vendor.facebook && (
+            <div>Facebook: {vendor.facebook}</div>
+          )}
+          <div>Location: {vendor.city}, {vendor.state} {vendor.zipCode}</div>
+        </div>
+      </div>
+
+      {/* Member Since */}
+      <div className="text-sm text-muted-foreground border-t pt-4">
+        Member since {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
+      </div>
+    </div>
   );
 }
