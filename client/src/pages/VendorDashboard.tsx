@@ -286,11 +286,13 @@ export default function VendorDashboard() {
                     Preview Public Profile
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
                   <DialogHeader>
-                    <DialogTitle>Public Profile Preview</DialogTitle>
+                    <DialogTitle className="text-[#222]">Public Profile Preview</DialogTitle>
                   </DialogHeader>
-                  <ProfilePreview vendor={vendor} />
+                  <div className="bg-white rounded-md shadow-md border border-gray-200 p-6">
+                    <ProfilePreview vendor={vendor} />
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>
@@ -975,11 +977,13 @@ export default function VendorDashboard() {
 
         {/* Product Preview Dialog */}
         <Dialog open={productPreviewDialogOpen} onOpenChange={setProductPreviewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
             <DialogHeader>
-              <DialogTitle>Product Preview</DialogTitle>
+              <DialogTitle className="text-[#222]">Product Preview</DialogTitle>
             </DialogHeader>
-            {previewProductData && <ProductPreview product={previewProductData} vendor={vendor} />}
+            <div className="bg-white rounded-md shadow-md border border-gray-200 p-6">
+              {previewProductData && <ProductPreview product={previewProductData} vendor={vendor} />}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -1473,10 +1477,10 @@ function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; is
 // Profile Preview Component
 function ProfilePreview({ vendor }: { vendor: Vendor }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-[#222]">
       {/* Hero/Banner */}
       {vendor.bannerUrl && (
-        <div className="relative h-40 bg-muted rounded-md overflow-hidden">
+        <div className="relative h-40 bg-gray-100 rounded-md overflow-hidden">
           <img 
             src={vendor.bannerUrl} 
             alt={vendor.businessName}
@@ -1491,13 +1495,13 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
           <img 
             src={vendor.logoUrl}
             alt={`${vendor.businessName} logo`}
-            className="w-20 h-20 rounded-full object-cover border-2 border-border"
+            className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
           />
         )}
         <div className="flex-1">
-          <h2 className="text-2xl font-bold mb-1">{vendor.businessName}</h2>
+          <h2 className="text-2xl font-bold mb-1 text-[#222]">{vendor.businessName}</h2>
           {vendor.tagline && (
-            <p className="text-muted-foreground mb-2">{vendor.tagline}</p>
+            <p className="text-gray-600 mb-2">{vendor.tagline}</p>
           )}
           <div className="flex flex-wrap gap-2">
             {vendor.isVerified && (
@@ -1511,26 +1515,26 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
       {/* Bio */}
       {vendor.bio && (
         <div>
-          <h3 className="font-semibold mb-2">About</h3>
-          <p className="text-sm text-muted-foreground">{vendor.bio}</p>
+          <h3 className="font-semibold mb-2 text-[#222]">About</h3>
+          <p className="text-sm text-gray-600">{vendor.bio}</p>
         </div>
       )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <Card>
+        <Card className="bg-white">
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold">{vendor.localSourcingPercent || 0}%</div>
-              <div className="text-xs text-muted-foreground">Local Sourcing</div>
+              <div className="text-2xl font-bold text-[#222]">{vendor.localSourcingPercent || 0}%</div>
+              <div className="text-xs text-gray-600">Local Sourcing</div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-white">
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-sm font-medium">{vendor.paymentPreference || 'N/A'}</div>
-              <div className="text-xs text-muted-foreground">Payment Method</div>
+              <div className="text-sm font-medium text-[#222]">{vendor.paymentPreference || 'N/A'}</div>
+              <div className="text-xs text-gray-600">Payment Method</div>
             </div>
           </CardContent>
         </Card>
@@ -1539,10 +1543,10 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
       {/* Values */}
       {vendor.values && vendor.values.length > 0 && (
         <div>
-          <h3 className="font-semibold mb-2">Values</h3>
+          <h3 className="font-semibold mb-2 text-[#222]">Values</h3>
           <div className="flex flex-wrap gap-2">
             {vendor.values.map((value, i) => (
-              <Badge key={i} variant="outline">{value}</Badge>
+              <Badge key={i} variant="outline" className="text-[#222]">{value}</Badge>
             ))}
           </div>
         </div>
@@ -1550,8 +1554,8 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
 
       {/* Contact Info */}
       <div>
-        <h3 className="font-semibold mb-2">Contact</h3>
-        <div className="space-y-2 text-sm">
+        <h3 className="font-semibold mb-2 text-[#222]">Contact</h3>
+        <div className="space-y-2 text-sm text-gray-600">
           {vendor.contactEmail && (
             <div>Email: {vendor.contactEmail}</div>
           )}
@@ -1569,7 +1573,7 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
       </div>
 
       {/* Member Since */}
-      <div className="text-sm text-muted-foreground border-t pt-4">
+      <div className="text-sm text-gray-600 border-t border-gray-300 pt-4">
         Member since {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
       </div>
     </div>
@@ -1579,9 +1583,9 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
 // Product Preview Component
 function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-[#222]">
       {/* Product Image */}
-      <div className="aspect-square overflow-hidden rounded-md bg-muted flex items-center justify-center">
+      <div className="aspect-square overflow-hidden rounded-md bg-gray-100 flex items-center justify-center">
         {product.imageUrl ? (
           <img 
             src={product.imageUrl} 
@@ -1589,7 +1593,7 @@ function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <Package className="w-24 h-24 text-muted-foreground" />
+          <Package className="w-24 h-24 text-gray-400" />
         )}
       </div>
 
@@ -1597,39 +1601,39 @@ function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
       <div className="space-y-4">
         <div>
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h2 className="text-2xl font-bold">{product.name}</h2>
+            <h2 className="text-2xl font-bold text-[#222]">{product.name}</h2>
             {product.isFeatured && (
               <Badge variant="default">Featured</Badge>
             )}
           </div>
           {product.description && (
-            <p className="text-muted-foreground">{product.description}</p>
+            <p className="text-gray-600">{product.description}</p>
           )}
         </div>
 
         {/* Price and Unit */}
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold">${((product.priceCents || 0) / 100).toFixed(2)}</span>
+          <span className="text-3xl font-bold text-[#222]">${((product.priceCents || 0) / 100).toFixed(2)}</span>
           {product.unitType && product.unitType !== "per item" && (
-            <span className="text-lg text-muted-foreground">/ {product.unitType.replace('per ', '')}</span>
+            <span className="text-lg text-gray-600">/ {product.unitType.replace('per ', '')}</span>
           )}
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <Card>
+          <Card className="bg-white">
             <CardContent className="pt-4">
               <div className="text-center">
-                <div className="text-xl font-bold">{product.stock || 0}</div>
-                <div className="text-xs text-muted-foreground">In Stock</div>
+                <div className="text-xl font-bold text-[#222]">{product.stock || 0}</div>
+                <div className="text-xs text-gray-600">In Stock</div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white">
             <CardContent className="pt-4">
               <div className="text-center">
-                <div className="text-sm font-medium">{product.category || 'Uncategorized'}</div>
-                <div className="text-xs text-muted-foreground">Category</div>
+                <div className="text-sm font-medium text-[#222]">{product.category || 'Uncategorized'}</div>
+                <div className="text-xs text-gray-600">Category</div>
               </div>
             </CardContent>
           </Card>
@@ -1638,37 +1642,37 @@ function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
         {/* Tags */}
         {product.valueTags && product.valueTags.length > 0 && (
           <div>
-            <h3 className="font-semibold mb-2">Product Tags</h3>
+            <h3 className="font-semibold mb-2 text-[#222]">Product Tags</h3>
             <div className="flex flex-wrap gap-2">
               {product.valueTags.map((tag: string, i: number) => (
-                <Badge key={i} variant="outline">{tag}</Badge>
+                <Badge key={i} variant="outline" className="text-[#222]">{tag}</Badge>
               ))}
             </div>
           </div>
         )}
 
         {/* Vendor Info */}
-        <div className="border-t pt-4">
-          <h3 className="font-semibold mb-2">Sold By</h3>
+        <div className="border-t border-gray-300 pt-4">
+          <h3 className="font-semibold mb-2 text-[#222]">Sold By</h3>
           <div className="flex items-center gap-3">
             {vendor.logoUrl && (
               <img 
                 src={vendor.logoUrl}
                 alt={vendor.businessName}
-                className="w-12 h-12 rounded-full object-cover border-2 border-border"
+                className="w-12 h-12 rounded-full object-cover border-2 border-gray-300"
               />
             )}
             <div>
-              <div className="font-medium">{vendor.businessName}</div>
+              <div className="font-medium text-[#222]">{vendor.businessName}</div>
               {vendor.city && vendor.state && (
-                <div className="text-sm text-muted-foreground">{vendor.city}, {vendor.state}</div>
+                <div className="text-sm text-gray-600">{vendor.city}, {vendor.state}</div>
               )}
             </div>
           </div>
         </div>
 
         {/* Status Info */}
-        <div className="border-t pt-4 text-sm text-muted-foreground">
+        <div className="border-t border-gray-300 pt-4 text-sm text-gray-600">
           Status: {product.status === "active" ? "Active (Visible to customers)" : "Hidden (Not visible to customers)"}
         </div>
       </div>
