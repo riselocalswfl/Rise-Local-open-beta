@@ -531,27 +531,61 @@ export default function VendorDashboard() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="paymentPreference">Payment Preference</Label>
-                  <Select
-                    defaultValue={vendor.paymentPreference || ""}
-                    onValueChange={(value) => {
-                      if (value !== vendor.paymentPreference) {
-                        updateVendorMutation.mutate({ paymentPreference: value });
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="paymentPreference" data-testid="select-payment-preference">
-                      <SelectValue placeholder="Select payment preference" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Direct">Direct</SelectItem>
-                      <SelectItem value="Venmo">Venmo</SelectItem>
-                      <SelectItem value="Zelle">Zelle</SelectItem>
-                      <SelectItem value="CashApp">CashApp</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="font-semibold">Payment Methods Accepted</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Select all payment methods you accept
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].map((method) => {
+                      const currentPreferences = vendor.paymentPreferences || [];
+                      const isChecked = currentPreferences.includes(method);
+                      
+                      return (
+                        <div key={method} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`payment-${method}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const newPreferences = checked
+                                ? [...currentPreferences, method]
+                                : currentPreferences.filter(m => m !== method);
+                              updateVendorMutation.mutate({ paymentPreferences: newPreferences });
+                            }}
+                            data-testid={`checkbox-payment-${method}`}
+                          />
+                          <Label htmlFor={`payment-${method}`} className="cursor-pointer text-sm">
+                            {method}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-sm font-semibold">Custom Payment Methods</Label>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Add any other payment methods you accept (e.g., "Square", "Stripe", "Bitcoin")
+                    </p>
+                    <TagInput
+                      tags={(vendor.paymentPreferences || []).filter(
+                        p => !["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
+                      )}
+                      onChange={(customMethods) => {
+                        const standardMethods = (vendor.paymentPreferences || []).filter(
+                          p => ["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
+                        );
+                        const newPreferences = [...standardMethods, ...customMethods];
+                        updateVendorMutation.mutate({ paymentPreferences: newPreferences });
+                      }}
+                      placeholder="Type a payment method and press Enter..."
+                      maxTags={5}
+                      testId="input-custom-payment-methods"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1533,12 +1567,28 @@ function ProfilePreview({ vendor }: { vendor: Vendor }) {
         <Card className="bg-white">
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-sm font-medium text-[#222]">{vendor.paymentPreference || 'N/A'}</div>
-              <div className="text-xs text-gray-600">Payment Method</div>
+              <div className="text-sm font-medium text-[#222]">
+                {vendor.paymentPreferences && vendor.paymentPreferences.length > 0 
+                  ? vendor.paymentPreferences.join(", ") 
+                  : 'N/A'}
+              </div>
+              <div className="text-xs text-gray-600">Payment Methods</div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Methods */}
+      {vendor.paymentPreferences && vendor.paymentPreferences.length > 0 && (
+        <div>
+          <h3 className="font-semibold mb-2 text-[#222]">Accepted Payment Methods</h3>
+          <div className="flex flex-wrap gap-2">
+            {vendor.paymentPreferences.map((method, i) => (
+              <Badge key={i} variant="outline" className="text-[#222]">{method}</Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Values */}
       {vendor.values && vendor.values.length > 0 && (

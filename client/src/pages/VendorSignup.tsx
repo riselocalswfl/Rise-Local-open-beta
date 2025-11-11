@@ -25,7 +25,7 @@ const CATEGORIES = [
   "Other"
 ];
 
-const PAYMENT_METHODS = ["Cash", "Venmo", "PayPal", "Credit Card", "Zelle", "Check"];
+const PAYMENT_PREFERENCES = ["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"];
 const SERVICE_OPTIONS = ["Pickup", "Delivery", "Shipping"];
 
 export default function VendorSignup() {
@@ -61,6 +61,8 @@ export default function VendorSignup() {
     hours: "",
     values: [] as string[],
     paymentMethod: "direct",
+    paymentPreferences: [] as string[],
+    customPaymentPreferences: [] as string[],
     paymentHandles: {} as Record<string, string>,
     hasLicense: false,
     hasInsurance: false,
@@ -103,9 +105,13 @@ export default function VendorSignup() {
       return;
     }
 
+    // Merge standard and custom payment preferences into one array
+    const allPaymentPreferences = [...formData.paymentPreferences, ...formData.customPaymentPreferences];
+
     signupMutation.mutate({
       ownerId: user.id,
       ...formData,
+      paymentPreferences: allPaymentPreferences,
     });
   };
 
@@ -481,55 +487,47 @@ export default function VendorSignup() {
               </div>
 
               {formData.paymentMethod === "direct" && (
-                <div className="bg-muted/50 p-4 rounded-md space-y-3">
-                  <p className="text-sm font-semibold">Accepted Payment Methods (select all that apply)</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {PAYMENT_METHODS.map((method) => (
-                      <div key={method} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`payment-${method}`}
-                          checked={method in formData.paymentHandles}
-                          onCheckedChange={(checked) => {
-                            const isChecked = checked === true;
-                            setFormData(prev => ({
-                              ...prev,
-                              paymentHandles: isChecked
-                                ? { ...prev.paymentHandles, [method]: "" }
-                                : Object.fromEntries(
-                                    Object.entries(prev.paymentHandles).filter(([k]) => k !== method)
-                                  )
-                            }));
-                          }}
-                          data-testid={`checkbox-payment-${method}`}
-                        />
-                        <Label htmlFor={`payment-${method}`} className="cursor-pointer text-sm">
-                          {method}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                  {Object.keys(formData.paymentHandles).length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <p className="text-sm font-semibold">Payment Details (optional)</p>
-                      {Object.keys(formData.paymentHandles).map((method) => (
-                        <div key={method} className="space-y-1">
-                          <Label htmlFor={`handle-${method}`} className="text-xs">
-                            {method} {method !== "Cash" && method !== "Check" ? "Username/Handle" : "Instructions"}
-                          </Label>
-                          <Input
-                            id={`handle-${method}`}
-                            value={formData.paymentHandles[method] || ""}
-                            onChange={(e) => setFormData(prev => ({
-                              ...prev,
-                              paymentHandles: { ...prev.paymentHandles, [method]: e.target.value }
-                            }))}
-                            placeholder={method === "Venmo" ? "@username" : method === "PayPal" ? "email@example.com" : ""}
-                            data-testid={`input-payment-handle-${method}`}
+                <div className="bg-muted/50 p-4 rounded-md space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold mb-3">Accepted Payment Methods (select all that apply)</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {PAYMENT_PREFERENCES.map((method) => (
+                        <div key={method} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`payment-${method}`}
+                            checked={formData.paymentPreferences.includes(method)}
+                            onCheckedChange={(checked) => {
+                              const isChecked = checked === true;
+                              setFormData(prev => ({
+                                ...prev,
+                                paymentPreferences: isChecked
+                                  ? [...prev.paymentPreferences, method]
+                                  : prev.paymentPreferences.filter(m => m !== method)
+                              }));
+                            }}
+                            data-testid={`checkbox-payment-${method}`}
                           />
+                          <Label htmlFor={`payment-${method}`} className="cursor-pointer text-sm">
+                            {method}
+                          </Label>
                         </div>
                       ))}
                     </div>
-                  )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Custom Payment Methods (optional)</Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Add any other payment methods you accept (e.g., "Square", "Stripe", "Bitcoin")
+                    </p>
+                    <TagInput
+                      tags={formData.customPaymentPreferences}
+                      onChange={(newMethods) => setFormData({ ...formData, customPaymentPreferences: newMethods })}
+                      placeholder="Type a payment method and press Enter..."
+                      maxTags={5}
+                      testId="input-custom-payment-preferences"
+                    />
+                  </div>
                 </div>
               )}
             </div>
