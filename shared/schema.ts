@@ -122,7 +122,7 @@ export const vendors = pgTable("vendors", {
   
   // Payment
   paymentMethod: text("payment_method").notNull(), // Direct to Vendor or Through Platform
-  paymentPreference: text("payment_preference"), // Preferred payment method: Direct, Venmo, Zelle, CashApp, Other
+  paymentPreferences: text("payment_preferences").array().default(sql`'{}'::text[]`), // Multiple payment methods: Direct, Venmo, Zelle, CashApp, PayPal, Cash, custom options
   paymentHandles: jsonb("payment_handles"), // {venmo: "@username", square: "id", etc.}
   
   // Membership & Verification
