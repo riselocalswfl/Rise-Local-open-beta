@@ -16,6 +16,9 @@ import {
   insertMenuItemSchema,
   insertRestaurantReviewSchema,
   insertRestaurantFAQSchema,
+  insertServiceProviderSchema,
+  insertServiceOfferingSchema,
+  insertServiceBookingSchema,
   fulfillmentOptionsSchema,
   type FulfillmentOptions
 } from "@shared/schema";
@@ -1372,6 +1375,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(events);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch restaurant events" });
+    }
+  });
+
+  // ===== SERVICE PROVIDER ROUTES =====
+  
+  // Get current user's service provider profile
+  app.get('/api/auth/my-service-provider', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const provider = await storage.getServiceProviderByOwnerId(userId);
+      if (!provider) {
+        return res.status(404).json({ message: "No service provider profile found for this user" });
+      }
+      res.json(provider);
+    } catch (error) {
+      console.error("Error fetching user's service provider:", error);
+      res.status(500).json({ message: "Failed to fetch service provider profile" });
+    }
+  });
+
+  // Service Provider routes
+  app.get("/api/services", async (req, res) => {
+    try {
+      const { category } = req.query;
+      let providers;
+      
+      if (category && typeof category === 'string') {
+        providers = await storage.getServiceProvidersByCategory(category);
+      } else {
+        providers = await storage.getVerifiedServiceProviders();
+      }
+      
+      res.json(providers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service providers" });
+    }
+  });
+
+  app.get("/api/services/:id", async (req, res) => {
+    try {
+      const provider = await storage.getServiceProvider(req.params.id);
+      if (!provider) {
+        return res.status(404).json({ error: "Service provider not found" });
+      }
+      
+      // Also fetch offerings for this provider
+      const offerings = await storage.getServiceOfferings(req.params.id);
+      
+      res.json({ ...provider, offerings });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service provider" });
+    }
+  });
+
+  app.post("/api/services", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check if user already has a service provider profile
+      const existing = await storage.getServiceProviderByOwnerId(userId);
+      if (existing) {
+        return res.status(400).json({ error: "User already has a service provider profile" });
+      }
+      
+      const validated = insertServiceProviderSchema.parse({
+        ...req.body,
+        ownerId: userId,
+      });
+      
+      const provider = await storage.createServiceProvider(validated);
+      res.status(201).json(provider);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create service provider" });
+    }
+  });
+
+  app.patch("/api/services/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const provider = await storage.getServiceProvider(req.params.id);
+      
+      if (!provider) {
+        return res.status(404).json({ error: "Service provider not found" });
+      }
+      
+      if (provider.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to update this service provider" });
+      }
+      
+      const validated = insertServiceProviderSchema.partial().parse(req.body);
+      await storage.updateServiceProvider(req.params.id, validated);
+      
+      const updated = await storage.getServiceProvider(req.params.id);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update service provider" });
+    }
+  });
+
+  // Service Offering routes
+  app.get("/api/service-offerings/:providerId", async (req, res) => {
+    try {
+      const offerings = await storage.getServiceOfferings(req.params.providerId);
+      res.json(offerings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service offerings" });
+    }
+  });
+
+  app.post("/api/service-offerings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validated = insertServiceOfferingSchema.parse(req.body);
+      
+      // Verify user owns this service provider
+      const provider = await storage.getServiceProvider(validated.serviceProviderId);
+      if (!provider || provider.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to create offerings for this provider" });
+      }
+      
+      const offering = await storage.createServiceOffering(validated);
+      res.status(201).json(offering);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create service offering" });
+    }
+  });
+
+  app.patch("/api/service-offerings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const offering = await storage.getServiceOffering(req.params.id);
+      
+      if (!offering) {
+        return res.status(404).json({ error: "Service offering not found" });
+      }
+      
+      // Verify ownership through provider
+      const provider = await storage.getServiceProvider(offering.serviceProviderId);
+      if (!provider || provider.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to update this offering" });
+      }
+      
+      const validated = insertServiceOfferingSchema.partial().parse(req.body);
+      await storage.updateServiceOffering(req.params.id, validated);
+      
+      const updated = await storage.getServiceOffering(req.params.id);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update service offering" });
+    }
+  });
+
+  app.delete("/api/service-offerings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const offering = await storage.getServiceOffering(req.params.id);
+      
+      if (!offering) {
+        return res.status(404).json({ error: "Service offering not found" });
+      }
+      
+      // Verify ownership through provider
+      const provider = await storage.getServiceProvider(offering.serviceProviderId);
+      if (!provider || provider.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to delete this offering" });
+      }
+      
+      await storage.deleteServiceOffering(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete service offering" });
+    }
+  });
+
+  // Service Booking routes
+  app.get("/api/service-bookings/user", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookings = await storage.getServiceBookings(userId);
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user bookings" });
+    }
+  });
+
+  app.get("/api/service-bookings/provider", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const provider = await storage.getServiceProviderByOwnerId(userId);
+      
+      if (!provider) {
+        return res.status(404).json({ error: "No service provider profile found" });
+      }
+      
+      const bookings = await storage.getProviderBookings(provider.id);
+      res.json(bookings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch provider bookings" });
+    }
+  });
+
+  app.post("/api/service-bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validated = insertServiceBookingSchema.parse({
+        ...req.body,
+        userId,
+        status: 'pending',
+      });
+      
+      const booking = await storage.createServiceBooking(validated);
+      res.status(201).json(booking);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create booking" });
+    }
+  });
+
+  app.patch("/api/service-bookings/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { status } = req.body;
+      
+      if (!status || !['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+      
+      const booking = await storage.getServiceBooking(req.params.id);
+      if (!booking) {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+      
+      // Verify ownership through provider
+      const provider = await storage.getServiceProvider(booking.serviceProviderId);
+      if (!provider || provider.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to update this booking" });
+      }
+      
+      await storage.updateBookingStatus(req.params.id, status);
+      const updated = await storage.getServiceBooking(req.params.id);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update booking status" });
     }
   });
 
