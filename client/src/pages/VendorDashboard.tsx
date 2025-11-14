@@ -19,9 +19,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle } from "lucide-react";
-import type { Vendor, Product, Event, VendorFAQ } from "@shared/schema";
+import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
+import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { z } from "zod";
 
 // Form schemas for validation
@@ -587,6 +588,22 @@ export default function VendorDashboard() {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Fulfillment Methods Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Fulfillment Methods</CardTitle>
+                <CardDescription>Configure how customers can receive their orders</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FulfillmentEditor
+                  value={vendor.fulfillmentOptions as FulfillmentOptions || {}}
+                  onChange={(fulfillmentOptions) => {
+                    updateVendorMutation.mutate({ fulfillmentOptions });
+                  }}
+                />
               </CardContent>
             </Card>
 
