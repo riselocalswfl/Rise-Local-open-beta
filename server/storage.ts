@@ -16,8 +16,10 @@ import {
   type RestaurantFAQ, type InsertRestaurantFAQ,
   type LoyaltyTier, type InsertLoyaltyTier,
   type LoyaltyTransaction, type InsertLoyaltyTransaction,
+  type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
-  restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions
+  restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions,
+  fulfillmentDetailsSchema
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -91,7 +93,26 @@ export interface IStorage {
   getOrder(id: string): Promise<Order | undefined>;
   getOrders(): Promise<Order[]>;
   getOrdersByEmail(email: string): Promise<Order[]>;
+  getOrdersByUser(userId: string): Promise<Order[]>;
+  getOrdersByVendor(vendorId: string): Promise<Order[]>;
   createOrder(order: InsertOrder): Promise<Order>;
+  createOrdersBatch(orderData: Array<{
+    userId: string;
+    vendorId: string;
+    status: string;
+    email: string;
+    name: string;
+    phone: string;
+    totals: { subtotalCents: number; taxCents: number; feesCents: number; totalCents: number; };
+    fulfillmentDetails: FulfillmentDetails;
+    items: Array<{
+      productId: string;
+      productName: string;
+      quantity: number;
+      priceCents: number;
+      variant?: string;
+    }>;
+  }>): Promise<Order[]>;
   updateOrderStatus(id: string, status: string): Promise<void>;
   deleteOrder(id: string): Promise<void>;
 
@@ -429,9 +450,89 @@ export class DbStorage implements IStorage {
       .orderBy(desc(orders.createdAt));
   }
 
+  async getOrdersByUser(userId: string): Promise<Order[]> {
+    return await db.select().from(orders)
+      .where(eq(orders.userId, userId))
+      .orderBy(desc(orders.createdAt));
+  }
+
+  async getOrdersByVendor(vendorId: string): Promise<Order[]> {
+    return await db.select().from(orders)
+      .where(eq(orders.vendorId, vendorId))
+      .orderBy(desc(orders.createdAt));
+  }
+
   async createOrder(order: InsertOrder): Promise<Order> {
     const result = await db.insert(orders).values(order).returning();
     return result[0];
+  }
+
+  async createOrdersBatch(orderData: Array<{
+    userId: string;
+    vendorId: string;
+    status: string;
+    email: string;
+    name: string;
+    phone: string;
+    totals: { subtotalCents: number; taxCents: number; feesCents: number; totalCents: number; };
+    fulfillmentDetails: FulfillmentDetails;
+    items: Array<{
+      productId: string;
+      productName: string;
+      quantity: number;
+      priceCents: number;
+      variant?: string;
+    }>;
+  }>): Promise<Order[]> {
+    return await db.transaction(async (tx) => {
+      const createdOrders: Order[] = [];
+      
+      for (const orderInfo of orderData) {
+        const { userId, vendorId, status, email, name, phone, totals, fulfillmentDetails, items } = orderInfo;
+        
+        const validatedFulfillment = fulfillmentDetailsSchema.parse(fulfillmentDetails);
+        const fulfillmentType = validatedFulfillment.type;
+        
+        const itemsJsonSnapshot = items.map(({ productId, productName, quantity, priceCents, variant }) => ({
+          productId,
+          name: productName,
+          quantity,
+          priceCents,
+          variant,
+        }));
+        
+        const orderInsert: InsertOrder = {
+          userId,
+          vendorId,
+          email,
+          name,
+          phone,
+          status,
+          itemsJson: itemsJsonSnapshot,
+          subtotalCents: totals.subtotalCents,
+          taxCents: totals.taxCents,
+          feesCents: totals.feesCents,
+          totalCents: totals.totalCents,
+          fulfillmentType,
+          fulfillmentDetails: validatedFulfillment,
+        };
+        
+        const [createdOrder] = await tx.insert(orders).values(orderInsert).returning();
+        
+        const orderItemsToInsert: InsertOrderItem[] = items.map(item => ({
+          orderId: createdOrder.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          priceAtPurchase: (item.priceCents / 100).toFixed(2),
+        }));
+        
+        await tx.insert(orderItems).values(orderItemsToInsert);
+        
+        createdOrders.push(createdOrder);
+      }
+      
+      return createdOrders;
+    });
   }
 
   async updateOrderStatus(id: string, status: string): Promise<void> {

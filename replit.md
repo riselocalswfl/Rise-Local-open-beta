@@ -4,6 +4,36 @@
 Rise Local is a full-stack web application designed to connect local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It features a marketplace for products and a community hub for events, aiming to foster sustainability, local commerce, and community engagement. The platform supports local businesses with a counterculture yet polished brand aesthetic, running entirely on Replit, and includes features like product filtering, event management with RSVP and attendance tracking, and a loyalty system.
 
 ## Recent Changes
+- **November 14, 2025**: Completed vendor-managed fulfillment system backend foundation:
+  - **Database Schema**: Completed migration of orders table for multi-vendor fulfillment
+    - Added `userId` and `vendorId` columns with foreign key constraints and NOT NULL enforcement
+    - Renamed `shippingMethod` to `fulfillmentType` (text: "Pickup", "Delivery", "Ship")
+    - Added `fulfillmentDetails` JSONB column for method-specific buyer selections
+    - Deleted legacy test orders and applied all constraints successfully
+  - **TypeScript Types**: Created discriminated union types for order fulfillment
+    - `PickupDetails`: Contains pickup location ID, name, address, optional time slot
+    - `DeliveryDetails`: Contains delivery address, city, zip, optional instructions
+    - `ShippingDetails`: Contains shipping address, city, state, zip, optional carrier
+    - `FulfillmentDetails`: Discriminated union on `type` field for type-safe handling
+    - Updated `insertOrderSchema` to include fulfillmentDetails with proper validation
+  - **Storage Layer**: Implemented production-ready multi-vendor order creation
+    - Added `getOrdersByUser()` and `getOrdersByVendor()` query methods
+    - Implemented `createOrdersBatch()` with database transaction for atomicity
+    - Proper itemsJson snapshot (simplified cart data) separate from orderItems table
+    - Derives `fulfillmentType` from `fulfillmentDetails.type` automatically
+    - Handles price conversion from cents to decimal format for orderItems
+  - **Vendor Fulfillment Configuration**: FulfillmentEditor component integrated into VendorDashboard
+    - Vendors can enable/disable Pickup, Delivery, and Shipping methods
+    - Pickup: Multiple locations with addresses, schedules, and instructions
+    - Delivery: Radius in miles, base fee, minimum order, lead time
+    - Shipping: Flat or calculated pricing, carrier selection, instructions
+    - Backend PATCH route validates with fulfillmentOptionsSchema and derives serviceOptions
+  - **Public Display**: VendorProfile page shows detailed fulfillment options to buyers
+    - Pickup locations with addresses and availability schedules
+    - Delivery radius, fees, and minimum order requirements
+    - Shipping carriers and pricing information
+  - **Next Steps**: Implement POST /api/orders/batch route with Zod validation and fulfillment verification, then build grouped checkout UI with per-vendor fulfillment selection
+
 - **November 14, 2025**: Fixed dialog visibility in Vendor Dashboard create forms:
   - Updated Add Product, Add Event, and Add FAQ dialogs with explicit white backgrounds (`bg-white`) and dark text (`text-[#222]`)
   - Ensured all dialog titles have dark, legible text styling
