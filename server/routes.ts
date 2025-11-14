@@ -153,6 +153,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertVendorSchema.partial().parse(req.body);
       console.log("[PATCH /api/vendors/:id] Validated data:", validatedData);
+      
+      // If fulfillmentOptions is being updated, derive serviceOptions from it
+      if (validatedData.fulfillmentOptions) {
+        const serviceOptions: string[] = [];
+        const fulfillment = validatedData.fulfillmentOptions;
+        
+        // Type guard to ensure proper structure
+        if (typeof fulfillment === 'object' && fulfillment !== null) {
+          if ('pickup' in fulfillment && (fulfillment as any).pickup?.enabled) {
+            serviceOptions.push("Pickup");
+          }
+          if ('delivery' in fulfillment && (fulfillment as any).delivery?.enabled) {
+            serviceOptions.push("Delivery");
+          }
+          if ('shipping' in fulfillment && (fulfillment as any).shipping?.enabled) {
+            serviceOptions.push("Ship");
+          }
+        }
+        
+        validatedData.serviceOptions = serviceOptions;
+        console.log("[PATCH /api/vendors/:id] Derived serviceOptions:", serviceOptions);
+      }
+      
       await storage.updateVendor(req.params.id, validatedData);
       console.log("[PATCH /api/vendors/:id] Update successful");
       res.json({ success: true });
