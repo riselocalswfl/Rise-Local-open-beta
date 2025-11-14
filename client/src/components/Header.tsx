@@ -55,6 +55,15 @@ export default function Header() {
             Eat Local
           </Link>
           <Link
+            href="/live-local"
+            className={`text-text/80 hover:text-text transition ${
+              location === "/live-local" ? "text-text font-bold" : ""
+            }`}
+            data-testid="link-live-local"
+          >
+            Live Local
+          </Link>
+          <Link
             href="/events"
             className={`text-text/80 hover:text-text transition ${
               location === "/events" ? "text-text font-bold" : ""

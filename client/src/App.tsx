@@ -9,6 +9,8 @@ import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import Vendors from "@/pages/Vendors";
 import EatLocal from "@/pages/EatLocal";
+import LiveLocal from "@/pages/LiveLocal";
+import ServiceProviderProfile from "@/pages/ServiceProviderProfile";
 import EventsLayout from "@/pages/EventsLayout";
 import EventDetail from "@/pages/EventDetail";
 import Cart from "@/pages/Cart";
@@ -42,6 +44,8 @@ function Router() {
       <Route path="/restaurant/:id" component={RestaurantProfile} />
       <Route path="/restaurant-dashboard" component={RestaurantDashboard} />
       <Route path="/eat-local" component={EatLocal} />
+      <Route path="/live-local" component={LiveLocal} />
+      <Route path="/service/:id" component={ServiceProviderProfile} />
       <Route path="/events" component={EventsLayout} />
       <Route path="/events/my" component={EventsLayout} />
       <Route path="/events/:id" component={EventDetail} />
