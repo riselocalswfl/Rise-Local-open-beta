@@ -3,7 +3,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, LogOut, User, ShoppingBag, Store, Utensils } from "lucide-react";
+import { LogIn, LogOut, User, ShoppingBag, Store, Utensils, Wrench } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -94,7 +94,7 @@ export default function Header() {
                   </Button>
                 </Link>
               )}
-              {(user?.role === "vendor" || user?.role === "restaurant") && (
+              {(user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider") && (
                 <Link href="/dashboard" data-testid="link-header-dashboard">
                   <Button variant="ghost" size="sm" data-testid="button-dashboard">
                     <User className="h-4 w-4 mr-2" />
@@ -180,6 +180,25 @@ export default function Header() {
                         </div>
                         <p className="text-xs text-muted-foreground text-left">
                           Manage your restaurant profile, menu, and dining events
+                        </p>
+                      </Button>
+                    </a>
+                    <a 
+                      href="/api/login?intended_role=service_provider" 
+                      className="block"
+                      data-testid="link-login-service-provider"
+                    >
+                      <Button 
+                        variant="outline" 
+                        className="w-full h-auto flex flex-col items-start p-5 gap-2 hover-elevate"
+                        data-testid="button-login-service-provider"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Wrench className="h-5 w-5 text-primary" />
+                          <span className="text-base font-semibold">Service Provider</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-left">
+                          Offer local services and manage booking requests
                         </p>
                       </Button>
                     </a>
