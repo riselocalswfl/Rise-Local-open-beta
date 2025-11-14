@@ -92,6 +92,45 @@ export type DeliveryFulfillment = z.infer<typeof deliveryFulfillmentSchema>;
 export type ShippingFulfillment = z.infer<typeof shippingFulfillmentSchema>;
 export type FulfillmentOptions = z.infer<typeof fulfillmentOptionsSchema>;
 
+// Fulfillment Details - Buyer-selected fulfillment information for orders
+export const pickupDetailsSchema = z.object({
+  type: z.literal("Pickup"),
+  pickupLocationId: z.string(),
+  pickupLocationName: z.string(),
+  pickupLocationAddress: z.string(),
+  pickupSlot: z.string().optional(), // e.g., "Monday 9am-5pm"
+  instructions: z.string().optional(),
+});
+
+export const deliveryDetailsSchema = z.object({
+  type: z.literal("Delivery"),
+  deliveryAddress: z.string(),
+  deliveryCity: z.string(),
+  deliveryZip: z.string(),
+  instructions: z.string().optional(),
+});
+
+export const shippingDetailsSchema = z.object({
+  type: z.literal("Ship"),
+  shippingAddress: z.string(),
+  shippingCity: z.string(),
+  shippingState: z.string(),
+  shippingZip: z.string(),
+  carrier: z.string().optional(),
+  instructions: z.string().optional(),
+});
+
+export const fulfillmentDetailsSchema = z.discriminatedUnion("type", [
+  pickupDetailsSchema,
+  deliveryDetailsSchema,
+  shippingDetailsSchema,
+]);
+
+export type PickupDetails = z.infer<typeof pickupDetailsSchema>;
+export type DeliveryDetails = z.infer<typeof deliveryDetailsSchema>;
+export type ShippingDetails = z.infer<typeof shippingDetailsSchema>;
+export type FulfillmentDetails = z.infer<typeof fulfillmentDetailsSchema>;
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   loyaltyPoints: true,
@@ -307,12 +346,15 @@ export type Attendance = typeof attendances.$inferSelect;
 
 export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
   status: text("status").notNull().default("pending"),
   email: text("email").notNull(),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
-  shippingMethod: text("shipping_method").notNull(),
-  addressJson: jsonb("address_json"),
+  fulfillmentType: text("fulfillment_type").notNull(), // "Pickup", "Delivery", "Ship"
+  fulfillmentDetails: jsonb("fulfillment_details"), // Method-specific details: pickup location, delivery address, etc.
+  addressJson: jsonb("address_json"), // Legacy field, can be migrated to fulfillmentDetails
   itemsJson: jsonb("items_json").notNull(),
   subtotalCents: integer("subtotal_cents").notNull(),
   taxCents: integer("tax_cents").notNull(),
@@ -325,6 +367,8 @@ export const orders = pgTable("orders", {
 export const insertOrderSchema = createInsertSchema(orders).omit({
   id: true,
   createdAt: true,
+}).extend({
+  fulfillmentDetails: fulfillmentDetailsSchema.optional(),
 });
 
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
