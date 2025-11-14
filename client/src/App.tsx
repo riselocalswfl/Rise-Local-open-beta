@@ -27,6 +27,7 @@ import VendorProfile from "@/pages/VendorProfile";
 import VendorDashboard from "@/pages/VendorDashboard";
 import RestaurantProfile from "@/pages/RestaurantProfile";
 import RestaurantDashboard from "@/pages/RestaurantDashboard";
+import ServiceProviderDashboard from "@/pages/ServiceProviderDashboard";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import LoyaltyHistory from "@/pages/LoyaltyHistory";
 import CustomerProfile from "@/pages/CustomerProfile";
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/vendor-dashboard" component={VendorDashboard} />
       <Route path="/restaurant/:id" component={RestaurantProfile} />
       <Route path="/restaurant-dashboard" component={RestaurantDashboard} />
+      <Route path="/service-provider-dashboard" component={ServiceProviderDashboard} />
       <Route path="/eat-local" component={EatLocal} />
       <Route path="/live-local" component={LiveLocal} />
       <Route path="/service/:id" component={ServiceProviderProfile} />
