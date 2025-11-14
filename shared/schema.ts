@@ -50,6 +50,48 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Fulfillment Options Types
+export const pickupFulfillmentSchema = z.object({
+  enabled: z.boolean(),
+  locations: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    address: z.string(),
+    days: z.array(z.string()), // ["Monday", "Tuesday", ...]
+    timeWindow: z.string(), // "9am-5pm"
+    instructions: z.string().optional(),
+  })).optional(),
+});
+
+export const deliveryFulfillmentSchema = z.object({
+  enabled: z.boolean(),
+  radiusMiles: z.number().positive().optional(),
+  baseFeeCents: z.number().nonnegative().optional(),
+  minOrderCents: z.number().nonnegative().optional(),
+  leadTimeHours: z.number().positive().optional(),
+  instructions: z.string().optional(),
+});
+
+export const shippingFulfillmentSchema = z.object({
+  enabled: z.boolean(),
+  pricingMode: z.enum(["flat", "calculated"]).optional(),
+  flatFeeCents: z.number().nonnegative().optional(),
+  carriers: z.array(z.string()).optional(),
+  instructions: z.string().optional(),
+});
+
+export const fulfillmentOptionsSchema = z.object({
+  pickup: pickupFulfillmentSchema.optional(),
+  delivery: deliveryFulfillmentSchema.optional(),
+  shipping: shippingFulfillmentSchema.optional(),
+  lastUpdated: z.string().optional(),
+});
+
+export type PickupFulfillment = z.infer<typeof pickupFulfillmentSchema>;
+export type DeliveryFulfillment = z.infer<typeof deliveryFulfillmentSchema>;
+export type ShippingFulfillment = z.infer<typeof shippingFulfillmentSchema>;
+export type FulfillmentOptions = z.infer<typeof fulfillmentOptionsSchema>;
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   loyaltyPoints: true,
