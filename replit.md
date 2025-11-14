@@ -4,6 +4,12 @@
 Rise Local is a full-stack web application designed to connect local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It features a marketplace for products and a community hub for events, aiming to foster sustainability, local commerce, and community engagement. The platform supports local businesses with a counterculture yet polished brand aesthetic, running entirely on Replit, and includes features like product filtering, event management with RSVP and attendance tracking, and a loyalty system.
 
 ## Recent Changes
+- **November 14, 2025**: Fixed dialog visibility in Vendor Dashboard create forms:
+  - Updated Add Product, Add Event, and Add FAQ dialogs with explicit white backgrounds (`bg-white`) and dark text (`text-[#222]`)
+  - Ensured all dialog titles have dark, legible text styling
+  - All create form dialogs now match the visibility standards of preview modals for consistent user experience
+  - Vendors can now clearly read all form fields and labels when creating new products, events, and FAQs
+
 - **November 11, 2025**: Implemented multi-select payment preferences for vendors:
   - **Database**: Migrated from single `paymentPreference` varchar to `paymentPreferences` text array
   - **Vendor Signup**: Added multi-select checkboxes for standard payment methods (Direct, Venmo, Zelle, CashApp, PayPal, Cash) plus TagInput for custom options
