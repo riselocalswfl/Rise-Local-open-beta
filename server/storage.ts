@@ -16,9 +16,13 @@ import {
   type RestaurantFAQ, type InsertRestaurantFAQ,
   type LoyaltyTier, type InsertLoyaltyTier,
   type LoyaltyTransaction, type InsertLoyaltyTransaction,
+  type ServiceProvider, type InsertServiceProvider,
+  type ServiceOffering, type InsertServiceOffering,
+  type ServiceBooking, type InsertServiceBooking,
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
   restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions,
+  serviceProviders, serviceOfferings, serviceBookings,
   fulfillmentDetailsSchema
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -187,6 +191,31 @@ export interface IStorage {
   getLoyaltyTransactions(userId: string): Promise<LoyaltyTransaction[]>;
   addLoyaltyTransaction(transaction: InsertLoyaltyTransaction): Promise<LoyaltyTransaction>;
   earnPoints(userId: string, points: number, type: string, description: string, relatedOrderId?: string): Promise<void>;
+
+  // Service Provider operations
+  getServiceProvider(id: string): Promise<ServiceProvider | undefined>;
+  getServiceProviderByOwnerId(ownerId: string): Promise<ServiceProvider | undefined>;
+  getServiceProviders(): Promise<ServiceProvider[]>;
+  getVerifiedServiceProviders(): Promise<ServiceProvider[]>;
+  getServiceProvidersByCategory(category: string): Promise<ServiceProvider[]>;
+  createServiceProvider(provider: InsertServiceProvider): Promise<ServiceProvider>;
+  updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<void>;
+  deleteServiceProvider(id: string): Promise<void>;
+
+  // Service Offering operations
+  getServiceOffering(id: string): Promise<ServiceOffering | undefined>;
+  getServiceOfferings(providerId: string): Promise<ServiceOffering[]>;
+  createServiceOffering(offering: InsertServiceOffering): Promise<ServiceOffering>;
+  updateServiceOffering(id: string, data: Partial<InsertServiceOffering>): Promise<void>;
+  deleteServiceOffering(id: string): Promise<void>;
+
+  // Service Booking operations
+  getServiceBooking(id: string): Promise<ServiceBooking | undefined>;
+  getServiceBookings(userId: string): Promise<ServiceBooking[]>;
+  getProviderBookings(providerId: string): Promise<ServiceBooking[]>;
+  createServiceBooking(booking: InsertServiceBooking): Promise<ServiceBooking>;
+  updateServiceBooking(id: string, data: Partial<InsertServiceBooking>): Promise<void>;
+  updateBookingStatus(id: string, status: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -835,6 +864,102 @@ export class DbStorage implements IStorage {
       relatedOrderId: relatedOrderId || null,
       balanceAfter: newBalance,
     });
+  }
+
+  // Service Provider operations
+  async getServiceProvider(id: string): Promise<ServiceProvider | undefined> {
+    const result = await db.select().from(serviceProviders).where(eq(serviceProviders.id, id));
+    return result[0];
+  }
+
+  async getServiceProviderByOwnerId(ownerId: string): Promise<ServiceProvider | undefined> {
+    const result = await db.select().from(serviceProviders).where(eq(serviceProviders.ownerId, ownerId));
+    return result[0];
+  }
+
+  async getServiceProviders(): Promise<ServiceProvider[]> {
+    return await db.select().from(serviceProviders).orderBy(desc(serviceProviders.createdAt));
+  }
+
+  async getVerifiedServiceProviders(): Promise<ServiceProvider[]> {
+    return await db.select().from(serviceProviders)
+      .where(eq(serviceProviders.isVerified, true))
+      .orderBy(desc(serviceProviders.isFeatured), desc(serviceProviders.createdAt));
+  }
+
+  async getServiceProvidersByCategory(category: string): Promise<ServiceProvider[]> {
+    return await db.select().from(serviceProviders)
+      .where(eq(serviceProviders.category, category))
+      .orderBy(desc(serviceProviders.isVerified), desc(serviceProviders.createdAt));
+  }
+
+  async createServiceProvider(provider: InsertServiceProvider): Promise<ServiceProvider> {
+    const result = await db.insert(serviceProviders).values(provider).returning();
+    return result[0];
+  }
+
+  async updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<void> {
+    await db.update(serviceProviders).set(data).where(eq(serviceProviders.id, id));
+  }
+
+  async deleteServiceProvider(id: string): Promise<void> {
+    await db.delete(serviceProviders).where(eq(serviceProviders.id, id));
+  }
+
+  // Service Offering operations
+  async getServiceOffering(id: string): Promise<ServiceOffering | undefined> {
+    const result = await db.select().from(serviceOfferings).where(eq(serviceOfferings.id, id));
+    return result[0];
+  }
+
+  async getServiceOfferings(providerId: string): Promise<ServiceOffering[]> {
+    return await db.select().from(serviceOfferings)
+      .where(eq(serviceOfferings.serviceProviderId, providerId))
+      .orderBy(serviceOfferings.displayOrder, desc(serviceOfferings.createdAt));
+  }
+
+  async createServiceOffering(offering: InsertServiceOffering): Promise<ServiceOffering> {
+    const result = await db.insert(serviceOfferings).values(offering).returning();
+    return result[0];
+  }
+
+  async updateServiceOffering(id: string, data: Partial<InsertServiceOffering>): Promise<void> {
+    await db.update(serviceOfferings).set(data).where(eq(serviceOfferings.id, id));
+  }
+
+  async deleteServiceOffering(id: string): Promise<void> {
+    await db.delete(serviceOfferings).where(eq(serviceOfferings.id, id));
+  }
+
+  // Service Booking operations
+  async getServiceBooking(id: string): Promise<ServiceBooking | undefined> {
+    const result = await db.select().from(serviceBookings).where(eq(serviceBookings.id, id));
+    return result[0];
+  }
+
+  async getServiceBookings(userId: string): Promise<ServiceBooking[]> {
+    return await db.select().from(serviceBookings)
+      .where(eq(serviceBookings.userId, userId))
+      .orderBy(desc(serviceBookings.createdAt));
+  }
+
+  async getProviderBookings(providerId: string): Promise<ServiceBooking[]> {
+    return await db.select().from(serviceBookings)
+      .where(eq(serviceBookings.serviceProviderId, providerId))
+      .orderBy(desc(serviceBookings.createdAt));
+  }
+
+  async createServiceBooking(booking: InsertServiceBooking): Promise<ServiceBooking> {
+    const result = await db.insert(serviceBookings).values(booking).returning();
+    return result[0];
+  }
+
+  async updateServiceBooking(id: string, data: Partial<InsertServiceBooking>): Promise<void> {
+    await db.update(serviceBookings).set(data).where(eq(serviceBookings.id, id));
+  }
+
+  async updateBookingStatus(id: string, status: string): Promise<void> {
+    await db.update(serviceBookings).set({ status }).where(eq(serviceBookings.id, id));
   }
 }
 

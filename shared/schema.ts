@@ -567,6 +567,181 @@ export const insertRestaurantReviewSchema = createInsertSchema(restaurantReviews
 export type InsertRestaurantReview = z.infer<typeof insertRestaurantReviewSchema>;
 export type RestaurantReview = typeof restaurantReviews.$inferSelect;
 
+export const serviceProviders = pgTable("service_providers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ownerId: varchar("owner_id").notNull().references(() => users.id),
+  
+  // Business Profile
+  businessName: text("business_name").notNull(),
+  displayName: text("display_name"),
+  tagline: text("tagline"),
+  contactName: text("contact_name").notNull(),
+  bio: text("bio").notNull(),
+  
+  // Service Categories
+  category: text("category").notNull(), // Home Services, Property Care, Recreation, Education, Wellness
+  subcategories: text("subcategories").array().default(sql`'{}'::text[]`),
+  serviceAreas: text("service_areas").array().default(sql`'{}'::text[]`), // Fort Myers, Cape Coral, etc.
+  
+  // Media
+  logoUrl: text("logo_url"),
+  heroImageUrl: text("hero_image_url"),
+  gallery: text("gallery").array().default(sql`'{}'::text[]`),
+  
+  // Online Presence
+  website: text("website"),
+  instagram: text("instagram"),
+  facebook: text("facebook"),
+  
+  // Location & Contact
+  address: text("address"),
+  city: text("city").notNull().default("Fort Myers"),
+  state: text("state").notNull().default("FL"),
+  zipCode: text("zip_code").notNull(),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  
+  // Professional Details
+  certifications: jsonb("certifications"), // [{name, issuedBy, issuedOn, expiresOn, docUrl}]
+  licenses: jsonb("licenses"), // [{type, number, issuedBy, expiresOn}]
+  insurance: jsonb("insurance"), // {liability, bonded, amount}
+  yearsInBusiness: integer("years_in_business"),
+  
+  // Availability & Booking
+  availabilityWindows: jsonb("availability_windows"), // [{day, startTime, endTime}]
+  minBookingNotice: integer("min_booking_notice_hours").default(24), // minimum hours notice for booking
+  maxBookingAdvance: integer("max_booking_advance_days").default(90), // how far ahead can book
+  bookingPreferences: jsonb("booking_preferences"), // {autoConfirm, depositRequired, cancellationPolicy}
+  
+  // Trust Signals
+  badges: text("badges").array().default(sql`'{}'::text[]`), // Verified, Top Rated, Quick Response
+  values: text("values").array().default(sql`'{}'::text[]`),
+  
+  // Payment
+  paymentMethods: text("payment_methods").array().default(sql`'{}'::text[]`),
+  
+  // Membership & Verification
+  isFoundingMember: boolean("is_founding_member").notNull().default(false),
+  isVerified: boolean("is_verified").notNull().default(false),
+  isFeatured: boolean("is_featured").default(false),
+  
+  // Compliance
+  termsAccepted: boolean("terms_accepted").notNull().default(true),
+  privacyAccepted: boolean("privacy_accepted").notNull().default(true),
+  paidUntil: timestamp("paid_until"),
+  
+  // Analytics
+  followerCount: integer("follower_count").notNull().default(0),
+  completedBookings: integer("completed_bookings").notNull().default(0),
+  averageRating: integer("average_rating"), // 0-500 (5.00 stars = 500)
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceProviderSchema = createInsertSchema(serviceProviders).omit({
+  id: true,
+  followerCount: true,
+  completedBookings: true,
+  averageRating: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertServiceProvider = z.infer<typeof insertServiceProviderSchema>;
+export type ServiceProvider = typeof serviceProviders.$inferSelect;
+
+export const serviceOfferings = pgTable("service_offerings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serviceProviderId: varchar("service_provider_id").notNull().references(() => serviceProviders.id),
+  
+  // Offering Details
+  offeringName: text("offering_name").notNull(),
+  description: text("description").notNull(),
+  durationMinutes: integer("duration_minutes"), // estimated duration
+  
+  // Pricing
+  pricingModel: text("pricing_model").notNull(), // "fixed", "hourly", "quote"
+  fixedPriceCents: integer("fixed_price_cents"), // for fixed pricing
+  hourlyRateCents: integer("hourly_rate_cents"), // for hourly pricing
+  startingAtCents: integer("starting_at_cents"), // display price for listings
+  
+  // Details
+  tags: text("tags").array().default(sql`'{}'::text[]`),
+  requirements: text("requirements"), // what customer needs to provide/prepare
+  includes: text("includes"), // what's included in the service
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false),
+  displayOrder: integer("display_order").default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceOfferingSchema = createInsertSchema(serviceOfferings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertServiceOffering = z.infer<typeof insertServiceOfferingSchema>;
+export type ServiceOffering = typeof serviceOfferings.$inferSelect;
+
+export const serviceBookings = pgTable("service_bookings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  serviceProviderId: varchar("service_provider_id").notNull().references(() => serviceProviders.id),
+  offeringId: varchar("offering_id").notNull().references(() => serviceOfferings.id),
+  
+  // Booking Details
+  status: text("status").notNull().default("requested"), // requested, confirmed, in_progress, completed, cancelled
+  requestedDate: timestamp("requested_date").notNull(), // preferred service date
+  requestedTime: text("requested_time"), // preferred time window
+  confirmedDate: timestamp("confirmed_date"), // actual confirmed date
+  confirmedTime: text("confirmed_time"),
+  
+  // Customer Info
+  customerName: text("customer_name").notNull(),
+  customerEmail: text("customer_email").notNull(),
+  customerPhone: text("customer_phone").notNull(),
+  customerAddress: text("customer_address"), // service location if different from profile
+  customerNotes: text("customer_notes"),
+  
+  // Provider Response
+  providerNotes: text("provider_notes"),
+  providerResponse: text("provider_response"), // message to customer
+  
+  // Pricing
+  quotedPriceCents: integer("quoted_price_cents"), // provider's quote
+  depositCents: integer("deposit_cents"), // deposit amount
+  totalCents: integer("total_cents"), // final total
+  
+  // Payment
+  paymentStatus: text("payment_status").default("pending"), // pending, deposit_paid, paid, refunded
+  paymentId: text("payment_id"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+});
+
+export const insertServiceBookingSchema = createInsertSchema(serviceBookings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  cancelledAt: true,
+});
+
+export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
+export type ServiceBooking = typeof serviceBookings.$inferSelect;
+
 export const restaurantFAQs = pgTable("restaurant_faqs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
