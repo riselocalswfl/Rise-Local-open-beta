@@ -8,7 +8,7 @@ import {
   Star, Calendar, Package, Award, HelpCircle, Image as ImageIcon
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { Vendor, Product, Event, VendorReview, VendorFAQ } from "@shared/schema";
+import type { Vendor, Product, Event, VendorReview, VendorFAQ, FulfillmentOptions } from "@shared/schema";
 
 export default function VendorProfile() {
   const [, params] = useRoute("/vendor/:id");
@@ -64,7 +64,7 @@ export default function VendorProfile() {
 
   const heroImage = vendor.heroImageUrl || vendor.bannerUrl;
   const certifications = (vendor.certifications as any) || [];
-  const fulfillmentOptions = (vendor.fulfillmentOptions as any) || [];
+  const fulfillmentOptions = (vendor.fulfillmentOptions as FulfillmentOptions) || {};
   const contact = (vendor.contact as any) || {};
   const policies = (vendor.policies as any) || {};
   const hours = (vendor.hours as any) || {};
@@ -153,13 +153,62 @@ export default function VendorProfile() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Fulfillment</CardTitle>
+              <CardTitle className="text-sm font-medium">Fulfillment Options</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm space-y-1">
-                {vendor.serviceOptions && vendor.serviceOptions.map((option, i) => (
-                  <div key={i} data-testid={`text-service-${i}`}>{option}</div>
-                ))}
+              <div className="text-sm space-y-2">
+                {fulfillmentOptions.pickup?.enabled && (
+                  <div data-testid="fulfillment-pickup" className="flex items-start gap-2">
+                    <Package className="w-4 h-4 mt-0.5 text-primary" />
+                    <div className="flex-1">
+                      <div className="font-medium">Pickup</div>
+                      {fulfillmentOptions.pickup.locations && fulfillmentOptions.pickup.locations.length > 0 && (
+                        <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                          {fulfillmentOptions.pickup.locations.map((location, i) => (
+                            <div key={location.id || i}>
+                              <div className="font-medium text-foreground">{location.name}</div>
+                              <div>{location.address}</div>
+                              {location.days && location.days.length > 0 && (
+                                <div>{location.days.join(", ")} {location.timeWindow && `• ${location.timeWindow}`}</div>
+                              )}
+                              {location.instructions && (
+                                <div className="italic">{location.instructions}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {fulfillmentOptions.delivery?.enabled && (
+                  <div data-testid="fulfillment-delivery" className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 mt-0.5 text-primary" />
+                    <div className="flex-1">
+                      <div className="font-medium">Delivery</div>
+                      <div className="text-xs text-muted-foreground">
+                        {fulfillmentOptions.delivery.radiusMiles && `${fulfillmentOptions.delivery.radiusMiles} mile radius`}
+                        {fulfillmentOptions.delivery.baseFeeCents && ` • $${(fulfillmentOptions.delivery.baseFeeCents / 100).toFixed(2)} fee`}
+                        {fulfillmentOptions.delivery.minOrderCents && ` • $${(fulfillmentOptions.delivery.minOrderCents / 100).toFixed(2)} min`}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {fulfillmentOptions.shipping?.enabled && (
+                  <div data-testid="fulfillment-shipping" className="flex items-start gap-2">
+                    <Package className="w-4 h-4 mt-0.5 text-primary" />
+                    <div className="flex-1">
+                      <div className="font-medium">Shipping</div>
+                      <div className="text-xs text-muted-foreground">
+                        {fulfillmentOptions.shipping.flatFeeCents && `$${(fulfillmentOptions.shipping.flatFeeCents / 100).toFixed(2)} flat fee`}
+                        {fulfillmentOptions.shipping.carriers && fulfillmentOptions.shipping.carriers.length > 0 && ` • ${fulfillmentOptions.shipping.carriers.join(", ")}`}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!fulfillmentOptions.pickup?.enabled && !fulfillmentOptions.delivery?.enabled && !fulfillmentOptions.shipping?.enabled && (
+                  <div className="text-muted-foreground text-xs">Contact vendor for fulfillment details</div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -15,9 +15,28 @@ import {
   insertRestaurantSchema,
   insertMenuItemSchema,
   insertRestaurantReviewSchema,
-  insertRestaurantFAQSchema
+  insertRestaurantFAQSchema,
+  fulfillmentOptionsSchema,
+  type FulfillmentOptions
 } from "@shared/schema";
 import { z } from "zod";
+
+// Helper function to derive serviceOptions from fulfillmentOptions
+function deriveServiceOptions(fulfillment: FulfillmentOptions): string[] {
+  const serviceOptions: string[] = [];
+  
+  if (fulfillment.pickup?.enabled) {
+    serviceOptions.push("Pickup");
+  }
+  if (fulfillment.delivery?.enabled) {
+    serviceOptions.push("Delivery");
+  }
+  if (fulfillment.shipping?.enabled) {
+    serviceOptions.push("Ship");
+  }
+  
+  return serviceOptions;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth (IMPORTANT: must be done before routes)
@@ -154,26 +173,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertVendorSchema.partial().parse(req.body);
       console.log("[PATCH /api/vendors/:id] Validated data:", validatedData);
       
-      // If fulfillmentOptions is being updated, derive serviceOptions from it
+      // If fulfillmentOptions is being updated, validate it and derive serviceOptions
       if (validatedData.fulfillmentOptions) {
-        const serviceOptions: string[] = [];
-        const fulfillment = validatedData.fulfillmentOptions;
-        
-        // Type guard to ensure proper structure
-        if (typeof fulfillment === 'object' && fulfillment !== null) {
-          if ('pickup' in fulfillment && (fulfillment as any).pickup?.enabled) {
-            serviceOptions.push("Pickup");
-          }
-          if ('delivery' in fulfillment && (fulfillment as any).delivery?.enabled) {
-            serviceOptions.push("Delivery");
-          }
-          if ('shipping' in fulfillment && (fulfillment as any).shipping?.enabled) {
-            serviceOptions.push("Ship");
-          }
+        try {
+          // Validate fulfillmentOptions against the schema
+          const fulfillment = fulfillmentOptionsSchema.parse(validatedData.fulfillmentOptions);
+          
+          // Derive serviceOptions from validated fulfillmentOptions
+          const serviceOptions = deriveServiceOptions(fulfillment);
+          validatedData.serviceOptions = serviceOptions;
+          
+          console.log("[PATCH /api/vendors/:id] Validated fulfillmentOptions and derived serviceOptions:", serviceOptions);
+        } catch (error) {
+          console.error("[PATCH /api/vendors/:id] Invalid fulfillmentOptions:", error);
+          return res.status(400).json({ 
+            error: "Invalid fulfillment options", 
+            details: error instanceof Error ? error.message : String(error) 
+          });
         }
-        
-        validatedData.serviceOptions = serviceOptions;
-        console.log("[PATCH /api/vendors/:id] Derived serviceOptions:", serviceOptions);
       }
       
       await storage.updateVendor(req.params.id, validatedData);
