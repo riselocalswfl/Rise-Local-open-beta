@@ -22,6 +22,7 @@ import Join from "@/pages/Join";
 import BuyerSignup from "@/pages/BuyerSignup";
 import VendorSignup from "@/pages/VendorSignup";
 import RestaurantSignup from "@/pages/RestaurantSignup";
+import ServiceProviderSignup from "@/pages/ServiceProviderSignup";
 import Admin from "@/pages/Admin";
 import VendorProfile from "@/pages/VendorProfile";
 import VendorDashboard from "@/pages/VendorDashboard";
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/join/buyer" component={BuyerSignup} />
       <Route path="/join/vendor" component={VendorSignup} />
       <Route path="/join/restaurant" component={RestaurantSignup} />
+      <Route path="/join/service-provider" component={ServiceProviderSignup} />
       <Route path="/loyalty" component={LoyaltyHistory} />
       <Route path="/profile" component={CustomerProfile} />
       <Route path="/admin" component={Admin} />
