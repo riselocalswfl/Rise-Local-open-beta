@@ -62,10 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor) {
-        return res.status(404).json({ message: "No vendor profile found for this user" });
-      }
-      res.json(vendor);
+      res.json(vendor || null);
     } catch (error) {
       console.error("Error fetching user's vendor:", error);
       res.status(500).json({ message: "Failed to fetch vendor profile" });
@@ -77,10 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const restaurant = await storage.getRestaurantByOwnerId(userId);
-      if (!restaurant) {
-        return res.status(404).json({ message: "No restaurant profile found for this user" });
-      }
-      res.json(restaurant);
+      res.json(restaurant || null);
     } catch (error) {
       console.error("Error fetching user's restaurant:", error);
       res.status(500).json({ message: "Failed to fetch restaurant profile" });
@@ -1385,10 +1379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const provider = await storage.getServiceProviderByOwnerId(userId);
-      if (!provider) {
-        return res.status(404).json({ message: "No service provider profile found for this user" });
-      }
-      res.json(provider);
+      res.json(provider || null);
     } catch (error) {
       console.error("Error fetching user's service provider:", error);
       res.status(500).json({ message: "Failed to fetch service provider profile" });

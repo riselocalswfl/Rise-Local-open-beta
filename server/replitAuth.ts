@@ -109,7 +109,7 @@ export async function setupAuth(app: Express) {
     console.log("[AUTH] /api/login - intended_role query param:", intendedRole);
     console.log("[AUTH] /api/login - returnTo query param:", returnTo);
     
-    if (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant") {
+    if (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider") {
       (req.session as any).intendedRole = intendedRole;
       // Also store in cookie as backup (expires in 5 minutes)
       res.cookie("intended_role", intendedRole, { 
@@ -181,7 +181,7 @@ export async function setupAuth(app: Express) {
         
         try {
           // If an intended role was set during login, update the user's role
-          if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant")) {
+          if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider")) {
             console.log("[AUTH] Updating user role to:", intendedRole);
             await storage.updateUser(userId, { role: intendedRole });
             userRole = intendedRole;
@@ -230,6 +230,25 @@ export async function setupAuth(app: Express) {
                   paymentMethod: "Direct to Restaurant",
                 });
               }
+            } else if (intendedRole === "service_provider") {
+              // Check if service provider profile already exists
+              const existingProvider = await storage.getServiceProviderByOwnerId(userId);
+              if (!existingProvider) {
+                // Create default service provider profile
+                await storage.createServiceProvider({
+                  ownerId: userId,
+                  businessName: `${userName}'s Services`,
+                  contactName: userName,
+                  bio: "Welcome! I'm excited to offer my services to the Fort Myers community.",
+                  category: "Home Services",
+                  city: "Fort Myers",
+                  state: "FL",
+                  zipCode: "33901",
+                  serviceAreas: ["Fort Myers"],
+                  contactPhone: existingUser?.phone || "",
+                  contactEmail: existingUser?.email || "",
+                });
+              }
             }
             
             // Clear the intended role from session and cookie
@@ -255,6 +274,8 @@ export async function setupAuth(app: Express) {
               redirectUrl = "/profile";
             } else if (userRole === "vendor" || userRole === "restaurant") {
               redirectUrl = "/dashboard";
+            } else if (userRole === "service_provider") {
+              redirectUrl = "/service-provider-dashboard";
             }
             console.log("[AUTH] Redirecting to:", redirectUrl, "for role:", userRole);
           }
