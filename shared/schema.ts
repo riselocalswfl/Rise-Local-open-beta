@@ -31,7 +31,7 @@ export const users = pgTable("users", {
   password: text("password"),
   
   // Common fields
-  role: text("role").notNull().default("buyer"), // buyer, vendor, admin
+  role: text("role").notNull().default("buyer"), // buyer, vendor, restaurant, service_provider, admin
   phone: text("phone"),
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
   
