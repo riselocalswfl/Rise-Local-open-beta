@@ -685,9 +685,9 @@ export default function VendorDashboard() {
                       Add Product
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
                     <DialogHeader>
-                      <DialogTitle>Add New Product</DialogTitle>
+                      <DialogTitle className="text-[#222]">Add New Product</DialogTitle>
                     </DialogHeader>
                     <AddProductForm 
                       onSubmit={createProductMutation.mutate}
@@ -831,9 +831,9 @@ export default function VendorDashboard() {
                       Add Event
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
                     <DialogHeader>
-                      <DialogTitle>Add New Event</DialogTitle>
+                      <DialogTitle className="text-[#222]">Add New Event</DialogTitle>
                     </DialogHeader>
                     <AddEventForm 
                       onSubmit={createEventMutation.mutate}
@@ -892,9 +892,9 @@ export default function VendorDashboard() {
                       Add FAQ
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
                     <DialogHeader>
-                      <DialogTitle>Add New FAQ</DialogTitle>
+                      <DialogTitle className="text-[#222]">Add New FAQ</DialogTitle>
                     </DialogHeader>
                     <AddFAQForm 
                       onSubmit={createFAQMutation.mutate}
