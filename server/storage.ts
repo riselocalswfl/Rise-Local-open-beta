@@ -19,10 +19,11 @@ import {
   type ServiceProvider, type InsertServiceProvider,
   type ServiceOffering, type InsertServiceOffering,
   type ServiceBooking, type InsertServiceBooking,
+  type Message, type InsertMessage,
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
   restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions,
-  serviceProviders, serviceOfferings, serviceBookings,
+  serviceProviders, serviceOfferings, serviceBookings, messages,
   fulfillmentDetailsSchema
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -216,6 +217,20 @@ export interface IStorage {
   createServiceBooking(booking: InsertServiceBooking): Promise<ServiceBooking>;
   updateServiceBooking(id: string, data: Partial<InsertServiceBooking>): Promise<void>;
   updateBookingStatus(id: string, status: string): Promise<void>;
+
+  // Message operations
+  createMessage(message: InsertMessage): Promise<Message>;
+  getConversations(userId: string): Promise<Array<{
+    otherUserId: string;
+    otherUserName: string;
+    otherUserEmail: string;
+    lastMessage: string;
+    lastMessageTime: Date;
+    unreadCount: number;
+  }>>;
+  getMessages(userId: string, otherUserId: string): Promise<Message[]>;
+  markMessagesAsRead(userId: string, senderId: string): Promise<void>;
+  getUnreadMessageCount(userId: string): Promise<number>;
 }
 
 export class DbStorage implements IStorage {
@@ -960,6 +975,112 @@ export class DbStorage implements IStorage {
 
   async updateBookingStatus(id: string, status: string): Promise<void> {
     await db.update(serviceBookings).set({ status }).where(eq(serviceBookings.id, id));
+  }
+
+  // Message operations
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const result = await db.insert(messages).values(message).returning();
+    return result[0];
+  }
+
+  async getConversations(userId: string): Promise<Array<{
+    otherUserId: string;
+    otherUserName: string;
+    otherUserEmail: string;
+    lastMessage: string;
+    lastMessageTime: Date;
+    unreadCount: number;
+  }>> {
+    // Get all distinct conversation partners
+    const conversationPartners = await db
+      .selectDistinctOn([sql`CASE WHEN ${messages.senderId} = ${userId} THEN ${messages.receiverId} ELSE ${messages.senderId} END`], {
+        otherUserId: sql<string>`CASE WHEN ${messages.senderId} = ${userId} THEN ${messages.receiverId} ELSE ${messages.senderId} END`,
+      })
+      .from(messages)
+      .where(
+        sql`${messages.senderId} = ${userId} OR ${messages.receiverId} = ${userId}`
+      );
+
+    // For each partner, get user info and last message
+    const conversations = await Promise.all(
+      conversationPartners.map(async ({ otherUserId }) => {
+        const otherUser = await this.getUser(otherUserId);
+        
+        // Get last message in conversation
+        const lastMsg = await db
+          .select()
+          .from(messages)
+          .where(
+            sql`(${messages.senderId} = ${userId} AND ${messages.receiverId} = ${otherUserId}) OR (${messages.senderId} = ${otherUserId} AND ${messages.receiverId} = ${userId})`
+          )
+          .orderBy(desc(messages.createdAt))
+          .limit(1);
+
+        // Count unread messages from this person
+        const unreadResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.senderId, otherUserId),
+              eq(messages.receiverId, userId),
+              eq(messages.isRead, false)
+            )
+          );
+
+        return {
+          otherUserId,
+          otherUserName: otherUser?.firstName && otherUser?.lastName 
+            ? `${otherUser.firstName} ${otherUser.lastName}`
+            : otherUser?.username || 'Unknown User',
+          otherUserEmail: otherUser?.email || '',
+          lastMessage: lastMsg[0]?.content || '',
+          lastMessageTime: lastMsg[0]?.createdAt || new Date(),
+          unreadCount: unreadResult[0]?.count || 0,
+        };
+      })
+    );
+
+    // Sort by last message time
+    return conversations.sort((a, b) => 
+      b.lastMessageTime.getTime() - a.lastMessageTime.getTime()
+    );
+  }
+
+  async getMessages(userId: string, otherUserId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(
+        sql`(${messages.senderId} = ${userId} AND ${messages.receiverId} = ${otherUserId}) OR (${messages.senderId} = ${otherUserId} AND ${messages.receiverId} = ${userId})`
+      )
+      .orderBy(messages.createdAt);
+  }
+
+  async markMessagesAsRead(userId: string, senderId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(messages.receiverId, userId),
+          eq(messages.senderId, senderId),
+          eq(messages.isRead, false)
+        )
+      );
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.receiverId, userId),
+          eq(messages.isRead, false)
+        )
+      );
+    return result[0]?.count || 0;
   }
 }
 
