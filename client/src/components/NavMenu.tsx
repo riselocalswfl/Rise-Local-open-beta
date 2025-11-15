@@ -1,8 +1,10 @@
-import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle } from "lucide-react";
+import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle, MessageSquare } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavMenu } from "@/contexts/NavMenuContext";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sheet,
   SheetContent,
@@ -29,6 +31,7 @@ const buyerNavigationItems = [
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
+  { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "My Account", href: "/profile", icon: UserCircle },
 ];
 
@@ -38,6 +41,7 @@ const vendorNavigationItems = [
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
 ];
 
@@ -47,13 +51,21 @@ const restaurantNavigationItems = [
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
 ];
 
 export default function NavMenu() {
   const { open, setOpen } = useNavMenu();
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+
+  // Fetch unread message count
+  const { data: unreadCount = 0 } = useQuery<number>({
+    queryKey: ["/api/messages/unread/count"],
+    enabled: isAuthenticated,
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
 
   const handleNavigate = (href: string) => {
     setOpen(false);
@@ -105,7 +117,16 @@ export default function NavMenu() {
                       data-testid={`link-nav-${item.name.toLowerCase().replace(/ /g, "-")}`}
                     >
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
-                      <span className="font-medium">{item.name}</span>
+                      <span className="font-medium flex-1">{item.name}</span>
+                      {item.name === "Messages" && unreadCount > 0 && (
+                        <Badge 
+                          variant="secondary" 
+                          className="min-w-6 h-6 flex items-center justify-center px-2"
+                          data-testid="badge-unread-count"
+                        >
+                          {unreadCount}
+                        </Badge>
+                      )}
                     </div>
                   </Link>
                 </li>
