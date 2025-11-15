@@ -161,9 +161,8 @@ export const vendors = pgTable("vendors", {
   contactName: text("contact_name").notNull(),
   bio: text("bio").notNull(), // min 280 chars enforced in validation
   
-  // Categories
-  category: text("category").notNull(), // single required: Produce, Baked Goods, etc.
-  subcategories: text("subcategories").array().default(sql`'{}'::text[]`),
+  // Categories - hierarchical multi-select (parent + child categories)
+  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(),
   
   // Media
   logoUrl: text("logo_url"),
@@ -283,7 +282,7 @@ export const events = pgTable("events", {
   description: text("description").notNull(),
   dateTime: timestamp("date_time").notNull(),
   location: text("location").notNull(),
-  category: text("category").notNull(),
+  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(), // hierarchical multi-select event categories
   ticketsAvailable: integer("tickets_available").notNull(),
   rsvpCount: integer("rsvp_count").notNull().default(0),
 }, (table) => ({
@@ -455,8 +454,7 @@ export const restaurants = pgTable("restaurants", {
   bio: text("bio").notNull(),
   
   // Cuisine & Dining
-  cuisineType: text("cuisine_type").notNull(), // Italian, Mexican, Farm-to-Table, etc.
-  cuisineTypes: text("cuisine_types").array().default(sql`'{}'::text[]`),
+  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(), // hierarchical multi-select (Cuisine Types, Dining Experience, Values & Sourcing)
   dietaryOptions: text("dietary_options").array().default(sql`'{}'::text[]`), // Vegan, Gluten-Free, Keto, etc.
   priceRange: text("price_range"), // $, $$, $$$, $$$$
   
@@ -578,9 +576,8 @@ export const serviceProviders = pgTable("service_providers", {
   contactName: text("contact_name").notNull(),
   bio: text("bio").notNull(),
   
-  // Service Categories
-  category: text("category").notNull(), // Home Services, Property Care, Recreation, Education, Wellness
-  subcategories: text("subcategories").array().default(sql`'{}'::text[]`),
+  // Service Categories - hierarchical multi-select (parent + child categories)
+  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(),
   serviceAreas: text("service_areas").array().default(sql`'{}'::text[]`), // Fort Myers, Cape Coral, etc.
   
   // Media
