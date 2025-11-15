@@ -151,7 +151,7 @@ export default function Messages() {
         </div>
         
         {showResults && searchQuery.length > 0 && (
-          <Card className="absolute top-full mt-2 w-full z-10 max-h-80 overflow-y-auto">
+          <Card className="absolute top-full mt-2 w-full z-10 max-h-80 overflow-y-auto bg-card shadow-lg">
             {isVendor ? (
               filteredUsers && filteredUsers.length > 0 ? (
                 <div className="p-2">
