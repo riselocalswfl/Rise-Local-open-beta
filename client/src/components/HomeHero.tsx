@@ -15,22 +15,17 @@ export default function HomeHero() {
           </p>
           <div className="flex flex-col items-center gap-4">
             <div className="flex gap-3">
-              <Link href="/products">
-                <BrandButton data-testid="button-shop-local">
-                  Shop
+              <Link href="/vendors">
+                <BrandButton data-testid="button-meet-vendors">
+                  Meet Vendors
                 </BrandButton>
               </Link>
-              <Link href="/vendors">
-                <BrandButton data-testid="button-meet-makers">
-                  Meet Makers
+              <Link href="/join" data-testid="link-join">
+                <BrandButton data-testid="button-join">
+                  Join the Movement
                 </BrandButton>
               </Link>
             </div>
-            <Link href="/join" data-testid="link-join">
-              <BrandButton data-testid="button-join">
-                Join the Movement
-              </BrandButton>
-            </Link>
           </div>
           <img src={logoImg} alt="Rise Local" className="absolute bottom-1 right-0 h-28 w-auto" />
         </BrandCardBody>
