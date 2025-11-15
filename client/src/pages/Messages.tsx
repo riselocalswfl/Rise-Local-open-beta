@@ -8,7 +8,15 @@ import { MessageSquare, User, Search, Store } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useRef, useEffect } from "react";
-import type { Vendor } from "@shared/schema";
+import type { Vendor, User as UserType } from "@shared/schema";
+
+interface SafeUser {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+}
 
 interface Conversation {
   otherUserId: string;
@@ -20,10 +28,13 @@ interface Conversation {
 }
 
 export default function Messages() {
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const isVendor = user?.role === "vendor" || user?.role === "restaurant";
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -56,9 +67,16 @@ export default function Messages() {
     },
   });
 
+  // Fetch vendors for buyer search
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
-    enabled: searchQuery.length > 0,
+    enabled: searchQuery.length > 0 && !isVendor,
+  });
+
+  // Fetch users for vendor search
+  const { data: users } = useQuery<SafeUser[]>({
+    queryKey: ["/api/users"],
+    enabled: searchQuery.length > 0 && isVendor,
   });
 
   const filteredVendors = vendors?.filter(vendor => {
@@ -70,6 +88,15 @@ export default function Messages() {
       vendor.bio?.toLowerCase().includes(query) ||
       vendor.categories?.some((cat: string) => cat.toLowerCase().includes(query)) ||
       vendor.values?.some((val: string) => val.toLowerCase().includes(query))
+    );
+  }).slice(0, 5);
+
+  const filteredUsers = users?.filter(u => {
+    const query = searchQuery.toLowerCase();
+    const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+    return (
+      fullName.includes(query) ||
+      u.email?.toLowerCase().includes(query)
     );
   }).slice(0, 5);
 
@@ -88,10 +115,10 @@ export default function Messages() {
     );
   }
 
-  const handleVendorClick = (vendorOwnerId: string) => {
+  const handleContactClick = (userId: string) => {
     setSearchQuery("");
     setShowResults(false);
-    setLocation(`/messages/${vendorOwnerId}`);
+    setLocation(`/messages/${userId}`);
   };
 
   return (
@@ -105,13 +132,13 @@ export default function Messages() {
         </p>
       </div>
 
-      {/* Search vendors to message */}
+      {/* Search to message */}
       <div className="mb-6 relative" ref={searchRef}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search vendors to message..."
+            placeholder={isVendor ? "Search customers to message..." : "Search vendors to message..."}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -119,39 +146,72 @@ export default function Messages() {
             }}
             onFocus={() => setShowResults(searchQuery.length > 0)}
             className="pl-10"
-            data-testid="input-search-vendors"
+            data-testid="input-search-contacts"
           />
         </div>
         
         {showResults && searchQuery.length > 0 && (
           <Card className="absolute top-full mt-2 w-full z-10 max-h-80 overflow-y-auto">
-            {filteredVendors && filteredVendors.length > 0 ? (
-              <div className="p-2">
-                {filteredVendors.map((vendor) => (
-                  <div
-                    key={vendor.id}
-                    onClick={() => handleVendorClick(vendor.ownerId)}
-                    className="flex items-center gap-3 p-3 rounded-md hover-elevate active-elevate-2 cursor-pointer"
-                    data-testid={`result-vendor-${vendor.id}`}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                      <Store className="w-5 h-5 text-muted-foreground" />
+            {isVendor ? (
+              filteredUsers && filteredUsers.length > 0 ? (
+                <div className="p-2">
+                  {filteredUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      onClick={() => handleContactClick(u.id)}
+                      className="flex items-center gap-3 p-3 rounded-md hover-elevate active-elevate-2 cursor-pointer"
+                      data-testid={`result-user-${u.id}`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <User className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium truncate">
+                          {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.email}
+                        </h4>
+                        {u.email && u.firstName && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {u.email}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium truncate">{vendor.businessName}</h4>
-                      {vendor.categories && vendor.categories.length > 0 && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {vendor.categories.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  No customers found
+                </div>
+              )
             ) : (
-              <div className="p-8 text-center text-muted-foreground">
-                No vendors found
-              </div>
+              filteredVendors && filteredVendors.length > 0 ? (
+                <div className="p-2">
+                  {filteredVendors.map((vendor) => (
+                    <div
+                      key={vendor.id}
+                      onClick={() => handleContactClick(vendor.ownerId)}
+                      className="flex items-center gap-3 p-3 rounded-md hover-elevate active-elevate-2 cursor-pointer"
+                      data-testid={`result-vendor-${vendor.id}`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <Store className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium truncate">{vendor.businessName}</h4>
+                        {vendor.categories && vendor.categories.length > 0 && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {vendor.categories.join(", ")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  No vendors found
+                </div>
+              )
             )}
           </Card>
         )}
