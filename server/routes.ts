@@ -1730,7 +1730,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         senderId: userId,
       });
       
+      console.log("[MESSAGE] Creating message:", { 
+        senderId: messageData.senderId, 
+        receiverId: messageData.receiverId,
+        content: messageData.content?.substring(0, 50)
+      });
+      
       const message = await storage.createMessage(messageData);
+      console.log("[MESSAGE] Message created successfully:", message.id);
       res.json(message);
     } catch (error) {
       console.error("Error creating message:", error);
@@ -1741,7 +1748,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log("[CONVERSATIONS] Fetching conversations for user:", userId);
       const conversations = await storage.getConversations(userId);
+      console.log("[CONVERSATIONS] Found conversations:", conversations.length);
       res.json(conversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -1754,7 +1763,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { otherUserId } = req.params;
       
+      console.log("[MESSAGES] Fetching messages between:", { userId, otherUserId });
       const messages = await storage.getMessages(userId, otherUserId);
+      console.log("[MESSAGES] Found messages:", messages.length);
       
       // Mark messages from other user as read
       await storage.markMessagesAsRead(userId, otherUserId);
