@@ -1,0 +1,122 @@
+1. Remove the old vendor profile setup
+
+Remove the current single universal vendor profile layout.
+
+Remove any areas where all vendors display products, menus, services, and events at the same time.
+
+Remove any old tabs, sections, or fields that don’t fit with category-specific profiles.
+
+Remove anything that forces all vendors to look the same, regardless of their category.
+
+I want a clean slate with only the new structure below.
+
+2. Create a single master vendor profile
+
+This should only include the information that ALL vendor types share:
+
+Business name
+
+Vendor category (shop/events, dine, or services)
+
+Tagline
+
+About/description
+
+Location
+
+Hours
+
+Payment options
+
+Social links
+
+Cover photo
+
+Profile photo
+
+Gallery photos
+
+Values tags
+
+“Message Vendor” button
+
+“Follow Vendor” button
+
+This master profile appears FIRST for everyone.
+
+3. Add category-specific sections that appear ONLY for the correct vendor type
+A. Shop & Events Vendors
+
+Show these sections:
+
+Products
+
+Product details
+
+Events they host or attend
+
+Announcements
+
+Policies (shipping, pickup, refunds)
+
+Do NOT show menus or service offerings here.
+
+B. Dine Vendors
+
+Show these sections:
+
+Menu (with categories)
+
+Food/drink item descriptions
+
+Any locally-sourced badges
+
+Options for takeout, delivery, reservations
+
+Popular dishes
+
+Do NOT show product listings or service listings.
+
+C. Service Vendors
+
+Show these sections:
+
+List of services (with price ranges and descriptions)
+
+Booking or scheduling options
+
+Packages
+
+Service area map
+
+Reviews
+
+Do NOT show menus or product grids here.
+
+4. Keep the layout consistent
+
+Every vendor profile should follow this layout structure:
+
+Overview → Main Category Section (Shop/Menu/Services) → Policies/Reviews → Contact
+
+The middle section changes depending on vendor type.
+
+5. Messaging requirements
+
+Users must be able to message ANY vendor.
+
+Vendors can only message users who have interacted with them (followed, purchased, or chatted).
+
+Keep the “Message Vendor” button visible at the top of every profile.
+
+6. Performance and simplicity
+
+Keep all vendor-specific sections separate so only the appropriate content loads.
+
+Do not duplicate full vendor profiles for each category — only the unique sections.
+
+Make the system modular and user-friendly.
+
+Final Goal
+
+A vendor profile system that is clean, easy to use, and automatically adapts depending on whether the vendor is Shop/Events, Dine, or Services — without mixing features between categories.

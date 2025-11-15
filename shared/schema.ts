@@ -273,6 +273,60 @@ export const insertProductSchema = createInsertSchema(products).omit({
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 
+// Menu Items for Restaurant vendors
+export const menuItems = pgTable("menu_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  priceCents: integer("price_cents").notNull(),
+  category: text("category").notNull(), // Appetizers, Entrees, Desserts, Beverages, etc.
+  dietaryTags: text("dietary_tags").array().default(sql`'{}'::text[]`), // vegan, gluten-free, dairy-free, etc.
+  isLocallySourced: boolean("is_locally_sourced").default(false),
+  sourceFarm: text("source_farm"), // where ingredient is sourced from
+  imageUrl: text("image_url"),
+  isAvailable: boolean("is_available").notNull().default(true),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
+export type MenuItem = typeof menuItems.$inferSelect;
+
+// Services for Service Provider vendors
+export const services = pgTable("services", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // Wellness, Home Services, Professional Services, etc.
+  priceRangeMin: integer("price_range_min"), // cents
+  priceRangeMax: integer("price_range_max"), // cents
+  pricingModel: text("pricing_model"), // hourly, per-session, per-project, etc.
+  durationMinutes: integer("duration_minutes"), // typical service duration
+  imageUrl: text("image_url"),
+  isAvailable: boolean("is_available").notNull().default(true),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertServiceSchema = createInsertSchema(services).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertService = z.infer<typeof insertServiceSchema>;
+export type Service = typeof services.$inferSelect;
+
 export const events = pgTable("events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   vendorId: varchar("vendor_id").references(() => vendors.id),
