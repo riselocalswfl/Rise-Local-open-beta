@@ -6,11 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { TagInput } from "@/components/TagInput";
+import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Check } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { DINE_CATEGORIES } from "@shared/categories";
 
 export default function RestaurantSignup() {
   const { user } = useAuth();
@@ -23,6 +25,7 @@ export default function RestaurantSignup() {
     description: "",
     localPercent: "",
     farmPartners: "",
+    categories: [] as string[],
     values: [] as string[],
   });
 
@@ -80,8 +83,7 @@ export default function RestaurantSignup() {
       contactName: parsed.contactName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || "Owner",
       displayName: parsed.displayName || "",
       bio: formData.description,
-      category: "Food & Beverage",
-      categories: ["Food & Beverage"],
+      categories: formData.categories,
       city: formData.location,
       zipCode: "33901", // Default Fort Myers zip
       locationType: "physical",
@@ -143,6 +145,14 @@ export default function RestaurantSignup() {
               Tell customers about your restaurant and commitment to local sourcing
             </p>
           </div>
+
+          <HierarchicalCategorySelector
+            categories={DINE_CATEGORIES}
+            selectedCategories={formData.categories}
+            onChange={(categories) => setFormData({ ...formData, categories })}
+            label="Dine Categories"
+            required
+          />
 
           <div className="space-y-2">
             <Label htmlFor="localPercent">Approx. percentage of locally sourced ingredients *</Label>
@@ -211,6 +221,7 @@ export default function RestaurantSignup() {
               !formData.location || 
               !formData.description || 
               !formData.localPercent ||
+              formData.categories.length === 0 ||
               signupMutation.isPending
             }
             data-testid="button-complete-restaurant-signup"
