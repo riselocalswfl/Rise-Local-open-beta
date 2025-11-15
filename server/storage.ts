@@ -19,11 +19,12 @@ import {
   type ServiceProvider, type InsertServiceProvider,
   type ServiceOffering, type InsertServiceOffering,
   type ServiceBooking, type InsertServiceBooking,
+  type Service, type InsertService,
   type Message, type InsertMessage,
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
   restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions,
-  serviceProviders, serviceOfferings, serviceBookings, messages,
+  serviceProviders, serviceOfferings, serviceBookings, services, messages,
   fulfillmentDetailsSchema
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -73,6 +74,20 @@ export interface IStorage {
   updateProduct(id: string, data: Partial<InsertProduct>): Promise<void>;
   deleteProduct(id: string): Promise<void>;
   updateProductInventory(id: string, inventory: number): Promise<void>;
+
+  // Menu Item operations
+  getMenuItem(id: string): Promise<MenuItem | undefined>;
+  getMenuItemsByVendor(vendorId: string): Promise<MenuItem[]>;
+  createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
+  updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<void>;
+  deleteMenuItem(id: string): Promise<void>;
+
+  // Service operations
+  getService(id: string): Promise<Service | undefined>;
+  getServicesByVendor(vendorId: string): Promise<Service[]>;
+  createService(service: InsertService): Promise<Service>;
+  updateService(id: string, data: Partial<InsertService>): Promise<void>;
+  deleteService(id: string): Promise<void>;
 
   // Event operations
   getEvent(id: string): Promise<Event | undefined>;
@@ -404,6 +419,52 @@ export class DbStorage implements IStorage {
 
   async updateProductInventory(id: string, stock: number): Promise<void> {
     await db.update(products).set({ stock }).where(eq(products.id, id));
+  }
+
+  // Menu Item operations
+  async getMenuItem(id: string): Promise<MenuItem | undefined> {
+    const result = await db.select().from(menuItems).where(eq(menuItems.id, id));
+    return result[0];
+  }
+
+  async getMenuItemsByVendor(vendorId: string): Promise<MenuItem[]> {
+    return await db.select().from(menuItems).where(eq(menuItems.vendorId, vendorId));
+  }
+
+  async createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem> {
+    const result = await db.insert(menuItems).values(menuItem as any).returning();
+    return result[0];
+  }
+
+  async updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<void> {
+    await db.update(menuItems).set(data as any).where(eq(menuItems.id, id));
+  }
+
+  async deleteMenuItem(id: string): Promise<void> {
+    await db.delete(menuItems).where(eq(menuItems.id, id));
+  }
+
+  // Service operations
+  async getService(id: string): Promise<Service | undefined> {
+    const result = await db.select().from(services).where(eq(services.id, id));
+    return result[0];
+  }
+
+  async getServicesByVendor(vendorId: string): Promise<Service[]> {
+    return await db.select().from(services).where(eq(services.vendorId, vendorId));
+  }
+
+  async createService(service: InsertService): Promise<Service> {
+    const result = await db.insert(services).values(service as any).returning();
+    return result[0];
+  }
+
+  async updateService(id: string, data: Partial<InsertService>): Promise<void> {
+    await db.update(services).set(data as any).where(eq(services.id, id));
+  }
+
+  async deleteService(id: string): Promise<void> {
+    await db.delete(services).where(eq(services.id, id));
   }
 
   // Event operations
