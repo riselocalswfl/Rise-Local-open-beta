@@ -25,7 +25,7 @@ import { TagInput } from "@/components/TagInput";
 import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { z } from "zod";
-import { SHOP_CATEGORIES } from "@shared/categories";
+import { SHOP_CATEGORIES, EVENTS_CATEGORIES } from "@shared/categories";
 
 // Form schemas for validation
 const productFormSchema = z.object({
@@ -1319,7 +1319,7 @@ function AddEventForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; 
       description: "",
       dateTime: "",
       location: "",
-      category: "",
+      categories: [],
       ticketsAvailable: 0,
     },
   });
@@ -1419,25 +1419,16 @@ function AddEventForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; 
 
         <FormField
           control={form.control}
-          name="category"
+          name="categories"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Category *</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="select-event-category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="Workshop">Workshop</SelectItem>
-                  <SelectItem value="Tour">Tour</SelectItem>
-                  <SelectItem value="Tasting">Tasting</SelectItem>
-                  <SelectItem value="Market">Market</SelectItem>
-                  <SelectItem value="Festival">Festival</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+              <HierarchicalCategorySelector
+                categories={EVENTS_CATEGORIES}
+                selectedCategories={field.value || []}
+                onChange={field.onChange}
+                label="Event Categories"
+                required
+              />
               <FormMessage />
             </FormItem>
           )}
