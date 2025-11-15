@@ -117,10 +117,13 @@ export default function ServiceProviderDashboard() {
   const updateProviderMutation = useMutation({
     mutationFn: async (data: Partial<ServiceProvider>) => {
       if (!provider?.id) throw new Error("No provider ID");
-      return await apiRequest("PATCH", `/api/services/${provider.id}`, data);
+      const providerId = provider.id;
+      const result = await apiRequest("PATCH", `/api/services/${providerId}`, data);
+      return { result, providerId };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/my-service-provider"] });
+    onSuccess: async ({ providerId }) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/my-service-provider"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/services", providerId] });
       toast({ title: "Profile updated successfully" });
     },
     onError: () => {

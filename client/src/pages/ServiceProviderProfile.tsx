@@ -110,7 +110,7 @@ function ServiceOfferingCard({
 }
 
 export default function ServiceProviderProfile() {
-  const [, params] = useRoute("/service/:id");
+  const [, params] = useRoute("/services/:id");
   const providerId = params?.id;
   const [selectedOffering, setSelectedOffering] = useState<ServiceOffering | null>(null);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);

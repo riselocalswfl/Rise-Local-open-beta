@@ -48,7 +48,7 @@ function Router() {
       <Route path="/service-provider-dashboard" component={ServiceProviderDashboard} />
       <Route path="/eat-local" component={EatLocal} />
       <Route path="/live-local" component={LiveLocal} />
-      <Route path="/service/:id" component={ServiceProviderProfile} />
+      <Route path="/services/:id" component={ServiceProviderProfile} />
       <Route path="/events" component={EventsLayout} />
       <Route path="/events/my" component={EventsLayout} />
       <Route path="/events/:id" component={EventDetail} />
