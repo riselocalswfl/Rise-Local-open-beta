@@ -13,9 +13,10 @@ interface MasterProfileProps {
   vendor: Vendor;
   reviews: VendorReview[];
   faqs: VendorFAQ[];
+  children?: React.ReactNode;
 }
 
-export function MasterProfile({ vendor, reviews, faqs }: MasterProfileProps) {
+export function MasterProfile({ vendor, reviews, faqs, children }: MasterProfileProps) {
   const heroImage = vendor.heroImageUrl || vendor.bannerUrl;
   const certifications = (vendor.certifications as any) || [];
   const fulfillmentOptions = (vendor.fulfillmentOptions as FulfillmentOptions) || {};
@@ -188,8 +189,8 @@ export function MasterProfile({ vendor, reviews, faqs }: MasterProfileProps) {
               </CardContent>
             </Card>
 
-            {/* Category-specific sections will be inserted here */}
-            <div id="category-specific-sections" />
+            {/* Category-specific sections */}
+            {children}
 
             {/* Reviews */}
             {reviews.length > 0 && (
