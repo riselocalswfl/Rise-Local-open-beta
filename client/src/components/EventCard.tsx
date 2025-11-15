@@ -15,7 +15,7 @@ interface EventCardProps {
   title: string;
   dateTime: string;
   location: string;
-  category: string;
+  category?: string;
   description: string;
   ticketsAvailable: number;
   rsvpCount?: number;
