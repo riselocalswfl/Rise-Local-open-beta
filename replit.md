@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL, accessed via Neon's serverless driver.
 - **ORM**: Drizzle ORM provides type-safe queries and schema management, with `drizzle-kit` for migrations.
-- **Schema**: Key entities include Users, Vendors, Products, Events, EventRsvps, Orders, VendorReviews, VendorFAQs, and Spotlight. UUIDs are used for primary keys, JSONB for flexible data storage, and array columns for multi-value fields (e.g., categories, payment preferences). Zod schemas are generated from Drizzle tables for data validation.
+- **Schema**: Key entities include Users, Vendors, Products, Events, EventRsvps, Orders, VendorReviews, VendorFAQs, Spotlight, and Messages. UUIDs are used for primary keys, JSONB for flexible data storage, and array columns for multi-value fields (e.g., categories, payment preferences). Zod schemas are generated from Drizzle tables for data validation.
 
 ### Authentication and Authorization
 - **Authentication**: Implemented using Replit Auth via OpenID Connect (OIDC).
@@ -36,10 +36,11 @@ Preferred communication style: Simple, everyday language.
 - **Fulfillment**: Supports various fulfillment methods including pickup, local delivery, and shipping, configurable by vendors.
 - **Fort Myers Spotlight**: A feature for highlighting specific content or businesses.
 - **Shopping Cart**: A React Context-based system with localStorage persistence, handling product variants, and automatically calculating totals (subtotal, 7% FL sales tax, 3% buyer fee).
+- **Direct Messaging**: Users can send direct messages to vendors and vice versa. Real-time updates via polling (5s for threads, 10s for unread counts), with read status tracking.
 
 ### Application Routes
 - **Public**: Includes `/`, `/products`, `/vendors`, `/vendor/:id`, `/events`, `/spotlight`, `/login`, `/signup`.
-- **User**: Specific routes for `/cart`, `/checkout`, `/events/my`.
+- **User**: Specific routes for `/cart`, `/checkout`, `/events/my`, `/messages`, `/messages/:userId`.
 - **Vendor**: Dedicated `/dashboard` route.
 
 ## External Dependencies

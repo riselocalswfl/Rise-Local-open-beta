@@ -122,7 +122,7 @@ export default function VendorProfile() {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2">
               <Button variant="default" data-testid="button-follow">Follow</Button>
-              {isAuthenticated && vendor.ownerId && (
+              {vendor.ownerId && (
                 <Link href={`/messages/${vendor.ownerId}`}>
                   <Button variant="outline" data-testid="button-message">
                     <MessageSquare className="w-4 h-4 mr-2" />

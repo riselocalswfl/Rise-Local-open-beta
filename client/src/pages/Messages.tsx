@@ -17,14 +17,27 @@ interface Conversation {
 }
 
 export default function Messages() {
-  const { isAuthenticated } = useAuth();
-
-  const { data: conversations, isLoading } = useQuery<Conversation[]>({
+  const { data: conversations, isLoading, error: conversationsError } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
-    enabled: isAuthenticated,
+    queryFn: async () => {
+      const response = await fetch("/api/conversations");
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("UNAUTHORIZED");
+        }
+        throw new Error("Failed to fetch conversations");
+      }
+      return response.json();
+    },
+    retry: (failureCount, error) => {
+      // Don't retry on 401
+      if (error.message === "UNAUTHORIZED") return false;
+      return failureCount < 3;
+    },
   });
 
-  if (!isAuthenticated) {
+  // Show sign-in prompt only if we get a 401 error from the API
+  if (conversationsError && conversationsError.message === "UNAUTHORIZED") {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <Card className="p-8 text-center">

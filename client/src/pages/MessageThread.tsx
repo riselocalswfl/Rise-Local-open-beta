@@ -15,20 +15,43 @@ import { useToast } from "@/hooks/use-toast";
 export default function MessageThread() {
   const [, params] = useRoute("/messages/:userId");
   const otherUserId = params?.userId;
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [messageText, setMessageText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const { data: messages, isLoading } = useQuery<Message[]>({
+  interface Conversation {
+    otherUserId: string;
+    otherUserName: string;
+    otherUserEmail: string;
+    lastMessage: string;
+    lastMessageTime: Date;
+    unreadCount: number;
+  }
+
+  const { data: conversations } = useQuery<Conversation[]>({
+    queryKey: ["/api/conversations"],
+  });
+
+  const { data: messages, isLoading, error: messagesError } = useQuery<Message[]>({
     queryKey: ["/api/messages", otherUserId],
     queryFn: async () => {
       const response = await fetch(`/api/messages/${otherUserId}`);
-      if (!response.ok) throw new Error("Failed to fetch messages");
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("UNAUTHORIZED");
+        }
+        throw new Error("Failed to fetch messages");
+      }
       return response.json();
     },
-    enabled: isAuthenticated && !!otherUserId,
+    enabled: !!otherUserId,
     refetchInterval: 5000, // Poll every 5 seconds for new messages
+    retry: (failureCount, error) => {
+      // Don't retry on 401
+      if (error.message === "UNAUTHORIZED") return false;
+      return failureCount < 3;
+    },
   });
 
   const sendMessageMutation = useMutation({
@@ -43,6 +66,10 @@ export default function MessageThread() {
       setMessageText("");
       queryClient.invalidateQueries({ queryKey: ["/api/messages", otherUserId] });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      // Optimistic scroll to bottom after sending
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     },
     onError: () => {
       toast({
@@ -70,7 +97,8 @@ export default function MessageThread() {
     }
   };
 
-  if (!isAuthenticated) {
+  // Show sign-in prompt only if we get a 401 error from the API
+  if (messagesError && messagesError.message === "UNAUTHORIZED") {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <Card className="p-8 text-center">
@@ -83,13 +111,9 @@ export default function MessageThread() {
     );
   }
 
-  // Get other user's name from messages
-  const otherUserName =
-    messages && messages.length > 0
-      ? messages[0].senderId === user?.id
-        ? "User"
-        : "User"
-      : "User";
+  // Get other user's name from conversations
+  const conversation = conversations?.find(c => c.otherUserId === otherUserId);
+  const otherUserName = conversation?.otherUserName || "User";
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 h-[calc(100vh-4rem)] flex flex-col">
