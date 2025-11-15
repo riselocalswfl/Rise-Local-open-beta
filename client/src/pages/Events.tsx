@@ -1,35 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import ValuesFilterDialog from "@/components/filters/ValuesFilterDialog";
 import EventCard from "@/components/EventCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { getEventsWithOrganizers } from "@/lib/api";
-import type { Vendor, Restaurant } from "@shared/schema";
-import { X } from "lucide-react";
 
 export default function Events() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<string>("newest");
 
   const { data: events, isLoading } = useQuery({
     queryKey: ["/api/events-with-organizers"],
     queryFn: getEventsWithOrganizers,
-  });
-
-  const { data: vendors } = useQuery<Vendor[]>({
-    queryKey: ["/api/vendors"],
-  });
-
-  const { data: restaurants } = useQuery<Restaurant[]>({
-    queryKey: ["/api/restaurants"],
-  });
-
-  // Get all unique values from vendors and restaurants
-  const { data: allValues = [] } = useQuery<string[]>({
-    queryKey: ["/api/values/unique"],
   });
 
   // Filter events by search query
@@ -44,19 +25,6 @@ export default function Events() {
         e.location?.toLowerCase().includes(query) ||
         e.organizerName?.toLowerCase().includes(query)
       );
-    });
-  }
-
-  // Filter by organizer values (vendors/restaurants) - restaurants don't have values yet, skip for now
-  if (selectedValues.length > 0 && vendors) {
-    filteredEvents = filteredEvents?.filter(e => {
-      // Check if event is organized by a vendor
-      const vendor = vendors?.find(v => v.id === e.vendorId);
-      if (vendor) {
-        const vendorValues = vendor.values || [];
-        return selectedValues.some(sv => vendorValues.includes(sv));
-      }
-      return false;
     });
   }
 
@@ -79,52 +47,7 @@ export default function Events() {
           <h1 className="text-3xl font-semibold" data-testid="heading-community-events">
             Community Events
           </h1>
-          {allValues.length > 0 && (
-            <ValuesFilterDialog
-              allValues={allValues}
-              selected={selectedValues}
-              onChange={setSelectedValues}
-            />
-          )}
         </div>
-
-        {selectedValues.length > 0 && (
-          <div className="mb-6 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
-            {selectedValues.map(v => (
-              <Badge 
-                key={v} 
-                variant="outline" 
-                role="button"
-                tabIndex={0}
-                className="cursor-pointer hover-elevate active-elevate-2 pr-1 border-primary text-primary"
-                onClick={() => {
-                  const next = selectedValues.filter(x => x !== v);
-                  setSelectedValues(next);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    const next = selectedValues.filter(x => x !== v);
-                    setSelectedValues(next);
-                  }
-                }}
-                data-testid={`badge-active-filter-${v}`}
-              >
-                {v}
-                <X className="w-3 h-3 ml-1.5" strokeWidth={2} />
-              </Badge>
-            ))}
-            <Button 
-              variant="ghost" 
-              className="px-2 h-auto py-0.5 text-sm" 
-              onClick={() => setSelectedValues([])}
-              data-testid="button-clear-all-filters"
-            >
-              Clear all
-            </Button>
-          </div>
-        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isLoading ? (
             <>
