@@ -22,7 +22,7 @@ export default function VendorProfile() {
   });
 
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
-    queryKey: ["/api/products", { vendorId }],
+    queryKey: [`/api/products?vendorId=${vendorId}`],
     enabled: !!vendorId && vendorOwner?.role === "vendor",
   });
 

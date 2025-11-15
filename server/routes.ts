@@ -59,6 +59,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public route to fetch basic user info by ID (for vendor profile role determination)
+  app.get('/api/users/:id', async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Return only non-sensitive user data
+      const { password, ...publicUserData } = user;
+      res.json(publicUserData);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Get current user's vendor business
   app.get('/api/auth/my-vendor', isAuthenticated, async (req: any, res) => {
     try {
