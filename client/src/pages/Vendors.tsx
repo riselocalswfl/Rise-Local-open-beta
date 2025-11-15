@@ -1,25 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearch } from "wouter";
 import Header from "@/components/Header";
-import FilterBar from "@/components/FilterBar";
 import ValueFilter from "@/components/ValueFilter";
 import VendorCard from "@/components/VendorCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Vendor } from "@shared/schema";
 
 export default function Vendors() {
-  const searchParams = new URLSearchParams(useSearch());
-  const categoryParam = searchParams.get("category");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
-  
-  useEffect(() => {
-    if (categoryParam) {
-      setSelectedCategory(categoryParam.toLowerCase());
-      setSelectedValues([]); // Reset value filters when category changes
-    }
-  }, [categoryParam]);
 
   const { data: vendors, isLoading} = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -38,12 +26,8 @@ export default function Vendors() {
     );
   };
   
-  // Filter by category and values
+  // Filter by values only
   let filteredVendors = vendors;
-  
-  if (selectedCategory !== "all") {
-    filteredVendors = filteredVendors?.filter(v => v.category?.toLowerCase() === selectedCategory);
-  }
   
   if (selectedValues.length > 0) {
     filteredVendors = filteredVendors?.filter(v => {
@@ -55,7 +39,6 @@ export default function Vendors() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <FilterBar type="vendors" onCategoryChange={setSelectedCategory} selectedCategory={selectedCategory} />
       <main className="max-w-7xl mx-auto px-4 py-8">
         {allValues.length > 0 && (
           <ValueFilter
@@ -84,7 +67,7 @@ export default function Vendors() {
                 name={vendor.businessName}
                 bio={vendor.bio}
                 city={vendor.city}
-                categories={vendor.category ? [vendor.category, ...(vendor.subcategories || [])] : []}
+                categories={vendor.categories || []}
                 values={vendor.values as string[] || undefined}
                 isVerified={vendor.isVerified}
                 followerCount={vendor.followerCount}

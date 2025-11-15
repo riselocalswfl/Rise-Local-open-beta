@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import FilterBar from "@/components/FilterBar";
 import ValuesFilterDialog from "@/components/filters/ValuesFilterDialog";
 import EventCard from "@/components/EventCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +11,6 @@ import { X } from "lucide-react";
 
 export default function Events() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<string>("newest");
 
@@ -34,14 +32,8 @@ export default function Events() {
     queryKey: ["/api/values/unique"],
   });
 
-  // Filter events by category and search query
+  // Filter events by search query
   let filteredEvents = events;
-
-  if (selectedCategory !== "all") {
-    filteredEvents = filteredEvents?.filter(
-      (e) => e.category?.toLowerCase() === selectedCategory
-    );
-  }
 
   if (searchQuery) {
     filteredEvents = filteredEvents?.filter((e) => {
@@ -55,20 +47,14 @@ export default function Events() {
     });
   }
 
-  // Filter by organizer values (vendors/restaurants)
-  if (selectedValues.length > 0 && (vendors || restaurants)) {
+  // Filter by organizer values (vendors/restaurants) - restaurants don't have values yet, skip for now
+  if (selectedValues.length > 0 && vendors) {
     filteredEvents = filteredEvents?.filter(e => {
       // Check if event is organized by a vendor
       const vendor = vendors?.find(v => v.id === e.vendorId);
       if (vendor) {
         const vendorValues = vendor.values || [];
         return selectedValues.some(sv => vendorValues.includes(sv));
-      }
-      // Check if event is organized by a restaurant
-      const restaurant = restaurants?.find(r => r.id === e.restaurantId);
-      if (restaurant) {
-        const restaurantValues = restaurant.values || [];
-        return selectedValues.some(sv => restaurantValues.includes(sv));
       }
       return false;
     });
@@ -88,15 +74,6 @@ export default function Events() {
 
   return (
     <>
-      <FilterBar
-        type="events"
-        onSearch={setSearchQuery}
-        onCategoryChange={setSelectedCategory}
-        onSortChange={setSortOrder}
-        selectedCategory={selectedCategory}
-        searchQuery={searchQuery}
-        sortOrder={sortOrder}
-      />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
           <h1 className="text-3xl font-semibold" data-testid="heading-community-events">
@@ -169,7 +146,6 @@ export default function Events() {
                 title={event.title}
                 dateTime={event.dateTime.toString()}
                 location={event.location}
-                category={event.category}
                 description={event.description}
                 ticketsAvailable={event.ticketsAvailable}
                 rsvpCount={event.rsvpCount}
