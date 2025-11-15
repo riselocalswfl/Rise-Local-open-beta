@@ -46,7 +46,7 @@ export default function RestaurantSignup() {
     onSuccess: () => {
       sessionStorage.removeItem("restaurantSignupData");
       toast({
-        title: "Welcome to Eat Local!",
+        title: "Welcome to Dine!",
         description: "Your restaurant profile has been created and is pending verification.",
       });
       setLocation("/");
@@ -98,7 +98,7 @@ export default function RestaurantSignup() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="text-3xl font-playfair">Eat Local Restaurant Signup</CardTitle>
+          <CardTitle className="text-3xl font-playfair">Dine Restaurant Signup</CardTitle>
           <CardDescription>
             Join our network of restaurants sourcing from local farms
           </CardDescription>

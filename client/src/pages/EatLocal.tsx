@@ -21,7 +21,7 @@ export default function EatLocal() {
           <div className="flex items-center gap-3 mb-4">
             <Leaf className="w-10 h-10 text-primary" strokeWidth={1.75} />
             <h1 className="text-4xl font-semibold text-text" data-testid="heading-eat-local">
-              Eat Local
+              Dine
             </h1>
           </div>
           <p className="text-lg text-text/70 max-w-3xl">

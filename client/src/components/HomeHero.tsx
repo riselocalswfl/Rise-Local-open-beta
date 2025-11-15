@@ -21,7 +21,7 @@ export default function HomeHero() {
             <div className="flex gap-3">
               <Link href="/products">
                 <BrandButton data-testid="button-shop-local">
-                  Shop Local
+                  Shop
                 </BrandButton>
               </Link>
               <Link href="/vendors">

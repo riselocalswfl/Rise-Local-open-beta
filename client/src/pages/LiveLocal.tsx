@@ -127,7 +127,7 @@ export default function LiveLocal() {
       <div className="bg-primary text-primary-foreground py-16">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-semibold mb-4" data-testid="heading-live-local">
-            Live Local
+            Services
           </h1>
           <p className="text-xl text-primary-foreground/90 max-w-2xl" data-testid="text-hero-tagline">
             Connect with trusted Fort Myers service providers for your home, health, and lifestyle needs.

@@ -218,7 +218,7 @@ export default function VendorSignup() {
                 </SelectTrigger>
                 <SelectContent className="bg-white">
                   <SelectItem value="vendors">Vendors (Products & Services)</SelectItem>
-                  <SelectItem value="eat-local">Eat Local (Restaurants)</SelectItem>
+                  <SelectItem value="eat-local">Dine (Restaurants)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

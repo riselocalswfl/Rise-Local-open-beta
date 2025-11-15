@@ -14,8 +14,8 @@ import {
 
 const publicNavigationItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Shop Local", href: "/products", icon: ShoppingBag },
-  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
@@ -24,8 +24,8 @@ const publicNavigationItems = [
 
 const buyerNavigationItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Shop Local", href: "/products", icon: ShoppingBag },
-  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
@@ -34,8 +34,8 @@ const buyerNavigationItems = [
 
 const vendorNavigationItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Shop Local", href: "/products", icon: ShoppingBag },
-  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
@@ -43,8 +43,8 @@ const vendorNavigationItems = [
 
 const restaurantNavigationItems = [
   { name: "Home", href: "/", icon: Home },
-  { name: "Shop Local", href: "/products", icon: ShoppingBag },
-  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Vendors", href: "/vendors", icon: Store },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },

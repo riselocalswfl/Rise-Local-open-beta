@@ -89,7 +89,7 @@ export default function Products() {
       />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-3xl font-semibold" data-testid="heading-all-products">Shop Local</h1>
+          <h1 className="text-3xl font-semibold" data-testid="heading-all-products">Shop</h1>
           {allValues.length > 0 && (
             <ValuesFilterDialog
               allValues={allValues}

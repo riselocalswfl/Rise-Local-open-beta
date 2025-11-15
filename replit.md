@@ -4,6 +4,13 @@
 Rise Local is a full-stack web application designed to connect local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It features a marketplace for products and a community hub for events, aiming to foster sustainability, local commerce, and community engagement. The platform supports local businesses with a counterculture yet polished brand aesthetic, running entirely on Replit, and includes features like product filtering, event management with RSVP and attendance tracking, and a loyalty system.
 
 ## Recent Changes
+- **November 15, 2025**: Updated navigation terminology for cleaner branding:
+  - **Shop Local** → **Shop**: Updated Header, NavMenu, HomeHero, Products page
+  - **Eat Local** → **Dine**: Updated Header, NavMenu, EatLocal page, RestaurantSignup, VendorSignup
+  - **Live Local** → **Services**: Updated Header, NavMenu, LiveLocal page
+  - All navigation links, page titles, and hero sections now use the new concise terminology
+  - Maintains all existing functionality while providing a cleaner, more professional navigation experience
+
 - **November 14, 2025**: Integrated Live Local service provider system:
   - **Schema**: Updated user role support to include 'restaurant' and 'service_provider' roles
   - **Service Provider Signup**: Created ServiceProviderSignup.tsx with 3-step signup flow (Business Details, Service Details, Contact & Payment)

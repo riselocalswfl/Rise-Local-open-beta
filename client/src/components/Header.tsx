@@ -43,7 +43,7 @@ export default function Header() {
             }`}
             data-testid="link-products"
           >
-            Shop Local
+            Shop
           </Link>
           <Link
             href="/eat-local"
@@ -52,7 +52,7 @@ export default function Header() {
             }`}
             data-testid="link-eat-local"
           >
-            Eat Local
+            Dine
           </Link>
           <Link
             href="/live-local"
@@ -61,7 +61,7 @@ export default function Header() {
             }`}
             data-testid="link-live-local"
           >
-            Live Local
+            Services
           </Link>
           <Link
             href="/events"
