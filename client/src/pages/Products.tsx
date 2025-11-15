@@ -4,6 +4,7 @@ import { useSearch } from "wouter";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import ValuesFilterDialog from "@/components/filters/ValuesFilterDialog";
+import { CategoryFilter } from "@/components/CategoryFilter";
 import ProductCard from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { getProductsWithVendors } from "@/lib/api";
 import type { Vendor } from "@shared/schema";
 import { X } from "lucide-react";
+import { SHOP_CATEGORIES } from "@shared/categories";
 
 export default function Products() {
   const searchParams = new URLSearchParams(useSearch());
   const categoryParam = searchParams.get("category");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<string>("newest");
   
@@ -43,7 +46,16 @@ export default function Products() {
   // Filter by category and vendor values
   let filteredProducts = products;
   
-  if (selectedCategory !== "all") {
+  // Filter by hierarchical categories
+  if (selectedCategories.length > 0) {
+    filteredProducts = filteredProducts?.filter(p => {
+      const vendor = vendors?.find(v => v.id === p.vendorId);
+      if (!vendor?.categories) return false;
+      // Match if ANY selected category is in the vendor's categories
+      return selectedCategories.some(sc => vendor.categories?.includes(sc));
+    });
+  } else if (selectedCategory !== "all") {
+    // Fallback to old category param for backward compatibility
     filteredProducts = filteredProducts?.filter(p => p.category?.toLowerCase() === selectedCategory);
   }
   
@@ -136,35 +148,51 @@ export default function Products() {
             </Button>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {isLoading ? (
-            <>
-              <Skeleton className="h-80" />
-              <Skeleton className="h-80" />
-              <Skeleton className="h-80" />
-              <Skeleton className="h-80" />
-              <Skeleton className="h-80" />
-              <Skeleton className="h-80" />
-            </>
-          ) : filteredProducts && filteredProducts.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">No products found matching your filters</p>
+        
+        <div className="flex gap-6">
+          {/* Sidebar with CategoryFilter */}
+          <aside className="w-64 flex-shrink-0 hidden lg:block">
+            <CategoryFilter
+              categories={SHOP_CATEGORIES}
+              selectedCategories={selectedCategories}
+              onChange={setSelectedCategories}
+              title="Shop Categories"
+            />
+          </aside>
+          
+          {/* Product Grid */}
+          <div className="flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-80" />
+                  <Skeleton className="h-80" />
+                  <Skeleton className="h-80" />
+                  <Skeleton className="h-80" />
+                  <Skeleton className="h-80" />
+                  <Skeleton className="h-80" />
+                </>
+              ) : filteredProducts && filteredProducts.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-muted-foreground">No products found matching your filters</p>
+                </div>
+              ) : (
+                filteredProducts?.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    id={product.id}
+                    name={product.name}
+                    price={parseFloat(product.price || "0")}
+                    vendorName={product.vendorName}
+                    vendorId={product.vendorId}
+                    category={product.category || ""}
+                    inventory={product.inventory}
+                    isVerifiedVendor={product.isVerifiedVendor}
+                  />
+                ))
+              )}
             </div>
-          ) : (
-            filteredProducts?.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                price={parseFloat(product.price || "0")}
-                vendorName={product.vendorName}
-                vendorId={product.vendorId}
-                category={product.category || ""}
-                inventory={product.inventory}
-                isVerifiedVendor={product.isVerifiedVendor}
-              />
-            ))
-          )}
+          </div>
         </div>
       </main>
     </div>
