@@ -1,11 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MessageSquare, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MessageSquare, User, Search, Store } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { useState, useRef, useEffect } from "react";
+import type { SelectVendor } from "@shared/schema";
 
 interface Conversation {
   otherUserId: string;
@@ -17,6 +20,23 @@ interface Conversation {
 }
 
 export default function Messages() {
+  const [, setLocation] = useLocation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const { data: conversations, isLoading, error: conversationsError } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
     queryFn: async () => {
@@ -36,6 +56,16 @@ export default function Messages() {
     },
   });
 
+  const { data: vendors } = useQuery<SelectVendor[]>({
+    queryKey: ["/api/vendors"],
+    enabled: searchQuery.length > 0,
+  });
+
+  const filteredVendors = vendors?.filter(vendor =>
+    vendor.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    vendor.category?.some((cat: string) => cat.toLowerCase().includes(searchQuery.toLowerCase()))
+  ).slice(0, 5);
+
   // Show sign-in prompt only if we get a 401 error from the API
   if (conversationsError && conversationsError.message === "UNAUTHORIZED") {
     return (
@@ -51,6 +81,12 @@ export default function Messages() {
     );
   }
 
+  const handleVendorClick = (vendorOwnerId: string) => {
+    setSearchQuery("");
+    setShowResults(false);
+    setLocation(`/messages/${vendorOwnerId}`);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-6">
@@ -60,6 +96,58 @@ export default function Messages() {
         <p className="text-muted-foreground">
           Communicate with vendors and customers
         </p>
+      </div>
+
+      {/* Search vendors to message */}
+      <div className="mb-6 relative" ref={searchRef}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search vendors to message..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowResults(e.target.value.length > 0);
+            }}
+            onFocus={() => setShowResults(searchQuery.length > 0)}
+            className="pl-10"
+            data-testid="input-search-vendors"
+          />
+        </div>
+        
+        {showResults && searchQuery.length > 0 && (
+          <Card className="absolute top-full mt-2 w-full z-10 max-h-80 overflow-y-auto">
+            {filteredVendors && filteredVendors.length > 0 ? (
+              <div className="p-2">
+                {filteredVendors.map((vendor) => (
+                  <div
+                    key={vendor.id}
+                    onClick={() => handleVendorClick(vendor.ownerId)}
+                    className="flex items-center gap-3 p-3 rounded-md hover-elevate active-elevate-2 cursor-pointer"
+                    data-testid={`result-vendor-${vendor.id}`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <Store className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{vendor.businessName}</h4>
+                      {vendor.category && vendor.category.length > 0 && (
+                        <p className="text-sm text-muted-foreground truncate">
+                          {vendor.category.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground">
+                No vendors found
+              </div>
+            )}
+          </Card>
+        )}
       </div>
 
       {isLoading ? (
