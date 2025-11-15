@@ -43,6 +43,7 @@ const SALT_ROUNDS = 10;
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
+  getUsers(): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -238,6 +239,11 @@ export class DbStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.id, id));
     return result[0];
+  }
+
+  async getUsers(): Promise<User[]> {
+    const result = await db.select().from(users);
+    return result;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
