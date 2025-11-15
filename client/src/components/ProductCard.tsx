@@ -12,7 +12,7 @@ interface ProductCardProps {
   price: number;
   vendorName: string;
   vendorId: string;
-  category: string;
+  category?: string;
   image?: string;
   inventory: number;
   isVerifiedVendor?: boolean;
@@ -24,7 +24,7 @@ export default function ProductCard({
   price,
   vendorName,
   vendorId,
-  category,
+  category = "",
   image,
   inventory,
   isVerifiedVendor = false,

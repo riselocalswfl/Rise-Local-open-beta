@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearch } from "wouter";
 import Header from "@/components/Header";
-import FilterBar from "@/components/FilterBar";
 import ValuesFilterDialog from "@/components/filters/ValuesFilterDialog";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import ProductCard from "@/components/ProductCard";
@@ -15,19 +13,9 @@ import { X } from "lucide-react";
 import { SHOP_CATEGORIES, categoriesMatch } from "@shared/categories";
 
 export default function Products() {
-  const searchParams = new URLSearchParams(useSearch());
-  const categoryParam = searchParams.get("category");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<string>("newest");
-  
-  useEffect(() => {
-    if (categoryParam) {
-      setSelectedCategory(categoryParam.toLowerCase());
-      setSelectedValues([]); // Reset value filters when category changes
-    }
-  }, [categoryParam]);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["/api/products-with-vendors"],
@@ -54,9 +42,6 @@ export default function Products() {
       // Use categoriesMatch helper to handle parent category expansion
       return categoriesMatch(vendor.categories, selectedCategories, SHOP_CATEGORIES);
     });
-  } else if (selectedCategory !== "all") {
-    // Fallback to old category param for backward compatibility
-    filteredProducts = filteredProducts?.filter(p => p.category?.toLowerCase() === selectedCategory);
   }
   
   if (selectedValues.length > 0 && vendors) {
@@ -92,13 +77,6 @@ export default function Products() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <FilterBar 
-        type="products" 
-        onCategoryChange={setSelectedCategory} 
-        selectedCategory={selectedCategory}
-        onSortChange={setSortOrder}
-        sortOrder={sortOrder}
-      />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
           <h1 className="text-3xl font-semibold" data-testid="heading-all-products">Shop</h1>
@@ -185,7 +163,6 @@ export default function Products() {
                     price={parseFloat(product.price || "0")}
                     vendorName={product.vendorName}
                     vendorId={product.vendorId}
-                    category={product.category || ""}
                     inventory={product.inventory}
                     isVerifiedVendor={product.isVerifiedVendor}
                   />
