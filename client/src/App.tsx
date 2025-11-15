@@ -32,6 +32,8 @@ import ServiceProviderDashboard from "@/pages/ServiceProviderDashboard";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import LoyaltyHistory from "@/pages/LoyaltyHistory";
 import CustomerProfile from "@/pages/CustomerProfile";
+import Messages from "@/pages/Messages";
+import MessageThread from "@/pages/MessageThread";
 import NavMenu from "@/components/NavMenu";
 import { NavMenuProvider } from "@/contexts/NavMenuContext";
 
@@ -68,6 +70,8 @@ function Router() {
       <Route path="/join/service-provider" component={ServiceProviderSignup} />
       <Route path="/loyalty" component={LoyaltyHistory} />
       <Route path="/profile" component={CustomerProfile} />
+      <Route path="/messages" component={Messages} />
+      <Route path="/messages/:userId" component={MessageThread} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

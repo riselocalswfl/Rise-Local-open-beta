@@ -378,7 +378,9 @@ export class DbStorage implements IStorage {
   }
 
   async getProductsByCategory(category: string): Promise<Product[]> {
-    return await db.select().from(products).where(eq(products.category, category));
+    // Products no longer have a category field - they inherit from vendors
+    // This method is deprecated but kept for interface compatibility
+    return [];
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
@@ -903,9 +905,9 @@ export class DbStorage implements IStorage {
   }
 
   async getServiceProvidersByCategory(category: string): Promise<ServiceProvider[]> {
-    return await db.select().from(serviceProviders)
-      .where(eq(serviceProviders.category, category))
-      .orderBy(desc(serviceProviders.isVerified), desc(serviceProviders.createdAt));
+    // Service providers now use categories array - use client-side filtering instead
+    // This method is deprecated but kept for interface compatibility
+    return [];
   }
 
   async createServiceProvider(provider: InsertServiceProvider): Promise<ServiceProvider> {
