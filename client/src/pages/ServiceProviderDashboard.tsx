@@ -54,10 +54,10 @@ export default function ServiceProviderDashboard() {
 
   // Profile form
   const profileForm = useForm({
-    resolver: zodResolver(insertServiceProviderSchema.omit({ userId: true })),
+    resolver: zodResolver(insertServiceProviderSchema.partial().omit({ ownerId: true })),
     defaultValues: {
       businessName: provider?.businessName || "",
-      serviceType: provider?.serviceType || "Home Services",
+      category: provider?.category || "Home Services",
       bio: provider?.bio || "",
       tagline: provider?.tagline || "",
       city: provider?.city || "Fort Myers",
@@ -70,8 +70,6 @@ export default function ServiceProviderDashboard() {
       heroImageUrl: provider?.heroImageUrl || "",
       logoUrl: provider?.logoUrl || "",
       certifications: provider?.certifications || [],
-      insuranceInfo: provider?.insuranceInfo || "",
-      yearsExperience: provider?.yearsExperience || 0,
       availabilityWindows: provider?.availabilityWindows || {},
     },
   });
@@ -80,7 +78,7 @@ export default function ServiceProviderDashboard() {
     if (provider) {
       profileForm.reset({
         businessName: provider.businessName,
-        serviceType: provider.serviceType,
+        category: provider.category,
         bio: provider.bio || "",
         tagline: provider.tagline || "",
         city: provider.city,
@@ -93,8 +91,6 @@ export default function ServiceProviderDashboard() {
         heroImageUrl: provider.heroImageUrl || "",
         logoUrl: provider.logoUrl || "",
         certifications: provider.certifications || [],
-        insuranceInfo: provider.insuranceInfo || "",
-        yearsExperience: provider.yearsExperience || 0,
         availabilityWindows: provider.availabilityWindows || {},
       });
     }
@@ -269,7 +265,7 @@ export default function ServiceProviderDashboard() {
 
                     <FormField
                       control={profileForm.control}
-                      name="serviceType"
+                      name="category"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Service Category</FormLabel>
@@ -372,34 +368,6 @@ export default function ServiceProviderDashboard() {
                           <FormLabel>Contact Phone</FormLabel>
                           <FormControl>
                             <Input {...field} type="tel" data-testid="input-phone" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="yearsExperience"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Years of Experience</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" min="0" onChange={e => field.onChange(parseInt(e.target.value) || 0)} data-testid="input-years-experience" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="insuranceInfo"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Insurance Information</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="e.g., General Liability $1M" data-testid="input-insurance" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

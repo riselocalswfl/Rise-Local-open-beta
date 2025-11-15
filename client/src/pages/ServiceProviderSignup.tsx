@@ -47,7 +47,6 @@ export default function ServiceProviderSignup() {
     zipCode: "",
     serviceRadius: 25,
     certifications: [] as string[],
-    yearsExperience: 0,
     contactPhone: "",
     contactEmail: "",
     website: "",
@@ -290,19 +289,6 @@ export default function ServiceProviderSignup() {
               <p className="text-xs text-muted-foreground">
                 Press Enter to add each certification
               </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="yearsExperience">Years of Experience</Label>
-              <Input
-                id="yearsExperience"
-                type="number"
-                min="0"
-                value={formData.yearsExperience}
-                onChange={(e) => setFormData({ ...formData, yearsExperience: parseInt(e.target.value) || 0 })}
-                placeholder="0"
-                data-testid="input-years-experience"
-              />
             </div>
 
             <div className="space-y-2">
