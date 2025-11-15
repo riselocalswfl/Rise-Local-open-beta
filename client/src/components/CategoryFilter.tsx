@@ -39,8 +39,8 @@ export function CategoryFilter({
     }
   };
 
-  const isParentSelected = (parent: CategoryNode): boolean => {
-    return selectedCategories.includes(parent.name);
+  const isParentSelected = (group: CategoryNode): boolean => {
+    return selectedCategories.includes(group.parent);
   };
 
   const isChildSelected = (childName: string): boolean => {
@@ -53,31 +53,31 @@ export function CategoryFilter({
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {categories.map((parent) => (
-          <div key={parent.name} className="space-y-1">
+        {categories.map((group) => (
+          <div key={group.parent} className="space-y-1">
             {/* Parent Category */}
             <div className="flex items-start gap-2">
               <Checkbox
-                id={`filter-${parent.name}`}
-                checked={isParentSelected(parent)}
-                onCheckedChange={() => toggleCategory(parent.name)}
-                data-testid={`checkbox-filter-${parent.name.toLowerCase().replace(/\s+/g, "-")}`}
+                id={`filter-${group.parent}`}
+                checked={isParentSelected(group)}
+                onCheckedChange={() => toggleCategory(group.parent)}
+                data-testid={`checkbox-filter-${group.parent.toLowerCase().replace(/\s+/g, "-")}`}
               />
               <div className="flex-1 flex items-center justify-between">
                 <label
-                  htmlFor={`filter-${parent.name}`}
+                  htmlFor={`filter-${group.parent}`}
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                  {parent.name}
+                  {group.parent}
                 </label>
-                {parent.children && parent.children.length > 0 && (
+                {group.children && group.children.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => toggleParent(parent.name)}
+                    onClick={() => toggleParent(group.parent)}
                     className="p-1 hover-elevate rounded-md"
-                    data-testid={`button-toggle-${parent.name.toLowerCase().replace(/\s+/g, "-")}`}
+                    data-testid={`button-toggle-${group.parent.toLowerCase().replace(/\s+/g, "-")}`}
                   >
-                    {expandedParents.has(parent.name) ? (
+                    {expandedParents.has(group.parent) ? (
                       <ChevronDown className="h-4 w-4" />
                     ) : (
                       <ChevronRight className="h-4 w-4" />
@@ -88,9 +88,9 @@ export function CategoryFilter({
             </div>
 
             {/* Child Categories */}
-            {parent.children && expandedParents.has(parent.name) && (
+            {group.children && expandedParents.has(group.parent) && (
               <div className="ml-6 space-y-1 mt-1">
-                {parent.children.map((child) => (
+                {group.children.map((child) => (
                   <div key={child} className="flex items-center gap-2">
                     <Checkbox
                       id={`filter-${child}`}

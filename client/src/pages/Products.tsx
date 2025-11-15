@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { getProductsWithVendors } from "@/lib/api";
 import type { Vendor } from "@shared/schema";
 import { X } from "lucide-react";
-import { SHOP_CATEGORIES } from "@shared/categories";
+import { SHOP_CATEGORIES, categoriesMatch } from "@shared/categories";
 
 export default function Products() {
   const searchParams = new URLSearchParams(useSearch());
@@ -51,8 +51,8 @@ export default function Products() {
     filteredProducts = filteredProducts?.filter(p => {
       const vendor = vendors?.find(v => v.id === p.vendorId);
       if (!vendor?.categories) return false;
-      // Match if ANY selected category is in the vendor's categories
-      return selectedCategories.some(sc => vendor.categories?.includes(sc));
+      // Use categoriesMatch helper to handle parent category expansion
+      return categoriesMatch(vendor.categories, selectedCategories, SHOP_CATEGORIES);
     });
   } else if (selectedCategory !== "all") {
     // Fallback to old category param for backward compatibility

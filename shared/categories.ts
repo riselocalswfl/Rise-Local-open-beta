@@ -5,6 +5,9 @@ export interface CategoryGroup {
   children: string[];
 }
 
+// Alias for components that use CategoryNode naming
+export type CategoryNode = CategoryGroup;
+
 // SHOP LOCAL - Categories
 export const SHOP_CATEGORIES: CategoryGroup[] = [
   {
