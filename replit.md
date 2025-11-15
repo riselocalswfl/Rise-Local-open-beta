@@ -13,6 +13,11 @@ Preferred communication style: Simple, everyday language.
 - **UI/UX**: Radix UI for accessibility primitives, shadcn/ui for components (utilizing the "new-york" preset), and Tailwind CSS for styling. The design incorporates a forest green primary color, brand-specific colors (Wheat, Clay, Ink, Paper), and distinct font families (Playfair Display, Work Sans, JetBrains Mono).
 - **State Management**: TanStack Query manages server state, React hooks handle local UI state, and React Context with localStorage persists the shopping cart.
 - **Routing**: Wouter is used for client-side routing.
+- **TanStack Query Pattern**: The default fetcher expects queryKey to be a complete URL string (not an array of segments). Always use template literals for dynamic URLs:
+  - ✅ Correct: `queryKey: [\`/api/vendors/${vendorId}\`]`
+  - ✅ Correct: `queryKey: [\`/api/products?vendorId=${vendorId}\`]`
+  - ❌ Wrong: `queryKey: ["/api/vendors", vendorId]` (produces `/api/vendors` instead of `/api/vendors/${vendorId}`)
+  - ❌ Wrong: `queryKey: ["/api/products", { vendorId }]` (produces `/api/products/[object Object]`)
 
 ### Backend
 - **Framework**: Express.js with TypeScript.
@@ -21,13 +26,24 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL, accessed via Neon's serverless driver.
 - **ORM**: Drizzle ORM provides type-safe queries and schema management, with `drizzle-kit` for migrations.
-- **Schema**: Key entities include Users, Vendors, Products, Events, EventRsvps, Orders, VendorReviews, VendorFAQs, Spotlight, and Messages. UUIDs are used for primary keys, JSONB for flexible data storage, and array columns for multi-value fields (e.g., categories, payment preferences). Zod schemas are generated from Drizzle tables for data validation.
+- **Schema**: Key entities include Users, Vendors, Products, Events, EventRsvps, Orders, VendorReviews, VendorFAQs, Spotlight, Messages, MenuItems, and Services. UUIDs are used for primary keys, JSONB for flexible data storage, and array columns for multi-value fields (e.g., categories, payment preferences). Zod schemas are generated from Drizzle tables for data validation.
+- **Unified Vendor Architecture**: All vendor types (shops, restaurants, service providers) use the `vendors` table as the canonical source. The `menuItems` table (for restaurants) and `services` table (for service providers) link to vendors via `vendorId`. The `menuItems` table supports both legacy `restaurantId` and new `vendorId` for backward compatibility.
 
 ### Authentication and Authorization
 - **Authentication**: Implemented using Replit Auth via OpenID Connect (OIDC).
 - **Session Management**: Sessions are managed and stored in PostgreSQL.
-- **Roles**: Supports 'Buyer', 'Vendor', and 'Restaurant' roles, with role-based redirects and automatic profile generation upon first login.
+- **Roles**: Supports 'buyer', 'vendor', 'restaurant', and 'service_provider' roles, with role-based redirects and automatic profile generation upon first login.
 - **Route Protection**: The `isAuthenticated` middleware protects sensitive routes.
+
+### Vendor Profile Architecture (November 2025)
+- **Unified Profile System**: All vendor types use the same `VendorProfile` component with conditional rendering based on the vendor owner's role.
+- **Modular Components**:
+  - `MasterProfile`: Contains shared sections for all vendor types (hero, header, about, reviews, FAQs, gallery, contact, hours, location, certifications)
+  - `ShopProfileSection`: Displays products and events for shop vendors (role="vendor")
+  - `DineProfileSection`: Displays menu items for restaurant vendors (role="restaurant")
+  - `ServiceProfileSection`: Displays services for service providers (role="service_provider")
+- **Role Determination**: Vendor type is determined by fetching the vendor owner's user data via `/api/users/:ownerId` and checking their `role` field
+- **API Routes**: `/api/vendors/:id/menu` (restaurants), `/api/vendors/:id/services` (service providers), `/api/products?vendorId=X` (shops), `/api/users/:id` (user data for role determination)
 
 ### Key Business Logic
 - **Pricing Model**: Vendors pay a $150/month membership fee, buyers incur a 3% fee, and there are no per-transaction vendor fees.

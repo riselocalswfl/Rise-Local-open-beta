@@ -12,12 +12,12 @@ export default function VendorProfile() {
   const vendorId = params?.id;
 
   const { data: vendor, isLoading: vendorLoading } = useQuery<Vendor>({
-    queryKey: ["/api/vendors", vendorId],
+    queryKey: [`/api/vendors/${vendorId}`],
     enabled: !!vendorId,
   });
 
   const { data: vendorOwner } = useQuery<User>({
-    queryKey: ["/api/users", vendor?.ownerId],
+    queryKey: [`/api/users/${vendor?.ownerId}`],
     enabled: !!vendor?.ownerId,
   });
 
@@ -27,27 +27,27 @@ export default function VendorProfile() {
   });
 
   const { data: events = [] } = useQuery<Event[]>({
-    queryKey: ["/api/vendors", vendorId, "events"],
+    queryKey: [`/api/vendors/${vendorId}/events`],
     enabled: !!vendorId && vendorOwner?.role === "vendor",
   });
 
   const { data: menuItems = [], isLoading: menuItemsLoading } = useQuery<MenuItem[]>({
-    queryKey: ["/api/vendors", vendorId, "menu"],
+    queryKey: [`/api/vendors/${vendorId}/menu`],
     enabled: !!vendorId && vendorOwner?.role === "restaurant",
   });
 
   const { data: services = [], isLoading: servicesLoading } = useQuery<Service[]>({
-    queryKey: ["/api/vendors", vendorId, "services"],
+    queryKey: [`/api/vendors/${vendorId}/services`],
     enabled: !!vendorId && vendorOwner?.role === "service_provider",
   });
 
   const { data: reviews = [] } = useQuery<VendorReview[]>({
-    queryKey: ["/api/vendors", vendorId, "reviews"],
+    queryKey: [`/api/vendors/${vendorId}/reviews`],
     enabled: !!vendorId,
   });
 
   const { data: faqs = [] } = useQuery<VendorFAQ[]>({
-    queryKey: ["/api/vendors", vendorId, "faqs"],
+    queryKey: [`/api/vendors/${vendorId}/faqs`],
     enabled: !!vendorId,
   });
 

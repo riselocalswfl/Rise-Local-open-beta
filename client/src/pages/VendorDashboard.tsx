@@ -85,12 +85,12 @@ export default function VendorDashboard() {
   });
 
   const { data: events = [] } = useQuery<Event[]>({
-    queryKey: ["/api/vendors", vendor?.id, "events"],
+    queryKey: [`/api/vendors/${vendor?.id}/events`],
     enabled: !!vendor?.id,
   });
 
   const { data: faqs = [] } = useQuery<VendorFAQ[]>({
-    queryKey: ["/api/vendors", vendor?.id, "faqs"],
+    queryKey: [`/api/vendors/${vendor?.id}/faqs`],
     enabled: !!vendor?.id,
   });
 
@@ -169,7 +169,7 @@ export default function VendorDashboard() {
     },
     onSuccess: () => {
       if (vendor?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "events"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/vendors/${vendor.id}/events`] });
       }
       setEventDialogOpen(false);
       toast({ title: "Event created successfully" });
@@ -182,7 +182,7 @@ export default function VendorDashboard() {
     },
     onSuccess: () => {
       if (vendor?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "events"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/vendors/${vendor.id}/events`] });
       }
       toast({ title: "Event deleted successfully" });
     },
@@ -196,7 +196,7 @@ export default function VendorDashboard() {
     },
     onSuccess: () => {
       if (vendor?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "faqs"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/vendors/${vendor.id}/faqs`] });
       }
       setFaqDialogOpen(false);
       toast({ title: "FAQ created successfully" });
@@ -209,7 +209,7 @@ export default function VendorDashboard() {
     },
     onSuccess: () => {
       if (vendor?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/vendors", vendor.id, "faqs"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/vendors/${vendor.id}/faqs`] });
       }
       toast({ title: "FAQ deleted successfully" });
     },
