@@ -1,8 +1,8 @@
 import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle } from "lucide-react";
-import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavMenu } from "@/contexts/NavMenuContext";
 import {
   Sheet,
   SheetContent,
@@ -51,7 +51,7 @@ const restaurantNavigationItems = [
 ];
 
 export default function NavMenu() {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen } = useNavMenu();
   const [location] = useLocation();
   const { user } = useAuth();
 

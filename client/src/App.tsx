@@ -33,6 +33,7 @@ import BusinessDashboard from "@/pages/BusinessDashboard";
 import LoyaltyHistory from "@/pages/LoyaltyHistory";
 import CustomerProfile from "@/pages/CustomerProfile";
 import NavMenu from "@/components/NavMenu";
+import { NavMenuProvider } from "@/contexts/NavMenuContext";
 
 function Router() {
   return (
@@ -78,9 +79,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <CartProvider>
-          <Toaster />
-          <Router />
-          <NavMenu />
+          <NavMenuProvider>
+            <Toaster />
+            <Router />
+            <NavMenu />
+          </NavMenuProvider>
         </CartProvider>
       </TooltipProvider>
     </QueryClientProvider>
