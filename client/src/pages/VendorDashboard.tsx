@@ -22,8 +22,10 @@ import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Imag
 import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
+import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { z } from "zod";
+import { SHOP_CATEGORIES } from "@shared/categories";
 
 // Form schemas for validation
 const productFormSchema = z.object({
@@ -320,29 +322,15 @@ export default function VendorDashboard() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="category">Business Category</Label>
-                  <Select
-                    defaultValue={vendor.category}
-                    onValueChange={(value) => {
-                      if (value !== vendor.category) {
-                        updateVendorMutation.mutate({ category: value });
-                      }
-                    }}
-                  >
-                    <SelectTrigger id="category" data-testid="select-category">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Farm">Farm</SelectItem>
-                      <SelectItem value="Artisan">Artisan</SelectItem>
-                      <SelectItem value="Restaurant">Restaurant</SelectItem>
-                      <SelectItem value="Wellness">Wellness</SelectItem>
-                      <SelectItem value="Market">Market</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <HierarchicalCategorySelector
+                  categories={SHOP_CATEGORIES}
+                  selectedCategories={vendor.categories || []}
+                  onChange={(categories) => {
+                    updateVendorMutation.mutate({ categories });
+                  }}
+                  label="Shop Categories"
+                  required
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="tagline">Tagline</Label>

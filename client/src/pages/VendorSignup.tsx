@@ -9,21 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TagInput } from "@/components/TagInput";
+import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-
-const CATEGORIES = [
-  "Food & Beverage",
-  "Crafts & Art",
-  "Home & Garden",
-  "Fashion & Accessories",
-  "Health & Wellness",
-  "Services",
-  "Other"
-];
+import { SHOP_CATEGORIES } from "@shared/categories";
 
 const PAYMENT_PREFERENCES = ["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"];
 const SERVICE_OPTIONS = ["Pickup", "Delivery", "Shipping"];
@@ -53,8 +45,7 @@ export default function VendorSignup() {
     displayName: "",
     bio: "",
     businessType: "", // "vendors" or "eat-local"
-    category: "",
-    subcategories: [] as string[],
+    categories: [] as string[],
     zipCode: "",
     locationType: "physical",
     serviceOptions: [] as string[],
@@ -224,22 +215,13 @@ export default function VendorSignup() {
             </div>
 
             {formData.businessType === "vendors" && (
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select 
-                  value={formData.category} 
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger id="category" data-testid="select-category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <HierarchicalCategorySelector
+                categories={SHOP_CATEGORIES}
+                selectedCategories={formData.categories}
+                onChange={(categories) => setFormData({ ...formData, categories })}
+                label="Shop Categories"
+                required
+              />
             )}
 
             <div className="space-y-2">
@@ -287,7 +269,7 @@ export default function VendorSignup() {
                 !formData.contactName || 
                 !formData.businessType || 
                 !formData.bio ||
-                (formData.businessType === "vendors" && !formData.category)
+                (formData.businessType === "vendors" && formData.categories.length === 0)
               }
               data-testid="button-next-to-location"
             >
