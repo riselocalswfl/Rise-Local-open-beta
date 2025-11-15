@@ -19,6 +19,7 @@ import {
   insertServiceProviderSchema,
   insertServiceOfferingSchema,
   insertServiceBookingSchema,
+  insertMessageSchema,
   fulfillmentOptionsSchema,
   type FulfillmentOptions
 } from "@shared/schema";
@@ -1698,6 +1699,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to earn points" });
+    }
+  });
+
+  // Message routes
+  app.post("/api/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const messageData = insertMessageSchema.parse({
+        ...req.body,
+        senderId: userId,
+      });
+      
+      const message = await storage.createMessage(messageData);
+      res.json(message);
+    } catch (error) {
+      console.error("Error creating message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const conversations = await storage.getConversations(userId);
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  app.get("/api/messages/:otherUserId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { otherUserId } = req.params;
+      
+      const messages = await storage.getMessages(userId, otherUserId);
+      
+      // Mark messages from other user as read
+      await storage.markMessagesAsRead(userId, otherUserId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  app.get("/api/messages/unread/count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadMessageCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
     }
   });
 
