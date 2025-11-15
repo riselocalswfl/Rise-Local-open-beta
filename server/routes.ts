@@ -19,6 +19,7 @@ import {
   insertServiceProviderSchema,
   insertServiceOfferingSchema,
   insertServiceBookingSchema,
+  insertServiceSchema,
   insertMessageSchema,
   fulfillmentOptionsSchema,
   type FulfillmentOptions
@@ -1076,6 +1077,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Menu Items routes
+  app.get("/api/vendors/:vendorId/menu", async (req, res) => {
+    try {
+      const menuItems = await storage.getMenuItemsByVendor(req.params.vendorId);
+      res.json(menuItems);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch menu items" });
+    }
+  });
+
+  app.post("/api/vendors/:vendorId/menu", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendor = await storage.getVendor(req.params.vendorId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      
+      if (vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to add menu items" });
+      }
+
+      const validatedData = insertMenuItemSchema.parse({
+        ...req.body,
+        vendorId: req.params.vendorId
+      });
+      
+      const menuItem = await storage.createMenuItem(validatedData);
+      res.status(201).json(menuItem);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid menu item data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.patch("/api/menu-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const menuItem = await storage.getMenuItem(req.params.id);
+      
+      if (!menuItem) {
+        return res.status(404).json({ error: "Menu item not found" });
+      }
+      
+      if (!menuItem.vendorId) {
+        return res.status(400).json({ error: "Menu item has no associated vendor" });
+      }
+      
+      const vendor = await storage.getVendor(menuItem.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to update this menu item" });
+      }
+      
+      const validatedData = insertMenuItemSchema.partial().parse(req.body);
+      await storage.updateMenuItem(req.params.id, validatedData);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid menu item update data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.delete("/api/menu-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const menuItem = await storage.getMenuItem(req.params.id);
+      
+      if (!menuItem) {
+        return res.status(404).json({ error: "Menu item not found" });
+      }
+      
+      if (!menuItem.vendorId) {
+        return res.status(400).json({ error: "Menu item has no associated vendor" });
+      }
+      
+      const vendor = await storage.getVendor(menuItem.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to delete this menu item" });
+      }
+      
+      await storage.deleteMenuItem(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete menu item" });
+    }
+  });
+
+  // Services routes
+  app.get("/api/vendors/:vendorId/services", async (req, res) => {
+    try {
+      const services = await storage.getServicesByVendor(req.params.vendorId);
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch services" });
+    }
+  });
+
+  app.post("/api/vendors/:vendorId/services", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendor = await storage.getVendor(req.params.vendorId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      
+      if (vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to add services" });
+      }
+
+      const validatedData = insertServiceSchema.parse({
+        ...req.body,
+        vendorId: req.params.vendorId
+      });
+      
+      const service = await storage.createService(validatedData);
+      res.status(201).json(service);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid service data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.patch("/api/services/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const service = await storage.getService(req.params.id);
+      
+      if (!service) {
+        return res.status(404).json({ error: "Service not found" });
+      }
+      
+      if (!service.vendorId) {
+        return res.status(400).json({ error: "Service has no associated vendor" });
+      }
+      
+      const vendor = await storage.getVendor(service.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to update this service" });
+      }
+      
+      const validatedData = insertServiceSchema.partial().parse(req.body);
+      await storage.updateService(req.params.id, validatedData);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid service update data", details: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.delete("/api/services/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const service = await storage.getService(req.params.id);
+      
+      if (!service) {
+        return res.status(404).json({ error: "Service not found" });
+      }
+      
+      if (!service.vendorId) {
+        return res.status(400).json({ error: "Service has no associated vendor" });
+      }
+      
+      const vendor = await storage.getVendor(service.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized to delete this service" });
+      }
+      
+      await storage.deleteService(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete service" });
+    }
+  });
+
   // ===== RESTAURANT ROUTES =====
 
   app.get("/api/restaurants", async (req, res) => {
@@ -1226,10 +1399,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const validatedData = insertMenuItemSchema.parse(req.body);
       
-      // Verify the user owns the restaurant
-      const restaurant = await storage.getRestaurant(validatedData.restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
-        return res.status(403).json({ error: "Unauthorized to create menu items for this restaurant" });
+      // Verify the user owns the restaurant (for legacy support)
+      if (validatedData.restaurantId) {
+        const restaurant = await storage.getRestaurant(validatedData.restaurantId);
+        if (!restaurant || restaurant.ownerId !== userId) {
+          return res.status(403).json({ error: "Unauthorized to create menu items for this restaurant" });
+        }
       }
       
       const menuItem = await storage.createMenuItem(validatedData);
@@ -1247,10 +1422,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Menu item not found" });
       }
       
-      // Verify ownership through restaurant
-      const restaurant = await storage.getRestaurant(menuItem.restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
-        return res.status(403).json({ error: "Unauthorized to update this menu item" });
+      // Verify ownership through restaurant (for legacy support)
+      if (menuItem.restaurantId) {
+        const restaurant = await storage.getRestaurant(menuItem.restaurantId);
+        if (!restaurant || restaurant.ownerId !== userId) {
+          return res.status(403).json({ error: "Unauthorized to update this menu item" });
+        }
       }
       
       const validatedData = insertMenuItemSchema.partial().parse(req.body);
@@ -1269,10 +1446,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Menu item not found" });
       }
       
-      // Verify ownership through restaurant
-      const restaurant = await storage.getRestaurant(menuItem.restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
-        return res.status(403).json({ error: "Unauthorized to delete this menu item" });
+      // Verify ownership through restaurant (for legacy support)
+      if (menuItem.restaurantId) {
+        const restaurant = await storage.getRestaurant(menuItem.restaurantId);
+        if (!restaurant || restaurant.ownerId !== userId) {
+          return res.status(403).json({ error: "Unauthorized to delete this menu item" });
+        }
       }
       
       await storage.deleteMenuItem(req.params.id);
