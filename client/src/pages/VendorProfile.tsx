@@ -1,18 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   MapPin, Clock, Phone, Mail, Globe, Instagram, Facebook,
-  Star, Calendar, Package, Award, HelpCircle, Image as ImageIcon
+  Star, Calendar, Package, Award, HelpCircle, Image as ImageIcon, MessageSquare
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { Vendor, Product, Event, VendorReview, VendorFAQ, FulfillmentOptions } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function VendorProfile() {
   const [, params] = useRoute("/vendor/:id");
   const vendorId = params?.id;
+  const { isAuthenticated } = useAuth();
 
   const { data: vendor, isLoading: vendorLoading } = useQuery<Vendor>({
     queryKey: ["/api/vendors", vendorId],
@@ -120,7 +122,14 @@ export default function VendorProfile() {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2">
               <Button variant="default" data-testid="button-follow">Follow</Button>
-              <Button variant="outline" data-testid="button-message">Message</Button>
+              {isAuthenticated && vendor.ownerId && (
+                <Link href={`/messages/${vendor.ownerId}`}>
+                  <Button variant="outline" data-testid="button-message">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Message
+                  </Button>
+                </Link>
+              )}
               <Button variant="outline" data-testid="button-view-products">View Products</Button>
             </div>
           </div>
