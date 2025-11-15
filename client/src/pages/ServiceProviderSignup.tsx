@@ -42,7 +42,7 @@ export default function ServiceProviderSignup() {
     businessName: "",
     tagline: "",
     description: "",
-    serviceType: "",
+    category: "",
     city: "",
     zipCode: "",
     serviceRadius: 25,
@@ -188,10 +188,10 @@ export default function ServiceProviderSignup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="serviceType">Service Category *</Label>
+              <Label htmlFor="category">Service Category *</Label>
               <Select
-                value={formData.serviceType}
-                onValueChange={(value) => setFormData({ ...formData, serviceType: value })}
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
               >
                 <SelectTrigger data-testid="select-service-type">
                   <SelectValue placeholder="Select category" />
@@ -251,7 +251,7 @@ export default function ServiceProviderSignup() {
             </Button>
             <Button
               onClick={() => setStep(3)}
-              disabled={!formData.businessName || !formData.description || !formData.serviceType || !formData.city || !formData.zipCode}
+              disabled={!formData.businessName || !formData.description || !formData.category || !formData.city || !formData.zipCode}
               data-testid="button-next"
             >
               Next
