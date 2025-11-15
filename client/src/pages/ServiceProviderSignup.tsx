@@ -6,21 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TagInput } from "@/components/TagInput";
+import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-
-const SERVICE_CATEGORIES = [
-  "Home Services",
-  "Property Care",
-  "Recreation",
-  "Education",
-  "Wellness",
-];
+import { SERVICES_CATEGORIES } from "@shared/categories";
 
 const PAYMENT_PREFERENCES = ["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"];
 
@@ -42,7 +35,7 @@ export default function ServiceProviderSignup() {
     businessName: "",
     tagline: "",
     description: "",
-    category: "",
+    categories: [] as string[],
     city: "",
     zipCode: "",
     serviceRadius: 25,
@@ -187,22 +180,13 @@ export default function ServiceProviderSignup() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Service Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-              >
-                <SelectTrigger data-testid="select-service-type">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SERVICE_CATEGORIES.map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <HierarchicalCategorySelector
+              categories={SERVICES_CATEGORIES}
+              selectedCategories={formData.categories}
+              onChange={(categories) => setFormData({ ...formData, categories })}
+              label="Service Categories"
+              required
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -251,7 +235,7 @@ export default function ServiceProviderSignup() {
             </Button>
             <Button
               onClick={() => setStep(3)}
-              disabled={!formData.businessName || !formData.description || !formData.category || !formData.city || !formData.zipCode}
+              disabled={!formData.businessName || !formData.description || formData.categories.length === 0 || !formData.city || !formData.zipCode}
               data-testid="button-next"
             >
               Next

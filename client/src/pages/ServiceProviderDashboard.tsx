@@ -11,15 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Wrench, Briefcase, Calendar, Star, Plus, Trash2, Edit, CheckCircle, XCircle, Clock } from "lucide-react";
 import type { ServiceProvider, ServiceOffering, ServiceBooking } from "@shared/schema";
 import { insertServiceProviderSchema, insertServiceOfferingSchema } from "@shared/schema";
+import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { z } from "zod";
 import { format } from "date-fns";
+import { SERVICES_CATEGORIES } from "@shared/categories";
 
 // Form schemas
 const serviceOfferingFormSchema = z.object({
@@ -57,7 +58,7 @@ export default function ServiceProviderDashboard() {
     resolver: zodResolver(insertServiceProviderSchema.partial().omit({ ownerId: true })),
     defaultValues: {
       businessName: provider?.businessName || "",
-      category: provider?.category || "Home Services",
+      categories: provider?.categories || [],
       bio: provider?.bio || "",
       tagline: provider?.tagline || "",
       city: provider?.city || "Fort Myers",
@@ -78,7 +79,7 @@ export default function ServiceProviderDashboard() {
     if (provider) {
       profileForm.reset({
         businessName: provider.businessName,
-        category: provider.category,
+        categories: provider.categories || [],
         bio: provider.bio || "",
         tagline: provider.tagline || "",
         city: provider.city,
@@ -265,24 +266,16 @@ export default function ServiceProviderDashboard() {
 
                     <FormField
                       control={profileForm.control}
-                      name="category"
+                      name="categories"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Service Category</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-service-type">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Home Services">Home Services</SelectItem>
-                              <SelectItem value="Property Care">Property Care</SelectItem>
-                              <SelectItem value="Recreation">Recreation</SelectItem>
-                              <SelectItem value="Education">Education</SelectItem>
-                              <SelectItem value="Wellness">Wellness</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <HierarchicalCategorySelector
+                            categories={SERVICES_CATEGORIES}
+                            selectedCategories={field.value || []}
+                            onChange={field.onChange}
+                            label="Service Categories"
+                            required
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
