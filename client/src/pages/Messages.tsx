@@ -8,7 +8,7 @@ import { MessageSquare, User, Search, Store } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useRef, useEffect } from "react";
-import type { SelectVendor } from "@shared/schema";
+import type { Vendor } from "@shared/schema";
 
 interface Conversation {
   otherUserId: string;
@@ -56,15 +56,22 @@ export default function Messages() {
     },
   });
 
-  const { data: vendors } = useQuery<SelectVendor[]>({
+  const { data: vendors } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
     enabled: searchQuery.length > 0,
   });
 
-  const filteredVendors = vendors?.filter(vendor =>
-    vendor.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    vendor.category?.some((cat: string) => cat.toLowerCase().includes(searchQuery.toLowerCase()))
-  ).slice(0, 5);
+  const filteredVendors = vendors?.filter(vendor => {
+    const query = searchQuery.toLowerCase();
+    return (
+      vendor.businessName.toLowerCase().includes(query) ||
+      vendor.displayName?.toLowerCase().includes(query) ||
+      vendor.tagline?.toLowerCase().includes(query) ||
+      vendor.bio?.toLowerCase().includes(query) ||
+      vendor.categories?.some((cat: string) => cat.toLowerCase().includes(query)) ||
+      vendor.values?.some((val: string) => val.toLowerCase().includes(query))
+    );
+  }).slice(0, 5);
 
   // Show sign-in prompt only if we get a 401 error from the API
   if (conversationsError && conversationsError.message === "UNAUTHORIZED") {
@@ -132,9 +139,9 @@ export default function Messages() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium truncate">{vendor.businessName}</h4>
-                      {vendor.category && vendor.category.length > 0 && (
+                      {vendor.categories && vendor.categories.length > 0 && (
                         <p className="text-sm text-muted-foreground truncate">
-                          {vendor.category.join(", ")}
+                          {vendor.categories.join(", ")}
                         </p>
                       )}
                     </div>

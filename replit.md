@@ -36,7 +36,7 @@ Preferred communication style: Simple, everyday language.
 - **Fulfillment**: Supports various fulfillment methods including pickup, local delivery, and shipping, configurable by vendors.
 - **Fort Myers Spotlight**: A feature for highlighting specific content or businesses.
 - **Shopping Cart**: A React Context-based system with localStorage persistence, handling product variants, and automatically calculating totals (subtotal, 7% FL sales tax, 3% buyer fee).
-- **Direct Messaging**: Users can send direct messages to vendors and vice versa. Real-time updates via polling (5s for threads, 10s for unread counts), with read status tracking.
+- **Direct Messaging**: Users can send direct messages to vendors and vice versa. Real-time updates via polling (5s for threads, 10s for unread counts), with read status tracking. Messages page includes vendor search to start new conversations - searches across business name, bio, tagline, categories, and values.
 
 ### Application Routes
 - **Public**: Includes `/`, `/products`, `/vendors`, `/vendor/:id`, `/events`, `/spotlight`, `/login`, `/signup`.
