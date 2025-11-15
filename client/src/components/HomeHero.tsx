@@ -9,6 +9,7 @@ export default function HomeHero() {
     <BrandCard className="overflow-hidden">
       <div className="grid md:grid-cols-2 gap-0">
         <BrandCardBody className="relative flex flex-col justify-center py-12 md:py-16">
+          <img src={logoImg} alt="Rise Local" className="absolute top-4 right-4 h-28 w-auto" />
           <h2 className="font-heading text-3xl md:text-4xl text-text mb-6 font-bold">What's Rise Local?</h2>
           <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6 font-medium">
             Rise Local is your one-stop-shop for all things local in SWFL. Whether it's events, restaurants, goods, or services, we're here to make choosing local the easiest choice every time.
@@ -27,7 +28,6 @@ export default function HomeHero() {
               </Link>
             </div>
           </div>
-          <img src={logoImg} alt="Rise Local" className="absolute bottom-1 right-0 h-28 w-auto" />
         </BrandCardBody>
         <div className="relative h-[300px] md:h-auto">
           <img
