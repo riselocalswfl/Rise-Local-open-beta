@@ -1783,7 +1783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           itemsJson,
           subtotalCents: Math.round(vendorSubtotal * 100),
           taxCents: Math.round(vendorTax * 100),
-          feesCents: 0, // No buyer fee - platform revenue from $150/month vendor membership
+          feesCents: 0, // No buyer fee - platform revenue from $89/month vendor membership
           totalCents: Math.round(vendorTotal * 100),
           fulfillmentType,
           fulfillmentDetails,

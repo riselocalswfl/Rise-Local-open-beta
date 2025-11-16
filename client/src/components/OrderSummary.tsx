@@ -38,7 +38,7 @@ export default function OrderSummary({
           <span className="font-mono" data-testid="text-total">${total.toFixed(2)}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Platform revenue comes from vendor membership fees ($150/month).
+          Platform revenue comes from vendor membership fees ($89/month).
         </p>
       </CardContent>
     </Card>

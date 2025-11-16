@@ -70,7 +70,7 @@ Preferred communication style: Simple, everyday language.
 - **Note**: Products support multi-category selection; categories stored as text array in PostgreSQL
 
 ### Key Business Logic
-- **Pricing Model**: Vendors pay a $150/month membership fee for platform access. Buyers pay product price plus 7% FL sales tax only (no buyer fees). Platform revenue comes exclusively from vendor membership fees, not transaction fees.
+- **Pricing Model**: Vendors pay an $89/month membership fee for platform access. Buyers pay product price plus 7% FL sales tax only (no buyer fees). Platform revenue comes exclusively from vendor membership fees, not transaction fees.
 - **Platform Focus**: Exclusively serves local Fort Myers vendors and products.
 - **Loyalty System**: Users earn 10 points for each completed order.
 - **Fulfillment**: Supports various fulfillment methods including pickup, local delivery, and shipping, configurable by vendors.
@@ -86,7 +86,7 @@ Preferred communication style: Simple, everyday language.
 - **Automatic Transfers**: When payment succeeds (via `payment_intent.succeeded` webhook), the platform:
   1. Extracts vendor breakdown from payment intent metadata
   2. Transfers full amount (subtotal + tax) to vendor's connected account
-  3. Platform revenue comes from $150/month vendor membership fees, not transaction fees
+  3. Platform revenue comes from $89/month vendor membership fees, not transaction fees
 - **Multi-Vendor Support**: Single checkout supports multiple vendors; each vendor receives their full portion automatically via separate transfers
 - **Transfer Formula**: `vendorReceives = subtotal + tax` (full amount transferred to vendor)
 - **API Endpoints**:
