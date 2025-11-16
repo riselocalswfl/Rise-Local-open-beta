@@ -413,6 +413,284 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // Stripe Connect Routes (Vendor Payment Setup)
+  // ============================================================================
+
+  // Create Stripe Connect Express account for vendor
+  app.post("/api/stripe/create-connect-account", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Get vendor profile based on user role
+      let vendorProfile: any = null;
+      let vendorType: 'vendor' | 'restaurant' | 'service_provider' = 'vendor';
+      
+      if (user.role === 'vendor') {
+        vendorProfile = await storage.getVendorByOwnerId(userId);
+        vendorType = 'vendor';
+      } else if (user.role === 'restaurant') {
+        vendorProfile = await storage.getRestaurantByOwnerId(userId);
+        vendorType = 'restaurant';
+      } else if (user.role === 'service_provider') {
+        vendorProfile = await storage.getServiceProviderByOwnerId(userId);
+        vendorType = 'service_provider';
+      } else {
+        return res.status(403).json({ error: "Only vendors can create Stripe Connect accounts" });
+      }
+
+      if (!vendorProfile) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+
+      // Check if already has a Connect account
+      if (vendorProfile.stripeConnectAccountId) {
+        return res.json({ 
+          accountId: vendorProfile.stripeConnectAccountId,
+          message: "Account already exists"
+        });
+      }
+
+      // Create Stripe Connect Express account
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'US',
+        email: user.email || undefined,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        business_type: 'individual', // Can be updated during onboarding
+        business_profile: {
+          mcc: '5499', // Misc food stores - retail
+          product_description: vendorType === 'restaurant' 
+            ? 'Restaurant and food services'
+            : vendorType === 'service_provider'
+            ? 'Professional services'
+            : 'Local products and goods',
+          url: vendorProfile.website || undefined,
+        },
+      });
+
+      // Store the account ID in the vendor profile
+      if (vendorType === 'vendor') {
+        await storage.updateVendor(vendorProfile.id, {
+          stripeConnectAccountId: account.id,
+        });
+      } else if (vendorType === 'restaurant') {
+        await storage.updateRestaurant(vendorProfile.id, {
+          stripeConnectAccountId: account.id,
+        });
+      } else if (vendorType === 'service_provider') {
+        await storage.updateServiceProvider(vendorProfile.id, {
+          stripeConnectAccountId: account.id,
+        });
+      }
+
+      res.json({ accountId: account.id });
+    } catch (error) {
+      console.error("Error creating Stripe Connect account:", error);
+      res.status(500).json({ 
+        error: "Failed to create Connect account",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Generate Stripe Connect onboarding link
+  app.post("/api/stripe/account-link", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Get vendor profile and Connect account ID
+      let stripeAccountId: string | null = null;
+      
+      if (user.role === 'vendor') {
+        const vendor = await storage.getVendorByOwnerId(userId);
+        stripeAccountId = vendor?.stripeConnectAccountId || null;
+      } else if (user.role === 'restaurant') {
+        const restaurant = await storage.getRestaurantByOwnerId(userId);
+        stripeAccountId = restaurant?.stripeConnectAccountId || null;
+      } else if (user.role === 'service_provider') {
+        const provider = await storage.getServiceProviderByOwnerId(userId);
+        stripeAccountId = provider?.stripeConnectAccountId || null;
+      }
+
+      if (!stripeAccountId) {
+        return res.status(404).json({ error: "No Stripe Connect account found. Create one first." });
+      }
+
+      // Generate account link for onboarding
+      const accountLink = await stripe.accountLinks.create({
+        account: stripeAccountId,
+        refresh_url: `${req.protocol}://${req.get('host')}/dashboard?stripe_refresh=true`,
+        return_url: `${req.protocol}://${req.get('host')}/dashboard?stripe_success=true`,
+        type: 'account_onboarding',
+      });
+
+      res.json({ url: accountLink.url });
+    } catch (error) {
+      console.error("Error creating account link:", error);
+      res.status(500).json({ 
+        error: "Failed to create onboarding link",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Check Stripe Connect account status
+  app.get("/api/stripe/account-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Get vendor profile and Connect account ID
+      let stripeAccountId: string | null = null;
+      let vendorType: 'vendor' | 'restaurant' | 'service_provider' | null = null;
+      let vendorId: string | null = null;
+      
+      if (user.role === 'vendor') {
+        const vendor = await storage.getVendorByOwnerId(userId);
+        stripeAccountId = vendor?.stripeConnectAccountId || null;
+        vendorType = 'vendor';
+        vendorId = vendor?.id || null;
+      } else if (user.role === 'restaurant') {
+        const restaurant = await storage.getRestaurantByOwnerId(userId);
+        stripeAccountId = restaurant?.stripeConnectAccountId || null;
+        vendorType = 'restaurant';
+        vendorId = restaurant?.id || null;
+      } else if (user.role === 'service_provider') {
+        const provider = await storage.getServiceProviderByOwnerId(userId);
+        stripeAccountId = provider?.stripeConnectAccountId || null;
+        vendorType = 'service_provider';
+        vendorId = provider?.id || null;
+      }
+
+      if (!stripeAccountId) {
+        return res.json({ 
+          connected: false,
+          onboardingComplete: false 
+        });
+      }
+
+      // Fetch account details from Stripe
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+
+      // Check if charges are enabled and onboarding is complete
+      const onboardingComplete = account.charges_enabled && account.details_submitted;
+
+      // Update vendor profile if onboarding status changed
+      if (vendorType && vendorId && onboardingComplete) {
+        if (vendorType === 'vendor') {
+          await storage.updateVendor(vendorId, {
+            stripeOnboardingComplete: true,
+          });
+        } else if (vendorType === 'restaurant') {
+          await storage.updateRestaurant(vendorId, {
+            stripeOnboardingComplete: true,
+          });
+        } else if (vendorType === 'service_provider') {
+          await storage.updateServiceProvider(vendorId, {
+            stripeOnboardingComplete: true,
+          });
+        }
+      }
+
+      res.json({
+        connected: true,
+        onboardingComplete,
+        chargesEnabled: account.charges_enabled,
+        detailsSubmitted: account.details_submitted,
+        payoutsEnabled: account.payouts_enabled,
+        requirements: account.requirements,
+      });
+    } catch (error) {
+      console.error("Error checking account status:", error);
+      res.status(500).json({ 
+        error: "Failed to check account status",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Stripe webhook endpoint for account updates
+  app.post("/api/stripe/webhook", async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    
+    if (!sig) {
+      return res.status(400).send('Missing stripe-signature header');
+    }
+
+    let event: Stripe.Event;
+
+    try {
+      // Verify webhook signature (you'll need to set STRIPE_WEBHOOK_SECRET in env)
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (webhookSecret) {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      } else {
+        // For development without webhook secret
+        event = req.body as Stripe.Event;
+      }
+
+      // Handle account.updated events
+      if (event.type === 'account.updated') {
+        const account = event.data.object as Stripe.Account;
+        const accountId = account.id;
+        const onboardingComplete = account.charges_enabled && account.details_submitted;
+
+        // Find vendor with this Stripe account ID and update status
+        const vendors = await storage.listVendors();
+        const vendor = vendors.find(v => v.stripeConnectAccountId === accountId);
+        
+        if (vendor) {
+          await storage.updateVendor(vendor.id, {
+            stripeOnboardingComplete: onboardingComplete,
+          });
+        } else {
+          // Check restaurants
+          const restaurants = await storage.listRestaurants();
+          const restaurant = restaurants.find(r => r.stripeConnectAccountId === accountId);
+          
+          if (restaurant) {
+            await storage.updateRestaurant(restaurant.id, {
+              stripeOnboardingComplete: onboardingComplete,
+            });
+          } else {
+            // Check service providers
+            const providers = await storage.listServiceProviders();
+            const provider = providers.find(p => p.stripeConnectAccountId === accountId);
+            
+            if (provider) {
+              await storage.updateServiceProvider(provider.id, {
+                stripeOnboardingComplete: onboardingComplete,
+              });
+            }
+          }
+        }
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Webhook error:", error);
+      res.status(400).send(`Webhook Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
   app.patch("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

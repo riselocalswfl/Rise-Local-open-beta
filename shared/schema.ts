@@ -572,6 +572,10 @@ export const restaurants = pgTable("restaurants", {
   paymentMethod: text("payment_method").notNull(),
   paymentMethods: text("payment_methods").array().default(sql`'{}'::text[]`),
   
+  // Stripe Connect
+  stripeConnectAccountId: text("stripe_connect_account_id"),
+  stripeOnboardingComplete: boolean("stripe_onboarding_complete").default(false),
+  
   // Membership & Verification
   isFoundingMember: boolean("is_founding_member").notNull().default(false),
   isVerified: boolean("is_verified").notNull().default(false),
@@ -729,6 +733,10 @@ export const serviceProviders = pgTable("service_providers", {
   
   // Payment
   paymentMethods: text("payment_methods").array().default(sql`'{}'::text[]`),
+  
+  // Stripe Connect
+  stripeConnectAccountId: text("stripe_connect_account_id"),
+  stripeOnboardingComplete: boolean("stripe_onboarding_complete").default(false),
   
   // Membership & Verification
   isFoundingMember: boolean("is_founding_member").notNull().default(false),
