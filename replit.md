@@ -45,6 +45,18 @@ Preferred communication style: Simple, everyday language.
 - **Role Determination**: Vendor type is determined by fetching the vendor owner's user data via `/api/users/:ownerId` and checking their `role` field
 - **API Routes**: `/api/vendors/:id/menu` (restaurants), `/api/vendors/:id/services` (service providers), `/api/products?vendorId=X` (shops), `/api/users/:id` (user data for role determination)
 
+### Vendor Dashboard Organization (November 2025)
+- **Card Structure**: Dashboard organized into dedicated cards for clear separation of concerns:
+  - **Business Info**: Basic business details (name, tagline, description, bio)
+  - **Location & Contact**: Address, phone, email, website, social media
+  - **Business Values**: Local sourcing slider and value tags (e.g., organic, sustainable, fair-trade)
+  - **Payment Methods** (separate card): Standard payment checkboxes (Direct, Venmo, Zelle, CashApp, PayPal, Cash) and custom payment methods input
+  - **Fulfillment Methods**: Pickup, delivery, shipping options with custom methods support
+  - **Profile Photo/Logo**: Image upload section (simplified from previous "Visual Identity" section)
+  - **System Info**: Member since date
+- **Simplified Fields**: Removed banner image, color customization, and profile status display for streamlined vendor setup
+- **Custom Fulfillment**: Vendors can add custom fulfillment options (e.g., "Farmers Market Booth", "Curbside Pickup")
+
 ### Key Business Logic
 - **Pricing Model**: Vendors pay a $150/month membership fee, buyers incur a 3% fee, and there are no per-transaction vendor fees.
 - **Platform Focus**: Exclusively serves local Fort Myers vendors and products.
