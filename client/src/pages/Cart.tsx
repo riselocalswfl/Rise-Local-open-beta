@@ -9,6 +9,24 @@ export default function Cart() {
   const { items, updateQty, removeItem, cartTotals, clearCart } = useCart();
   const totals = cartTotals();
 
+  // Group items by vendor
+  const itemsByVendor = items.reduce((groups, item) => {
+    const vendorId = item.vendorId || 'unknown';
+    const vendorName = item.vendorName || 'Unknown Vendor';
+    if (!groups[vendorId]) {
+      groups[vendorId] = {
+        vendorId,
+        vendorName,
+        items: [],
+      };
+    }
+    groups[vendorId].items.push(item);
+    return groups;
+  }, {} as Record<string, { vendorId: string; vendorName: string; items: typeof items }>);
+
+  const vendorGroups = Object.values(itemsByVendor);
+  const vendorCount = vendorGroups.length;
+
   return (
     <div className="min-h-screen bg-bg relative">
       <Header />
@@ -43,84 +61,95 @@ export default function Cart() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-4">
-              {items.map((item) => (
-                <BrandCard key={`${item.id}-${item.variantId || ""}`} data-testid={`cart-item-${item.id}`}>
-                  <BrandCardBody className="p-4">
-                    <div className="flex gap-4">
-                      {item.image && (
-                        <div className="w-24 h-24 rounded-md bg-muted flex-shrink-0 overflow-hidden">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-heading text-lg text-text mb-1" data-testid={`text-item-name-${item.id}`}>
-                              {item.name}
-                            </h3>
-                            {item.vendorName && (
-                              <p className="text-sm text-text/60 mb-2">{item.vendorName}</p>
-                            )}
-                            {item.options && Object.keys(item.options).length > 0 && (
-                              <div className="text-xs text-text/50 space-y-1">
-                                {Object.entries(item.options).map(([key, value]) => (
-                                  <p key={key}>
-                                    {key}: {value}
-                                  </p>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => removeItem(item.id, item.variantId, item.options)}
-                            className="p-2 text-text/40 hover:text-destructive transition flex-shrink-0"
-                            data-testid={`button-remove-${item.id}`}
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
+            <div className="lg:col-span-2 space-y-6">
+              {vendorGroups.map((group) => (
+                <div key={group.vendorId} className="space-y-3">
+                  {/* Vendor Header */}
+                  <div className="flex items-center gap-2 px-2">
+                    <div className="h-px flex-1 bg-border" />
+                    <h3 className="font-heading text-sm uppercase tracking-wide text-text/70" data-testid={`vendor-section-${group.vendorId}`}>
+                      {group.vendorName}
+                    </h3>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
 
-                        <div className="flex items-center justify-between mt-4">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => updateQty(item.id, item.quantity - 1, item.variantId, item.options)}
-                              disabled={item.quantity <= 1}
-                              data-testid={`button-decrease-${item.id}`}
-                            >
-                              <Minus className="w-4 h-4" />
-                            </Button>
-                            <span className="w-12 text-center font-medium" data-testid={`text-quantity-${item.id}`}>
-                              {item.quantity}
-                            </span>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => updateQty(item.id, item.quantity + 1, item.variantId, item.options)}
-                              data-testid={`button-increase-${item.id}`}
-                            >
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-mono text-lg font-semibold text-text" data-testid={`text-item-total-${item.id}`}>
-                              ${((item.price ?? 0) * item.quantity).toFixed(2)}
-                            </p>
-                            <p className="text-xs text-text/50">
-                              ${(item.price ?? 0).toFixed(2)} each
-                            </p>
+                  {/* Vendor Items */}
+                  {group.items.map((item) => (
+                    <BrandCard key={`${item.id}-${item.variantId || ""}`} data-testid={`cart-item-${item.id}`}>
+                      <BrandCardBody className="p-4">
+                        <div className="flex gap-4">
+                          {item.image && (
+                            <div className="w-24 h-24 rounded-md bg-muted flex-shrink-0 overflow-hidden">
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-heading text-lg text-text mb-1" data-testid={`text-item-name-${item.id}`}>
+                                  {item.name}
+                                </h3>
+                                {item.options && Object.keys(item.options).length > 0 && (
+                                  <div className="text-xs text-text/50 space-y-1 mt-2">
+                                    {Object.entries(item.options).map(([key, value]) => (
+                                      <p key={key}>
+                                        {key}: {value}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => removeItem(item.id, item.variantId, item.options)}
+                                className="p-2 text-text/40 hover:text-destructive transition flex-shrink-0"
+                                data-testid={`button-remove-${item.id}`}
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-4">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  onClick={() => updateQty(item.id, item.quantity - 1, item.variantId, item.options)}
+                                  disabled={item.quantity <= 1}
+                                  data-testid={`button-decrease-${item.id}`}
+                                >
+                                  <Minus className="w-4 h-4" />
+                                </Button>
+                                <span className="w-12 text-center font-medium" data-testid={`text-quantity-${item.id}`}>
+                                  {item.quantity}
+                                </span>
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  onClick={() => updateQty(item.id, item.quantity + 1, item.variantId, item.options)}
+                                  data-testid={`button-increase-${item.id}`}
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono text-lg font-semibold text-text" data-testid={`text-item-total-${item.id}`}>
+                                  ${((item.price ?? 0) * item.quantity).toFixed(2)}
+                                </p>
+                                <p className="text-xs text-text/50">
+                                  ${(item.price ?? 0).toFixed(2)} each
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  </BrandCardBody>
-                </BrandCard>
+                      </BrandCardBody>
+                    </BrandCard>
+                  ))}
+                </div>
               ))}
             </div>
 
@@ -161,7 +190,7 @@ export default function Cart() {
 
                   <div className="mt-4 p-3 rounded-md bg-primary/5 border border-primary/20">
                     <p className="text-xs text-text/70">
-                      <strong className="text-primary">Supporting local:</strong> Your purchase directly supports {new Set(items.map(i => i.vendorName)).size} local {new Set(items.map(i => i.vendorName)).size === 1 ? 'vendor' : 'vendors'} in Fort Myers.
+                      <strong className="text-primary">Supporting local:</strong> Your purchase directly supports {vendorCount} local {vendorCount === 1 ? 'vendor' : 'vendors'} in Fort Myers.
                     </p>
                   </div>
                 </BrandCardBody>
