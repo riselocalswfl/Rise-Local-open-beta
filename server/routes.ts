@@ -128,8 +128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const objectStorageService = new ObjectStorageService();
       
+      // Normalize the URL to get the object path
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(req.body.imageURL);
+      
       // Get the file to validate it before making it public
-      const file = await objectStorageService.getObjectEntityFile(req.body.imageURL);
+      const file = await objectStorageService.getObjectEntityFile(normalizedPath);
       const [metadata] = await file.getMetadata();
       
       // Validate content type
@@ -147,6 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Only set public ACL if validation passes
+      // trySetObjectEntityAclPolicy normalizes the URL and returns the canonical /objects/... path
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
         req.body.imageURL,
         {
@@ -155,6 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       );
 
+      // Return the normalized path (not the presigned URL) so clients persist stable /objects/... paths
       res.status(200).json({
         objectPath: objectPath,
       });
