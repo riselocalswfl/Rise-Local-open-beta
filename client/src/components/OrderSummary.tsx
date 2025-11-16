@@ -4,18 +4,13 @@ import { Separator } from "@/components/ui/separator";
 interface OrderSummaryProps {
   subtotal: number;
   tax?: number;
-  buyerFeePercentage?: number;
-  showFees?: boolean;
 }
 
 export default function OrderSummary({
   subtotal,
   tax = 0,
-  buyerFeePercentage = 3,
-  showFees = true,
 }: OrderSummaryProps) {
-  const buyerFee = subtotal * (buyerFeePercentage / 100);
-  const total = subtotal + tax + buyerFee;
+  const total = subtotal + tax;
 
   return (
     <Card className="le-card transition-all duration-200">
@@ -36,14 +31,6 @@ export default function OrderSummary({
               </span>
             </div>
           )}
-          {showFees && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Buyer Fee ({buyerFeePercentage}%)</span>
-              <span className="font-mono text-muted-foreground" data-testid="text-buyer-fee">
-                ${buyerFee.toFixed(2)}
-              </span>
-            </div>
-          )}
         </div>
         <Separator />
         <div className="flex justify-between text-lg font-semibold">
@@ -51,8 +38,7 @@ export default function OrderSummary({
           <span className="font-mono" data-testid="text-total">${total.toFixed(2)}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          {showFees && `Buyer fee supports platform maintenance. `}
-          Vendors pay a flat $150/month membership.
+          Platform revenue comes from vendor membership fees ($150/month).
         </p>
       </CardContent>
     </Card>

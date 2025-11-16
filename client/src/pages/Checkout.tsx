@@ -55,14 +55,12 @@ export default function Checkout() {
       const vendorOrders = Object.entries(itemsByVendor).map(([vendorId, items]) => {
         const vendorSubtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const vendorTax = vendorSubtotal * 0.07; // FL sales tax
-        const buyerFee = vendorSubtotal * 0.03; // Platform buyer fee
-        const vendorTotal = vendorSubtotal + vendorTax + buyerFee;
+        const vendorTotal = vendorSubtotal + vendorTax;
 
         return {
           vendorId,
           subtotalCents: Math.round(vendorSubtotal * 100),
           taxCents: Math.round(vendorTax * 100),
-          buyerFeeCents: Math.round(buyerFee * 100),
           totalCents: Math.round(vendorTotal * 100),
         };
       });
@@ -79,7 +77,7 @@ export default function Checkout() {
     }
   };
 
-  const { subtotal, tax, buyerFee, grandTotal: total } = cartTotals();
+  const { subtotal, tax, grandTotal: total } = cartTotals();
 
   // Show loading state while checking authentication
   if (isCheckingAuth) {
@@ -121,7 +119,7 @@ export default function Checkout() {
 
         {clientSecret ? (
           <Elements stripe={stripePromise} options={{ clientSecret }}>
-            <CheckoutForm subtotal={subtotal} tax={tax} buyerFee={buyerFee} total={total} />
+            <CheckoutForm subtotal={subtotal} tax={tax} total={total} />
           </Elements>
         ) : (
           <div className="flex items-center justify-center py-16">
@@ -134,7 +132,7 @@ export default function Checkout() {
   );
 }
 
-function CheckoutForm({ subtotal, tax, buyerFee, total }: { subtotal: number; tax: number; buyerFee: number; total: number }) {
+function CheckoutForm({ subtotal, tax, total }: { subtotal: number; tax: number; total: number }) {
   const stripe = useStripe();
   const elements = useElements();
   const [, setLocation] = useLocation();
@@ -171,7 +169,6 @@ function CheckoutForm({ subtotal, tax, buyerFee, total }: { subtotal: number; ta
       const latestTotals = {
         subtotal,
         tax,
-        buyerFee,
         grandTotal: total,
       };
       
@@ -286,7 +283,6 @@ function CheckoutForm({ subtotal, tax, buyerFee, total }: { subtotal: number; ta
       const latestTotals = {
         subtotal,
         tax,
-        buyerFee,
         grandTotal: total,
       };
 

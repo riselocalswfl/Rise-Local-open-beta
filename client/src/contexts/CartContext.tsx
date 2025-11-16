@@ -15,7 +15,6 @@ export interface CartItem {
 export interface CartTotals {
   subtotal: number;
   tax: number;
-  buyerFee: number;
   grandTotal: number;
 }
 
@@ -36,7 +35,6 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = "rise-local-cart";
 const FL_TAX_RATE = 0.07;
-const BUYER_FEE_RATE = 0.03;
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
@@ -128,13 +126,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       0
     );
     const tax = subtotal * FL_TAX_RATE;
-    const buyerFee = subtotal * BUYER_FEE_RATE;
-    const grandTotal = subtotal + tax + buyerFee;
+    const grandTotal = subtotal + tax;
 
     return {
       subtotal: Number(subtotal.toFixed(2)),
       tax: Number(tax.toFixed(2)),
-      buyerFee: Number(buyerFee.toFixed(2)),
       grandTotal: Number(grandTotal.toFixed(2)),
     };
   };
