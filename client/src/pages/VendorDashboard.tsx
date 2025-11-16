@@ -472,10 +472,10 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
-            {/* Local Values Section */}
+            {/* Business Values Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Local Values</CardTitle>
+                <CardTitle>Business Values</CardTitle>
                 <CardDescription>Show your commitment to the local community</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -519,10 +519,19 @@ export default function VendorDashboard() {
                     placeholder="Add value tags (e.g., organic, sustainable, fair-trade)"
                   />
                 </div>
+              </CardContent>
+            </Card>
 
+            {/* Payment Methods Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Methods</CardTitle>
+                <CardDescription>Configure which payment methods you accept</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div>
-                    <Label className="font-semibold">Payment Methods Accepted</Label>
+                    <Label className="font-semibold">Standard Payment Methods</Label>
                     <p className="text-xs text-muted-foreground mt-1">
                       Select all payment methods you accept
                     </p>
@@ -553,28 +562,28 @@ export default function VendorDashboard() {
                       );
                     })}
                   </div>
+                </div>
                   
-                  <div className="space-y-2 pt-2">
-                    <Label className="text-sm font-semibold">Custom Payment Methods</Label>
-                    <p className="text-xs text-muted-foreground mb-1">
-                      Add any other payment methods you accept (e.g., "Square", "Stripe", "Bitcoin")
-                    </p>
-                    <TagInput
-                      tags={(vendor.paymentPreferences || []).filter(
-                        p => !["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
-                      )}
-                      onChange={(customMethods) => {
-                        const standardMethods = (vendor.paymentPreferences || []).filter(
-                          p => ["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
-                        );
-                        const newPreferences = [...standardMethods, ...customMethods];
-                        updateVendorMutation.mutate({ paymentPreferences: newPreferences });
-                      }}
-                      placeholder="Type a payment method and press Enter..."
-                      maxTags={5}
-                      testId="input-custom-payment-methods"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Custom Payment Methods</Label>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Add any other payment methods you accept (e.g., "Square", "Stripe", "Bitcoin")
+                  </p>
+                  <TagInput
+                    tags={(vendor.paymentPreferences || []).filter(
+                      p => !["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
+                    )}
+                    onChange={(customMethods) => {
+                      const standardMethods = (vendor.paymentPreferences || []).filter(
+                        p => ["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
+                      );
+                      const newPreferences = [...standardMethods, ...customMethods];
+                      updateVendorMutation.mutate({ paymentPreferences: newPreferences });
+                    }}
+                    placeholder="Type a payment method and press Enter..."
+                    maxTags={5}
+                    testId="input-custom-payment-methods"
+                  />
                 </div>
               </CardContent>
             </Card>
