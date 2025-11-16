@@ -249,7 +249,8 @@ export default function StripeConnectCard() {
         <div className="text-xs text-muted-foreground space-y-1">
           <p>• Powered by Stripe Connect</p>
           <p>• Funds deposited directly to your bank account</p>
-          <p>• Platform takes 3% buyer fee (vendors keep 100% of product price)</p>
+          <p>• You receive 100% of product price + sales tax collected</p>
+          <p>• Platform revenue from $89/month vendor memberships (waived during beta)</p>
         </div>
       </CardContent>
     </Card>
