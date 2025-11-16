@@ -658,22 +658,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Process each vendor transfer
           for (let i = 0; i < vendorCount; i++) {
             const vendorId = metadata[`vendor_${i}_id`];
-            const vendorAmountCents = parseInt(metadata[`vendor_${i}_amount`]);
+            const vendorSubtotalCents = parseInt(metadata[`vendor_${i}_subtotal`]);
+            const vendorTaxCents = parseInt(metadata[`vendor_${i}_tax`]);
+            const vendorBuyerFeeCents = parseInt(metadata[`vendor_${i}_buyer_fee`]);
             
-            if (vendorId && vendorAmountCents) {
+            if (vendorId && vendorSubtotalCents) {
               try {
                 // Get vendor's Stripe Connect account ID
                 const vendor = await storage.getVendor(vendorId);
                 
                 if (vendor?.stripeConnectAccountId && vendor?.stripeOnboardingComplete) {
-                  // Calculate platform fee (3% of subtotal, which is already included in vendorAmountCents)
-                  // The vendorAmountCents includes: subtotal + tax + buyerFee (3%)
-                  // We need to calculate: subtotal (without tax and fee), then apply 3% fee
-                  // Formula: vendorAmountCents = subtotal + (subtotal * 0.07) + (subtotal * 0.03)
-                  // So: subtotal = vendorAmountCents / 1.10
-                  const subtotal = Math.round(vendorAmountCents / 1.10);
-                  const platformFeeCents = Math.round(subtotal * 0.03);
-                  const vendorReceivesCents = vendorAmountCents - platformFeeCents;
+                  // Platform keeps the 3% buyer fee as revenue
+                  // Vendor receives: subtotal + tax (everything except the buyer fee)
+                  const vendorReceivesCents = vendorSubtotalCents + vendorTaxCents;
+                  const platformFeeCents = vendorBuyerFeeCents; // The 3% buyer fee is platform revenue
                   
                   // Create transfer to vendor's connected account
                   await stripe.transfers.create({
@@ -684,6 +682,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     metadata: {
                       vendorId: vendor.id,
                       paymentIntentId: paymentIntent.id,
+                      subtotalCents: vendorSubtotalCents.toString(),
+                      taxCents: vendorTaxCents.toString(),
                       platformFeeCents: platformFeeCents.toString(),
                     },
                   });
@@ -1624,9 +1624,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalCents = vendorOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
 
       // Store vendor order breakdown in metadata for webhook processing
+      // Include subtotal, tax, buyer fee, and total for each vendor
       const vendorOrdersMetadata = vendorOrders.map((order: any, index: number) => ({
         [`vendor_${index}_id`]: order.vendorId,
-        [`vendor_${index}_amount`]: order.totalCents.toString(),
+        [`vendor_${index}_subtotal`]: order.subtotalCents.toString(),
+        [`vendor_${index}_tax`]: order.taxCents.toString(),
+        [`vendor_${index}_buyer_fee`]: order.buyerFeeCents.toString(),
+        [`vendor_${index}_total`]: order.totalCents.toString(),
       })).reduce((acc, obj) => ({ ...acc, ...obj }), {});
 
       // Create payment intent that collects on platform account

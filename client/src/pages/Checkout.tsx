@@ -51,15 +51,18 @@ export default function Checkout() {
         itemsByVendor[vendorId].push(item);
       }
 
-      // Calculate vendor orders
+      // Calculate vendor orders with detailed breakdown
       const vendorOrders = Object.entries(itemsByVendor).map(([vendorId, items]) => {
         const vendorSubtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const vendorTax = vendorSubtotal * 0.07;
-        const vendorFee = vendorSubtotal * 0.03;
-        const vendorTotal = vendorSubtotal + vendorTax + vendorFee;
+        const vendorTax = vendorSubtotal * 0.07; // FL sales tax
+        const buyerFee = vendorSubtotal * 0.03; // Platform buyer fee
+        const vendorTotal = vendorSubtotal + vendorTax + buyerFee;
 
         return {
           vendorId,
+          subtotalCents: Math.round(vendorSubtotal * 100),
+          taxCents: Math.round(vendorTax * 100),
+          buyerFeeCents: Math.round(buyerFee * 100),
           totalCents: Math.round(vendorTotal * 100),
         };
       });

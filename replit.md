@@ -82,18 +82,20 @@ Preferred communication style: Simple, everyday language.
 - **Vendor Onboarding**: Vendors connect their bank accounts through Stripe Connect Express accounts via the Settings tab in their dashboard
 - **Account Status Tracking**: Database stores `stripeConnectAccountId` and `stripeOnboardingComplete` fields for vendors, restaurants, and service providers
 - **Payment Collection**: Buyers pay the full amount (subtotal + 7% FL sales tax + 3% buyer fee) to the platform's Stripe account
+- **Payment Intent Metadata**: Each vendor order includes detailed breakdown: `subtotalCents`, `taxCents`, `buyerFeeCents`, and `totalCents`
 - **Automatic Transfers**: When payment succeeds (via `payment_intent.succeeded` webhook), the platform:
-  1. Calculates vendor's portion: Total amount minus 3% platform fee
-  2. Creates Stripe transfer to vendor's connected account
-  3. Retains 3% buyer fee as revenue
+  1. Extracts vendor breakdown from payment intent metadata
+  2. Transfers subtotal + tax to vendor's connected account
+  3. Retains 3% buyer fee as platform revenue
 - **Multi-Vendor Support**: Single checkout supports multiple vendors; each vendor receives their portion automatically via separate transfers
-- **Transfer Formula**: `vendorReceives = vendorTotal - (subtotal * 0.03)` where `vendorTotal = subtotal + (subtotal * 0.07) + (subtotal * 0.03)`
+- **Transfer Formula**: `vendorReceives = subtotal + tax` (platform keeps the 3% buyer fee by not transferring it)
+- **Fee Calculation**: Buyer fee is 3% of subtotal, calculated and stored separately in metadata for accurate accounting
 - **API Endpoints**:
   - `POST /api/stripe/create-account`: Creates Stripe Connect Express account for vendor
   - `POST /api/stripe/create-onboarding-link`: Generates onboarding URL for bank account setup
   - `GET /api/stripe/account-status`: Checks vendor's Stripe Connect account status
-  - `POST /api/stripe/webhook`: Handles account updates and payment processing
-  - `POST /api/stripe/create-payment-intent`: Creates payment intent with vendor metadata for transfers
+  - `POST /api/stripe/webhook`: Handles account updates and payment processing (account.updated, payment_intent.succeeded)
+  - `POST /api/stripe/create-payment-intent`: Creates payment intent with complete vendor breakdown in metadata
 - **Dashboard Integration**: StripeConnectCard component in vendor dashboard shows connection status with appropriate CTAs (connect, complete setup, or connected)
 
 ### Application Routes
