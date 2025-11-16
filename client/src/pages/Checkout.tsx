@@ -82,17 +82,18 @@ export default function Checkout() {
 
       return apiRequest("POST", "/api/checkout", checkoutData);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      sessionStorage.setItem("lastOrder", JSON.stringify(data));
       clearCart();
       
       toast({
         title: "Order Placed Successfully!",
-        description: "You earned 10 loyalty points. Check your email for confirmation.",
+        description: "You earned loyalty points. Check your email for confirmation.",
       });
       
       setTimeout(() => {
-        setLocation("/");
-      }, 2000);
+        setLocation("/order-confirmation");
+      }, 1000);
     },
     onError: () => {
       toast({
