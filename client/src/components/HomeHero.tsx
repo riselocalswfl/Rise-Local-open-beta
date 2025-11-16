@@ -14,6 +14,13 @@ export default function HomeHero() {
           <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6 font-medium">
             Rise Local is your one-stop-shop for all things local in SWFL. Whether it's events, restaurants, goods, or services, we're here to make choosing local the easiest choice every time.
           </p>
+          <div className="flex justify-center mb-6">
+            <Link href="/register" data-testid="join-movement-cta">
+              <a className="bg-secondary hover:bg-secondary/90 text-white px-8 py-3 rounded-md font-medium transition no-underline">
+                Join the Movement
+              </a>
+            </Link>
+          </div>
           <div className="w-full max-w-md mx-auto">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Link href="/products">
