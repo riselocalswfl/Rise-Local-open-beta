@@ -633,21 +633,6 @@ export default function VendorDashboard() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* System Info Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>System Info</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Member Since</span>
-                  <span className="text-sm text-muted-foreground" data-testid="text-member-since">
-                    {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Products Tab */}
