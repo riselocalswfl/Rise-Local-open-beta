@@ -7,6 +7,8 @@ import {
   type Attendance, type InsertAttendance,
   type Order, type InsertOrder,
   type OrderItem, type InsertOrderItem,
+  type MasterOrder, type InsertMasterOrder,
+  type VendorOrder, type InsertVendorOrder,
   type Spotlight, type InsertSpotlight,
   type VendorReview, type InsertVendorReview,
   type VendorFAQ, type InsertVendorFAQ,
@@ -22,7 +24,7 @@ import {
   type Service, type InsertService,
   type Message, type InsertMessage,
   type FulfillmentDetails,
-  users, vendors, products, events, eventRsvps, attendances, orders, orderItems, spotlight, vendorReviews, vendorFAQs,
+  users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions,
   serviceProviders, serviceOfferings, serviceBookings, services, messages,
   fulfillmentDetailsSchema
@@ -139,6 +141,18 @@ export interface IStorage {
 
   // Order item operations
   getOrderItems(orderId: string): Promise<OrderItem[]>;
+
+  // Multi-Vendor Checkout operations
+  createMasterOrder(order: InsertMasterOrder): Promise<MasterOrder>;
+  getMasterOrder(id: string): Promise<MasterOrder | undefined>;
+  getMasterOrdersByBuyer(buyerId: string): Promise<MasterOrder[]>;
+  createVendorOrder(order: InsertVendorOrder): Promise<VendorOrder>;
+  getVendorOrder(id: string): Promise<VendorOrder | undefined>;
+  getVendorOrdersByMaster(masterOrderId: string): Promise<VendorOrder[]>;
+  getVendorOrdersByVendor(vendorId: string): Promise<VendorOrder[]>;
+  getVendorOrdersByBuyer(buyerId: string): Promise<VendorOrder[]>;
+  updateVendorOrderStatus(id: string, status: string): Promise<void>;
+  updateVendorOrderPaymentStatus(id: string, paymentStatus: string): Promise<void>;
 
   // Spotlight operations
   getActiveSpotlight(): Promise<Spotlight | undefined>;
@@ -659,6 +673,59 @@ export class DbStorage implements IStorage {
   // Order item operations
   async getOrderItems(orderId: string): Promise<OrderItem[]> {
     return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  }
+
+  // Multi-Vendor Checkout operations
+  async createMasterOrder(order: InsertMasterOrder): Promise<MasterOrder> {
+    const result = await db.insert(masterOrders).values(order).returning();
+    return result[0];
+  }
+
+  async getMasterOrder(id: string): Promise<MasterOrder | undefined> {
+    const result = await db.select().from(masterOrders).where(eq(masterOrders.id, id));
+    return result[0];
+  }
+
+  async getMasterOrdersByBuyer(buyerId: string): Promise<MasterOrder[]> {
+    return await db.select().from(masterOrders)
+      .where(eq(masterOrders.buyerId, buyerId))
+      .orderBy(desc(masterOrders.createdAt));
+  }
+
+  async createVendorOrder(order: InsertVendorOrder): Promise<VendorOrder> {
+    const result = await db.insert(vendorOrders).values(order).returning();
+    return result[0];
+  }
+
+  async getVendorOrder(id: string): Promise<VendorOrder | undefined> {
+    const result = await db.select().from(vendorOrders).where(eq(vendorOrders.id, id));
+    return result[0];
+  }
+
+  async getVendorOrdersByMaster(masterOrderId: string): Promise<VendorOrder[]> {
+    return await db.select().from(vendorOrders)
+      .where(eq(vendorOrders.masterOrderId, masterOrderId))
+      .orderBy(desc(vendorOrders.createdAt));
+  }
+
+  async getVendorOrdersByVendor(vendorId: string): Promise<VendorOrder[]> {
+    return await db.select().from(vendorOrders)
+      .where(eq(vendorOrders.vendorId, vendorId))
+      .orderBy(desc(vendorOrders.createdAt));
+  }
+
+  async getVendorOrdersByBuyer(buyerId: string): Promise<VendorOrder[]> {
+    return await db.select().from(vendorOrders)
+      .where(eq(vendorOrders.buyerId, buyerId))
+      .orderBy(desc(vendorOrders.createdAt));
+  }
+
+  async updateVendorOrderStatus(id: string, status: string): Promise<void> {
+    await db.update(vendorOrders).set({ status, updatedAt: new Date() }).where(eq(vendorOrders.id, id));
+  }
+
+  async updateVendorOrderPaymentStatus(id: string, paymentStatus: string): Promise<void> {
+    await db.update(vendorOrders).set({ paymentStatus, updatedAt: new Date() }).where(eq(vendorOrders.id, id));
   }
 
   // Spotlight operations

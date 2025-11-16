@@ -918,6 +918,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Multi-Vendor Checkout Route
+  app.post("/api/checkout", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!userEmail) {
+        return res.status(400).json({ error: "User email not available" });
+      }
+      
+      // Get user data
+      const user = await storage.getUser(userId);
+      const userName = user && user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : userEmail.split('@')[0];
+      
+      // Validate checkout data
+      const checkoutSchema = z.object({
+        phone: z.string().min(1, "Phone number is required"),
+        cartItems: z.array(z.object({
+          id: z.string(),
+          name: z.string(),
+          price: z.number(),
+          quantity: z.number(),
+          vendorId: z.string().optional(),
+          vendorName: z.string().optional(),
+          image: z.string().optional(),
+          variantId: z.string().optional(),
+          options: z.record(z.string()).optional(),
+        })),
+        fulfillmentType: z.string(), // "Pickup", "Delivery", "Ship"
+        fulfillmentDetails: z.any().optional(),
+        totals: z.object({
+          subtotal: z.number(),
+          tax: z.number(),
+          buyerFee: z.number(),
+          grandTotal: z.number(),
+        }),
+      });
+      
+      const { phone, cartItems, fulfillmentType, fulfillmentDetails, totals } = checkoutSchema.parse(req.body);
+      
+      // Group cart items by vendor
+      const itemsByVendor: Record<string, typeof cartItems> = {};
+      for (const item of cartItems) {
+        const vendorId = item.vendorId || 'unknown';
+        if (!itemsByVendor[vendorId]) {
+          itemsByVendor[vendorId] = [];
+        }
+        itemsByVendor[vendorId].push(item);
+      }
+      
+      // Create master order
+      const masterOrder = await storage.createMasterOrder({
+        buyerId: userId,
+        buyerName: userName,
+        buyerEmail: userEmail,
+        buyerPhone: phone,
+        totalCents: Math.round(totals.grandTotal * 100),
+        status: "pending",
+      });
+      
+      // Create vendor orders for each vendor
+      const vendorOrders = [];
+      for (const [vendorId, vendorItems] of Object.entries(itemsByVendor)) {
+        // Calculate vendor-specific totals
+        const vendorSubtotal = vendorItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const vendorTax = vendorSubtotal * 0.07; // 7% FL tax
+        const vendorFee = vendorSubtotal * 0.03; // 3% buyer fee
+        const vendorTotal = vendorSubtotal + vendorTax + vendorFee;
+        
+        // Get vendor to check payment methods
+        const vendor = await storage.getVendor(vendorId);
+        
+        // Determine payment method and link
+        let paymentMethod = 'cash';
+        let paymentLink = '';
+        
+        if (vendor) {
+          // Check vendor's preferred payment methods
+          const paymentPreferences = vendor.paymentPreferences || [];
+          
+          if (paymentPreferences.includes('Stripe Connect')) {
+            paymentMethod = 'stripe_connect';
+            // TODO: Create Stripe payment intent (will implement after adding Stripe blueprint)
+          } else if (paymentPreferences.includes('Venmo') && vendor.venmoHandle) {
+            paymentMethod = 'venmo';
+            paymentLink = `https://venmo.com/${vendor.venmoHandle}`;
+          } else if (paymentPreferences.includes('CashApp') && vendor.cashAppHandle) {
+            paymentMethod = 'cashapp';
+            paymentLink = `https://cash.app/$${vendor.cashAppHandle}`;
+          } else if (paymentPreferences.includes('Zelle')) {
+            paymentMethod = 'zelle';
+            paymentLink = vendor.email || userEmail;
+          } else if (paymentPreferences.includes('PayPal') && vendor.paypalEmail) {
+            paymentMethod = 'paypal';
+            paymentLink = `https://paypal.me/${vendor.paypalEmail}`;
+          }
+        }
+        
+        // Convert cart items to order format
+        const itemsJson = vendorItems.map(item => ({
+          productId: item.id,
+          productName: item.name,
+          quantity: item.quantity,
+          priceCents: Math.round(item.price * 100),
+          variantId: item.variantId,
+          options: item.options,
+          image: item.image,
+        }));
+        
+        // Create vendor order
+        const vendorOrder = await storage.createVendorOrder({
+          masterOrderId: masterOrder.id,
+          vendorId,
+          buyerId: userId,
+          buyerName: userName,
+          buyerEmail: userEmail,
+          buyerPhone: phone,
+          itemsJson,
+          subtotalCents: Math.round(vendorSubtotal * 100),
+          taxCents: Math.round(vendorTax * 100),
+          feesCents: Math.round(vendorFee * 100),
+          totalCents: Math.round(vendorTotal * 100),
+          fulfillmentType,
+          fulfillmentDetails,
+          paymentMethod,
+          paymentLink,
+          paymentStatus: 'pending',
+          status: 'pending',
+          vendorNotified: false,
+        });
+        
+        vendorOrders.push(vendorOrder);
+      }
+      
+      // Award loyalty points based on grand total
+      const totalDollars = totals.grandTotal;
+      const pointsEarned = Math.floor(totalDollars * 10);
+      
+      if (pointsEarned > 0) {
+        await storage.earnPoints(
+          userId,
+          pointsEarned,
+          "purchase",
+          `Order #${masterOrder.id.substring(0, 8)} - $${totalDollars.toFixed(2)}`,
+          masterOrder.id
+        );
+      }
+      
+      // Return master order with vendor orders
+      res.status(201).json({
+        masterOrder,
+        vendorOrders,
+        pointsEarned,
+      });
+    } catch (error) {
+      console.error("Checkout error:", error);
+      res.status(400).json({ error: "Checkout failed" });
+    }
+  });
+
   // Spotlight routes
   app.get("/api/spotlight/active", async (req, res) => {
     try {

@@ -58,28 +58,29 @@ export default function Checkout() {
       // Get fresh cart totals
       const latestTotals = cartTotals();
       
-      // Convert cart items to the format expected by the server
-      const itemsJson = cartItems.map(item => ({
-        productId: item.id,
-        productName: item.name,
-        quantity: item.quantity,
-        priceCents: Math.round(item.price * 100),
-      }));
-
-      // Server will use authenticated user's email and name from session
-      // We only send phone, shipping method, items, and amounts
-      const order = {
-        status: "pending",
+      // Multi-vendor checkout: send cart items with vendor info
+      const checkoutData = {
         phone,
-        shippingMethod: fulfillmentMethod,
-        itemsJson,
-        subtotalCents: Math.round(latestTotals.subtotal * 100),
-        taxCents: Math.round(latestTotals.tax * 100),
-        feesCents: Math.round(latestTotals.buyerFee * 100),
-        totalCents: Math.round(latestTotals.grandTotal * 100),
+        cartItems: cartItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          vendorId: item.vendorId,
+          vendorName: item.vendorName,
+          image: item.image,
+          variantId: item.variantId,
+          options: item.options,
+        })),
+        fulfillmentType: fulfillmentMethod,
+        fulfillmentDetails: {
+          type: fulfillmentMethod === "pickup" ? "Pickup" as const : "Delivery" as const,
+          // Add more fulfillment details as needed
+        },
+        totals: latestTotals,
       };
 
-      return apiRequest("POST", "/api/orders", order);
+      return apiRequest("POST", "/api/checkout", checkoutData);
     },
     onSuccess: () => {
       clearCart();
