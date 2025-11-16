@@ -90,6 +90,7 @@ export default function VendorDashboard() {
   const [activeTab, setActiveTab] = useState("profile");
   const [localValues, setLocalValues] = useState<string[]>([]);
   const [localSourcingPercent, setLocalSourcingPercent] = useState<number>(0);
+  const [localHours, setLocalHours] = useState<Record<string, string>>({});
   const [productPreviewDialogOpen, setProductPreviewDialogOpen] = useState(false);
   const [previewProductData, setPreviewProductData] = useState<any>(null);
   
@@ -108,6 +109,7 @@ export default function VendorDashboard() {
     if (vendor) {
       setLocalValues(vendor.values || []);
       setLocalSourcingPercent(vendor.localSourcingPercent || 0);
+      setLocalHours((vendor.hours as Record<string, string>) || {});
     }
   }, [vendor]);
 
@@ -344,6 +346,31 @@ export default function VendorDashboard() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="contactName">Owner / Contact Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="contactName"
+                    defaultValue={vendor.contactName || ""}
+                    placeholder="e.g., Jane Smith"
+                    data-testid="input-contact-name"
+                    required
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (!value) {
+                        toast({
+                          title: "Contact name required",
+                          description: "Please enter an owner or contact name for your business",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      if (value !== vendor.contactName) {
+                        updateVendorMutation.mutate({ contactName: value });
+                      }
+                    }}
+                  />
+                </div>
+
                 <HierarchicalCategorySelector
                   categories={SHOP_CATEGORIES}
                   selectedCategories={vendor.categories || []}
@@ -428,20 +455,44 @@ export default function VendorDashboard() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Contact Email (optional)</Label>
-                  <Input
-                    id="contactEmail"
-                    type="email"
-                    defaultValue={vendor.contactEmail || ""}
-                    placeholder="contact@example.com"
-                    data-testid="input-contact-email"
-                    onBlur={(e) => {
-                      if (e.target.value !== vendor.contactEmail) {
-                        updateVendorMutation.mutate({ contactEmail: e.target.value });
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contactEmail">Contact Email (optional)</Label>
+                    <Input
+                      id="contactEmail"
+                      type="email"
+                      defaultValue={vendor.contactEmail || ""}
+                      placeholder="contact@example.com"
+                      data-testid="input-contact-email"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.contactEmail) {
+                          updateVendorMutation.mutate({ contactEmail: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contactPhone">Phone Number</Label>
+                    <Input
+                      id="contactPhone"
+                      type="tel"
+                      defaultValue={
+                        typeof vendor.contact === 'object' && vendor.contact !== null && 'phone' in vendor.contact
+                          ? (vendor.contact as any).phone || ""
+                          : ""
                       }
-                    }}
-                  />
+                      placeholder="(239) 555-0123"
+                      data-testid="input-contact-phone"
+                      onBlur={(e) => {
+                        const currentContact = typeof vendor.contact === 'object' && vendor.contact !== null 
+                          ? vendor.contact as any 
+                          : {};
+                        const updatedContact = { ...currentContact, phone: e.target.value };
+                        updateVendorMutation.mutate({ contact: updatedContact });
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -491,6 +542,55 @@ export default function VendorDashboard() {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Business Hours Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Business Hours</CardTitle>
+                <CardDescription>Let customers know when you're available</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => {
+                  return (
+                    <div key={day} className="grid grid-cols-[120px_1fr] gap-4 items-center">
+                      <Label htmlFor={`hours-${day}`} className="capitalize">{day}</Label>
+                      <Input
+                        id={`hours-${day}`}
+                        value={localHours[day] || ""}
+                        placeholder="e.g., 9:00 AM - 5:00 PM or Closed"
+                        data-testid={`input-hours-${day}`}
+                        onChange={(e) => {
+                          const updatedHours = { ...localHours, [day]: e.target.value };
+                          setLocalHours(updatedHours);
+                        }}
+                        onBlur={(e) => {
+                          const updatedHours = { ...localHours, [day]: e.target.value };
+                          if (e.target.value !== ((vendor.hours as any) || {})[day]) {
+                            updateVendorMutation.mutate(
+                              { hours: updatedHours },
+                              {
+                                onSuccess: () => {
+                                  toast({
+                                    title: "Hours updated",
+                                    description: `Business hours for ${day} have been saved`,
+                                  });
+                                },
+                                onError: () => {
+                                  setLocalHours((vendor.hours as Record<string, string>) || {});
+                                },
+                              }
+                            );
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-muted-foreground pt-2">
+                  Enter your operating hours for each day, or type "Closed" for days you're not open
+                </p>
               </CardContent>
             </Card>
 
@@ -626,25 +726,46 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
-            {/* Profile Photo/Logo Section */}
+            {/* Profile Photo/Logo & Banner Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Profile Photo/Logo</CardTitle>
-                <CardDescription>Add a logo or profile photo to represent your business</CardDescription>
+                <CardTitle>Profile Photo/Logo & Cover Banner</CardTitle>
+                <CardDescription>Add visual branding to represent your business</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <ImageUpload
-                  currentImageUrl={vendor.logoUrl}
-                  onUploadComplete={(imageUrl) => {
-                    updateVendorMutation.mutate({ logoUrl: imageUrl });
-                  }}
-                  onRemove={() => {
-                    updateVendorMutation.mutate({ logoUrl: null });
-                  }}
-                  maxSizeMB={5}
-                  aspectRatio="square"
-                  disabled={updateVendorMutation.isPending}
-                />
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Profile Photo/Logo</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Square logo for profile display</p>
+                  <ImageUpload
+                    currentImageUrl={vendor.logoUrl}
+                    onUploadComplete={(imageUrl) => {
+                      updateVendorMutation.mutate({ logoUrl: imageUrl });
+                    }}
+                    onRemove={() => {
+                      updateVendorMutation.mutate({ logoUrl: null });
+                    }}
+                    maxSizeMB={5}
+                    aspectRatio="square"
+                    disabled={updateVendorMutation.isPending}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Cover Photo/Banner</Label>
+                  <p className="text-sm text-muted-foreground mb-2">Wide banner image for profile header</p>
+                  <ImageUpload
+                    currentImageUrl={vendor.bannerUrl}
+                    onUploadComplete={(imageUrl) => {
+                      updateVendorMutation.mutate({ bannerUrl: imageUrl });
+                    }}
+                    onRemove={() => {
+                      updateVendorMutation.mutate({ bannerUrl: null });
+                    }}
+                    maxSizeMB={5}
+                    aspectRatio="landscape"
+                    disabled={updateVendorMutation.isPending}
+                  />
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
