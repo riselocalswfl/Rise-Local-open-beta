@@ -397,6 +397,73 @@ export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
 export type InsertOrderItemWithoutOrderId = z.infer<typeof insertOrderItemWithoutOrderIdSchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 
+// ===== MULTI-VENDOR CHECKOUT TABLES =====
+
+export const masterOrders = pgTable("master_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  buyerId: varchar("buyer_id").notNull().references(() => users.id),
+  buyerName: text("buyer_name").notNull(),
+  buyerEmail: text("buyer_email").notNull(),
+  buyerPhone: text("buyer_phone").notNull(),
+  totalCents: integer("total_cents").notNull(), // Grand total across all vendor orders
+  status: text("status").notNull().default("pending"), // pending, completed, cancelled
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const insertMasterOrderSchema = createInsertSchema(masterOrders).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMasterOrder = z.infer<typeof insertMasterOrderSchema>;
+export type MasterOrder = typeof masterOrders.$inferSelect;
+
+export const vendorOrders = pgTable("vendor_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  masterOrderId: varchar("master_order_id").notNull().references(() => masterOrders.id),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  buyerId: varchar("buyer_id").notNull().references(() => users.id),
+  buyerName: text("buyer_name").notNull(),
+  buyerEmail: text("buyer_email").notNull(),
+  buyerPhone: text("buyer_phone").notNull(),
+  
+  // Order details
+  itemsJson: jsonb("items_json").notNull(), // Cart items for this vendor
+  subtotalCents: integer("subtotal_cents").notNull(),
+  taxCents: integer("tax_cents").notNull(),
+  feesCents: integer("fees_cents").notNull(),
+  totalCents: integer("total_cents").notNull(),
+  
+  // Fulfillment
+  fulfillmentType: text("fulfillment_type").notNull(), // "Pickup", "Delivery", "Ship"
+  fulfillmentDetails: jsonb("fulfillment_details"), // Method-specific details
+  
+  // Payment
+  paymentMethod: text("payment_method"), // "stripe_connect", "venmo", "cashapp", "zelle", "paypal", "cash", "custom"
+  paymentLink: text("payment_link"), // For custom payment methods (Venmo, CashApp links, etc.)
+  stripePaymentIntentId: text("stripe_payment_intent_id"), // For Stripe Connect
+  stripeAccountId: text("stripe_account_id"), // Vendor's Stripe Connect account
+  paymentStatus: text("payment_status").notNull().default("pending"), // pending, paid, failed
+  
+  // Status
+  status: text("status").notNull().default("pending"), // pending, processing, fulfilled, cancelled
+  vendorNotified: boolean("vendor_notified").default(false),
+  
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+export const insertVendorOrderSchema = createInsertSchema(vendorOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  fulfillmentDetails: fulfillmentDetailsSchema.optional(),
+});
+
+export type InsertVendorOrder = z.infer<typeof insertVendorOrderSchema>;
+export type VendorOrder = typeof vendorOrders.$inferSelect;
+
 export const spotlight = pgTable("spotlight", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
