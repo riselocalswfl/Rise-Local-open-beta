@@ -161,9 +161,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate file size
-      if (metadata.size && metadata.size > MAX_FILE_SIZE_BYTES) {
+      const fileSize = typeof metadata.size === 'string' ? parseInt(metadata.size) : metadata.size;
+      if (fileSize && fileSize > MAX_FILE_SIZE_BYTES) {
         return res.status(400).json({ 
-          error: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Received: ${(metadata.size / 1024 / 1024).toFixed(2)}MB` 
+          error: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Received: ${(fileSize / 1024 / 1024).toFixed(2)}MB` 
         });
       }
       
@@ -1745,18 +1746,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (paymentPreferences.includes('Stripe Connect')) {
             paymentMethod = 'stripe_connect';
-          } else if (paymentPreferences.includes('Venmo') && vendor.venmoHandle) {
+          } else if (paymentPreferences.includes('Venmo') && (vendor.paymentHandles as any)?.venmo) {
             paymentMethod = 'venmo';
-            paymentLink = `https://venmo.com/${vendor.venmoHandle}`;
-          } else if (paymentPreferences.includes('CashApp') && vendor.cashAppHandle) {
+            paymentLink = `https://venmo.com/${(vendor.paymentHandles as any).venmo}`;
+          } else if (paymentPreferences.includes('CashApp') && (vendor.paymentHandles as any)?.cashapp) {
             paymentMethod = 'cashapp';
-            paymentLink = `https://cash.app/$${vendor.cashAppHandle}`;
+            paymentLink = `https://cash.app/$${(vendor.paymentHandles as any).cashapp}`;
           } else if (paymentPreferences.includes('Zelle')) {
             paymentMethod = 'zelle';
-            paymentLink = vendor.email || userEmail;
-          } else if (paymentPreferences.includes('PayPal') && vendor.paypalEmail) {
+            paymentLink = vendor.contactEmail || userEmail;
+          } else if (paymentPreferences.includes('PayPal') && (vendor.paymentHandles as any)?.paypal) {
             paymentMethod = 'paypal';
-            paymentLink = `https://paypal.me/${vendor.paypalEmail}`;
+            paymentLink = `https://paypal.me/${(vendor.paymentHandles as any).paypal}`;
           }
         }
         
