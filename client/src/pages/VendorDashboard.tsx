@@ -57,7 +57,6 @@ export default function VendorDashboard() {
   const [activeTab, setActiveTab] = useState("profile");
   const [localValues, setLocalValues] = useState<string[]>([]);
   const [localSourcingPercent, setLocalSourcingPercent] = useState<number>(0);
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [productPreviewDialogOpen, setProductPreviewDialogOpen] = useState(false);
   const [previewProductData, setPreviewProductData] = useState<any>(null);
   
@@ -280,26 +279,6 @@ export default function VendorDashboard() {
 
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-6">
-            {/* Preview Button at Top */}
-            <div className="flex justify-end">
-              <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" data-testid="button-preview-profile">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Preview Public Profile
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
-                  <DialogHeader>
-                    <DialogTitle className="text-[#222]">Public Profile Preview</DialogTitle>
-                  </DialogHeader>
-                  <div className="bg-white rounded-md shadow-md border border-gray-200 p-6">
-                    <ProfilePreview vendor={vendor} />
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
             {/* Business Info Section */}
             <Card>
               <CardHeader>
@@ -1458,128 +1437,6 @@ function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; is
         </div>
       </form>
     </Form>
-  );
-}
-
-// Profile Preview Component
-function ProfilePreview({ vendor }: { vendor: Vendor }) {
-  return (
-    <div className="space-y-6 text-[#222]">
-      {/* Hero/Banner */}
-      {vendor.bannerUrl && (
-        <div className="relative h-40 bg-gray-100 rounded-md overflow-hidden">
-          <img 
-            src={vendor.bannerUrl} 
-            alt={vendor.businessName}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
-
-      {/* Profile Header */}
-      <div className="flex items-start gap-4">
-        {vendor.logoUrl && (
-          <img 
-            src={vendor.logoUrl}
-            alt={`${vendor.businessName} logo`}
-            className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
-          />
-        )}
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold mb-1 text-[#222]">{vendor.businessName}</h2>
-          {vendor.tagline && (
-            <p className="text-gray-600 mb-2">{vendor.tagline}</p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {vendor.isVerified && (
-              <Badge variant="default">Verified</Badge>
-            )}
-            <Badge variant="secondary">{vendor.category}</Badge>
-          </div>
-        </div>
-      </div>
-
-      {/* Bio */}
-      {vendor.bio && (
-        <div>
-          <h3 className="font-semibold mb-2 text-[#222]">About</h3>
-          <p className="text-sm text-gray-600">{vendor.bio}</p>
-        </div>
-      )}
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="bg-white">
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-[#222]">{vendor.localSourcingPercent || 0}%</div>
-              <div className="text-xs text-gray-600">Local Sourcing</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white">
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-sm font-medium text-[#222]">
-                {vendor.paymentPreferences && vendor.paymentPreferences.length > 0 
-                  ? vendor.paymentPreferences.join(", ") 
-                  : 'N/A'}
-              </div>
-              <div className="text-xs text-gray-600">Payment Methods</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Payment Methods */}
-      {vendor.paymentPreferences && vendor.paymentPreferences.length > 0 && (
-        <div>
-          <h3 className="font-semibold mb-2 text-[#222]">Accepted Payment Methods</h3>
-          <div className="flex flex-wrap gap-2">
-            {vendor.paymentPreferences.map((method, i) => (
-              <Badge key={i} variant="outline" className="text-[#222]">{method}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Values */}
-      {vendor.values && vendor.values.length > 0 && (
-        <div>
-          <h3 className="font-semibold mb-2 text-[#222]">Values</h3>
-          <div className="flex flex-wrap gap-2">
-            {vendor.values.map((value, i) => (
-              <Badge key={i} variant="outline" className="text-[#222]">{value}</Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Contact Info */}
-      <div>
-        <h3 className="font-semibold mb-2 text-[#222]">Contact</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          {vendor.contactEmail && (
-            <div>Email: {vendor.contactEmail}</div>
-          )}
-          {vendor.website && (
-            <div>Website: {vendor.website}</div>
-          )}
-          {vendor.instagram && (
-            <div>Instagram: @{vendor.instagram.replace('@', '')}</div>
-          )}
-          {vendor.facebook && (
-            <div>Facebook: {vendor.facebook}</div>
-          )}
-          <div>Location: {vendor.city}, {vendor.state} {vendor.zipCode}</div>
-        </div>
-      </div>
-
-      {/* Member Since */}
-      <div className="text-sm text-gray-600 border-t border-gray-300 pt-4">
-        Member since {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
-      </div>
-    </div>
   );
 }
 
