@@ -1143,6 +1143,16 @@ export default function VendorDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Processing</CardTitle>
+                <CardDescription>Connect your Stripe account to accept online payments</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <StripeConnectSection vendorId={vendor.id} />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -1771,6 +1781,134 @@ function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
           Status: {product.status === "active" ? "Active (Visible to customers)" : "Hidden (Not visible to customers)"}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ========== STRIPE CONNECT COMPONENT ==========
+
+function StripeConnectSection({ vendorId }: { vendorId: string }) {
+  const [isConnecting, setIsConnecting] = useState(false);
+  const { toast } = useToast();
+
+  const { data: connectStatus, isLoading, refetch } = useQuery<{
+    connected: boolean;
+    onboardingComplete: boolean;
+    chargesEnabled?: boolean;
+    detailsSubmitted?: boolean;
+  }>({
+    queryKey: ["/api/stripe/connect-status"],
+  });
+
+  const handleConnectStripe = async () => {
+    setIsConnecting(true);
+    try {
+      const response = await apiRequest("POST", "/api/stripe/create-connect-account", {});
+      
+      if (response.url) {
+        window.location.href = response.url;
+      }
+    } catch (error) {
+      toast({
+        title: "Connection Failed",
+        description: "Failed to create Stripe Connect account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe_success') === 'true') {
+      toast({
+        title: "Stripe Connected!",
+        description: "Your Stripe account has been successfully connected.",
+      });
+      refetch();
+      window.history.replaceState({}, '', '/dashboard');
+    } else if (params.get('stripe_refresh') === 'true') {
+      toast({
+        title: "Setup Incomplete",
+        description: "Please complete your Stripe account setup to accept payments.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, [refetch, toast]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {connectStatus?.connected && connectStatus?.onboardingComplete ? (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="font-semibold text-green-900">Stripe Connected</h4>
+              <p className="text-sm text-green-700">You're all set to accept online payments!</p>
+            </div>
+          </div>
+        </div>
+      ) : connectStatus?.connected ? (
+        <div className="space-y-3">
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-semibold text-yellow-900">Setup Incomplete</h4>
+                <p className="text-sm text-yellow-700">Please complete your Stripe account setup</p>
+              </div>
+            </div>
+          </div>
+          <Button
+            onClick={handleConnectStripe}
+            disabled={isConnecting}
+            data-testid="button-complete-stripe-setup"
+          >
+            {isConnecting ? "Connecting..." : "Complete Stripe Setup"}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-muted-foreground">
+            Connect your Stripe account to accept credit card payments from customers. Rise Local uses Stripe Connect to securely process payments and transfer funds directly to your account.
+          </p>
+          <div className="bg-muted p-4 rounded-md space-y-2">
+            <h4 className="font-medium">Benefits:</h4>
+            <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+              <li>Accept credit and debit cards</li>
+              <li>Fast deposits (2-3 business days)</li>
+              <li>Secure, PCI-compliant processing</li>
+              <li>Automatic tax calculation</li>
+              <li>No setup fees or monthly charges</li>
+            </ul>
+          </div>
+          <Button
+            onClick={handleConnectStripe}
+            disabled={isConnecting}
+            data-testid="button-connect-stripe"
+          >
+            {isConnecting ? "Connecting..." : "Connect with Stripe"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
