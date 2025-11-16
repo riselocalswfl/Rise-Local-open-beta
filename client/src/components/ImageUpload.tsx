@@ -53,9 +53,8 @@ export function ImageUpload({
 
       try {
         // Step 1: Get presigned upload URL from backend
-        const { uploadURL } = await apiRequest("/api/objects/upload", {
-          method: "POST",
-        });
+        const uploadUrlResponse = await apiRequest("POST", "/api/objects/upload");
+        const { uploadURL } = await uploadUrlResponse.json();
 
         setUploadProgress(25);
 
@@ -75,10 +74,8 @@ export function ImageUpload({
         setUploadProgress(75);
 
         // Step 3: Set ACL policy and get normalized path
-        const { objectPath } = await apiRequest("/api/images", {
-          method: "PUT",
-          body: JSON.stringify({ imageURL: uploadURL }),
-        });
+        const aclResponse = await apiRequest("PUT", "/api/images", { imageURL: uploadURL });
+        const { objectPath } = await aclResponse.json();
 
         setUploadProgress(100);
 
