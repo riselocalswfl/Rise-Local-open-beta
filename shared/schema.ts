@@ -206,6 +206,10 @@ export const vendors = pgTable("vendors", {
   paymentPreferences: text("payment_preferences").array().default(sql`'{}'::text[]`), // Multiple payment methods: Direct, Venmo, Zelle, CashApp, PayPal, Cash, custom options
   paymentHandles: jsonb("payment_handles"), // {venmo: "@username", square: "id", etc.}
   
+  // Stripe Connect
+  stripeConnectAccountId: text("stripe_connect_account_id"), // Stripe Connect account ID for receiving payments
+  stripeOnboardingComplete: boolean("stripe_onboarding_complete").default(false), // Whether vendor completed Stripe onboarding
+  
   // Membership & Verification
   isFoundingMember: boolean("is_founding_member").notNull().default(false), // First 25 vendors
   isVerified: boolean("is_verified").notNull().default(false),

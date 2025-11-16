@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
+import Stripe from "stripe";
 import { 
   insertUserSchema, 
   insertVendorSchema, 
@@ -27,6 +28,14 @@ import {
   type FulfillmentOptions
 } from "@shared/schema";
 import { z } from "zod";
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2025-10-29.clover",
+});
 
 // Helper function to derive serviceOptions from fulfillmentOptions
 function deriveServiceOptions(fulfillment: FulfillmentOptions): string[] {
@@ -1036,6 +1045,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== STRIPE CONNECT ROUTES =====
+  
+  // Create Stripe Connect account link for vendor onboarding
+  app.post("/api/stripe/create-connect-account", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendor = await storage.getVendorByOwnerId(userId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+
+      let accountId = vendor.stripeConnectAccountId;
+
+      // Create Stripe Connect account if it doesn't exist
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: 'express',
+          country: 'US',
+          email: vendor.contactEmail || req.user.claims.email,
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
+          business_profile: {
+            name: vendor.businessName,
+            support_email: vendor.contactEmail || req.user.claims.email,
+          },
+        });
+        
+        accountId = account.id;
+        
+        // Save the account ID to the vendor
+        await storage.updateVendor(vendor.id, {
+          stripeConnectAccountId: accountId,
+        });
+      }
+
+      // Create account link for onboarding
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${req.protocol}://${req.get('host')}/dashboard?stripe_refresh=true`,
+        return_url: `${req.protocol}://${req.get('host')}/dashboard?stripe_success=true`,
+        type: 'account_onboarding',
+      });
+
+      res.json({ url: accountLink.url });
+    } catch (error: any) {
+      console.error("Error creating Stripe Connect account:", error);
+      res.status(500).json({ error: error.message || "Failed to create Connect account" });
+    }
+  });
+
+  // Check Stripe Connect account status
+  app.get("/api/stripe/connect-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendor = await storage.getVendorByOwnerId(userId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+
+      if (!vendor.stripeConnectAccountId) {
+        return res.json({ 
+          connected: false,
+          onboardingComplete: false
+        });
+      }
+
+      // Get account details from Stripe
+      const account = await stripe.accounts.retrieve(vendor.stripeConnectAccountId);
+      
+      const onboardingComplete = account.charges_enabled && account.details_submitted;
+      
+      // Update vendor onboarding status if it changed
+      if (onboardingComplete !== vendor.stripeOnboardingComplete) {
+        await storage.updateVendor(vendor.id, {
+          stripeOnboardingComplete: onboardingComplete,
+        });
+      }
+
+      res.json({
+        connected: true,
+        onboardingComplete,
+        chargesEnabled: account.charges_enabled,
+        detailsSubmitted: account.details_submitted,
+      });
+    } catch (error: any) {
+      console.error("Error checking Connect status:", error);
+      res.status(500).json({ error: error.message || "Failed to check Connect status" });
+    }
+  });
+
+  // Create payment intent for checkout (splits payment to vendors)
+  app.post("/api/stripe/create-payment-intent", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { vendorOrders } = req.body;
+      
+      if (!Array.isArray(vendorOrders) || vendorOrders.length === 0) {
+        return res.status(400).json({ error: "Vendor orders required" });
+      }
+
+      // Calculate total amount
+      const totalCents = vendorOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
+
+      // Create payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: totalCents,
+        currency: 'usd',
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          buyerId: userId,
+          vendorCount: vendorOrders.length.toString(),
+        },
+      });
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+      });
+    } catch (error: any) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ error: error.message || "Failed to create payment intent" });
+    }
+  });
+
+  // ===== MULTI-VENDOR CHECKOUT =====
+  
   // Multi-Vendor Checkout Route
   app.post("/api/checkout", isAuthenticated, async (req: any, res) => {
     try {
