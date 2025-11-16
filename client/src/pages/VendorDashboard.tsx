@@ -295,7 +295,55 @@ export default function VendorDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          {/* Mobile Select Dropdown */}
+          <div className="md:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full" data-testid="select-dashboard-section">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="profile" data-testid="select-option-profile">
+                  <div className="flex items-center gap-2">
+                    <Store className="w-4 h-4" />
+                    <span>Profile</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="products" data-testid="select-option-products">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-4 h-4" />
+                    <span>Products ({products.length})</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="orders" data-testid="select-option-orders">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Orders ({vendorOrders.length})</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="events" data-testid="select-option-events">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span>Events ({events.length})</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="faqs" data-testid="select-option-faqs">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4" />
+                    <span>FAQs ({faqs.length})</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="settings" data-testid="select-option-settings">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    <span>Settings</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop TabsList */}
+          <TabsList className="hidden md:grid w-full grid-cols-6">
             <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
               <Store className="w-4 h-4" />
               Profile
