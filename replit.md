@@ -78,6 +78,24 @@ Preferred communication style: Simple, everyday language.
 - **Shopping Cart**: A React Context-based system with localStorage persistence, handling product variants, and automatically calculating totals (subtotal, 7% FL sales tax, 3% buyer fee).
 - **Direct Messaging**: Users can send direct messages to vendors and vice versa. Real-time updates via polling (5s for threads, 10s for unread counts), with read status tracking. Messages page includes vendor search to start new conversations - searches across business name, bio, tagline, categories, and values.
 
+### Stripe Connect Payment Flow (November 2025)
+- **Vendor Onboarding**: Vendors connect their bank accounts through Stripe Connect Express accounts via the Settings tab in their dashboard
+- **Account Status Tracking**: Database stores `stripeConnectAccountId` and `stripeOnboardingComplete` fields for vendors, restaurants, and service providers
+- **Payment Collection**: Buyers pay the full amount (subtotal + 7% FL sales tax + 3% buyer fee) to the platform's Stripe account
+- **Automatic Transfers**: When payment succeeds (via `payment_intent.succeeded` webhook), the platform:
+  1. Calculates vendor's portion: Total amount minus 3% platform fee
+  2. Creates Stripe transfer to vendor's connected account
+  3. Retains 3% buyer fee as revenue
+- **Multi-Vendor Support**: Single checkout supports multiple vendors; each vendor receives their portion automatically via separate transfers
+- **Transfer Formula**: `vendorReceives = vendorTotal - (subtotal * 0.03)` where `vendorTotal = subtotal + (subtotal * 0.07) + (subtotal * 0.03)`
+- **API Endpoints**:
+  - `POST /api/stripe/create-account`: Creates Stripe Connect Express account for vendor
+  - `POST /api/stripe/create-onboarding-link`: Generates onboarding URL for bank account setup
+  - `GET /api/stripe/account-status`: Checks vendor's Stripe Connect account status
+  - `POST /api/stripe/webhook`: Handles account updates and payment processing
+  - `POST /api/stripe/create-payment-intent`: Creates payment intent with vendor metadata for transfers
+- **Dashboard Integration**: StripeConnectCard component in vendor dashboard shows connection status with appropriate CTAs (connect, complete setup, or connected)
+
 ### Application Routes
 - **Public**: Includes `/`, `/products`, `/vendors`, `/vendor/:id`, `/events`, `/spotlight`, `/login`, `/signup`.
 - **User**: Specific routes for `/cart`, `/checkout`, `/events/my`, `/messages`, `/messages/:userId`.

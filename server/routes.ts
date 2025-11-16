@@ -627,7 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stripe webhook endpoint for account updates
+  // Stripe webhook endpoint for account updates and payment processing
   app.post("/api/stripe/webhook", async (req, res) => {
     const sig = req.headers['stripe-signature'];
     
@@ -645,6 +645,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // For development without webhook secret
         event = req.body as Stripe.Event;
+      }
+
+      // Handle payment_intent.succeeded - create transfers to vendors
+      if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const metadata = paymentIntent.metadata;
+        
+        if (metadata.vendorCount) {
+          const vendorCount = parseInt(metadata.vendorCount);
+          
+          // Process each vendor transfer
+          for (let i = 0; i < vendorCount; i++) {
+            const vendorId = metadata[`vendor_${i}_id`];
+            const vendorAmountCents = parseInt(metadata[`vendor_${i}_amount`]);
+            
+            if (vendorId && vendorAmountCents) {
+              try {
+                // Get vendor's Stripe Connect account ID
+                const vendor = await storage.getVendor(vendorId);
+                
+                if (vendor?.stripeConnectAccountId && vendor?.stripeOnboardingComplete) {
+                  // Calculate platform fee (3% of subtotal, which is already included in vendorAmountCents)
+                  // The vendorAmountCents includes: subtotal + tax + buyerFee (3%)
+                  // We need to calculate: subtotal (without tax and fee), then apply 3% fee
+                  // Formula: vendorAmountCents = subtotal + (subtotal * 0.07) + (subtotal * 0.03)
+                  // So: subtotal = vendorAmountCents / 1.10
+                  const subtotal = Math.round(vendorAmountCents / 1.10);
+                  const platformFeeCents = Math.round(subtotal * 0.03);
+                  const vendorReceivesCents = vendorAmountCents - platformFeeCents;
+                  
+                  // Create transfer to vendor's connected account
+                  await stripe.transfers.create({
+                    amount: vendorReceivesCents,
+                    currency: 'usd',
+                    destination: vendor.stripeConnectAccountId,
+                    transfer_group: paymentIntent.id,
+                    metadata: {
+                      vendorId: vendor.id,
+                      paymentIntentId: paymentIntent.id,
+                      platformFeeCents: platformFeeCents.toString(),
+                    },
+                  });
+                  
+                  console.log(`Transfer created for vendor ${vendorId}: $${(vendorReceivesCents / 100).toFixed(2)} (platform fee: $${(platformFeeCents / 100).toFixed(2)})`);
+                } else {
+                  console.warn(`Vendor ${vendorId} does not have Stripe Connect configured`);
+                }
+              } catch (error) {
+                console.error(`Failed to create transfer for vendor ${vendorId}:`, error);
+                // Continue processing other vendors even if one fails
+              }
+            }
+          }
+        }
       }
 
       // Handle account.updated events
@@ -1569,7 +1623,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate total amount
       const totalCents = vendorOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
 
-      // Create payment intent
+      // Store vendor order breakdown in metadata for webhook processing
+      const vendorOrdersMetadata = vendorOrders.map((order: any, index: number) => ({
+        [`vendor_${index}_id`]: order.vendorId,
+        [`vendor_${index}_amount`]: order.totalCents.toString(),
+      })).reduce((acc, obj) => ({ ...acc, ...obj }), {});
+
+      // Create payment intent that collects on platform account
+      // After payment succeeds, webhook will create transfers to vendor accounts
       const paymentIntent = await stripe.paymentIntents.create({
         amount: totalCents,
         currency: 'usd',
@@ -1579,6 +1640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: {
           buyerId: userId,
           vendorCount: vendorOrders.length.toString(),
+          ...vendorOrdersMetadata,
         },
       });
 
