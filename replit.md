@@ -56,6 +56,17 @@ Preferred communication style: Simple, everyday language.
 - **Simplified Fields**: Removed banner image, color customization, profile status display, and system info section for streamlined vendor setup
 - **Custom Fulfillment**: Vendors can add custom fulfillment options (e.g., "Farmers Market Booth", "Curbside Pickup")
 
+### Product Category Filtering (November 2025)
+- **Dynamic Category Selection**: Products can only be categorized using categories the vendor has selected on their profile
+- **Filter Logic**:
+  - If vendor selected parent category → product form shows all its children
+  - If vendor selected specific children → product form shows only those children
+  - Category group only shown if vendor selected at least one child from it
+- **Implementation**: `filterVendorCategories()` helper function filters SHOP_CATEGORIES based on `vendor.categories` array
+- **State Management**: HierarchicalCategorySelector integrated with React Hook Form using FormField for proper state synchronization
+- **Database**: Products table has `categories` array field storing selected category strings
+- **Note**: Products support multi-category selection; categories stored as text array in PostgreSQL
+
 ### Key Business Logic
 - **Pricing Model**: Vendors pay a $150/month membership fee, buyers incur a 3% fee, and there are no per-transaction vendor fees.
 - **Platform Focus**: Exclusively serves local Fort Myers vendors and products.
