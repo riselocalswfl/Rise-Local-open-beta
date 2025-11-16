@@ -918,6 +918,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get vendor's incoming orders
+  app.get("/api/vendor-orders/my", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get vendor profile for this user
+      const vendor = await storage.getVendorByOwnerId(userId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+      
+      // Get all vendor orders for this vendor
+      const vendorOrders = await storage.getVendorOrdersByVendor(vendor.id);
+      
+      res.json(vendorOrders);
+    } catch (error) {
+      console.error("Error fetching vendor orders:", error);
+      res.status(500).json({ error: "Failed to fetch vendor orders" });
+    }
+  });
+
+  // Update vendor order status
+  app.patch("/api/vendor-orders/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      // Get vendor profile for this user
+      const vendor = await storage.getVendorByOwnerId(userId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+      
+      // Get the order to verify ownership
+      const order = await storage.getVendorOrder(id);
+      
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.vendorId !== vendor.id) {
+        return res.status(403).json({ error: "Not authorized to update this order" });
+      }
+      
+      // Update the order status
+      await storage.updateVendorOrderStatus(id, status);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ error: "Failed to update order status" });
+    }
+  });
+
+  // Update vendor order payment status
+  app.patch("/api/vendor-orders/:id/payment", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { paymentStatus } = req.body;
+      
+      // Get vendor profile for this user
+      const vendor = await storage.getVendorByOwnerId(userId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+      
+      // Get the order to verify ownership
+      const order = await storage.getVendorOrder(id);
+      
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      
+      if (order.vendorId !== vendor.id) {
+        return res.status(403).json({ error: "Not authorized to update this order" });
+      }
+      
+      // Update the payment status
+      await storage.updateVendorOrderPaymentStatus(id, paymentStatus);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      res.status(500).json({ error: "Failed to update payment status" });
+    }
+  });
+
   // Get current user's orders (master orders with vendor orders)
   app.get("/api/orders/me", isAuthenticated, async (req: any, res) => {
     try {

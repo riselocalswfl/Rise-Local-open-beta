@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart } from "lucide-react";
 import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
@@ -123,6 +123,12 @@ export default function VendorDashboard() {
 
   const { data: faqs = [] } = useQuery<VendorFAQ[]>({
     queryKey: [`/api/vendors/${vendor?.id}/faqs`],
+    enabled: !!vendor?.id,
+  });
+
+  // Fetch vendor orders
+  const { data: vendorOrders = [] } = useQuery<any[]>({
+    queryKey: ["/api/vendor-orders/my"],
     enabled: !!vendor?.id,
   });
 
@@ -287,7 +293,7 @@ export default function VendorDashboard() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
               <Store className="w-4 h-4" />
               Profile
@@ -295,6 +301,10 @@ export default function VendorDashboard() {
             <TabsTrigger value="products" className="gap-2" data-testid="tab-products">
               <Package className="w-4 h-4" />
               Products ({products.length})
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="gap-2" data-testid="tab-orders">
+              <ShoppingCart className="w-4 h-4" />
+              Orders ({vendorOrders.length})
             </TabsTrigger>
             <TabsTrigger value="events" className="gap-2" data-testid="tab-events">
               <Calendar className="w-4 h-4" />
@@ -776,6 +786,151 @@ export default function VendorDashboard() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders">
+            <Card>
+              <CardHeader>
+                <CardTitle>Incoming Orders</CardTitle>
+                <CardDescription>Manage customer orders and fulfillment</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {vendorOrders.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No orders yet. Orders will appear here when customers purchase your products.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {vendorOrders.map((order: any) => (
+                      <Card key={order.id} className="border-muted" data-testid={`card-order-${order.id}`}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-base">Order #{order.id.substring(0, 8).toUpperCase()}</CardTitle>
+                              <CardDescription className="mt-1">
+                                {order.buyerName} • {order.buyerEmail}
+                              </CardDescription>
+                            </div>
+                            <div className="flex flex-col gap-2 items-end">
+                              <Badge variant="secondary" data-testid={`badge-status-${order.id}`}>
+                                {order.status}
+                              </Badge>
+                              <Badge 
+                                variant={order.paymentStatus === 'paid' ? 'default' : 'outline'}
+                                data-testid={`badge-payment-${order.id}`}
+                              >
+                                {order.paymentStatus}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <h4 className="font-medium text-sm">Items</h4>
+                            {order.itemsJson?.map((item: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-2">
+                                  {item.image && (
+                                    <img src={item.image} alt={item.productName} className="w-8 h-8 object-cover rounded" />
+                                  )}
+                                  <span>{item.productName} (x{item.quantity})</span>
+                                </div>
+                                <span className="font-medium">${(item.priceCents * item.quantity / 100).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <Separator />
+
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Subtotal</p>
+                              <p className="font-medium">${(order.subtotalCents / 100).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Tax</p>
+                              <p className="font-medium">${(order.taxCents / 100).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Fees</p>
+                              <p className="font-medium">${(order.feesCents / 100).toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Total</p>
+                              <p className="font-semibold text-lg">${(order.totalCents / 100).toFixed(2)}</p>
+                            </div>
+                          </div>
+
+                          <Separator />
+
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Fulfillment</p>
+                              <p className="font-medium capitalize">{order.fulfillmentType}</p>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm text-muted-foreground">Contact</p>
+                              <p className="text-sm">{order.buyerPhone}</p>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Select
+                                value={order.status}
+                                onValueChange={async (value) => {
+                                  try {
+                                    await apiRequest("PATCH", `/api/vendor-orders/${order.id}/status`, { status: value });
+                                    queryClient.invalidateQueries({ queryKey: ["/api/vendor-orders/my"] });
+                                    toast({ title: "Order status updated" });
+                                  } catch (error) {
+                                    toast({ title: "Failed to update status", variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="flex-1" data-testid={`select-status-${order.id}`}>
+                                  <SelectValue placeholder="Update status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="processing">Processing</SelectItem>
+                                  <SelectItem value="ready">Ready for Pickup</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              <Select
+                                value={order.paymentStatus}
+                                onValueChange={async (value) => {
+                                  try {
+                                    await apiRequest("PATCH", `/api/vendor-orders/${order.id}/payment`, { paymentStatus: value });
+                                    queryClient.invalidateQueries({ queryKey: ["/api/vendor-orders/my"] });
+                                    toast({ title: "Payment status updated" });
+                                  } catch (error) {
+                                    toast({ title: "Failed to update payment status", variant: "destructive" });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="flex-1" data-testid={`select-payment-${order.id}`}>
+                                  <SelectValue placeholder="Payment status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Payment Pending</SelectItem>
+                                  <SelectItem value="paid">Paid</SelectItem>
+                                  <SelectItem value="failed">Failed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
