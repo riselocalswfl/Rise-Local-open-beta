@@ -47,14 +47,16 @@ Preferred communication style: Simple, everyday language.
 
 ### Vendor Dashboard Organization (November 2025)
 - **Card Structure**: Dashboard organized into dedicated cards for clear separation of concerns:
-  - **Business Info**: Basic business details (name, tagline, description, bio)
-  - **Location & Contact**: Address, phone, email, website, social media
+  - **Business Info**: Business name (required), owner/contact name (required with validation), hierarchical categories, tagline, and bio
+  - **Location & Contact**: City, zip code, contact email, phone number (stored in vendor.contact JSONB), website, Instagram, Facebook
+  - **Business Hours**: 7-day week editor with controlled inputs using local state to prevent data loss when editing multiple days
   - **Business Values**: Local sourcing slider and value tags (e.g., organic, sustainable, fair-trade)
   - **Payment Methods** (separate card): Standard payment checkboxes (Direct, Venmo, Zelle, CashApp, PayPal, Cash) and custom payment methods input
   - **Fulfillment Methods**: Pickup, delivery, shipping options with custom methods support
-  - **Profile Photo/Logo**: Image upload section (simplified from previous "Visual Identity" section)
-- **Simplified Fields**: Removed banner image, color customization, profile status display, and system info section for streamlined vendor setup
+  - **Profile Photo/Logo & Cover Banner**: Square logo upload and landscape banner/cover photo upload sections
+- **Required Fields**: Business name and owner/contact name are marked as required; contact name has client-side validation preventing empty submissions
 - **Custom Fulfillment**: Vendors can add custom fulfillment options (e.g., "Farmers Market Booth", "Curbside Pickup")
+- **Complete Vendor Onboarding Checklist**: All required fields are collected: business name, vendor category, owner/contact name, email, phone, address/area, bio, logo, cover banner, payment methods, and business hours
 
 ### Product Category Filtering (November 2025)
 - **Dynamic Category Selection**: Products can only be categorized using categories the vendor has selected on their profile
