@@ -79,7 +79,7 @@ export default function OrderConfirmation() {
   const orderData = sessionStorage.getItem("lastOrder");
   const lastOrder: OrderConfirmationData | null = orderData ? JSON.parse(orderData) : null;
 
-  const vendorIds = lastOrder?.vendorOrders.map(o => o.vendorId) || [];
+  const vendorIds = lastOrder?.vendorOrders?.map(o => o.vendorId) || [];
   
   const { data: vendors } = useQuery<Vendor[]>({
     queryKey: [`/api/vendors?ids=${vendorIds.join(",")}`],

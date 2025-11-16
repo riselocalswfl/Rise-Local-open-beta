@@ -105,6 +105,16 @@ export default function Checkout() {
   });
 
   const handleCheckout = async () => {
+    // Validate phone before submitting
+    if (!phone || phone.trim().length === 0) {
+      toast({
+        title: "Phone Required",
+        description: "Please enter your phone number to complete checkout.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     await createOrderMutation.mutateAsync();
   };
 
