@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit2, Trash2, Save } from "lucide-react";
+import { Plus, Edit2, Trash2, Save, LogOut } from "lucide-react";
 import type { Restaurant, MenuItem, Event, RestaurantFAQ } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { TagInput } from "@/components/TagInput";
@@ -323,6 +324,21 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
             <Save className="w-4 h-4 mr-2" />
             {updateMutation.isPending ? "Saving..." : "Save Profile"}
           </Button>
+
+          <Separator className="my-6" />
+
+          <div className="space-y-2">
+            <Label>Account Actions</Label>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = '/api/logout'}
+              data-testid="button-logout-settings"
+              className="w-full sm:w-auto"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Log Out
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>

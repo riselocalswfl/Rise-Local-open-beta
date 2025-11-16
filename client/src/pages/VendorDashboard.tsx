@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut } from "lucide-react";
 import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
@@ -970,6 +970,21 @@ export default function VendorDashboard() {
                       }
                     }}
                   />
+                </div>
+
+                <Separator className="my-6" />
+
+                <div className="space-y-2">
+                  <Label>Account Actions</Label>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.href = '/api/logout'}
+                    data-testid="button-logout-settings"
+                    className="w-full sm:w-auto"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Log Out
+                  </Button>
                 </div>
               </CardContent>
             </Card>

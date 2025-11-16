@@ -5,8 +5,9 @@ import LoyaltyDisplay from "@/components/LoyaltyDisplay";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, Package, Award, Clock, MapPin } from "lucide-react";
+import { User, Package, Award, Clock, MapPin, LogOut } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { Order, LoyaltyTransaction } from "@shared/schema";
 
@@ -128,6 +129,24 @@ export default function CustomerProfile() {
                     </div>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-account-actions">
+              <CardHeader>
+                <CardTitle>Account Actions</CardTitle>
+                <CardDescription>Manage your account settings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.href = '/api/logout'}
+                  data-testid="button-logout-settings"
+                  className="w-full sm:w-auto"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

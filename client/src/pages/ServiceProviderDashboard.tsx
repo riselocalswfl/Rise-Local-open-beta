@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Wrench, Briefcase, Calendar, Star, Plus, Trash2, Edit, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Wrench, Briefcase, Calendar, Star, Plus, Trash2, Edit, CheckCircle, XCircle, Clock, LogOut } from "lucide-react";
 import type { ServiceProvider, ServiceOffering, ServiceBooking } from "@shared/schema";
 import { insertServiceProviderSchema, insertServiceOfferingSchema } from "@shared/schema";
 import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
@@ -421,6 +421,21 @@ export default function ServiceProviderDashboard() {
                 <Button type="submit" disabled={updateProviderMutation.isPending} data-testid="button-save-profile">
                   {updateProviderMutation.isPending ? "Saving..." : "Save Profile"}
                 </Button>
+
+                <Separator className="my-6" />
+
+                <div className="space-y-2">
+                  <Label>Account Actions</Label>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.href = '/api/logout'}
+                    data-testid="button-logout-settings"
+                    className="w-full sm:w-auto"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Log Out
+                  </Button>
+                </div>
               </form>
             </Form>
           </TabsContent>
