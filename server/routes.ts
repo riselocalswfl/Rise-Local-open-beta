@@ -918,6 +918,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current user's orders (master orders with vendor orders)
+  app.get("/api/orders/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get all master orders for this user
+      const masterOrders = await storage.getMasterOrdersByBuyer(userId);
+      
+      // For each master order, get its vendor orders
+      const ordersWithDetails = await Promise.all(
+        masterOrders.map(async (masterOrder) => {
+          const vendorOrders = await storage.getVendorOrdersByMaster(masterOrder.id);
+          return {
+            ...masterOrder,
+            vendorOrders,
+          };
+        })
+      );
+      
+      res.json(ordersWithDetails);
+    } catch (error) {
+      console.error("Error fetching user orders:", error);
+      res.status(500).json({ error: "Failed to fetch orders" });
+    }
+  });
+
   // Multi-Vendor Checkout Route
   app.post("/api/checkout", isAuthenticated, async (req: any, res) => {
     try {

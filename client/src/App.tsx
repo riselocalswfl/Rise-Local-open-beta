@@ -16,6 +16,7 @@ import EventDetail from "@/pages/EventDetail";
 import Cart from "@/pages/Cart";
 import Checkout from "@/pages/Checkout";
 import OrderConfirmation from "@/pages/OrderConfirmation";
+import Orders from "@/pages/Orders";
 import Spotlight from "@/pages/Spotlight";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/order-confirmation" component={OrderConfirmation} />
+      <Route path="/orders" component={Orders} />
       <Route path="/spotlight" component={Spotlight} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
