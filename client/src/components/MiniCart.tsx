@@ -109,10 +109,6 @@ export default function MiniCart() {
                     <span>Tax (7%)</span>
                     <span className="font-mono">${totals.tax.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-text/70">
-                    <span>Buyer Fee (3%)</span>
-                    <span className="font-mono">${totals.buyerFee.toFixed(2)}</span>
-                  </div>
                   <div className="flex justify-between text-base font-semibold pt-2 border-t border-border">
                     <span>Total</span>
                     <span className="font-mono" data-testid="text-total">
