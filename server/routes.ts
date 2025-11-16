@@ -654,8 +654,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const onboardingComplete = account.charges_enabled && account.details_submitted;
 
         // Find vendor with this Stripe account ID and update status
-        const vendors = await storage.listVendors();
-        const vendor = vendors.find(v => v.stripeConnectAccountId === accountId);
+        const vendors = await storage.getVendors();
+        const vendor = vendors.find((v: any) => v.stripeConnectAccountId === accountId);
         
         if (vendor) {
           await storage.updateVendor(vendor.id, {
@@ -663,8 +663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         } else {
           // Check restaurants
-          const restaurants = await storage.listRestaurants();
-          const restaurant = restaurants.find(r => r.stripeConnectAccountId === accountId);
+          const restaurants = await storage.getRestaurants();
+          const restaurant = restaurants.find((r: any) => r.stripeConnectAccountId === accountId);
           
           if (restaurant) {
             await storage.updateRestaurant(restaurant.id, {
@@ -672,8 +672,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           } else {
             // Check service providers
-            const providers = await storage.listServiceProviders();
-            const provider = providers.find(p => p.stripeConnectAccountId === accountId);
+            const providers = await storage.getServiceProviders();
+            const provider = providers.find((p: any) => p.stripeConnectAccountId === accountId);
             
             if (provider) {
               await storage.updateServiceProvider(provider.id, {
