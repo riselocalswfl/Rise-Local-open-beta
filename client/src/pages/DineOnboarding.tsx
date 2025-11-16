@@ -113,7 +113,17 @@ export default function DineOnboarding() {
 
   const handleStep4Submit = async (connectStripe: boolean = false) => {
     setIsSubmitting(true);
-    const completeData = { ...formData, vendorType: "restaurant" };
+    // Restaurants don't need complex fulfillment options
+    const completeData = { 
+      ...formData, 
+      vendorType: "restaurant",
+      fulfillmentMethods: {
+        pickup: { enabled: false },
+        delivery: { enabled: false },
+        shipping: { enabled: false },
+        custom: [],
+      }
+    };
     
     try {
       const response = await fetch("/api/vendors/onboard", {

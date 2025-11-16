@@ -118,7 +118,17 @@ export default function ServicesOnboarding() {
 
   const handleStep4Submit = async (connectStripe: boolean = false) => {
     setIsSubmitting(true);
-    const completeData = { ...formData, vendorType: "service" };
+    // Service providers don't need complex fulfillment options
+    const completeData = { 
+      ...formData, 
+      vendorType: "service",
+      fulfillmentMethods: {
+        pickup: { enabled: false },
+        delivery: { enabled: false },
+        shipping: { enabled: false },
+        custom: [],
+      }
+    };
     
     try {
       const response = await fetch("/api/vendors/onboard", {

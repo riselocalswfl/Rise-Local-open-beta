@@ -32,7 +32,6 @@ import RestaurantProfile from "@/pages/RestaurantProfile";
 import RestaurantDashboard from "@/pages/RestaurantDashboard";
 import ServiceProviderDashboard from "@/pages/ServiceProviderDashboard";
 import BusinessDashboard from "@/pages/BusinessDashboard";
-import VendorOnboarding from "@/pages/VendorOnboarding";
 import ShopOnboarding from "@/pages/ShopOnboarding";
 import DineOnboarding from "@/pages/DineOnboarding";
 import ServicesOnboarding from "@/pages/ServicesOnboarding";
@@ -79,7 +78,9 @@ function Router() {
       <Route path="/onboarding/shop" component={ShopOnboarding} />
       <Route path="/onboarding/dine" component={DineOnboarding} />
       <Route path="/onboarding/services" component={ServicesOnboarding} />
-      <Route path="/onboarding" component={VendorOnboarding} />
+      <Route path="/onboarding">
+        {() => <Redirect to="/join" />}
+      </Route>
       <Route path="/loyalty" component={LoyaltyHistory} />
       <Route path="/profile" component={CustomerProfile} />
       <Route path="/messages" component={Messages} />
