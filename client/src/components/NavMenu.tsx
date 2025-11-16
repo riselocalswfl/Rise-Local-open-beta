@@ -19,7 +19,7 @@ const publicNavigationItems = [
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "Join the Movement", href: "/join", icon: Heart },
 ];
@@ -29,7 +29,7 @@ const buyerNavigationItems = [
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "My Account", href: "/profile", icon: UserCircle },
@@ -40,7 +40,7 @@ const vendorNavigationItems = [
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
 ];
@@ -50,7 +50,7 @@ const restaurantNavigationItems = [
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "Vendors", href: "/vendors", icon: Store },
+  { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
 ];

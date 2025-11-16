@@ -79,7 +79,7 @@ export default function Header() {
             }`}
             data-testid="link-vendors"
           >
-            Vendors
+            All Vendors
           </Link>
         </div>
         <div className="flex items-center gap-3">
