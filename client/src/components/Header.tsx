@@ -138,7 +138,7 @@ export default function Header() {
                       >
                         <div className="flex items-center gap-3">
                           <ShoppingBag className="h-5 w-5 text-primary" />
-                          <span className="text-base font-semibold">Customer</span>
+                          <span className="text-base font-semibold">Consumer</span>
                         </div>
                         <p className="text-xs text-muted-foreground text-left">
                           Shop local products, support vendors, and earn rewards
@@ -160,45 +160,7 @@ export default function Header() {
                           <span className="text-base font-semibold">Vendor</span>
                         </div>
                         <p className="text-xs text-muted-foreground text-left">
-                          Manage your vendor profile, products, and events
-                        </p>
-                      </Button>
-                    </a>
-                    <a 
-                      href="/api/login?intended_role=restaurant" 
-                      className="block"
-                      data-testid="link-login-restaurant"
-                    >
-                      <Button 
-                        variant="outline" 
-                        className="w-full h-auto flex flex-col items-start p-5 gap-2 hover-elevate"
-                        data-testid="button-login-restaurant"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Utensils className="h-5 w-5 text-primary" />
-                          <span className="text-base font-semibold">Restaurant</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground text-left">
-                          Manage your restaurant profile, menu, and dining events
-                        </p>
-                      </Button>
-                    </a>
-                    <a 
-                      href="/api/login?intended_role=service_provider" 
-                      className="block"
-                      data-testid="link-login-service-provider"
-                    >
-                      <Button 
-                        variant="outline" 
-                        className="w-full h-auto flex flex-col items-start p-5 gap-2 hover-elevate"
-                        data-testid="button-login-service-provider"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Wrench className="h-5 w-5 text-primary" />
-                          <span className="text-base font-semibold">Service Provider</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground text-left">
-                          Offer local services and manage booking requests
+                          Sell products, offer services, or run a restaurant
                         </p>
                       </Button>
                     </a>

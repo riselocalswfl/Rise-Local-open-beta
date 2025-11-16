@@ -183,26 +183,42 @@ export async function setupAuth(app: Express) {
           // If an intended role was set during login, update the user's role
           if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider")) {
             console.log("[AUTH] Updating user role to:", intendedRole);
-            await storage.updateUser(userId, { role: intendedRole });
-            userRole = intendedRole;
             
-            // Auto-create business profile for vendors and restaurants
+            // Get existing user info
             const existingUser = await storage.getUser(userId);
             const userName = existingUser?.firstName && existingUser?.lastName 
               ? `${existingUser.firstName} ${existingUser.lastName}`
               : existingUser?.email?.split('@')[0] || "Business Owner";
             
+            // If intended role is "vendor", check if user already has a specific vendor type profile
             if (intendedRole === "vendor") {
-              // Check if vendor profile already exists
+              // Check for existing vendor-type profiles (prioritize by checking profile existence, not user role)
+              const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
+              const existingProvider = await storage.getServiceProviderByOwnerId(userId);
               const existingVendor = await storage.getVendorByOwnerId(userId);
-              if (!existingVendor) {
-                // Create default vendor profile
+              
+              // Preserve existing vendor type based on profile existence
+              if (existingRestaurant) {
+                userRole = "restaurant";
+                await storage.updateUser(userId, { role: "restaurant" });
+                console.log("[AUTH] User has existing restaurant profile, preserving role as restaurant");
+              } else if (existingProvider) {
+                userRole = "service_provider";
+                await storage.updateUser(userId, { role: "service_provider" });
+                console.log("[AUTH] User has existing service provider profile, preserving role as service_provider");
+              } else if (existingVendor) {
+                userRole = "vendor";
+                await storage.updateUser(userId, { role: "vendor" });
+                console.log("[AUTH] User has existing vendor profile, preserving role as vendor");
+              } else {
+                // No existing profile, create default vendor profile
+                userRole = "vendor";
+                await storage.updateUser(userId, { role: "vendor" });
                 await storage.createVendor({
                   ownerId: userId,
                   businessName: `${userName}'s Vendor`,
                   contactName: userName,
                   bio: "Welcome to my vendor profile! I'm excited to share my products with the Fort Myers community.",
-                  category: "Other",
                   locationType: "Home-based",
                   city: "Fort Myers",
                   state: "FL",
@@ -210,7 +226,11 @@ export async function setupAuth(app: Express) {
                   serviceOptions: ["Pickup"],
                   paymentMethod: "Direct to Vendor",
                 });
+                console.log("[AUTH] Created new vendor profile for user");
               }
+            } else if (intendedRole === "buyer") {
+              await storage.updateUser(userId, { role: intendedRole });
+              userRole = intendedRole;
             } else if (intendedRole === "restaurant") {
               // Check if restaurant profile already exists
               const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
@@ -221,7 +241,6 @@ export async function setupAuth(app: Express) {
                   restaurantName: `${userName}'s Restaurant`,
                   contactName: userName,
                   bio: "Welcome to my restaurant! We're passionate about serving fresh, local food to the Fort Myers community.",
-                  cuisineType: "American",
                   locationType: "Dine-in",
                   city: "Fort Myers",
                   state: "FL",
@@ -230,6 +249,8 @@ export async function setupAuth(app: Express) {
                   paymentMethod: "Direct to Restaurant",
                 });
               }
+              await storage.updateUser(userId, { role: intendedRole });
+              userRole = intendedRole;
             } else if (intendedRole === "service_provider") {
               // Check if service provider profile already exists
               const existingProvider = await storage.getServiceProviderByOwnerId(userId);
@@ -240,7 +261,6 @@ export async function setupAuth(app: Express) {
                   businessName: `${userName}'s Services`,
                   contactName: userName,
                   bio: "Welcome! I'm excited to offer my services to the Fort Myers community.",
-                  category: "Home Services",
                   city: "Fort Myers",
                   state: "FL",
                   zipCode: "33901",
@@ -249,6 +269,8 @@ export async function setupAuth(app: Express) {
                   contactEmail: existingUser?.email || "",
                 });
               }
+              await storage.updateUser(userId, { role: intendedRole });
+              userRole = intendedRole;
             }
             
             // Clear the intended role from session and cookie
@@ -259,6 +281,13 @@ export async function setupAuth(app: Express) {
             const existingUser = await storage.getUser(userId);
             userRole = existingUser?.role;
             console.log("[AUTH] Retrieved existing user role:", userRole);
+          }
+          
+          // Defensive fallback: ensure userRole is always set
+          if (!userRole) {
+            const refetchedUser = await storage.getUser(userId);
+            userRole = refetchedUser?.role || "buyer"; // Default to buyer if all else fails
+            console.log("[AUTH] Fallback: refetched user role:", userRole);
           }
           
           // If returnTo is provided, use it; otherwise redirect based on role
