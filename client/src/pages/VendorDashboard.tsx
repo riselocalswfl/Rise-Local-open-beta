@@ -18,7 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart, CreditCard } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
@@ -132,6 +133,12 @@ export default function VendorDashboard() {
   // Fetch vendor orders
   const { data: vendorOrders = [] } = useQuery<any[]>({
     queryKey: ["/api/vendor-orders/my"],
+    enabled: !!vendor?.id,
+  });
+
+  // Check Stripe Connect status
+  const { data: stripeStatus } = useQuery<{ connected: boolean; accountId: string | null }>({
+    queryKey: ["/api/stripe/account-status"],
     enabled: !!vendor?.id,
   });
 
@@ -294,6 +301,31 @@ export default function VendorDashboard() {
           <h1 className="text-3xl font-bold mb-2" data-testid="heading-dashboard">Vendor Dashboard</h1>
           <p className="text-muted-foreground">{vendor.businessName}</p>
         </div>
+
+        {/* Stripe Connect Alert Banner */}
+        {stripeStatus && !stripeStatus.connected && (
+          <Alert className="mb-6 border-primary/20 bg-primary/5" data-testid="alert-stripe-not-connected">
+            <CreditCard className="h-4 w-4 text-primary" />
+            <AlertDescription className="ml-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <span className="font-semibold">Connect Stripe to Accept Credit Card Payments</span>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Set up your Stripe account to start accepting credit card payments through the app and receive funds directly to your bank account.
+                  </p>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => setActiveTab("settings")}
+                  className="flex-shrink-0"
+                  data-testid="button-connect-stripe-banner"
+                >
+                  Connect Now
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Mobile Select Dropdown */}
