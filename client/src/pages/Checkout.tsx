@@ -7,6 +7,8 @@ import Header from "@/components/Header";
 import OrderSummary from "@/components/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -14,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/contexts/CartContext";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, CreditCard, Info } from "lucide-react";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
@@ -116,7 +118,27 @@ export default function Checkout() {
       <Header />
       <div className="h-16" aria-hidden="true" />
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-semibold mb-8" data-testid="heading-checkout">Checkout</h1>
+        <h1 className="text-3xl font-semibold mb-6" data-testid="heading-checkout">Checkout</h1>
+
+        {/* Credit Card Payments Coming Soon Banner */}
+        <Alert className="mb-6 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950" data-testid="alert-stripe-coming-soon">
+          <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+          <AlertDescription className="ml-2">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                <span className="font-semibold">Credit Card Payments Launching Next Week</span>
+                <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  Coming Soon
+                </Badge>
+              </div>
+              <p className="text-sm">
+                This checkout flow is ready for testing! Once vendors connect their bank accounts next week, you'll be able to pay with credit cards. 
+                For immediate purchases, contact vendors directly using Venmo, CashApp, Zelle, or other payment methods they accept.
+              </p>
+            </div>
+          </AlertDescription>
+        </Alert>
 
         {clientSecret ? (
           <Elements stripe={stripePromise} options={{ clientSecret }}>
