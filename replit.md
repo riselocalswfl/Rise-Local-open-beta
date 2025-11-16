@@ -53,8 +53,7 @@ Preferred communication style: Simple, everyday language.
   - **Payment Methods** (separate card): Standard payment checkboxes (Direct, Venmo, Zelle, CashApp, PayPal, Cash) and custom payment methods input
   - **Fulfillment Methods**: Pickup, delivery, shipping options with custom methods support
   - **Profile Photo/Logo**: Image upload section (simplified from previous "Visual Identity" section)
-  - **System Info**: Member since date
-- **Simplified Fields**: Removed banner image, color customization, and profile status display for streamlined vendor setup
+- **Simplified Fields**: Removed banner image, color customization, profile status display, and system info section for streamlined vendor setup
 - **Custom Fulfillment**: Vendors can add custom fulfillment options (e.g., "Farmers Market Booth", "Curbside Pickup")
 
 ### Key Business Logic
