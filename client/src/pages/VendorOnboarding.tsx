@@ -473,8 +473,11 @@ export default function VendorOnboarding() {
                     render={() => (
                       <FormItem>
                         <FormLabel>Payment Methods *</FormLabel>
+                        <FormDescription>
+                          Select payment methods you accept. "Credit Card (Through App)" requires Stripe Connect setup.
+                        </FormDescription>
                         <div className="space-y-2">
-                          {["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].map((method) => (
+                          {["Credit Card (Through App)", "Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].map((method) => (
                             <FormField
                               key={method}
                               control={form3.control}

@@ -704,12 +704,12 @@ export default function VendorDashboard() {
                   <div>
                     <Label className="font-semibold">Standard Payment Methods</Label>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Select all payment methods you accept
+                      Select all payment methods you accept. "Credit Card (Through App)" requires Stripe Connect setup.
                     </p>
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].map((method) => {
+                    {["Credit Card (Through App)", "Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].map((method) => {
                       const currentPreferences = vendor.paymentPreferences || [];
                       const isChecked = currentPreferences.includes(method);
                       
@@ -738,15 +738,15 @@ export default function VendorDashboard() {
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">Custom Payment Methods</Label>
                   <p className="text-xs text-muted-foreground mb-1">
-                    Add any other payment methods you accept (e.g., "Square", "Stripe", "Bitcoin")
+                    Add any other payment methods you accept (e.g., "Bitcoin", "Wire Transfer")
                   </p>
                   <TagInput
                     tags={(vendor.paymentPreferences || []).filter(
-                      p => !["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
+                      p => !["Credit Card (Through App)", "Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
                     )}
                     onChange={(customMethods) => {
                       const standardMethods = (vendor.paymentPreferences || []).filter(
-                        p => ["Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
+                        p => ["Credit Card (Through App)", "Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
                       );
                       const newPreferences = [...standardMethods, ...customMethods];
                       updateVendorMutation.mutate({ paymentPreferences: newPreferences });
