@@ -33,9 +33,7 @@ import { z } from "zod";
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-10-29.clover",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Helper function to derive serviceOptions from fulfillmentOptions
 function deriveServiceOptions(fulfillment: FulfillmentOptions): string[] {
@@ -1215,9 +1213,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           buyerFee: z.number(),
           grandTotal: z.number(),
         }),
+        paymentIntentId: z.string().optional(),
+        paymentStatus: z.string().optional(),
       });
       
-      const { phone, cartItems, fulfillmentType, fulfillmentDetails, totals } = checkoutSchema.parse(req.body);
+      const { phone, cartItems, fulfillmentType, fulfillmentDetails, totals, paymentIntentId, paymentStatus } = checkoutSchema.parse(req.body);
       
       // Group cart items by vendor
       const itemsByVendor: Record<string, typeof cartItems> = {};
@@ -1254,14 +1254,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Determine payment method and link
         let paymentMethod = 'cash';
         let paymentLink = '';
+        let vendorPaymentStatus = 'pending';
         
-        if (vendor) {
+        // If payment was made via Stripe, use that info
+        if (paymentIntentId && paymentStatus === 'succeeded') {
+          paymentMethod = 'stripe';
+          vendorPaymentStatus = 'paid';
+        } else if (vendor) {
           // Check vendor's preferred payment methods
           const paymentPreferences = vendor.paymentPreferences || [];
           
           if (paymentPreferences.includes('Stripe Connect')) {
             paymentMethod = 'stripe_connect';
-            // TODO: Create Stripe payment intent (will implement after adding Stripe blueprint)
           } else if (paymentPreferences.includes('Venmo') && vendor.venmoHandle) {
             paymentMethod = 'venmo';
             paymentLink = `https://venmo.com/${vendor.venmoHandle}`;
@@ -1305,8 +1309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fulfillmentDetails,
           paymentMethod,
           paymentLink,
-          paymentStatus: 'pending',
-          status: 'pending',
+          paymentStatus: vendorPaymentStatus,
+          status: vendorPaymentStatus === 'paid' ? 'confirmed' : 'pending',
           vendorNotified: false,
         });
         

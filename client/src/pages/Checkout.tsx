@@ -236,34 +236,99 @@ function CheckoutForm({ subtotal, tax, buyerFee, total }: { subtotal: number; ta
 
     setIsProcessing(true);
 
-    // Submit payment to Stripe
-    const { error: submitError } = await elements.submit();
-    if (submitError) {
+    try {
+      // Submit payment to Stripe
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        toast({
+          title: "Payment Error",
+          description: submitError.message,
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Confirm payment with return URL
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: "if_required",
+        confirmParams: {
+          return_url: `${window.location.origin}/order-confirmation`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Payment Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Verify payment succeeded
+      if (!paymentIntent || paymentIntent.status !== "succeeded") {
+        toast({
+          title: "Payment Incomplete",
+          description: "Payment requires additional action or was not completed.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Payment successful, create order with payment info
+      const latestTotals = {
+        subtotal,
+        tax,
+        buyerFee,
+        grandTotal: total,
+      };
+
+      const checkoutData = {
+        phone,
+        cartItems: cartItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          vendorId: item.vendorId,
+          vendorName: item.vendorName,
+          image: item.image,
+          variantId: item.variantId,
+          options: item.options,
+        })),
+        fulfillmentType: fulfillmentMethod,
+        fulfillmentDetails: {
+          type: fulfillmentMethod === "pickup" ? "Pickup" as const : "Delivery" as const,
+        },
+        totals: latestTotals,
+        paymentIntentId: paymentIntent.id,
+        paymentStatus: paymentIntent.status,
+      };
+
+      const orderData = await apiRequest("POST", "/api/checkout", checkoutData);
+      
+      sessionStorage.setItem("lastOrder", JSON.stringify(orderData));
+      clearCart();
+
       toast({
-        title: "Payment Error",
-        description: submitError.message,
+        title: "Order Placed Successfully!",
+        description: "You earned loyalty points. Check your email for confirmation.",
+      });
+
+      setTimeout(() => {
+        setLocation("/order-confirmation");
+      }, 1000);
+    } catch (error: any) {
+      toast({
+        title: "Checkout Failed",
+        description: error.message || "There was an error processing your order.",
         variant: "destructive",
       });
-      setIsProcessing(false);
-      return;
-    }
-
-    // Confirm payment
-    const { error } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-    });
-
-    if (error) {
-      toast({
-        title: "Payment Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      setIsProcessing(false);
-    } else {
-      // Payment successful, create order
-      await createOrderMutation.mutateAsync();
+    } finally {
       setIsProcessing(false);
     }
   };
