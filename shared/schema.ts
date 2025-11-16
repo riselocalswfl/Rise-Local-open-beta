@@ -84,6 +84,7 @@ export const fulfillmentOptionsSchema = z.object({
   pickup: pickupFulfillmentSchema.optional(),
   delivery: deliveryFulfillmentSchema.optional(),
   shipping: shippingFulfillmentSchema.optional(),
+  custom: z.array(z.string()).optional(), // Custom fulfillment methods (e.g., "Curbside Pickup", "Farmers Market Booth")
   lastUpdated: z.string().optional(),
 });
 

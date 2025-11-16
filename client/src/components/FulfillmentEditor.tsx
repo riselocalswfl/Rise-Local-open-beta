@@ -473,6 +473,80 @@ export function FulfillmentEditor({ value, onChange }: FulfillmentEditorProps) {
           </CardContent>
         )}
       </Card>
+
+      {/* Custom Fulfillment Methods */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            <div>
+              <CardTitle>Custom Fulfillment Methods</CardTitle>
+              <CardDescription>Add any other ways customers can receive orders (e.g., Farmers Market Booth, Curbside Pickup)</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {localValue.custom && localValue.custom.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {localValue.custom.map((method, index) => (
+                <Badge key={index} variant="secondary" className="gap-1">
+                  {method}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateValue({
+                        ...localValue,
+                        custom: localValue.custom?.filter((_, i) => i !== index),
+                      });
+                    }}
+                    className="hover:text-destructive"
+                    data-testid={`button-remove-custom-method-${index}`}
+                  >
+                    ×
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Add custom fulfillment method..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const value = e.currentTarget.value.trim();
+                  if (value) {
+                    updateValue({
+                      ...localValue,
+                      custom: [...(localValue.custom || []), value],
+                    });
+                    e.currentTarget.value = "";
+                  }
+                }
+              }}
+              data-testid="input-add-custom-method"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => {
+                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                const value = input.value.trim();
+                if (value) {
+                  updateValue({
+                    ...localValue,
+                    custom: [...(localValue.custom || []), value],
+                  });
+                  input.value = "";
+                }
+              }}
+              data-testid="button-add-custom-method"
+            >
+              Add
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
