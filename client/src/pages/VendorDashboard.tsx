@@ -311,25 +311,29 @@ export default function VendorDashboard() {
           <p className="text-muted-foreground">{vendor.businessName}</p>
         </div>
 
-        {/* Stripe Connect Alert Banner */}
+        {/* Stripe Connect Coming Soon Banner */}
         {stripeStatus && !stripeStatus.connected && (
           <Alert className="mb-6 border-primary/20 bg-primary/5" data-testid="alert-stripe-not-connected">
             <CreditCard className="h-4 w-4 text-primary" />
             <AlertDescription className="ml-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <span className="font-semibold">Connect Stripe to Accept Credit Card Payments</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Stripe Connect Launching Next Week</span>
+                    <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                  </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Set up your Stripe account to start accepting credit card payments through the app and receive funds directly to your bank account.
+                    Credit card payments will be available soon! In the meantime, accept payments via Venmo, CashApp, Zelle, and other methods you've enabled.
                   </p>
                 </div>
                 <Button 
                   size="sm" 
+                  variant="outline"
                   onClick={() => setActiveTab("settings")}
                   className="flex-shrink-0"
-                  data-testid="button-connect-stripe-banner"
+                  data-testid="button-view-stripe-info"
                 >
-                  Connect Now
+                  Learn More
                 </Button>
               </div>
             </AlertDescription>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -554,12 +555,12 @@ export default function VendorOnboarding() {
           </Card>
         )}
 
-        {/* Step 4: Connect Payments (Stripe) */}
+        {/* Step 4: Payment Options & Launch */}
         {step === 4 && (
           <Card>
             <CardHeader>
-              <CardTitle>Connect Payments (Optional)</CardTitle>
-              <CardDescription>Set up Stripe to accept credit card payments through the app</CardDescription>
+              <CardTitle>Payment Options</CardTitle>
+              <CardDescription>Your profile is almost ready! Choose how you'll accept payments.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="bg-muted/50 rounded-lg p-6 space-y-4">
@@ -568,23 +569,28 @@ export default function VendorOnboarding() {
                     <CheckCircle2 className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-2">Accept Credit Cards</h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-lg">Stripe Connect Credit Cards</h3>
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        Coming Next Week
+                      </Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Connect your Stripe account to accept credit card payments directly through the Rise Local platform. 
-                      You'll receive 100% of the payment amount (product price + 7% FL sales tax) directly to your bank account.
+                      Stripe Connect will launch next week! You'll be able to accept credit card payments and receive 100% of the payment amount (product price + 7% FL sales tax) directly to your bank account.
                     </p>
+                    <p className="text-sm font-semibold mb-2">In the meantime, you can accept payments via:</p>
                     <ul className="space-y-2 text-sm">
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span>Receive payments within 2 business days</span>
+                        <span>Venmo, CashApp, Zelle - Available Now</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span>No transaction fees from Rise Local (Stripe's standard fees apply)</span>
+                        <span>PayPal Direct - Available Now</span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span>Secure and PCI-compliant payment processing</span>
+                        <span>Cash on pickup - Available Now</span>
                       </li>
                     </ul>
                   </div>
@@ -605,27 +611,17 @@ export default function VendorOnboarding() {
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button 
                     type="button" 
-                    variant="outline" 
+                    size="lg" 
                     onClick={() => handleStep4Submit(false)} 
                     disabled={isSubmitting}
-                    className="gap-2"
-                    data-testid="button-skip-stripe"
-                  >
-                    Skip for Now
-                  </Button>
-                  <Button 
-                    type="button" 
-                    size="lg" 
-                    onClick={() => handleStep4Submit(true)} 
-                    disabled={isSubmitting}
-                    className="gap-2"
+                    className="gap-2 flex-1"
                     data-testid="button-complete-onboarding"
                   >
                     {isSubmitting ? (
                       "Creating Profile..."
                     ) : (
                       <>
-                        Complete & Connect Stripe
+                        Complete Setup & Go to Dashboard
                         <CheckCircle2 className="w-4 h-4" />
                       </>
                     )}

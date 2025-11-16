@@ -139,7 +139,7 @@ export default function StripeConnectCard() {
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              Payment Setup
+              Stripe Connect Payment Setup
               {isFullyConnected && (
                 <Badge variant="default" className="bg-green-600">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -153,14 +153,16 @@ export default function StripeConnectCard() {
                 </Badge>
               )}
               {!status?.connected && (
-                <Badge variant="outline">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  Not Connected
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  Coming Next Week
                 </Badge>
               )}
             </CardTitle>
             <CardDescription className="mt-2">
-              Connect your bank account to receive payments from customers
+              {!status?.connected 
+                ? "Credit card payments launching soon! Use Venmo, CashApp, Zelle, and other payment methods in the meantime."
+                : "Connect your bank account to receive credit card payments from customers"
+              }
             </CardDescription>
           </div>
         </div>
@@ -170,7 +172,7 @@ export default function StripeConnectCard() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {!status?.connected && "You need to connect your Stripe account to start accepting payments through the platform."}
+              {!status?.connected && "Stripe Connect will be available next week. Your customers can currently pay via Venmo, CashApp, Zelle, PayPal, and cash."}
               {isPending && "Complete your Stripe verification to start receiving payments."}
               {needsAction && "Action required: Additional information needed to complete your Stripe setup."}
             </AlertDescription>
@@ -223,15 +225,12 @@ export default function StripeConnectCard() {
           {!isFullyConnected && (
             <Button
               onClick={handleConnect}
-              disabled={isCreating || createAccountMutation.isPending || onboardMutation.isPending}
+              disabled={true}
+              variant="outline"
               className="flex-1"
               data-testid="button-connect-stripe"
             >
-              {(isCreating || createAccountMutation.isPending || onboardMutation.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {!status?.connected ? "Connect Stripe Account" : "Complete Setup"}
-              <ExternalLink className="ml-2 h-4 w-4" />
+              Available Next Week
             </Button>
           )}
           {isPending && (
