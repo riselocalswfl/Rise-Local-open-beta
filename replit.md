@@ -79,10 +79,15 @@ Preferred communication style: Simple, everyday language.
 - **Direct Messaging**: Users can send direct messages to vendors and vice versa. Real-time updates via polling (5s for threads, 10s for unread counts), with read status tracking. Messages page includes vendor search to start new conversations - searches across business name, bio, tagline, categories, and values.
 
 ### Stripe Connect Payment Flow (November 2025)
-- **Vendor Onboarding**: Vendors can connect Stripe during Step 4 of onboarding wizard (optional) or later via Settings tab in dashboard
-  - Step 4 of onboarding presents "Complete & Connect Stripe" or "Skip for Now" options
-  - "Connect" option redirects to dashboard with Settings tab auto-opened for seamless StripeConnectCard flow
-  - Alert banner appears in dashboard when Stripe is not connected, with "Connect Now" CTA
+- **Pre-Launch "Coming Soon" Mode**: Platform optimized for vendors without Stripe Connect (until business bank accounts available)
+  - All Stripe-related UI shows "Coming Next Week" badges and positive messaging
+  - Emphasizes working payment methods: Venmo, CashApp, Zelle, PayPal, Direct, Cash
+  - No pressure or urgency around connecting Stripe
+- **Vendor Onboarding**: Step 4 titled "Payment Options" focuses on available methods with Stripe as upcoming feature
+  - Shows "Stripe Connect Credit Cards" section with "Coming Next Week" badge
+  - Lists current payment methods as "Available Now"
+  - Single CTA: "Complete Setup & Go to Dashboard"
+  - Dashboard banner: "Stripe Connect Launching Next Week" with "Learn More" button
 - **Payment Method Display**: "Credit Card (Through App)" appears as first payment method option in both dashboard and onboarding, with clear Stripe requirement messaging
 - **Account Status Tracking**: Database stores `stripeConnectAccountId` and `stripeOnboardingComplete` fields for vendors, restaurants, and service providers
 - **Payment Collection**: Buyers pay the full amount (subtotal + 7% FL sales tax) to the platform's Stripe account. No per-transaction buyer fees are charged.
@@ -113,6 +118,7 @@ Preferred communication style: Simple, everyday language.
   - Expected format: `{masterOrder: {...}, vendorOrders: [...], pointsEarned: number}`
   - masterOrder includes: id, buyerId, buyerName, buyerEmail, totalCents, status
   - Displays Order ID as first 8 characters uppercase: `Order #{masterOrder.id.substring(0, 8).toUpperCase()}`
+- **Pre-Launch Checkout Messaging**: Banner at top of checkout page explains credit card payments launching next week, directs buyers to contact vendors for immediate purchases via Venmo/CashApp/etc.
 - **Fee Structure Enforcement**: Cart and Checkout display NO buyer fees - only product price + 7% FL sales tax
 - **End-to-End Verified**: Complete flow from products → cart → checkout → Stripe payment → order confirmation tested and working
 
