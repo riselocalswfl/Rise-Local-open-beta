@@ -3,7 +3,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, LogOut, User, ShoppingBag, Store, Utensils, Wrench } from "lucide-react";
+import { LogIn, LogOut, User, ShoppingBag, Store, Utensils, Wrench, Heart } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -202,6 +202,18 @@ export default function Header() {
                         </p>
                       </Button>
                     </a>
+                    <div className="pt-3 border-t">
+                      <Link href="/join">
+                        <BrandButton 
+                          className="w-full"
+                          onClick={() => setSignInDialogOpen(false)}
+                          data-testid="button-join-movement"
+                        >
+                          <Heart className="h-4 w-4 mr-2" />
+                          Join the Movement
+                        </BrandButton>
+                      </Link>
+                    </div>
                   </div>
                 </DialogContent>
               </Dialog>
