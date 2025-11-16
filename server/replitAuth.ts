@@ -224,8 +224,8 @@ export async function setupAuth(app: Express) {
                 // Flags already cleared at top - profile exists, no onboarding needed
                 console.log("[AUTH] User has existing vendor profile, preserving role as vendor");
               } else {
-                // No existing profile - redirect to onboarding wizard
-                console.log("[AUTH] No vendor profile found, redirecting to onboarding");
+                // No existing profile - redirect to type-specific onboarding
+                console.log("[AUTH] No vendor profile found, redirecting to type-specific onboarding");
                 // Set temporary role to track they're a vendor in progress
                 userRole = intendedRole;
                 await storage.updateUser(userId, { role: intendedRole });
@@ -233,7 +233,17 @@ export async function setupAuth(app: Express) {
                 (req.session as any).needsOnboarding = true;
                 (req.session as any).vendorType = vendorType;
                 console.log("[AUTH] Set vendorType in session:", vendorType);
-                redirectUrl = "/onboarding";
+                // Redirect to type-specific onboarding route
+                if (vendorType === "shop") {
+                  redirectUrl = "/onboarding/shop";
+                } else if (vendorType === "restaurant") {
+                  redirectUrl = "/onboarding/dine";
+                } else if (vendorType === "service") {
+                  redirectUrl = "/onboarding/services";
+                } else {
+                  redirectUrl = "/onboarding"; // fallback to generic onboarding
+                }
+                console.log("[AUTH] Redirecting to:", redirectUrl);
               }
             } else if (intendedRole === "buyer") {
               await storage.updateUser(userId, { role: intendedRole });
