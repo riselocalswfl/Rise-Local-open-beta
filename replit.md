@@ -102,6 +102,20 @@ Preferred communication style: Simple, everyday language.
 - **Dashboard Integration**: StripeConnectCard component in Settings tab shows connection status with appropriate CTAs (connect, complete setup, or connected)
 - **UX Enhancements**: Alert banner at top of dashboard when not connected, sessionStorage-based tab navigation from onboarding
 
+### Checkout Flow & API Response Handling (November 2025)
+- **Critical Pattern**: All `apiRequest()` calls return raw Response objects that MUST be parsed with `.json()` before accessing data
+- **Checkout.tsx Fixes Applied**:
+  1. Payment intent creation (line 75-76): Parse response before accessing `clientSecret`
+  2. Order mutation (line 200-201): Return parsed JSON to `onSuccess` callback
+  3. Stripe payment storage (line 315-318): Parse order response before storing in sessionStorage
+- **Order Confirmation Flow**:
+  - OrderConfirmation reads from `sessionStorage.getItem("lastOrder")`
+  - Expected format: `{masterOrder: {...}, vendorOrders: [...], pointsEarned: number}`
+  - masterOrder includes: id, buyerId, buyerName, buyerEmail, totalCents, status
+  - Displays Order ID as first 8 characters uppercase: `Order #{masterOrder.id.substring(0, 8).toUpperCase()}`
+- **Fee Structure Enforcement**: Cart and Checkout display NO buyer fees - only product price + 7% FL sales tax
+- **End-to-End Verified**: Complete flow from products → cart → checkout → Stripe payment → order confirmation tested and working
+
 ### Application Routes
 - **Public**: Includes `/`, `/products`, `/vendors`, `/vendor/:id`, `/events`, `/spotlight`, `/login`, `/signup`.
 - **User**: Specific routes for `/cart`, `/checkout`, `/events/my`, `/messages`, `/messages/:userId`.

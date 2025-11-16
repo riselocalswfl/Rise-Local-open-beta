@@ -65,11 +65,12 @@ export default function Checkout() {
         };
       });
 
-      const response: any = await apiRequest("POST", "/api/stripe/create-payment-intent", {
+      const response = await apiRequest("POST", "/api/stripe/create-payment-intent", {
         vendorOrders,
       });
 
-      setClientSecret(response.clientSecret);
+      const data = await response.json();
+      setClientSecret(data.clientSecret);
     } catch (error) {
       console.error("Failed to create payment intent:", error);
     } finally {
@@ -193,7 +194,8 @@ function CheckoutForm({ subtotal, tax, total }: { subtotal: number; tax: number;
         totals: latestTotals,
       };
 
-      return apiRequest("POST", "/api/checkout", checkoutData);
+      const response = await apiRequest("POST", "/api/checkout", checkoutData);
+      return await response.json();
     },
     onSuccess: (data) => {
       sessionStorage.setItem("lastOrder", JSON.stringify(data));
@@ -308,7 +310,8 @@ function CheckoutForm({ subtotal, tax, total }: { subtotal: number; tax: number;
         paymentStatus: paymentIntent.status,
       };
 
-      const orderData = await apiRequest("POST", "/api/checkout", checkoutData);
+      const orderResponse = await apiRequest("POST", "/api/checkout", checkoutData);
+      const orderData = await orderResponse.json();
       
       sessionStorage.setItem("lastOrder", JSON.stringify(orderData));
       clearCart();

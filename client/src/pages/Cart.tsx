@@ -166,12 +166,8 @@ export default function Cart() {
                       </span>
                     </div>
                     <div className="flex justify-between text-text/70">
-                      <span>Tax (7%)</span>
+                      <span>Tax (7% FL Sales Tax)</span>
                       <span className="font-mono">${totals.tax.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-text/70">
-                      <span>Buyer Fee (3%)</span>
-                      <span className="font-mono">${totals.buyerFee.toFixed(2)}</span>
                     </div>
                     <div className="h-px bg-border my-3" />
                     <div className="flex justify-between text-lg font-semibold">
