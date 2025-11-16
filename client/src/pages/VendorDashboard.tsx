@@ -115,6 +115,15 @@ export default function VendorDashboard() {
     }
   }, [vendor]);
 
+  // Check if we should open Settings tab (from onboarding Stripe Connect flow)
+  useEffect(() => {
+    const shouldOpenSettings = sessionStorage.getItem("openStripeSettings");
+    if (shouldOpenSettings === "true") {
+      setActiveTab("settings");
+      sessionStorage.removeItem("openStripeSettings");
+    }
+  }, []);
+
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: [`/api/products?vendorId=${vendor?.id}`],
     enabled: !!vendor?.id,

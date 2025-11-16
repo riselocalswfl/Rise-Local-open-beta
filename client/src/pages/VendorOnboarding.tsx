@@ -137,7 +137,7 @@ export default function VendorOnboarding() {
     setStep(4);
   };
 
-  const handleStep4Submit = async (skipStripe: boolean = false) => {
+  const handleStep4Submit = async (connectStripe: boolean = false) => {
     setIsSubmitting(true);
     const completeData = { ...formData, vendorType };
     
@@ -157,15 +157,21 @@ export default function VendorOnboarding() {
 
       toast({
         title: "Profile created!",
-        description: "Welcome to Rise Local. Let's set up your business.",
+        description: connectStripe 
+          ? "Welcome to Rise Local. Complete your Stripe setup to start accepting payments."
+          : "Welcome to Rise Local. You can connect Stripe later from Settings.",
       });
 
       // Clear session storage
       sessionStorage.removeItem("vendorType");
 
-      // If not skipping Stripe, redirect to dashboard where StripeConnectCard will handle onboarding
-      // Otherwise, just go to dashboard
-      setLocation(result.redirectUrl || "/dashboard");
+      // Redirect to dashboard, opening Settings tab if connecting Stripe
+      const dashboardUrl = result.redirectUrl || "/dashboard";
+      if (connectStripe) {
+        // Store flag to open Settings tab
+        sessionStorage.setItem("openStripeSettings", "true");
+      }
+      setLocation(dashboardUrl);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -598,7 +604,7 @@ export default function VendorOnboarding() {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    onClick={() => handleStep4Submit(true)} 
+                    onClick={() => handleStep4Submit(false)} 
                     disabled={isSubmitting}
                     className="gap-2"
                     data-testid="button-skip-stripe"
@@ -608,7 +614,7 @@ export default function VendorOnboarding() {
                   <Button 
                     type="button" 
                     size="lg" 
-                    onClick={() => handleStep4Submit(false)} 
+                    onClick={() => handleStep4Submit(true)} 
                     disabled={isSubmitting}
                     className="gap-2"
                     data-testid="button-complete-onboarding"

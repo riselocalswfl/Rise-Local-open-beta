@@ -79,7 +79,11 @@ Preferred communication style: Simple, everyday language.
 - **Direct Messaging**: Users can send direct messages to vendors and vice versa. Real-time updates via polling (5s for threads, 10s for unread counts), with read status tracking. Messages page includes vendor search to start new conversations - searches across business name, bio, tagline, categories, and values.
 
 ### Stripe Connect Payment Flow (November 2025)
-- **Vendor Onboarding**: Vendors connect their bank accounts through Stripe Connect Express accounts via the Settings tab in their dashboard
+- **Vendor Onboarding**: Vendors can connect Stripe during Step 4 of onboarding wizard (optional) or later via Settings tab in dashboard
+  - Step 4 of onboarding presents "Complete & Connect Stripe" or "Skip for Now" options
+  - "Connect" option redirects to dashboard with Settings tab auto-opened for seamless StripeConnectCard flow
+  - Alert banner appears in dashboard when Stripe is not connected, with "Connect Now" CTA
+- **Payment Method Display**: "Credit Card (Through App)" appears as first payment method option in both dashboard and onboarding, with clear Stripe requirement messaging
 - **Account Status Tracking**: Database stores `stripeConnectAccountId` and `stripeOnboardingComplete` fields for vendors, restaurants, and service providers
 - **Payment Collection**: Buyers pay the full amount (subtotal + 7% FL sales tax) to the platform's Stripe account. No per-transaction buyer fees are charged.
 - **Payment Intent Metadata**: Each vendor order includes detailed breakdown: `subtotalCents`, `taxCents`, and `totalCents`
@@ -95,7 +99,8 @@ Preferred communication style: Simple, everyday language.
   - `GET /api/stripe/account-status`: Checks vendor's Stripe Connect account status
   - `POST /api/stripe/webhook`: Handles account updates and payment processing (account.updated, payment_intent.succeeded)
   - `POST /api/stripe/create-payment-intent`: Creates payment intent with complete vendor breakdown in metadata
-- **Dashboard Integration**: StripeConnectCard component in vendor dashboard shows connection status with appropriate CTAs (connect, complete setup, or connected)
+- **Dashboard Integration**: StripeConnectCard component in Settings tab shows connection status with appropriate CTAs (connect, complete setup, or connected)
+- **UX Enhancements**: Alert banner at top of dashboard when not connected, sessionStorage-based tab navigation from onboarding
 
 ### Application Routes
 - **Public**: Includes `/`, `/products`, `/vendors`, `/vendor/:id`, `/events`, `/spotlight`, `/login`, `/signup`.
