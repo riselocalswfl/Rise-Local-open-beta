@@ -70,26 +70,25 @@ Preferred communication style: Simple, everyday language.
 - **Note**: Products support multi-category selection; categories stored as text array in PostgreSQL
 
 ### Key Business Logic
-- **Pricing Model**: Vendors pay a $150/month membership fee, buyers incur a 3% fee, and there are no per-transaction vendor fees.
+- **Pricing Model**: Vendors pay a $150/month membership fee for platform access. Buyers pay product price plus 7% FL sales tax only (no buyer fees). Platform revenue comes exclusively from vendor membership fees, not transaction fees.
 - **Platform Focus**: Exclusively serves local Fort Myers vendors and products.
 - **Loyalty System**: Users earn 10 points for each completed order.
 - **Fulfillment**: Supports various fulfillment methods including pickup, local delivery, and shipping, configurable by vendors.
 - **Fort Myers Spotlight**: A feature for highlighting specific content or businesses.
-- **Shopping Cart**: A React Context-based system with localStorage persistence, handling product variants, and automatically calculating totals (subtotal, 7% FL sales tax, 3% buyer fee).
+- **Shopping Cart**: A React Context-based system with localStorage persistence, handling product variants, and automatically calculating totals (subtotal + 7% FL sales tax).
 - **Direct Messaging**: Users can send direct messages to vendors and vice versa. Real-time updates via polling (5s for threads, 10s for unread counts), with read status tracking. Messages page includes vendor search to start new conversations - searches across business name, bio, tagline, categories, and values.
 
 ### Stripe Connect Payment Flow (November 2025)
 - **Vendor Onboarding**: Vendors connect their bank accounts through Stripe Connect Express accounts via the Settings tab in their dashboard
 - **Account Status Tracking**: Database stores `stripeConnectAccountId` and `stripeOnboardingComplete` fields for vendors, restaurants, and service providers
-- **Payment Collection**: Buyers pay the full amount (subtotal + 7% FL sales tax + 3% buyer fee) to the platform's Stripe account
-- **Payment Intent Metadata**: Each vendor order includes detailed breakdown: `subtotalCents`, `taxCents`, `buyerFeeCents`, and `totalCents`
+- **Payment Collection**: Buyers pay the full amount (subtotal + 7% FL sales tax) to the platform's Stripe account. No per-transaction buyer fees are charged.
+- **Payment Intent Metadata**: Each vendor order includes detailed breakdown: `subtotalCents`, `taxCents`, and `totalCents`
 - **Automatic Transfers**: When payment succeeds (via `payment_intent.succeeded` webhook), the platform:
   1. Extracts vendor breakdown from payment intent metadata
-  2. Transfers subtotal + tax to vendor's connected account
-  3. Retains 3% buyer fee as platform revenue
-- **Multi-Vendor Support**: Single checkout supports multiple vendors; each vendor receives their portion automatically via separate transfers
-- **Transfer Formula**: `vendorReceives = subtotal + tax` (platform keeps the 3% buyer fee by not transferring it)
-- **Fee Calculation**: Buyer fee is 3% of subtotal, calculated and stored separately in metadata for accurate accounting
+  2. Transfers full amount (subtotal + tax) to vendor's connected account
+  3. Platform revenue comes from $150/month vendor membership fees, not transaction fees
+- **Multi-Vendor Support**: Single checkout supports multiple vendors; each vendor receives their full portion automatically via separate transfers
+- **Transfer Formula**: `vendorReceives = subtotal + tax` (full amount transferred to vendor)
 - **API Endpoints**:
   - `POST /api/stripe/create-account`: Creates Stripe Connect Express account for vendor
   - `POST /api/stripe/create-onboarding-link`: Generates onboarding URL for bank account setup
