@@ -660,7 +660,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const vendorId = metadata[`vendor_${i}_id`];
             const vendorSubtotalCents = parseInt(metadata[`vendor_${i}_subtotal`]);
             const vendorTaxCents = parseInt(metadata[`vendor_${i}_tax`]);
-            const vendorBuyerFeeCents = parseInt(metadata[`vendor_${i}_buyer_fee`]);
             
             if (vendorId && vendorSubtotalCents) {
               try {
@@ -668,10 +667,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const vendor = await storage.getVendor(vendorId);
                 
                 if (vendor?.stripeConnectAccountId && vendor?.stripeOnboardingComplete) {
-                  // Platform keeps the 3% buyer fee as revenue
-                  // Vendor receives: subtotal + tax (everything except the buyer fee)
+                  // Vendor receives the full amount: subtotal + tax
+                  // Platform revenue comes from $150/month vendor membership fees
                   const vendorReceivesCents = vendorSubtotalCents + vendorTaxCents;
-                  const platformFeeCents = vendorBuyerFeeCents; // The 3% buyer fee is platform revenue
                   
                   // Create transfer to vendor's connected account
                   await stripe.transfers.create({
@@ -684,11 +682,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       paymentIntentId: paymentIntent.id,
                       subtotalCents: vendorSubtotalCents.toString(),
                       taxCents: vendorTaxCents.toString(),
-                      platformFeeCents: platformFeeCents.toString(),
                     },
                   });
                   
-                  console.log(`Transfer created for vendor ${vendorId}: $${(vendorReceivesCents / 100).toFixed(2)} (platform fee: $${(platformFeeCents / 100).toFixed(2)})`);
+                  console.log(`Transfer created for vendor ${vendorId}: $${(vendorReceivesCents / 100).toFixed(2)}`);
                 } else {
                   console.warn(`Vendor ${vendorId} does not have Stripe Connect configured`);
                 }
@@ -1624,12 +1621,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalCents = vendorOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
 
       // Store vendor order breakdown in metadata for webhook processing
-      // Include subtotal, tax, buyer fee, and total for each vendor
+      // Include subtotal, tax, and total for each vendor
       const vendorOrdersMetadata = vendorOrders.map((order: any, index: number) => ({
         [`vendor_${index}_id`]: order.vendorId,
         [`vendor_${index}_subtotal`]: order.subtotalCents.toString(),
         [`vendor_${index}_tax`]: order.taxCents.toString(),
-        [`vendor_${index}_buyer_fee`]: order.buyerFeeCents.toString(),
         [`vendor_${index}_total`]: order.totalCents.toString(),
       })).reduce((acc, obj) => ({ ...acc, ...obj }), {});
 
@@ -1695,7 +1691,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totals: z.object({
           subtotal: z.number(),
           tax: z.number(),
-          buyerFee: z.number(),
           grandTotal: z.number(),
         }),
         paymentIntentId: z.string().optional(),
@@ -1730,8 +1725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Calculate vendor-specific totals
         const vendorSubtotal = vendorItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const vendorTax = vendorSubtotal * 0.07; // 7% FL tax
-        const vendorFee = vendorSubtotal * 0.03; // 3% buyer fee
-        const vendorTotal = vendorSubtotal + vendorTax + vendorFee;
+        const vendorTotal = vendorSubtotal + vendorTax;
         
         // Get vendor to check payment methods
         const vendor = await storage.getVendor(vendorId);
@@ -1788,7 +1782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           itemsJson,
           subtotalCents: Math.round(vendorSubtotal * 100),
           taxCents: Math.round(vendorTax * 100),
-          feesCents: Math.round(vendorFee * 100),
+          feesCents: 0, // No buyer fee - platform revenue from $150/month vendor membership
           totalCents: Math.round(vendorTotal * 100),
           fulfillmentType,
           fulfillmentDetails,
