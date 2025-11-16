@@ -253,6 +253,9 @@ export const products = pgTable("products", {
   status: text("status").notNull().default("active"), // active or hidden
   isFeatured: boolean("is_featured").notNull().default(false),
   
+  // Categorization - hierarchical multi-select (parent + child categories from vendor's shop categories)
+  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(),
+  
   // Sourcing & Transparency
   valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
   sourceFarm: text("source_farm"), // where product is sourced from

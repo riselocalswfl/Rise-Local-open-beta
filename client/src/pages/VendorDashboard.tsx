@@ -26,14 +26,45 @@ import { HierarchicalCategorySelector } from "@/components/HierarchicalCategoryS
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
 import { z } from "zod";
-import { SHOP_CATEGORIES, EVENTS_CATEGORIES } from "@shared/categories";
+import { SHOP_CATEGORIES, EVENTS_CATEGORIES, type CategoryGroup } from "@shared/categories";
+
+// Helper function to filter categories based on vendor's selected categories
+function filterVendorCategories(vendorCategories: string[]): CategoryGroup[] {
+  if (!vendorCategories || vendorCategories.length === 0) {
+    return [];
+  }
+  
+  return SHOP_CATEGORIES
+    .map((group) => {
+      // If vendor selected the parent, include all children
+      if (vendorCategories.includes(group.parent)) {
+        return group;
+      }
+      
+      // Otherwise, filter children to only show ones vendor selected
+      const selectedChildren = group.children.filter((child) => 
+        vendorCategories.includes(child)
+      );
+      
+      // Only include group if vendor selected at least one child
+      if (selectedChildren.length > 0) {
+        return {
+          parent: group.parent,
+          children: selectedChildren,
+        };
+      }
+      
+      return null;
+    })
+    .filter((group): group is CategoryGroup => group !== null);
+}
 
 // Form schemas for validation
 const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   price: z.number().min(0, "Price must be positive"), // In dollars for the form
   stock: z.number().int().min(0, "Stock must be a positive number"),
-  category: z.string().optional(),
+  categories: z.array(z.string()).default([]),
   description: z.string().optional(),
   imageUrl: z.string().optional(),
   unitType: z.string().default("per item"),
@@ -631,6 +662,7 @@ export default function VendorDashboard() {
                         setPreviewProductData(data);
                         setProductPreviewDialogOpen(true);
                       }}
+                      availableCategories={filterVendorCategories(vendor?.categories || [])}
                     />
                   </DialogContent>
                 </Dialog>
@@ -962,7 +994,17 @@ export default function VendorDashboard() {
 
 // ========== FORM COMPONENTS ==========
 
-function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: any) => void; isPending: boolean; onPreview: (data: any) => void }) {
+function AddProductForm({ 
+  onSubmit, 
+  isPending, 
+  onPreview,
+  availableCategories 
+}: { 
+  onSubmit: (data: any) => void; 
+  isPending: boolean; 
+  onPreview: (data: any) => void;
+  availableCategories: CategoryGroup[];
+}) {
   const [productTags, setProductTags] = useState<string[]>([]);
   
   const form = useForm<z.infer<typeof productFormSchema>>({
@@ -971,7 +1013,7 @@ function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: a
       name: "",
       price: 0,
       stock: 0,
-      category: "",
+      categories: [],
       description: "",
       imageUrl: "",
       unitType: "per item",
@@ -986,7 +1028,7 @@ function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: a
   });
 
   const handleSubmit = (data: z.infer<typeof productFormSchema>) => {
-    const { price, ...rest } = data;
+    const { price, categories, ...rest } = data;
     
     // Clean up optional fields - remove empty strings and zero values for optional fields
     const cleanData: any = {
@@ -994,13 +1036,13 @@ function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: a
       stock: rest.stock,
       priceCents: Math.round(price * 100),
       valueTags: productTags,
+      categories: categories || [],
       unitType: rest.unitType || "per item",
       status: rest.status || "active",
       isFeatured: rest.isFeatured || false,
     };
     
     // Only include optional fields if they have values
-    if (rest.category) cleanData.category = rest.category;
     if (rest.description) cleanData.description = rest.description;
     if (rest.imageUrl) cleanData.imageUrl = rest.imageUrl;
     if (rest.sourceFarm) cleanData.sourceFarm = rest.sourceFarm;
@@ -1017,6 +1059,7 @@ function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: a
       ...data,
       priceCents: Math.round(data.price * 100),
       valueTags: productTags,
+      categories: data.categories || [],
     };
     onPreview(previewData);
   };
@@ -1088,53 +1131,50 @@ function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: a
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="stock"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Stock *</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="50"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    data-testid="input-product-stock"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <FormField
+          control={form.control}
+          name="stock"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Stock *</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder="50"
+                  value={field.value || ""}
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                  data-testid="input-product-stock"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-product-category">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Produce">Produce</SelectItem>
-                    <SelectItem value="Dairy">Dairy</SelectItem>
-                    <SelectItem value="Meat">Meat</SelectItem>
-                    <SelectItem value="Baked Goods">Baked Goods</SelectItem>
-                    <SelectItem value="Preserves">Preserves</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        {/* Product Categories - filtered to vendor's categories */}
+        <FormField
+          control={form.control}
+          name="categories"
+          render={({ field }) => (
+            <FormItem>
+              <div className="space-y-2">
+                <HierarchicalCategorySelector
+                  categories={availableCategories}
+                  selectedCategories={field.value || []}
+                  onChange={field.onChange}
+                  label="Product Categories"
+                  required={false}
+                />
+                {availableCategories.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Please select your shop categories in the Profile tab first to categorize products.
+                  </p>
+                )}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
