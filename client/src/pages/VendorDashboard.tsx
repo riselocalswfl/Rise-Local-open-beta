@@ -595,61 +595,32 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
-            {/* Visual Identity Section */}
+            {/* Profile Photo/Logo Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Visual Identity</CardTitle>
-                <CardDescription>Add images to make your profile stand out</CardDescription>
+                <CardTitle>Profile Photo/Logo</CardTitle>
+                <CardDescription>Add a logo or profile photo to represent your business</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <Label>Profile Image</Label>
-                  {vendor.logoUrl && (
-                    <div className="flex items-center gap-4 mb-4">
-                      <img 
-                        src={vendor.logoUrl} 
-                        alt="Profile" 
-                        className="w-24 h-24 rounded-full object-cover border-2 border-border"
-                        data-testid="img-profile-preview"
-                      />
-                      <p className="text-sm text-muted-foreground">Current profile image</p>
-                    </div>
-                  )}
-                  <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Image upload coming soon
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      For now, use a URL in the logoUrl field via Settings tab
-                    </p>
+              <CardContent className="space-y-4">
+                {vendor.logoUrl && (
+                  <div className="flex items-center gap-4 mb-4">
+                    <img 
+                      src={vendor.logoUrl} 
+                      alt="Profile" 
+                      className="w-24 h-24 rounded-full object-cover border-2 border-border"
+                      data-testid="img-profile-preview"
+                    />
+                    <p className="text-sm text-muted-foreground">Current profile image</p>
                   </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <Label>Header/Banner Image (optional)</Label>
-                  {vendor.bannerUrl && (
-                    <div className="mb-4">
-                      <img 
-                        src={vendor.bannerUrl} 
-                        alt="Banner" 
-                        className="w-full h-32 object-cover rounded-md border-2 border-border"
-                        data-testid="img-banner-preview"
-                      />
-                      <p className="text-sm text-muted-foreground mt-2">Current banner image</p>
-                    </div>
-                  )}
-                  <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
-                    <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Banner upload coming soon
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      For now, use a URL in the bannerUrl field via Settings tab
-                    </p>
-                  </div>
+                )}
+                <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Image upload coming soon
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    For now, use a URL in the logoUrl field via Settings tab
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -660,19 +631,11 @@ export default function VendorDashboard() {
                 <CardTitle>System Info</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Member Since</span>
-                    <span className="text-sm text-muted-foreground" data-testid="text-member-since">
-                      {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Profile Status</span>
-                    <Badge variant={vendor.isVerified ? "default" : "secondary"} data-testid="badge-status">
-                      {vendor.isVerified ? "Verified" : "Pending Verification"}
-                    </Badge>
-                  </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Member Since</span>
+                  <span className="text-sm text-muted-foreground" data-testid="text-member-since">
+                    {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'}
+                  </span>
                 </div>
               </CardContent>
             </Card>
