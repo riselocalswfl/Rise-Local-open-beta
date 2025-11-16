@@ -15,37 +15,47 @@ export default function HomeHero() {
             Rise Local is your one-stop-shop for all things local in SWFL. Whether it's events, restaurants, goods, or services, we're here to make choosing local the easiest choice every time.
           </p>
           <div className="flex justify-center mb-6">
-            <Link href="/register" data-testid="join-movement-cta">
-              <a className="bg-secondary hover:bg-secondary/90 text-white px-8 py-3 rounded-md font-medium transition no-underline">
-                Join the Movement
-              </a>
+            <Link 
+              href="/register" 
+              data-testid="join-movement-cta"
+              className="bg-secondary hover:bg-secondary/90 text-white px-8 py-3 rounded-md font-medium transition no-underline"
+            >
+              Join the Movement
             </Link>
           </div>
           <div className="w-full max-w-md mx-auto">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Link href="/products">
-                <a className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" data-testid="link-shop">
-                  <ShoppingBag className="h-5 w-5" />
-                  <span className="text-sm font-medium">Shop</span>
-                </a>
+              <Link 
+                href="/products"
+                className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" 
+                data-testid="link-shop"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                <span className="text-sm font-medium">Shop</span>
               </Link>
-              <Link href="/vendors">
-                <a className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" data-testid="link-dine">
-                  <Utensils className="h-5 w-5" />
-                  <span className="text-sm font-medium">Dine</span>
-                </a>
+              <Link 
+                href="/vendors"
+                className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" 
+                data-testid="link-dine"
+              >
+                <Utensils className="h-5 w-5" />
+                <span className="text-sm font-medium">Dine</span>
               </Link>
-              <Link href="/vendors">
-                <a className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" data-testid="link-services">
-                  <Wrench className="h-5 w-5" />
-                  <span className="text-sm font-medium">Services</span>
-                </a>
+              <Link 
+                href="/vendors"
+                className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" 
+                data-testid="link-services"
+              >
+                <Wrench className="h-5 w-5" />
+                <span className="text-sm font-medium">Services</span>
               </Link>
-              <Link href="/events">
-                <a className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" data-testid="link-events">
-                  <Calendar className="h-5 w-5" />
-                  <span className="text-sm font-medium">Events</span>
-                </a>
+              <Link 
+                href="/events"
+                className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" 
+                data-testid="link-events"
+              >
+                <Calendar className="h-5 w-5" />
+                <span className="text-sm font-medium">Events</span>
               </Link>
             </div>
           </div>

@@ -132,9 +132,14 @@ export default function VendorOnboarding() {
     setStep(3);
   };
 
-  const handleStep3Submit = async (data: any) => {
+  const handleStep3Submit = (data: any) => {
+    setFormData({ ...formData, ...data });
+    setStep(4);
+  };
+
+  const handleStep4Submit = async (skipStripe: boolean = false) => {
     setIsSubmitting(true);
-    const completeData = { ...formData, ...data, vendorType };
+    const completeData = { ...formData, vendorType };
     
     try {
       const response = await fetch("/api/vendors/onboard", {
@@ -158,7 +163,8 @@ export default function VendorOnboarding() {
       // Clear session storage
       sessionStorage.removeItem("vendorType");
 
-      // Redirect to correct dashboard based on vendor type
+      // If not skipping Stripe, redirect to dashboard where StripeConnectCard will handle onboarding
+      // Otherwise, just go to dashboard
       setLocation(result.redirectUrl || "/dashboard");
     } catch (error: any) {
       toast({
@@ -196,7 +202,7 @@ export default function VendorOnboarding() {
     }
   };
 
-  const progressPercentage = (step / 3) * 100;
+  const progressPercentage = (step / 4) * 100;
 
   return (
     <div className="min-h-screen bg-bg">
@@ -208,14 +214,14 @@ export default function VendorOnboarding() {
           </div>
           <h1 className="text-3xl font-bold mb-2">Welcome to Rise Local</h1>
           <p className="text-muted-foreground">
-            Set up your {getVendorTypeLabel()} profile in 3 simple steps
+            Set up your {getVendorTypeLabel()} profile in 4 simple steps
           </p>
         </div>
 
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between mb-2">
-            <span className="text-sm font-medium">Step {step} of 3</span>
+            <span className="text-sm font-medium">Step {step} of 4</span>
             <span className="text-sm text-muted-foreground">{Math.round(progressPercentage)}% Complete</span>
           </div>
           <Progress value={progressPercentage} className="h-2" />
@@ -529,19 +535,95 @@ export default function VendorOnboarding() {
                       <ArrowLeft className="w-4 h-4" />
                       Back
                     </Button>
-                    <Button type="submit" size="lg" disabled={isSubmitting} className="gap-2" data-testid="button-complete-onboarding">
-                      {isSubmitting ? (
-                        "Creating Profile..."
-                      ) : (
-                        <>
-                          Complete Setup
-                          <CheckCircle2 className="w-4 h-4" />
-                        </>
-                      )}
+                    <Button type="submit" size="lg" className="gap-2" data-testid="button-next-step-3">
+                      Next Step
+                      <ArrowRight className="w-4 h-4" />
                     </Button>
                   </div>
                 </form>
               </Form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 4: Connect Payments (Stripe) */}
+        {step === 4 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Connect Payments (Optional)</CardTitle>
+              <CardDescription>Set up Stripe to accept credit card payments through the app</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-muted/50 rounded-lg p-6 space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">Accept Credit Cards</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Connect your Stripe account to accept credit card payments directly through the Rise Local platform. 
+                      You'll receive 100% of the payment amount (product price + 7% FL sales tax) directly to your bank account.
+                    </p>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span>Receive payments within 2 business days</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span>No transaction fees from Rise Local (Stripe's standard fees apply)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span>Secure and PCI-compliant payment processing</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-between">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setStep(3)} 
+                  className="gap-2"
+                  data-testid="button-back-step-4"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => handleStep4Submit(true)} 
+                    disabled={isSubmitting}
+                    className="gap-2"
+                    data-testid="button-skip-stripe"
+                  >
+                    Skip for Now
+                  </Button>
+                  <Button 
+                    type="button" 
+                    size="lg" 
+                    onClick={() => handleStep4Submit(false)} 
+                    disabled={isSubmitting}
+                    className="gap-2"
+                    data-testid="button-complete-onboarding"
+                  >
+                    {isSubmitting ? (
+                      "Creating Profile..."
+                    ) : (
+                      <>
+                        Complete & Connect Stripe
+                        <CheckCircle2 className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
