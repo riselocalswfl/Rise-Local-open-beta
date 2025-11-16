@@ -16,7 +16,7 @@ export default function HomeHero() {
           </p>
           <div className="flex justify-center mb-6">
             <Link 
-              href="/register" 
+              href="/onboarding" 
               data-testid="join-movement-cta"
               className="bg-secondary hover:bg-secondary/90 text-white px-8 py-3 rounded-md font-medium transition no-underline"
             >

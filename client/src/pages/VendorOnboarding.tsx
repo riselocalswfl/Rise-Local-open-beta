@@ -18,6 +18,7 @@ import { ShoppingBag, Utensils, Wrench, CheckCircle2, ArrowRight, ArrowLeft } fr
 import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import type { FulfillmentOptions } from "@shared/schema";
+import { SHOP_CATEGORIES } from "@shared/categories";
 
 // Step 1: Business Basics Schema
 const step1Schema = z.object({
@@ -339,8 +340,9 @@ export default function VendorOnboarding() {
                         <FormLabel>Categories *</FormLabel>
                         <FormControl>
                           <HierarchicalCategorySelector
+                            categories={SHOP_CATEGORIES}
                             selectedCategories={field.value}
-                            onCategoriesChange={field.onChange}
+                            onChange={field.onChange}
                           />
                         </FormControl>
                         <FormDescription>
