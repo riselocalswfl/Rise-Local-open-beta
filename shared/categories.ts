@@ -22,7 +22,7 @@ export const SHOP_CATEGORIES: CategoryGroup[] = [
     ],
   },
   {
-    parent: "Handmade Goods",
+    parent: "Artisan Goods",
     children: [
       "Home Décor",
       "Jewelry",
