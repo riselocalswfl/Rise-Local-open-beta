@@ -35,8 +35,8 @@ const step1Schema = z.object({
 // Step 2: Dine Details Schema
 const step2Schema = z.object({
   tagline: z.string().optional(),
-  priceRange: z.string().min(1, "Please select a price range"),
-  dietaryOptions: z.array(z.string()),
+  priceRange: z.enum(["$", "$$", "$$$", "$$$$"]),
+  dietaryOptions: z.array(z.string()).min(1, "Select at least one dietary option"),
   seatingCapacity: z.coerce.number().min(1, "Seating capacity must be at least 1").optional().or(z.literal("")),
   reservationsRequired: z.boolean().default(false),
   website: z.string().url().optional().or(z.literal("")),
@@ -78,7 +78,7 @@ export default function DineOnboarding() {
     resolver: zodResolver(step2Schema),
     defaultValues: {
       tagline: "",
-      priceRange: "",
+      priceRange: "$",
       dietaryOptions: [] as string[],
       seatingCapacity: "" as any,
       reservationsRequired: false,
@@ -414,9 +414,9 @@ export default function DineOnboarding() {
                     name="dietaryOptions"
                     render={() => (
                       <FormItem>
-                        <FormLabel>Dietary Options</FormLabel>
+                        <FormLabel>Dietary Options *</FormLabel>
                         <FormDescription>
-                          Select all dietary options you offer
+                          Select at least one dietary option you offer
                         </FormDescription>
                         <div className="space-y-2">
                           {["Vegan", "Vegetarian", "Gluten-Free", "Dairy-Free", "Keto", "Paleo"].map((option) => (

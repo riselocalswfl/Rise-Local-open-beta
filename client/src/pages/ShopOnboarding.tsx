@@ -34,7 +34,7 @@ const step1Schema = z.object({
 // Step 2: Shop Details Schema
 const step2Schema = z.object({
   tagline: z.string().optional(),
-  localSourcingPercent: z.number().min(0).max(100),
+  localSourcingPercent: z.number().min(0).max(100).optional(),
   website: z.string().url().optional().or(z.literal("")),
   instagram: z.string().optional(),
   facebook: z.string().optional(),

@@ -32,7 +32,10 @@ const step1Schema = z.object({
 const step2Schema = z.object({
   tagline: z.string().optional(),
   serviceAreas: z.array(z.string()).min(1, "Select at least one service area"),
-  yearsInBusiness: z.string().optional(),
+  yearsInBusiness: z.preprocess(
+    (val) => val === "" || val === null || val === undefined ? undefined : Number(val),
+    z.number().min(0, "Years in business must be 0 or greater").optional()
+  ),
   certifications: z.string().optional(),
   website: z.string().url().optional().or(z.literal("")),
   instagram: z.string().optional(),
@@ -82,7 +85,7 @@ export default function ServicesOnboarding() {
     defaultValues: {
       tagline: "",
       serviceAreas: [] as string[],
-      yearsInBusiness: "",
+      yearsInBusiness: undefined,
       certifications: "",
       website: "",
       instagram: "",
@@ -407,27 +410,31 @@ export default function ServicesOnboarding() {
                       <FormItem>
                         <FormLabel>Years in Business</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="e.g., 5" {...field} data-testid="input-years-in-business" />
+                          <Input type="number" min="0" placeholder="e.g., 5" {...field} data-testid="input-years-in-business" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
+                  {/* TODO: Future enhancement - convert to TagInput component for better discrete entry management */}
                   <FormField
                     control={form2.control}
                     name="certifications"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Certifications</FormLabel>
+                        <FormLabel>Certifications & Licenses</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="List any relevant certifications, licenses, or credentials..."
+                            placeholder="e.g.,&#10;Licensed Contractor FL-123456&#10;BBB A+ Rating&#10;Insured $1M Liability"
                             className="min-h-[80px]"
                             {...field}
                             data-testid="input-certifications"
                           />
                         </FormControl>
+                        <FormDescription>
+                          List your certifications, licenses, and credentials (one per line)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
