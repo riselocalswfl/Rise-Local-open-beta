@@ -1,4 +1,4 @@
-import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle, MessageSquare } from "lucide-react";
+import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle, MessageSquare, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +71,11 @@ export default function NavMenu() {
     setOpen(false);
   };
 
+  const handleLogout = () => {
+    setOpen(false);
+    window.location.href = "/api/logout";
+  };
+
   // Determine which navigation items to show based on user role
   let navigationItems = publicNavigationItems;
   if (user) {
@@ -132,6 +137,21 @@ export default function NavMenu() {
                 </li>
               );
             })}
+            
+            {isAuthenticated && (
+              <>
+                <li className="pt-4 border-t border-border">
+                  <div
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer bg-primary text-primary-foreground hover-elevate active-elevate-2"
+                    data-testid="button-logout"
+                  >
+                    <LogOut className="h-5 w-5" strokeWidth={1.75} />
+                    <span className="font-medium flex-1">Log Out</span>
+                  </div>
+                </li>
+              </>
+            )}
           </ul>
         </nav>
       </SheetContent>
