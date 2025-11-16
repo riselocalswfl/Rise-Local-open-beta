@@ -1,0 +1,94 @@
+CART STRUCTURE
+
+Create ONE unified cart for the user.
+The cart UI should display all items but group them by vendorID.
+
+Cart format example:
+
+cart = {
+   userID: "...",
+   items: [
+      { productID, vendorID, name, price, quantity },
+      { productID, vendorID, name, price, quantity }
+   ]
+}
+
+
+In the UI, show vendor sections, but still keep one single checkout button.
+
+CHECKOUT LOGIC
+
+On checkout, automatically split the cart into separate vendor orders.
+
+For each unique vendorID, generate a separate vendorOrder object:
+
+vendorOrder = {
+   vendorOrderID: generateID(),
+   masterOrderID: masterOrderID,
+   vendorID: "...",
+   buyerID: "...",
+   buyerContact: { name, email, phone },
+   items: [... only items with this vendorID ...],
+   subtotal: totalForThisVendor,
+   paymentLink: "" // depends on vendor settings
+}
+
+
+Also create one masterOrder containing all vendorOrders:
+
+masterOrder = {
+   masterOrderID: generateID(),
+   buyerID: "...",
+   vendorOrders: [vendorOrder1, vendorOrder2, ...],
+   createdAt: timestamp
+}
+
+
+Store masterOrder in a global orders collection.
+
+PAYMENT RULES
+
+Do NOT combine payments.
+Each vendorOrder must have its own payment.
+
+If vendor uses Stripe Connect:
+
+Create an individual payment intent for that vendorOrder subtotal
+
+Attach the vendor’s Stripe account ID
+
+Save the paymentIntentID in the vendorOrder
+
+If vendor uses their own payment method:
+
+Insert their saved payment method link (CashApp / Venmo / website link) into paymentLink
+
+Display this link immediately after checkout for the user to complete payment
+
+VENDOR NOTIFICATIONS
+
+After checkout and order creation:
+
+Send each vendor ONLY their own vendorOrder through the existing messaging/notification system.
+
+Vendors should NOT see other vendors' items.
+
+USER EXPERIENCE
+
+User sees a single checkout button even if items come from multiple vendors.
+
+After checkout, show the user:
+
+A summary of all vendor orders
+
+Each vendor’s payment link or Stripe-generated payment screen
+
+Each vendor’s estimated fulfillment instructions
+
+REQUIREMENTS
+
+Make the structure modular so additional vendors, products, and payment types can be added without rewriting core logic.
+
+Ensure all new code integrates into the existing file system cleanly.
+
+Implement this exactly as written.
