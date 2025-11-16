@@ -119,6 +119,7 @@ export default function DineOnboarding() {
       const response = await fetch("/api/vendors/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(completeData),
       });
       
