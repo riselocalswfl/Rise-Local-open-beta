@@ -114,16 +114,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Set ACL policy after image upload
+  // Set ACL policy after image upload with server-side validation
   app.put("/api/images", isAuthenticated, async (req: any, res) => {
     if (!req.body.imageURL) {
       return res.status(400).json({ error: "imageURL is required" });
     }
 
     const userId = req.user?.claims?.sub;
+    const MAX_FILE_SIZE_MB = 5;
+    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+    const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 
     try {
       const objectStorageService = new ObjectStorageService();
+      
+      // Get the file to validate it before making it public
+      const file = await objectStorageService.getObjectEntityFile(req.body.imageURL);
+      const [metadata] = await file.getMetadata();
+      
+      // Validate content type
+      if (!metadata.contentType || !ALLOWED_IMAGE_TYPES.includes(metadata.contentType.toLowerCase())) {
+        return res.status(400).json({ 
+          error: `Invalid file type. Only images are allowed (JPEG, PNG, GIF, WebP, SVG). Received: ${metadata.contentType}` 
+        });
+      }
+      
+      // Validate file size
+      if (metadata.size && metadata.size > MAX_FILE_SIZE_BYTES) {
+        return res.status(400).json({ 
+          error: `File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB. Received: ${(metadata.size / 1024 / 1024).toFixed(2)}MB` 
+        });
+      }
+      
+      // Only set public ACL if validation passes
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
         req.body.imageURL,
         {
@@ -137,6 +160,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error setting image ACL:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "File not found" });
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   });

@@ -371,7 +371,7 @@ export default function VendorSignup() {
             </Button>
             <Button
               onClick={() => setStep(4)}
-              disabled={!formData.zipCode || formData.serviceOptions.length === 0}
+              disabled={!formData.zipCode || !formData.locationType || formData.serviceOptions.length === 0}
               data-testid="button-next-to-values"
             >
               Next: Values & Payment
