@@ -285,6 +285,7 @@ export const events = pgTable("events", {
   categories: text("categories").array().default(sql`'{}'::text[]`).notNull(), // hierarchical multi-select event categories
   ticketsAvailable: integer("tickets_available").notNull(),
   rsvpCount: integer("rsvp_count").notNull().default(0),
+  bannerImageUrl: text("banner_image_url"),
 }, (table) => ({
   // Check constraint: exactly one of vendorId or restaurantId must be set
   organizerCheck: sql`CHECK ((vendor_id IS NOT NULL AND restaurant_id IS NULL) OR (vendor_id IS NULL AND restaurant_id IS NOT NULL))`

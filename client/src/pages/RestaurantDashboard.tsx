@@ -12,6 +12,7 @@ import { Plus, Edit2, Trash2, Save } from "lucide-react";
 import type { Restaurant, MenuItem, Event, RestaurantFAQ } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { TagInput } from "@/components/TagInput";
+import { ImageUpload } from "@/components/ImageUpload";
 
 export default function RestaurantDashboard() {
   const { toast } = useToast();
@@ -459,6 +460,7 @@ function MenuItemForm({
     description: item?.description || "",
     priceCents: item?.priceCents || 0,
     category: item?.category || "Entrees",
+    imageUrl: item?.imageUrl || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -513,6 +515,22 @@ function MenuItemForm({
           onChange={(e) => setFormData({ ...formData, priceCents: Math.round(parseFloat(e.target.value) * 100) })}
           required
           data-testid="input-price"
+        />
+      </div>
+
+      <div>
+        <Label>Menu Item Image (optional)</Label>
+        <ImageUpload
+          currentImageUrl={formData.imageUrl}
+          onUploadComplete={(imageUrl) => {
+            setFormData({ ...formData, imageUrl });
+          }}
+          onRemove={() => {
+            setFormData({ ...formData, imageUrl: "" });
+          }}
+          maxSizeMB={5}
+          aspectRatio="square"
+          disabled={isPending}
         />
       </div>
 

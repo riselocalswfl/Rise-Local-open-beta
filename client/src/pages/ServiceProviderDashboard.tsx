@@ -18,6 +18,7 @@ import { Wrench, Briefcase, Calendar, Star, Plus, Trash2, Edit, CheckCircle, XCi
 import type { ServiceProvider, ServiceOffering, ServiceBooking } from "@shared/schema";
 import { insertServiceProviderSchema, insertServiceOfferingSchema } from "@shared/schema";
 import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
+import { ImageUpload } from "@/components/ImageUpload";
 import { z } from "zod";
 import { format } from "date-fns";
 import { SERVICES_CATEGORIES } from "@shared/categories";
@@ -30,6 +31,7 @@ const serviceOfferingFormSchema = z.object({
   fixedPrice: z.number().min(0).optional(), // In dollars for the form
   hourlyRate: z.number().min(0).optional(), // In dollars for the form
   durationMinutes: z.number().int().min(0).optional(),
+  imageUrl: z.string().optional(),
 });
 
 export default function ServiceProviderDashboard() {
@@ -554,6 +556,31 @@ export default function ServiceProviderDashboard() {
                                     min="0"
                                     onChange={e => field.onChange(parseInt(e.target.value) || 0)}
                                     data-testid="input-duration"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={serviceForm.control}
+                            name="imageUrl"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Service Image (optional)</FormLabel>
+                                <FormControl>
+                                  <ImageUpload
+                                    currentImageUrl={field.value}
+                                    onUploadComplete={(imageUrl) => {
+                                      field.onChange(imageUrl);
+                                    }}
+                                    onRemove={() => {
+                                      field.onChange("");
+                                    }}
+                                    maxSizeMB={5}
+                                    aspectRatio="square"
+                                    disabled={createServiceMutation.isPending}
                                   />
                                 </FormControl>
                                 <FormMessage />

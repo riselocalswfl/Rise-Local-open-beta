@@ -24,6 +24,7 @@ import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@
 import { TagInput } from "@/components/TagInput";
 import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
+import { ImageUpload } from "@/components/ImageUpload";
 import { z } from "zod";
 import { SHOP_CATEGORIES, EVENTS_CATEGORIES } from "@shared/categories";
 
@@ -48,6 +49,7 @@ const productFormSchema = z.object({
 const eventFormSchema = insertEventSchema.omit({ vendorId: true, restaurantId: true }).extend({
   dateTime: z.string().min(1, "Date is required"),
   ticketsAvailable: z.number().int().min(0, "Tickets must be a positive number"),
+  bannerImageUrl: z.string().optional(),
 });
 
 const faqFormSchema = insertVendorFAQSchema.omit({ vendorId: true });
@@ -590,26 +592,18 @@ export default function VendorDashboard() {
                 <CardDescription>Add a logo or profile photo to represent your business</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {vendor.logoUrl && (
-                  <div className="flex items-center gap-4 mb-4">
-                    <img 
-                      src={vendor.logoUrl} 
-                      alt="Profile" 
-                      className="w-24 h-24 rounded-full object-cover border-2 border-border"
-                      data-testid="img-profile-preview"
-                    />
-                    <p className="text-sm text-muted-foreground">Current profile image</p>
-                  </div>
-                )}
-                <div className="border-2 border-dashed border-border rounded-md p-8 text-center">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Image upload coming soon
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    For now, use a URL in the logoUrl field via Settings tab
-                  </p>
-                </div>
+                <ImageUpload
+                  currentImageUrl={vendor.logoUrl}
+                  onUploadComplete={(imageUrl) => {
+                    updateVendorMutation.mutate({ logoUrl: imageUrl });
+                  }}
+                  onRemove={() => {
+                    updateVendorMutation.mutate({ logoUrl: null });
+                  }}
+                  maxSizeMB={5}
+                  aspectRatio="square"
+                  disabled={updateVendorMutation.isPending}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -1167,16 +1161,21 @@ function AddProductForm({ onSubmit, isPending, onPreview }: { onSubmit: (data: a
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Image URL (optional)</FormLabel>
+              <FormLabel>Product Image (optional)</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="https://example.com/image.jpg" 
-                  {...field} 
-                  value={field.value || ""}
-                  data-testid="input-product-image" 
+                <ImageUpload
+                  currentImageUrl={field.value}
+                  onUploadComplete={(imageUrl) => {
+                    field.onChange(imageUrl);
+                  }}
+                  onRemove={() => {
+                    field.onChange("");
+                  }}
+                  maxSizeMB={5}
+                  aspectRatio="square"
+                  disabled={isPending}
                 />
               </FormControl>
-              <FormDescription>Upload feature coming soon - use URL for now</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -1257,6 +1256,7 @@ function AddEventForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; 
       location: "",
       categories: [],
       ticketsAvailable: 0,
+      bannerImageUrl: "",
     },
   });
 
@@ -1347,6 +1347,31 @@ function AddEventForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; 
               <FormLabel>Location *</FormLabel>
               <FormControl>
                 <Input placeholder="e.g., 123 Farm Road, Fort Myers, FL" {...field} data-testid="input-event-location" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="bannerImageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Event Banner (optional)</FormLabel>
+              <FormControl>
+                <ImageUpload
+                  currentImageUrl={field.value}
+                  onUploadComplete={(imageUrl) => {
+                    field.onChange(imageUrl);
+                  }}
+                  onRemove={() => {
+                    field.onChange("");
+                  }}
+                  maxSizeMB={5}
+                  aspectRatio="landscape"
+                  disabled={isPending}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
