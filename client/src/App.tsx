@@ -32,6 +32,7 @@ import RestaurantProfile from "@/pages/RestaurantProfile";
 import RestaurantDashboard from "@/pages/RestaurantDashboard";
 import ServiceProviderDashboard from "@/pages/ServiceProviderDashboard";
 import BusinessDashboard from "@/pages/BusinessDashboard";
+import VendorOnboarding from "@/pages/VendorOnboarding";
 import LoyaltyHistory from "@/pages/LoyaltyHistory";
 import CustomerProfile from "@/pages/CustomerProfile";
 import Messages from "@/pages/Messages";
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/join/vendor" component={VendorSignup} />
       <Route path="/join/restaurant" component={RestaurantSignup} />
       <Route path="/join/service-provider" component={ServiceProviderSignup} />
+      <Route path="/onboarding" component={VendorOnboarding} />
       <Route path="/loyalty" component={LoyaltyHistory} />
       <Route path="/profile" component={CustomerProfile} />
       <Route path="/messages" component={Messages} />

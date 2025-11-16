@@ -68,6 +68,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get vendor type from session (for onboarding wizard)
+  app.get('/api/auth/vendor-type', isAuthenticated, async (req: any, res) => {
+    try {
+      const vendorType = (req.session as any).vendorType;
+      res.json({ vendorType: vendorType || null });
+    } catch (error) {
+      console.error("Error fetching vendor type:", error);
+      res.status(500).json({ message: "Failed to fetch vendor type" });
+    }
+  });
+
   // Public route to fetch basic user info by ID (for vendor profile role determination)
   app.get('/api/users/:id', async (req, res) => {
     try {
@@ -269,6 +280,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(vendor);
     } catch (error) {
       res.status(400).json({ error: "Invalid vendor data" });
+    }
+  });
+
+  // Unified vendor onboarding endpoint
+  app.post("/api/vendors/onboard", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { vendorType, paymentMethods, fulfillmentMethods, ...data } = req.body;
+      
+      console.log("[ONBOARD] Creating vendor profile for userId:", userId, "vendorType:", vendorType);
+      
+      // Get user info
+      const user = await storage.getUser(userId);
+      const email = user?.email || "";
+      
+      // Derive service options from fulfillment methods
+      const fulfillment = fulfillmentOptionsSchema.parse(fulfillmentMethods);
+      const serviceOptions = deriveServiceOptions(fulfillment);
+      
+      // Convert payment methods array to string
+      const paymentMethod = paymentMethods.join(", ");
+      
+      // Create vendor profile based on type
+      if (vendorType === "shop") {
+        // Create shop vendor
+        const vendorData = {
+          ownerId: userId,
+          businessName: data.businessName,
+          contactName: data.contactName,
+          bio: data.bio,
+          tagline: data.tagline || "",
+          city: data.city,
+          state: "FL",
+          zipCode: data.zipCode,
+          categories: data.categories || [],
+          contact: {
+            email: data.email || email,
+            phone: data.phone || "",
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
+          },
+          locationType: "Local Business",
+          serviceOptions,
+          paymentMethod,
+          fulfillmentOptions: fulfillment,
+        };
+        
+        await storage.createVendor(vendorData);
+        await storage.updateUser(userId, { role: "vendor" });
+        console.log("[ONBOARD] Created shop vendor profile");
+        
+      } else if (vendorType === "restaurant") {
+        // Create restaurant vendor
+        const restaurantData = {
+          ownerId: userId,
+          restaurantName: data.businessName,
+          contactName: data.contactName,
+          bio: data.bio,
+          tagline: data.tagline || "",
+          city: data.city,
+          state: "FL",
+          zipCode: data.zipCode,
+          categories: data.categories || [],
+          contact: {
+            email: data.email || email,
+            phone: data.phone || "",
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
+          },
+          locationType: "Dine-in",
+          serviceOptions,
+          paymentMethod,
+        };
+        
+        await storage.createRestaurant(restaurantData);
+        await storage.updateUser(userId, { role: "restaurant" });
+        console.log("[ONBOARD] Created restaurant vendor profile");
+        
+      } else if (vendorType === "service") {
+        // Create service provider
+        const serviceData = {
+          ownerId: userId,
+          businessName: data.businessName,
+          contactName: data.contactName,
+          bio: data.bio,
+          tagline: data.tagline || "",
+          city: data.city,
+          state: "FL",
+          zipCode: data.zipCode,
+          categories: data.categories || [],
+          serviceAreas: [data.city],
+          contactEmail: data.email || email,
+          contactPhone: data.phone || "",
+          contact: {
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
+          },
+        };
+        
+        await storage.createServiceProvider(serviceData);
+        await storage.updateUser(userId, { role: "service_provider" });
+        console.log("[ONBOARD] Created service provider profile");
+      } else {
+        return res.status(400).json({ message: "Invalid vendor type" });
+      }
+      
+      // Clear onboarding session data
+      delete (req.session as any).needsOnboarding;
+      delete (req.session as any).vendorType;
+      
+      // Return success with redirect URL based on vendor type
+      let redirectUrl = "/dashboard";
+      if (vendorType === "service") {
+        redirectUrl = "/service-provider-dashboard";
+      } else if (vendorType === "restaurant") {
+        redirectUrl = "/restaurant-dashboard";
+      } else if (vendorType === "shop") {
+        redirectUrl = "/vendor-dashboard";
+      }
+      
+      res.status(201).json({ success: true, message: "Vendor profile created successfully", redirectUrl });
+    } catch (error) {
+      console.error("[ONBOARD] Error creating vendor profile:", error);
+      res.status(400).json({ 
+        message: "Failed to create vendor profile", 
+        details: error instanceof Error ? error.message : String(error) 
+      });
     }
   });
 

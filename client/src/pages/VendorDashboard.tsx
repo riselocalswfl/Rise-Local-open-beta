@@ -271,14 +271,14 @@ export default function VendorDashboard() {
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <Card className="max-w-lg">
           <CardHeader>
-            <CardTitle>No Vendor Profile Found</CardTitle>
+            <CardTitle>Setting Up Your Profile</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              You don't have a vendor profile yet. Please sign up as a vendor to create your profile.
+              Loading your vendor profile...
             </p>
             <p className="text-sm text-muted-foreground">
-              For demo purposes, you can use one of the seeded vendor owner accounts.
+              If this persists, please contact support or complete the vendor onboarding process.
             </p>
           </CardContent>
         </Card>

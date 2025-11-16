@@ -166,6 +166,11 @@ export async function setupAuth(app: Express) {
 
         // After successful authentication, determine redirect based on user role or returnTo
         const userId = user.claims.sub;
+        
+        // Clear any stale onboarding flags from previous sessions (defensive)
+        delete (req.session as any).needsOnboarding;
+        delete (req.session as any).vendorType;
+        
         // Try to get intended role and returnTo from session first, then cookie as fallback
         let intendedRole = (req.session as any).intendedRole || req.cookies.intended_role;
         let returnTo = (req.session as any).returnTo || req.cookies.return_to;
@@ -190,9 +195,14 @@ export async function setupAuth(app: Express) {
               ? `${existingUser.firstName} ${existingUser.lastName}`
               : existingUser?.email?.split('@')[0] || "Business Owner";
             
-            // If intended role is "vendor", check if user already has a specific vendor type profile
-            if (intendedRole === "vendor") {
-              // Check for existing vendor-type profiles (prioritize by checking profile existence, not user role)
+            // Handle vendor-type signups: redirect to onboarding if no profile exists
+            if (intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider") {
+              // Normalize role to vendorType early for consistency
+              const vendorType = intendedRole === "vendor" ? "shop" 
+                : intendedRole === "service_provider" ? "service"
+                : intendedRole; // restaurant stays as-is
+              
+              // Check for existing vendor-type profiles
               const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
               const existingProvider = await storage.getServiceProviderByOwnerId(userId);
               const existingVendor = await storage.getVendorByOwnerId(userId);
@@ -201,74 +211,31 @@ export async function setupAuth(app: Express) {
               if (existingRestaurant) {
                 userRole = "restaurant";
                 await storage.updateUser(userId, { role: "restaurant" });
+                // Flags already cleared at top - profile exists, no onboarding needed
                 console.log("[AUTH] User has existing restaurant profile, preserving role as restaurant");
               } else if (existingProvider) {
                 userRole = "service_provider";
                 await storage.updateUser(userId, { role: "service_provider" });
+                // Flags already cleared at top - profile exists, no onboarding needed
                 console.log("[AUTH] User has existing service provider profile, preserving role as service_provider");
               } else if (existingVendor) {
                 userRole = "vendor";
                 await storage.updateUser(userId, { role: "vendor" });
+                // Flags already cleared at top - profile exists, no onboarding needed
                 console.log("[AUTH] User has existing vendor profile, preserving role as vendor");
               } else {
-                // No existing profile, create default vendor profile
-                userRole = "vendor";
-                await storage.updateUser(userId, { role: "vendor" });
-                await storage.createVendor({
-                  ownerId: userId,
-                  businessName: `${userName}'s Vendor`,
-                  contactName: userName,
-                  bio: "Welcome to my vendor profile! I'm excited to share my products with the Fort Myers community.",
-                  locationType: "Home-based",
-                  city: "Fort Myers",
-                  state: "FL",
-                  zipCode: "33901",
-                  serviceOptions: ["Pickup"],
-                  paymentMethod: "Direct to Vendor",
-                });
-                console.log("[AUTH] Created new vendor profile for user");
+                // No existing profile - redirect to onboarding wizard
+                console.log("[AUTH] No vendor profile found, redirecting to onboarding");
+                // Set temporary role to track they're a vendor in progress
+                userRole = intendedRole;
+                await storage.updateUser(userId, { role: intendedRole });
+                // Set onboarding flags
+                (req.session as any).needsOnboarding = true;
+                (req.session as any).vendorType = vendorType;
+                console.log("[AUTH] Set vendorType in session:", vendorType);
+                redirectUrl = "/onboarding";
               }
             } else if (intendedRole === "buyer") {
-              await storage.updateUser(userId, { role: intendedRole });
-              userRole = intendedRole;
-            } else if (intendedRole === "restaurant") {
-              // Check if restaurant profile already exists
-              const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
-              if (!existingRestaurant) {
-                // Create default restaurant profile
-                await storage.createRestaurant({
-                  ownerId: userId,
-                  restaurantName: `${userName}'s Restaurant`,
-                  contactName: userName,
-                  bio: "Welcome to my restaurant! We're passionate about serving fresh, local food to the Fort Myers community.",
-                  locationType: "Dine-in",
-                  city: "Fort Myers",
-                  state: "FL",
-                  zipCode: "33901",
-                  serviceOptions: ["Dine-in"],
-                  paymentMethod: "Direct to Restaurant",
-                });
-              }
-              await storage.updateUser(userId, { role: intendedRole });
-              userRole = intendedRole;
-            } else if (intendedRole === "service_provider") {
-              // Check if service provider profile already exists
-              const existingProvider = await storage.getServiceProviderByOwnerId(userId);
-              if (!existingProvider) {
-                // Create default service provider profile
-                await storage.createServiceProvider({
-                  ownerId: userId,
-                  businessName: `${userName}'s Services`,
-                  contactName: userName,
-                  bio: "Welcome! I'm excited to offer my services to the Fort Myers community.",
-                  city: "Fort Myers",
-                  state: "FL",
-                  zipCode: "33901",
-                  serviceAreas: ["Fort Myers"],
-                  contactPhone: existingUser?.phone || "",
-                  contactEmail: existingUser?.email || "",
-                });
-              }
               await storage.updateUser(userId, { role: intendedRole });
               userRole = intendedRole;
             }
@@ -297,8 +264,11 @@ export async function setupAuth(app: Express) {
             delete (req.session as any).returnTo;
             res.clearCookie("return_to");
             console.log("[AUTH] Redirecting to returnTo URL:", redirectUrl);
+          } else if ((req.session as any).needsOnboarding) {
+            // New vendor needs onboarding - redirectUrl already set to /onboarding
+            console.log("[AUTH] New vendor redirecting to onboarding");
           } else {
-            // Redirect based on role
+            // Redirect based on role for existing users
             if (userRole === "buyer") {
               redirectUrl = "/profile";
             } else if (userRole === "vendor" || userRole === "restaurant") {
