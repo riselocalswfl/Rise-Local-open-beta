@@ -63,7 +63,7 @@ export default function Services() {
                 )}
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 overflow-y-auto">
+            <SheetContent side="left" className="w-80 overflow-y-auto bg-background">
               <SheetHeader>
                 <SheetTitle>Service Categories</SheetTitle>
               </SheetHeader>
