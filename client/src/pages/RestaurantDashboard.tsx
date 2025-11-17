@@ -296,6 +296,57 @@ function ProfileEditor({ restaurant }: { restaurant?: Restaurant }) {
           </div>
 
           <div className="pt-6 border-t">
+            <Label>Logo</Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              Upload your restaurant logo
+            </p>
+            <ImageUpload
+              currentImageUrl={restaurant?.logoUrl}
+              onUploadComplete={(imageUrl) => {
+                updateMutation.mutate({ logoUrl: imageUrl });
+              }}
+              onRemove={() => {
+                updateMutation.mutate({ logoUrl: null });
+              }}
+              data-testid="upload-logo"
+            />
+          </div>
+
+          <div className="pt-6 border-t">
+            <Label>Payment Methods</Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              Add accepted payment methods (e.g., Cash, Credit Card, Venmo)
+            </p>
+            <TagInput
+              tags={restaurant?.paymentMethod ? [restaurant.paymentMethod] : []}
+              onChange={(methods) => {
+                if (restaurant?.id && methods.length > 0) {
+                  updateMutation.mutate({ paymentMethod: methods[0] });
+                }
+              }}
+              placeholder="Add payment method and press Enter"
+              maxTags={5}
+            />
+          </div>
+
+          <div className="pt-6 border-t">
+            <Label>Service Options</Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              How can customers order from you? (e.g., Dine-in, Takeout, Delivery)
+            </p>
+            <TagInput
+              tags={restaurant?.serviceOptions || []}
+              onChange={(options) => {
+                if (restaurant?.id) {
+                  updateMutation.mutate({ serviceOptions: options });
+                }
+              }}
+              placeholder="Add service option and press Enter"
+              maxTags={5}
+            />
+          </div>
+
+          <div className="pt-6 border-t">
             <Label>Restaurant Values</Label>
             <p className="text-sm text-muted-foreground mb-3">
               Add custom value tags that represent your restaurant's identity and practices
