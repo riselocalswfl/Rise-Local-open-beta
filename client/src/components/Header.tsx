@@ -55,11 +55,11 @@ export default function Header() {
             Dine
           </Link>
           <Link
-            href="/live-local"
+            href="/services"
             className={`text-text/80 hover:text-text transition ${
-              location === "/live-local" ? "text-text font-bold" : ""
+              location === "/services" ? "text-text font-bold" : ""
             }`}
-            data-testid="link-live-local"
+            data-testid="link-services"
           >
             Services
           </Link>
