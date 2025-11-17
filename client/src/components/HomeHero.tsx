@@ -42,7 +42,7 @@ export default function HomeHero() {
                 <span className="text-sm font-medium">Dine</span>
               </Link>
               <Link 
-                href="/vendors"
+                href="/services"
                 className="w-full min-h-[44px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 flex-col gap-1 py-3 px-4 no-underline" 
                 data-testid="link-services"
               >
