@@ -1346,20 +1346,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: userName,    // Always from database/auth token
       });
       
-      // Award loyalty points (10 points per $1 spent)
-      const totalDollars = order.totalCents / 100;
-      const pointsEarned = Math.floor(totalDollars * 10);
-      
-      if (pointsEarned > 0) {
-        await storage.earnPoints(
-          userId,
-          pointsEarned,
-          "purchase",
-          `Order #${order.id.substring(0, 8)} - $${totalDollars.toFixed(2)}`,
-          order.id
-        );
-      }
-      
       res.status(201).json(order);
     } catch (error) {
       console.error("Order creation error:", error);
@@ -1798,25 +1784,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorOrders.push(vendorOrder);
       }
       
-      // Award loyalty points based on grand total
-      const totalDollars = totals.grandTotal;
-      const pointsEarned = Math.floor(totalDollars * 10);
-      
-      if (pointsEarned > 0) {
-        await storage.earnPoints(
-          userId,
-          pointsEarned,
-          "purchase",
-          `Order #${masterOrder.id.substring(0, 8)} - $${totalDollars.toFixed(2)}`,
-          masterOrder.id
-        );
-      }
-      
       // Return master order with vendor orders
       res.status(201).json({
         masterOrder,
         vendorOrders,
-        pointsEarned,
       });
     } catch (error) {
       console.error("Checkout error:", error);
@@ -2841,81 +2812,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update booking status" });
-    }
-  });
-
-  // Loyalty routes
-  app.get("/api/loyalty/tiers", async (req, res) => {
-    try {
-      const tiers = await storage.getLoyaltyTiers();
-      res.json(tiers);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch loyalty tiers" });
-    }
-  });
-
-  app.get("/api/loyalty/my-tier", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const tier = await storage.getUserTier(userId);
-      res.json(tier);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch user tier" });
-    }
-  });
-
-  app.get("/api/loyalty/my-points", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      const tier = await storage.getUserTier(userId);
-      const tiers = await storage.getLoyaltyTiers();
-      
-      // Find next tier
-      let nextTier = null;
-      if (tier && tier.maxPoints) {
-        nextTier = tiers.find(t => t.minPoints > tier!.minPoints);
-      }
-      
-      res.json({
-        points: user?.loyaltyPoints || 0,
-        currentTier: tier,
-        nextTier,
-        pointsToNextTier: nextTier ? nextTier.minPoints - (user?.loyaltyPoints || 0) : null,
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch loyalty points" });
-    }
-  });
-
-  app.get("/api/loyalty/my-transactions", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const transactions = await storage.getLoyaltyTransactions(userId);
-      res.json(transactions);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch transactions" });
-    }
-  });
-
-  app.post("/api/loyalty/earn", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { points, type, description, relatedOrderId } = req.body;
-      
-      if (!points || !type || !description) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-      
-      await storage.earnPoints(userId, points, type, description, relatedOrderId);
-      const user = await storage.getUser(userId);
-      
-      res.json({ 
-        success: true, 
-        newBalance: user?.loyaltyPoints || 0 
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to earn points" });
     }
   });
 
