@@ -418,6 +418,67 @@ export default function ServiceProviderDashboard() {
                   </CardContent>
                 </Card>
 
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Logo & Branding</CardTitle>
+                    <CardDescription>Upload your business logo</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Label>Business Logo</Label>
+                      <ImageUpload
+                        currentImageUrl={provider?.logoUrl}
+                        onUploadComplete={(imageUrl) => {
+                          updateProviderMutation.mutate({ logoUrl: imageUrl });
+                        }}
+                        onRemove={() => {
+                          updateProviderMutation.mutate({ logoUrl: null });
+                        }}
+                        data-testid="upload-logo"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment Methods</CardTitle>
+                    <CardDescription>Manage how you accept payments from clients</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Label>Accepted Payment Methods</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Add payment methods you accept (e.g., Cash, Venmo, Zelle, Check, Credit Card)
+                      </p>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {provider?.paymentMethods?.map((method) => (
+                          <Badge key={method} variant="secondary">
+                            {method}
+                          </Badge>
+                        ))}
+                      </div>
+                      <Input
+                        placeholder="Type a payment method and press Enter"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const input = e.currentTarget;
+                            const newMethod = input.value.trim();
+                            if (newMethod && !provider?.paymentMethods?.includes(newMethod)) {
+                              updateProviderMutation.mutate({
+                                paymentMethods: [...(provider?.paymentMethods || []), newMethod]
+                              });
+                              input.value = '';
+                            }
+                          }
+                        }}
+                        data-testid="input-payment-method"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Button type="submit" disabled={updateProviderMutation.isPending} data-testid="button-save-profile">
                   {updateProviderMutation.isPending ? "Saving..." : "Save Profile"}
                 </Button>
