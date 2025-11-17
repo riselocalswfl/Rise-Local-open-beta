@@ -36,7 +36,6 @@ import BusinessDashboard from "@/pages/BusinessDashboard";
 import ShopOnboarding from "@/pages/ShopOnboarding";
 import DineOnboarding from "@/pages/DineOnboarding";
 import ServicesOnboarding from "@/pages/ServicesOnboarding";
-import LoyaltyHistory from "@/pages/LoyaltyHistory";
 import CustomerProfile from "@/pages/CustomerProfile";
 import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
@@ -83,7 +82,6 @@ function Router() {
       <Route path="/onboarding">
         {() => <Redirect to="/join" />}
       </Route>
-      <Route path="/loyalty" component={LoyaltyHistory} />
       <Route path="/profile" component={CustomerProfile} />
       <Route path="/messages" component={Messages} />
       <Route path="/messages/:userId" component={MessageThread} />
