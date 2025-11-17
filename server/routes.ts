@@ -2561,7 +2561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/services/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/vendor-services/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const service = await storage.getService(req.params.id);
@@ -2587,7 +2587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/services/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/vendor-services/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const service = await storage.getService(req.params.id);
