@@ -1,4 +1,4 @@
-import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle, MessageSquare, LogOut } from "lucide-react";
+import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Wrench, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle, MessageSquare, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ const publicNavigationItems = [
   { name: "Home", href: "/", icon: Home },
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
@@ -28,6 +29,7 @@ const buyerNavigationItems = [
   { name: "Home", href: "/", icon: Home },
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
@@ -39,6 +41,7 @@ const vendorNavigationItems = [
   { name: "Home", href: "/", icon: Home },
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },
@@ -49,6 +52,7 @@ const restaurantNavigationItems = [
   { name: "Home", href: "/", icon: Home },
   { name: "Shop", href: "/products", icon: ShoppingBag },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
+  { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },

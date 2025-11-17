@@ -10,6 +10,7 @@ import Products from "@/pages/Products";
 import Vendors from "@/pages/Vendors";
 import EatLocal from "@/pages/EatLocal";
 import LiveLocal from "@/pages/LiveLocal";
+import Services from "@/pages/Services";
 import ServiceProviderProfile from "@/pages/ServiceProviderProfile";
 import EventsLayout from "@/pages/EventsLayout";
 import EventDetail from "@/pages/EventDetail";
@@ -56,6 +57,7 @@ function Router() {
       <Route path="/service-provider-dashboard" component={ServiceProviderDashboard} />
       <Route path="/eat-local" component={EatLocal} />
       <Route path="/live-local" component={LiveLocal} />
+      <Route path="/services" component={Services} />
       <Route path="/services/:id" component={ServiceProviderProfile} />
       <Route path="/events" component={EventsLayout} />
       <Route path="/events/my" component={EventsLayout} />
