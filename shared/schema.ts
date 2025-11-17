@@ -190,6 +190,7 @@ export const vendors = pgTable("vendors", {
   values: text("values").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
   badges: text("badges").array().default(sql`'{}'::text[]`), // e.g., ["Family-Owned", "Women-Led", "Regenerative"]
   localSourcingPercent: integer("local_sourcing_percent"), // 0-100% of products sourced locally
+  showLocalSourcing: boolean("show_local_sourcing").default(false), // whether to display local sourcing % on public profile
   certifications: jsonb("certifications"), // [{name, type, issuedOn, docUrl}]
   
   // Fulfillment & Contact
