@@ -517,7 +517,7 @@ export default function ServiceProviderDashboard() {
                         Add Service
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white text-[#222]" data-testid="dialog-add-service">
+                    <DialogContent className="bg-white text-[#222] max-h-[80vh] overflow-y-auto" data-testid="dialog-add-service">
                       <DialogHeader>
                         <DialogTitle className="text-[#222]">Add Service Offering</DialogTitle>
                       </DialogHeader>
