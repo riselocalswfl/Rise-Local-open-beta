@@ -155,6 +155,7 @@ export default function Products() {
                     vendorId={product.vendorId}
                     inventory={product.inventory}
                     isVerifiedVendor={product.isVerifiedVendor}
+                    valueTags={product.valueTags as string[] || []}
                   />
                 ))
               )}

@@ -16,6 +16,7 @@ interface ProductCardProps {
   image?: string;
   inventory: number;
   isVerifiedVendor?: boolean;
+  valueTags?: string[];
 }
 
 export default function ProductCard({
@@ -28,6 +29,7 @@ export default function ProductCard({
   image,
   inventory,
   isVerifiedVendor = false,
+  valueTags = [],
 }: ProductCardProps) {
   const [, setLocation] = useLocation();
   const { addItem, openMiniCart } = useCart();
@@ -113,7 +115,16 @@ export default function ProductCard({
             >
               {vendorName}
             </button>
-            <div className="flex items-center justify-between gap-1 flex-wrap">
+            {valueTags && valueTags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {valueTags.map((tag) => (
+                  <Badge key={tag} variant="outline" className="text-[10px] rounded-pill">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-1 flex-wrap mt-1">
               <span className="le-chip text-[10px]">{category}</span>
               <Badge variant={stockStatus.color as any} className="text-[10px] rounded-pill">
                 {stockStatus.text}
