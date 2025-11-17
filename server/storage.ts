@@ -53,7 +53,6 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>; // For Replit Auth
   updateUser(id: string, data: Partial<InsertUser>): Promise<void>;
   deleteUser(id: string): Promise<void>;
-  updateUserLoyaltyPoints(userId: string, points: number): Promise<void>;
   verifyPassword(password: string, hashedPassword: string): Promise<boolean>;
 
   // Vendor operations
@@ -214,15 +213,6 @@ export interface IStorage {
   // Extended Restaurant Event operations
   getEventsByRestaurant(restaurantId: string): Promise<Event[]>;
 
-  // Loyalty operations
-  getLoyaltyTiers(): Promise<LoyaltyTier[]>;
-  getLoyaltyTier(id: string): Promise<LoyaltyTier | undefined>;
-  createLoyaltyTier(tier: InsertLoyaltyTier): Promise<LoyaltyTier>;
-  getUserTier(userId: string): Promise<LoyaltyTier | undefined>;
-  getLoyaltyTransactions(userId: string): Promise<LoyaltyTransaction[]>;
-  addLoyaltyTransaction(transaction: InsertLoyaltyTransaction): Promise<LoyaltyTransaction>;
-  earnPoints(userId: string, points: number, type: string, description: string, relatedOrderId?: string): Promise<void>;
-
   // Service Provider operations
   getServiceProvider(id: string): Promise<ServiceProvider | undefined>;
   getServiceProviderByOwnerId(ownerId: string): Promise<ServiceProvider | undefined>;
@@ -335,11 +325,6 @@ export class DbStorage implements IStorage {
     await db.delete(users).where(eq(users.id, id));
   }
 
-  async updateUserLoyaltyPoints(userId: string, points: number): Promise<void> {
-    await db.update(users)
-      .set({ loyaltyPoints: sql`${users.loyaltyPoints} + ${points}` })
-      .where(eq(users.id, userId));
-  }
 
   async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
     return await bcrypt.compare(password, hashedPassword);
@@ -949,72 +934,6 @@ export class DbStorage implements IStorage {
     return await db.select().from(events)
       .where(eq(events.restaurantId, restaurantId))
       .orderBy(events.dateTime);
-  }
-
-  // Loyalty operations
-  async getLoyaltyTiers(): Promise<LoyaltyTier[]> {
-    return await db.select().from(loyaltyTiers).orderBy(loyaltyTiers.displayOrder);
-  }
-
-  async getLoyaltyTier(id: string): Promise<LoyaltyTier | undefined> {
-    const result = await db.select().from(loyaltyTiers).where(eq(loyaltyTiers.id, id));
-    return result[0];
-  }
-
-  async createLoyaltyTier(tier: InsertLoyaltyTier): Promise<LoyaltyTier> {
-    const result = await db.insert(loyaltyTiers).values(tier).returning();
-    return result[0];
-  }
-
-  async getUserTier(userId: string): Promise<LoyaltyTier | undefined> {
-    const user = await this.getUser(userId);
-    if (!user) return undefined;
-
-    const points = user.loyaltyPoints;
-    const tiers = await this.getLoyaltyTiers();
-    
-    // Find the highest tier the user qualifies for
-    let currentTier = tiers[0]; // Default to first tier (Bronze)
-    for (const tier of tiers) {
-      if (points >= tier.minPoints) {
-        if (!tier.maxPoints || points <= tier.maxPoints) {
-          currentTier = tier;
-        }
-      }
-    }
-    
-    return currentTier;
-  }
-
-  async getLoyaltyTransactions(userId: string): Promise<LoyaltyTransaction[]> {
-    return await db.select().from(loyaltyTransactions)
-      .where(eq(loyaltyTransactions.userId, userId))
-      .orderBy(desc(loyaltyTransactions.createdAt));
-  }
-
-  async addLoyaltyTransaction(transaction: InsertLoyaltyTransaction): Promise<LoyaltyTransaction> {
-    const result = await db.insert(loyaltyTransactions).values(transaction).returning();
-    return result[0];
-  }
-
-  async earnPoints(userId: string, points: number, type: string, description: string, relatedOrderId?: string): Promise<void> {
-    const user = await this.getUser(userId);
-    if (!user) throw new Error("User not found");
-
-    const newBalance = user.loyaltyPoints + points;
-    
-    // Update user's points
-    await this.updateUserLoyaltyPoints(userId, points);
-    
-    // Record transaction
-    await this.addLoyaltyTransaction({
-      userId,
-      points,
-      type,
-      description,
-      relatedOrderId: relatedOrderId || null,
-      balanceAfter: newBalance,
-    });
   }
 
   // Service Provider operations
