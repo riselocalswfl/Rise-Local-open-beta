@@ -88,17 +88,19 @@ export function MasterProfile({ vendor, reviews, faqs, children }: MasterProfile
 
         {/* Quick Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Local Sourcing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-local-sourcing">
-                {vendor.localSourcingPercent || 0}%
-              </div>
-              <p className="text-xs text-muted-foreground">Products sourced locally</p>
-            </CardContent>
-          </Card>
+          {vendor.showLocalSourcing && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Local Sourcing</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold" data-testid="text-local-sourcing">
+                  {vendor.localSourcingPercent || 0}%
+                </div>
+                <p className="text-xs text-muted-foreground">Products sourced locally</p>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="pb-3">
