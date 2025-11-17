@@ -59,6 +59,7 @@ export interface IStorage {
   getVendor(id: string): Promise<Vendor | undefined>;
   getVendorByOwnerId(ownerId: string): Promise<Vendor | undefined>;
   getVendors(): Promise<Vendor[]>;
+  getAllVendorListings(): Promise<import("@shared/schema").UnifiedVendorListing[]>;
   getVerifiedVendors(): Promise<Vendor[]>;
   getAllVendorValues(): Promise<string[]>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
@@ -343,6 +344,61 @@ export class DbStorage implements IStorage {
 
   async getVendors(): Promise<Vendor[]> {
     return await db.select().from(vendors);
+  }
+
+  async getAllVendorListings(): Promise<import("@shared/schema").UnifiedVendorListing[]> {
+    // Fetch all three vendor types (only completed profiles)
+    const shopVendors = await db.select().from(vendors).where(eq(vendors.profileStatus, "complete"));
+    const restaurantsList = await db.select().from(restaurants).where(eq(restaurants.profileStatus, "complete"));
+    const serviceProvidersList = await db.select().from(serviceProviders).where(eq(serviceProviders.profileStatus, "complete"));
+
+    // Map shop vendors to unified format
+    const shopListings: import("@shared/schema").UnifiedVendorListing[] = shopVendors.map(v => ({
+      id: v.id,
+      vendorType: "shop" as const,
+      businessName: v.businessName,
+      bio: v.bio,
+      city: v.city,
+      categories: v.categories || [],
+      values: v.values || [],
+      isVerified: v.isVerified,
+      followerCount: v.followerCount,
+      logoUrl: v.logoUrl || undefined,
+      tagline: v.tagline || undefined,
+    }));
+
+    // Map restaurants to unified format
+    const restaurantListings: import("@shared/schema").UnifiedVendorListing[] = restaurantsList.map(r => ({
+      id: r.id,
+      vendorType: "dine" as const,
+      businessName: r.restaurantName,
+      bio: r.bio,
+      city: r.city,
+      categories: r.categories || [],
+      values: r.badges || [], // restaurants use badges as values
+      isVerified: r.isVerified,
+      followerCount: r.followerCount,
+      logoUrl: r.logoUrl || undefined,
+      tagline: r.tagline || undefined,
+    }));
+
+    // Map service providers to unified format
+    const serviceListings: import("@shared/schema").UnifiedVendorListing[] = serviceProvidersList.map(sp => ({
+      id: sp.id,
+      vendorType: "service" as const,
+      businessName: sp.businessName,
+      bio: sp.bio,
+      city: sp.city,
+      categories: sp.categories || [],
+      values: sp.values || [],
+      isVerified: sp.isVerified,
+      followerCount: sp.followerCount,
+      logoUrl: sp.logoUrl || undefined,
+      tagline: sp.tagline || undefined,
+    }));
+
+    // Combine all listings
+    return [...shopListings, ...restaurantListings, ...serviceListings];
   }
 
   async getVerifiedVendors(): Promise<Vendor[]> {

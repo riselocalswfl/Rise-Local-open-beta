@@ -3,6 +3,21 @@ import { pgTable, text, varchar, decimal, integer, timestamp, boolean, index, js
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Unified vendor listing type for displaying all vendor types on the vendors page
+export type UnifiedVendorListing = {
+  id: string;
+  vendorType: "shop" | "dine" | "service";
+  businessName: string;
+  bio: string;
+  city: string;
+  categories: string[];
+  values?: string[];
+  isVerified: boolean;
+  followerCount: number;
+  logoUrl?: string;
+  tagline?: string;
+};
+
 // Session storage table for Replit Auth
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const sessions = pgTable(
