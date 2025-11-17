@@ -1,7 +1,7 @@
 # Rise Local - Fort Myers Marketplace & Community
 
 ## Overview
-Rise Local is a full-stack web application connecting local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It aims to foster local commerce, sustainability, and community engagement. The platform offers a marketplace for products, event management with RSVP and attendance tracking, and a loyalty system. Key ambitions include facilitating local transactions, providing a robust platform for vendors, and enriching community interaction with a counterculture yet polished brand aesthetic.
+Rise Local is a full-stack web application connecting local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It aims to foster local commerce, sustainability, and community engagement. The platform offers a marketplace for products and event management with RSVP and attendance tracking. Key ambitions include facilitating local transactions, providing a robust platform for vendors, and enriching community interaction with a counterculture yet polished brand aesthetic.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -22,7 +22,6 @@ The frontend uses React 18, TypeScript, and Vite. UI components are built with R
 - **Vendor Dashboard**: Organized into cards for Business Info, Location & Contact, Business Hours, Business Values, Payment Methods, Fulfillment Methods, Profile Photo/Logo, and Cover Banner, with support for custom fulfillment options.
 - **Category System**: Shop vendors and service providers have completely separate category lists. Shop categories (Food & Farm, Artisan Goods, Wellness & Lifestyle, Local Favorites) appear only in shop vendor onboarding and product creation. Service categories (Personal & Wellness Services, Home & Property Services, Event & Creative Services, Professional Services, Pet Services) appear only in service provider onboarding. This ensures proper categorization and prevents cross-contamination between vendor types.
 - **Product Filtering**: Products can only be categorized using categories pre-selected by the vendor on their profile, using a hierarchical category selection system. Products support multi-category selection.
-- **Loyalty System**: Users earn 10 points per completed order.
 - **Shopping Cart**: A React Context-based system with localStorage persistence, handling product variants, and calculating totals (subtotal + 7% FL sales tax).
 - **Direct Messaging**: Users and vendors can send direct messages with real-time updates and read status tracking.
 - **Stripe Connect Integration**: The platform supports Stripe Connect for vendor payouts. Payments (subtotal + 7% FL sales tax) are collected by the platform, and the full amount is automatically transferred to the vendor's connected account via webhooks. The platform's revenue comes solely from an $89/month vendor membership fee, with no transaction fees. A "Coming Soon" pre-launch mode is implemented for Stripe.
