@@ -291,6 +291,7 @@ export const events = pgTable("events", {
   dateTime: timestamp("date_time").notNull(),
   location: text("location").notNull(),
   categories: text("categories").array().default(sql`'{}'::text[]`).notNull(), // hierarchical multi-select event categories
+  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags (e.g., Free, Family-Friendly, Community)
   ticketsAvailable: integer("tickets_available").notNull(),
   rsvpCount: integer("rsvp_count").notNull().default(0),
   bannerImageUrl: text("banner_image_url"),
@@ -614,6 +615,7 @@ export const menuItems = pgTable("menu_items", {
   priceCents: integer("price_cents").notNull(),
   category: text("category").notNull(), // Appetizers, Entrees, Desserts, Drinks, etc.
   dietaryTags: text("dietary_tags").array().default(sql`'{}'::text[]`), // Vegan, Gluten-Free, Spicy, etc.
+  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags (e.g., Local, Organic, Women-Owned)
   ingredients: text("ingredients"),
   allergens: text("allergens").array().default(sql`'{}'::text[]`),
   imageUrl: text("image_url"),
@@ -645,6 +647,7 @@ export const services = pgTable("services", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   category: text("category").notNull(), // Wellness, Home Services, Professional Services, Creative Services, etc.
+  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags (e.g., Local, Certified, Women-Owned)
   priceRangeMin: integer("price_range_min"), // cents
   priceRangeMax: integer("price_range_max"), // cents
   pricingModel: text("pricing_model"), // hourly, per-session, per-project, flat-rate, etc.
