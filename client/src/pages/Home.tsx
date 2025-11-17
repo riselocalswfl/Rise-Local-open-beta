@@ -8,6 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import VendorCard from "@/components/VendorCard";
 import EventCard from "@/components/EventCard";
 import ServiceProviderCard from "@/components/ServiceProviderCard";
+import HorizontalCarousel from "@/components/HorizontalCarousel";
 import MobileCategoryNav from "@/components/MobileCategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
@@ -42,11 +43,11 @@ export default function Home() {
     queryFn: getEventsWithOrganizers,
   });
 
-  const featuredProducts = products?.slice(0, 3) || [];
-  const featuredVendors = vendors?.slice(0, 2) || [];
-  const featuredServices = serviceProviders?.slice(0, 3) || [];
+  const featuredProducts = products?.slice(0, 8) || [];
+  const featuredVendors = vendors?.slice(0, 6) || [];
+  const featuredServices = serviceProviders?.slice(0, 8) || [];
   const upcomingEvents =
-    events?.filter((e) => new Date(e.dateTime) > new Date()).slice(0, 2) || [];
+    events?.filter((e) => new Date(e.dateTime) > new Date()).slice(0, 6) || [];
 
   return (
     <div className="min-h-screen bg-bg">
@@ -77,28 +78,29 @@ export default function Home() {
             baseUrl="/products"
             title="Shop by Category"
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {productsLoading ? (
-              <>
-                <Skeleton className="h-80" />
-                <Skeleton className="h-80" />
-                <Skeleton className="h-80" />
-              </>
-            ) : (
-              featuredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price ? parseFloat(product.price) : 0}
-                  vendorName={product.vendorName || "Unknown Vendor"}
-                  vendorId={product.vendorId}
-                  inventory={product.inventory}
-                  isVerifiedVendor={product.isVerifiedVendor}
-                />
-              ))
-            )}
-          </div>
+          {productsLoading ? (
+            <div className="flex gap-6 overflow-hidden">
+              <Skeleton className="h-80 w-72 flex-none" />
+              <Skeleton className="h-80 w-72 flex-none" />
+              <Skeleton className="h-80 w-72 flex-none" />
+            </div>
+          ) : (
+            <HorizontalCarousel>
+              {featuredProducts.map((product) => (
+                <div key={product.id} className="w-72">
+                  <ProductCard
+                    id={product.id}
+                    name={product.name}
+                    price={product.price ? parseFloat(product.price) : 0}
+                    vendorName={product.vendorName || "Unknown Vendor"}
+                    vendorId={product.vendorId}
+                    inventory={product.inventory}
+                    isVerifiedVendor={product.isVerifiedVendor}
+                  />
+                </div>
+              ))}
+            </HorizontalCarousel>
+          )}
         </section>
 
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
@@ -122,28 +124,29 @@ export default function Home() {
             baseUrl="/vendors"
             title="Browse Vendors"
           />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {vendorsLoading ? (
-              <>
-                <Skeleton className="h-40" />
-                <Skeleton className="h-40" />
-              </>
-            ) : (
-              featuredVendors.map((vendor) => (
-                <VendorCard
-                  key={vendor.id}
-                  id={vendor.id}
-                  name={vendor.businessName}
-                  bio={vendor.bio || ""}
-                  city={vendor.city}
-                  categories={vendor.categories as string[] || []}
-                  values={vendor.values as string[] || undefined}
-                  isVerified={vendor.isVerified}
-                  followerCount={vendor.followerCount}
-                />
-              ))
-            )}
-          </div>
+          {vendorsLoading ? (
+            <div className="flex gap-6 overflow-hidden">
+              <Skeleton className="h-40 w-96 flex-none" />
+              <Skeleton className="h-40 w-96 flex-none" />
+            </div>
+          ) : (
+            <HorizontalCarousel>
+              {featuredVendors.map((vendor) => (
+                <div key={vendor.id} className="w-96">
+                  <VendorCard
+                    id={vendor.id}
+                    name={vendor.businessName}
+                    bio={vendor.bio || ""}
+                    city={vendor.city}
+                    categories={vendor.categories as string[] || []}
+                    values={vendor.values as string[] || undefined}
+                    isVerified={vendor.isVerified}
+                    followerCount={vendor.followerCount}
+                  />
+                </div>
+              ))}
+            </HorizontalCarousel>
+          )}
         </section>
 
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
@@ -167,22 +170,21 @@ export default function Home() {
             baseUrl="/services"
             title="Browse Services"
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {servicesLoading ? (
-              <>
-                <Skeleton className="h-64" />
-                <Skeleton className="h-64" />
-                <Skeleton className="h-64" />
-              </>
-            ) : (
-              featuredServices.map((provider) => (
-                <ServiceProviderCard
-                  key={provider.id}
-                  provider={provider}
-                />
-              ))
-            )}
-          </div>
+          {servicesLoading ? (
+            <div className="flex gap-6 overflow-hidden">
+              <Skeleton className="h-64 w-80 flex-none" />
+              <Skeleton className="h-64 w-80 flex-none" />
+              <Skeleton className="h-64 w-80 flex-none" />
+            </div>
+          ) : (
+            <HorizontalCarousel>
+              {featuredServices.map((provider) => (
+                <div key={provider.id} className="w-80">
+                  <ServiceProviderCard provider={provider} />
+                </div>
+              ))}
+            </HorizontalCarousel>
+          )}
         </section>
 
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12 pb-16">
@@ -200,28 +202,29 @@ export default function Home() {
               </button>
             </Link>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {eventsLoading ? (
-              <>
-                <Skeleton className="h-48" />
-                <Skeleton className="h-48" />
-              </>
-            ) : (
-              upcomingEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  id={event.id}
-                  title={event.title}
-                  dateTime={event.dateTime.toString()}
-                  location={event.location}
-                  description={event.description}
-                  ticketsAvailable={event.ticketsAvailable}
-                  rsvpCount={event.rsvpCount}
-                  organizerName={event.organizerName}
-                />
-              ))
-            )}
-          </div>
+          {eventsLoading ? (
+            <div className="flex gap-6 overflow-hidden">
+              <Skeleton className="h-48 w-96 flex-none" />
+              <Skeleton className="h-48 w-96 flex-none" />
+            </div>
+          ) : (
+            <HorizontalCarousel>
+              {upcomingEvents.map((event) => (
+                <div key={event.id} className="w-96">
+                  <EventCard
+                    id={event.id}
+                    title={event.title}
+                    dateTime={event.dateTime.toString()}
+                    location={event.location}
+                    description={event.description}
+                    ticketsAvailable={event.ticketsAvailable}
+                    rsvpCount={event.rsvpCount}
+                    organizerName={event.organizerName}
+                  />
+                </div>
+              ))}
+            </HorizontalCarousel>
+          )}
         </section>
       </main>
     </div>
