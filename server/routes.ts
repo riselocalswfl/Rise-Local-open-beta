@@ -317,6 +317,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           state: "FL",
           zipCode: data.zipCode,
           categories: data.categories || [],
+          localSourcingPercent: data.localSourcingPercent || 0,
+          showLocalSourcing: data.showLocalSourcing || false,
           contact: {
             email: data.email || email,
             phone: data.phone || "",
