@@ -12,7 +12,7 @@ export default function HomeHero() {
           <img src={logoImg} alt="Rise Local" className="absolute top-4 right-2 h-28 w-auto" />
           <h2 className="font-heading text-2xl md:text-4xl text-text mb-6 font-bold">What's Rise Local?</h2>
           <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6 font-medium">
-            Rise Local is your one-stop-shop for all things local in SWFL. Whether it's events, restaurants, goods, or services, we're here to make choosing local the easiest choice every time.
+            Rise Local is your one-stop-shop for all things local in SWFL. This app is here to connect you to events, restaurants, goods, and services, which makes supporting local the easiest choice.
           </p>
           <div className="flex justify-center mb-6">
             <Link 

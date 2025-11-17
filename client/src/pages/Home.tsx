@@ -60,7 +60,7 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="font-heading text-3xl text-text">Featured Nearby Goods</h2>
+              <h2 className="font-heading text-3xl text-text">Shop Goods</h2>
               <p className="text-text/70 mt-1">
                 Discover products from local artisans and makers
               </p>
@@ -106,7 +106,7 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="font-heading text-3xl text-text">Meet Local Makers</h2>
+              <h2 className="font-heading text-3xl text-text">Browse Vendors</h2>
               <p className="text-text/70 mt-1">
                 Connect with verified vendors in your community
               </p>

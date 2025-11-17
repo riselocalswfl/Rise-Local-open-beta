@@ -1008,7 +1008,10 @@ export class DbStorage implements IStorage {
   }
 
   async getServiceProviders(): Promise<ServiceProvider[]> {
-    return await db.select().from(serviceProviders).orderBy(desc(serviceProviders.createdAt));
+    // Only return service providers with complete profiles to match getAllVendorListings behavior
+    return await db.select().from(serviceProviders)
+      .where(eq(serviceProviders.profileStatus, "complete"))
+      .orderBy(desc(serviceProviders.createdAt));
   }
 
   async getVerifiedServiceProviders(): Promise<ServiceProvider[]> {
@@ -1018,9 +1021,15 @@ export class DbStorage implements IStorage {
   }
 
   async getServiceProvidersByCategory(category: string): Promise<ServiceProvider[]> {
-    // Service providers now use categories array - use client-side filtering instead
-    // This method is deprecated but kept for interface compatibility
-    return [];
+    // Get all service providers with complete profiles
+    const allProviders = await this.getServiceProviders();
+    
+    // Filter for providers whose categories array includes the requested category
+    // Note: This does simple string matching. For hierarchical category filtering,
+    // use client-side categoriesMatch helper
+    return allProviders.filter(provider => 
+      provider.categories && provider.categories.includes(category)
+    );
   }
 
   async createServiceProvider(provider: InsertServiceProvider): Promise<ServiceProvider> {

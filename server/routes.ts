@@ -2987,9 +2987,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let providers;
       
       if (category && typeof category === 'string') {
+        // Filter by category (simple string matching)
+        // Note: Client-side uses hierarchical categoriesMatch for better filtering
         providers = await storage.getServiceProvidersByCategory(category);
       } else {
-        providers = await storage.getVerifiedServiceProviders();
+        // Return all service providers with complete profiles
+        // This ensures service providers appear consistently in both /services and /vendors tabs
+        providers = await storage.getServiceProviders();
       }
       
       res.json(providers);
