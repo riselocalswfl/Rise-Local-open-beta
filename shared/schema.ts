@@ -154,6 +154,7 @@ export type User = typeof users.$inferSelect;
 export const vendors = pgTable("vendors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => users.id),
+  vendorType: text("vendor_type").notNull().default("shop"), // "shop" | "service" | "dine"
   
   // Business Profile
   businessName: text("business_name").notNull(),

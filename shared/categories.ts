@@ -95,54 +95,53 @@ export const DINE_CATEGORIES: CategoryGroup[] = [
 // SERVICES - Categories
 export const SERVICES_CATEGORIES: CategoryGroup[] = [
   {
-    parent: "Home & Property",
+    parent: "Personal & Wellness Services",
+    children: [
+      "Fitness Training",
+      "Yoga / Wellness Instruction",
+      "Massage Therapy",
+      "Beauty Services (hair, nails, lashes)",
+      "Life Coaching / Health Coaching",
+    ],
+  },
+  {
+    parent: "Home & Property Services",
     children: [
       "Cleaning Services",
-      "Landscaping",
-      "Handyman",
-      "Pool Care",
+      "Landscaping / Lawn Care",
+      "Pool Maintenance",
+      "Handyman / Home Repair",
       "Pressure Washing",
-      "Home Organization",
+      "Pest Control",
     ],
   },
   {
-    parent: "Health & Wellness",
-    children: [
-      "Personal Training",
-      "Yoga & Fitness Classes",
-      "Massage / Bodywork",
-      "Nutrition Coaching",
-      "Mental Wellness / Life Coaching",
-    ],
-  },
-  {
-    parent: "Beauty & Personal Care",
-    children: [
-      "Hair Services",
-      "Nails",
-      "Skincare",
-      "Aesthetics",
-      "Personal Styling",
-    ],
-  },
-  {
-    parent: "Professional & Creative",
+    parent: "Event & Creative Services",
     children: [
       "Photography",
       "Videography",
-      "Marketing & Branding",
-      "Web/App Services",
-      "Bookkeeping",
-      "Small Business Consulting",
+      "Event Planning",
+      "Catering / Food Services",
+      "DJ / Music Services",
+      "Rentals (chairs, tents, décor, etc.)",
     ],
   },
   {
-    parent: "Events & Experiences",
+    parent: "Professional Services",
     children: [
-      "Event Planning",
-      "Party Rentals",
-      "DJs, Artists, Musicians",
-      "Outdoor/Adventure Guides",
+      "Consulting",
+      "Accounting / Bookkeeping",
+      "Tutoring / Education",
+      "Tech Support / Web Services",
+      "Marketing / Social Media Services",
+    ],
+  },
+  {
+    parent: "Pet Services",
+    children: [
+      "Pet Grooming",
+      "Pet Sitting / Dog Walking",
+      "Pet Training",
     ],
   },
 ];

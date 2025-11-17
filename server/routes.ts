@@ -308,6 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create shop vendor
         const vendorData = {
           ownerId: userId,
+          vendorType: "shop",
           businessName: data.businessName,
           contactName: data.contactName,
           bio: data.bio,
