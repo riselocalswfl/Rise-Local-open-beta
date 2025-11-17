@@ -1,22 +1,75 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { User, Package, Clock, MapPin, LogOut } from "lucide-react";
+import { User, Package, Clock, MapPin, LogOut, Edit2, Save, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Order } from "@shared/schema";
 
 export default function CustomerProfile() {
   const { user, isLoading: userLoading } = useAuth();
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedFirstName, setEditedFirstName] = useState("");
+  const [editedLastName, setEditedLastName] = useState("");
+  const [editedPhone, setEditedPhone] = useState("");
   
   const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders/me"],
     enabled: !!user,
   });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: { firstName?: string; lastName?: string; phone?: string }) => {
+      const response = await apiRequest("PATCH", "/api/users/me", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Profile updated",
+        description: "Your account information has been saved.",
+      });
+      setIsEditing(false);
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: "Failed to update your profile. Please try again.",
+      });
+    },
+  });
+
+  const handleStartEdit = () => {
+    setEditedFirstName(user?.firstName || "");
+    setEditedLastName(user?.lastName || "");
+    setEditedPhone(user?.phone || "");
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedFirstName("");
+    setEditedLastName("");
+    setEditedPhone("");
+  };
+
+  const handleSaveEdit = () => {
+    updateUserMutation.mutate({
+      firstName: editedFirstName,
+      lastName: editedLastName,
+      phone: editedPhone,
+    });
+  };
 
   if (userLoading) {
     return (
@@ -91,33 +144,128 @@ export default function CustomerProfile() {
           <TabsContent value="account" className="space-y-6">
             <Card data-testid="card-account-info">
               <CardHeader>
-                <CardTitle>Account Information</CardTitle>
-                <CardDescription>Your personal details</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Account Information</CardTitle>
+                    <CardDescription>Your personal details</CardDescription>
+                  </div>
+                  {!isEditing ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleStartEdit}
+                      data-testid="button-edit-profile"
+                    >
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        data-testid="button-cancel-edit"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={handleSaveEdit}
+                        disabled={updateUserMutation.isPending}
+                        data-testid="button-save-profile"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        {updateUserMutation.isPending ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Name</label>
-                    <p className="text-base" data-testid="text-user-name">
-                      {user.firstName && user.lastName 
-                        ? `${user.firstName} ${user.lastName}`
-                        : user.username}
-                    </p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Email</label>
-                    <p className="text-base" data-testid="text-user-email">{user.email}</p>
-                  </div>
-                  <Separator />
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Account Type</label>
-                    <div className="mt-1">
-                      <Badge variant="secondary" data-testid="badge-user-role">
-                        {user.role === "buyer" ? "Customer" : user.role}
-                      </Badge>
-                    </div>
-                  </div>
+                  {!isEditing ? (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Name</label>
+                        <p className="text-base" data-testid="text-user-name">
+                          {user.firstName && user.lastName 
+                            ? `${user.firstName} ${user.lastName}`
+                            : user.username || "No name set"}
+                        </p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Email</label>
+                        <p className="text-base" data-testid="text-user-email">{user.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Email is managed through Replit Auth and cannot be changed here
+                        </p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                        <p className="text-base" data-testid="text-user-phone">
+                          {user.phone || "Not set"}
+                        </p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Account Type</label>
+                        <div className="mt-1">
+                          <Badge variant="secondary" data-testid="badge-user-role">
+                            {user.role === "buyer" ? "Customer" : user.role}
+                          </Badge>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">First Name</label>
+                        <Input
+                          value={editedFirstName}
+                          onChange={(e) => setEditedFirstName(e.target.value)}
+                          placeholder="Enter your first name"
+                          className="mt-1"
+                          data-testid="input-first-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Last Name</label>
+                        <Input
+                          value={editedLastName}
+                          onChange={(e) => setEditedLastName(e.target.value)}
+                          placeholder="Enter your last name"
+                          className="mt-1"
+                          data-testid="input-last-name"
+                        />
+                      </div>
+                      <Separator />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Email</label>
+                        <p className="text-base text-muted-foreground" data-testid="text-user-email-readonly">
+                          {user.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Email is managed through Replit Auth and cannot be changed here
+                        </p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                        <Input
+                          value={editedPhone}
+                          onChange={(e) => setEditedPhone(e.target.value)}
+                          placeholder="Enter your phone number"
+                          className="mt-1"
+                          data-testid="input-phone"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -181,10 +329,10 @@ export default function CustomerProfile() {
                               <Clock className="h-3 w-3" />
                               {order.createdAt && formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}
                             </span>
-                            {order.shippingMethod && (
+                            {order.fulfillmentType && (
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                {order.shippingMethod}
+                                {order.fulfillmentType}
                               </span>
                             )}
                           </div>

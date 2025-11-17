@@ -2311,6 +2311,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/users/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Whitelist only safe fields that users are allowed to update
+      const allowedFields = ['firstName', 'lastName', 'phone'];
+      const updateData: any = {};
+      
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
+      
+      // Validate the whitelisted data
+      const validatedData = insertUserSchema.partial().pick({
+        firstName: true,
+        lastName: true,
+        phone: true,
+      }).parse(updateData);
+      
+      await storage.updateUser(userId, validatedData);
+      
+      // Return updated user data
+      const updatedUser = await storage.getUser(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating current user:", error);
+      res.status(400).json({ error: "Invalid user update data" });
+    }
+  });
+
   app.patch("/api/users/:id", async (req, res) => {
     try {
       const validatedData = insertUserSchema.partial().parse(req.body);
