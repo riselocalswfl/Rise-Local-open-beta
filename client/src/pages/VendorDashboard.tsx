@@ -23,50 +23,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
-import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
 import StripeConnectCard from "@/components/StripeConnectCard";
 import { z } from "zod";
-import { SHOP_CATEGORIES, EVENTS_CATEGORIES, type CategoryGroup } from "@shared/categories";
-
-// Helper function to filter categories based on vendor's selected categories
-function filterVendorCategories(vendorCategories: string[]): CategoryGroup[] {
-  if (!vendorCategories || vendorCategories.length === 0) {
-    return [];
-  }
-  
-  return SHOP_CATEGORIES
-    .map((group) => {
-      // If vendor selected the parent, include all children
-      if (vendorCategories.includes(group.parent)) {
-        return group;
-      }
-      
-      // Otherwise, filter children to only show ones vendor selected
-      const selectedChildren = group.children.filter((child) => 
-        vendorCategories.includes(child)
-      );
-      
-      // Only include group if vendor selected at least one child
-      if (selectedChildren.length > 0) {
-        return {
-          parent: group.parent,
-          children: selectedChildren,
-        };
-      }
-      
-      return null;
-    })
-    .filter((group): group is CategoryGroup => group !== null);
-}
 
 // Form schemas for validation
 const productFormSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   price: z.number().min(0, "Price must be positive"), // In dollars for the form
   stock: z.number().int().min(0, "Stock must be a positive number"),
-  categories: z.array(z.string()).default([]),
   description: z.string().optional(),
   imageUrl: z.string().optional(),
   unitType: z.string().default("per item"),
@@ -466,16 +432,6 @@ export default function VendorDashboard() {
                     }}
                   />
                 </div>
-
-                <HierarchicalCategorySelector
-                  categories={SHOP_CATEGORIES}
-                  selectedCategories={vendor.categories || []}
-                  onChange={(categories) => {
-                    updateVendorMutation.mutate({ categories });
-                  }}
-                  label="Shop Categories"
-                  required
-                />
 
                 <div className="space-y-2">
                   <Label htmlFor="tagline">Tagline</Label>
@@ -920,7 +876,6 @@ export default function VendorDashboard() {
                         setPreviewProductData(data);
                         setProductPreviewDialogOpen(true);
                       }}
-                      availableCategories={filterVendorCategories(vendor?.categories || [])}
                     />
                   </DialogContent>
                 </Dialog>
@@ -1426,12 +1381,10 @@ function AddProductForm({
   onSubmit, 
   isPending, 
   onPreview,
-  availableCategories 
 }: { 
   onSubmit: (data: any) => void; 
   isPending: boolean; 
   onPreview: (data: any) => void;
-  availableCategories: CategoryGroup[];
 }) {
   const [productTags, setProductTags] = useState<string[]>([]);
   
@@ -1441,7 +1394,6 @@ function AddProductForm({
       name: "",
       price: 0,
       stock: 0,
-      categories: [],
       description: "",
       imageUrl: "",
       unitType: "per item",
@@ -1456,7 +1408,7 @@ function AddProductForm({
   });
 
   const handleSubmit = (data: z.infer<typeof productFormSchema>) => {
-    const { price, categories, ...rest } = data;
+    const { price, ...rest } = data;
     
     // Clean up optional fields - remove empty strings and zero values for optional fields
     const cleanData: any = {
@@ -1464,7 +1416,6 @@ function AddProductForm({
       stock: rest.stock,
       priceCents: Math.round(price * 100),
       valueTags: productTags,
-      categories: categories || [],
       unitType: rest.unitType || "per item",
       status: rest.status || "active",
       isFeatured: rest.isFeatured || false,
@@ -1487,7 +1438,6 @@ function AddProductForm({
       ...data,
       priceCents: Math.round(data.price * 100),
       valueTags: productTags,
-      categories: data.categories || [],
     };
     onPreview(previewData);
   };
@@ -1574,31 +1524,6 @@ function AddProductForm({
                   data-testid="input-product-stock"
                 />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Product Categories - filtered to vendor's categories */}
-        <FormField
-          control={form.control}
-          name="categories"
-          render={({ field }) => (
-            <FormItem>
-              <div className="space-y-2">
-                <HierarchicalCategorySelector
-                  categories={availableCategories}
-                  selectedCategories={field.value || []}
-                  onChange={field.onChange}
-                  label="Product Categories"
-                  required={false}
-                />
-                {availableCategories.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Please select your shop categories in the Profile tab first to categorize products.
-                  </p>
-                )}
-              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -1841,23 +1766,6 @@ function AddEventForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; 
                   disabled={isPending}
                 />
               </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="categories"
-          render={({ field }) => (
-            <FormItem>
-              <HierarchicalCategorySelector
-                categories={EVENTS_CATEGORIES}
-                selectedCategories={field.value || []}
-                onChange={field.onChange}
-                label="Event Categories"
-                required
-              />
               <FormMessage />
             </FormItem>
           )}

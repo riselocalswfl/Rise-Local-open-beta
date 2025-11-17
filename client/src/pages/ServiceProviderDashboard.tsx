@@ -18,11 +18,9 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Wrench, Briefcase, Calendar, Star, Plus, Trash2, Edit, CheckCircle, XCircle, Clock, LogOut } from "lucide-react";
 import type { ServiceProvider, ServiceOffering, ServiceBooking } from "@shared/schema";
 import { insertServiceProviderSchema, insertServiceOfferingSchema } from "@shared/schema";
-import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { ImageUpload } from "@/components/ImageUpload";
 import { z } from "zod";
 import { format } from "date-fns";
-import { SERVICES_CATEGORIES } from "@shared/categories";
 
 // Form schemas
 const serviceOfferingFormSchema = z.object({
@@ -61,7 +59,6 @@ export default function ServiceProviderDashboard() {
     resolver: zodResolver(insertServiceProviderSchema.partial().omit({ ownerId: true })),
     defaultValues: {
       businessName: provider?.businessName || "",
-      categories: provider?.categories || [],
       bio: provider?.bio || "",
       tagline: provider?.tagline || "",
       address: provider?.address || "",
@@ -83,7 +80,6 @@ export default function ServiceProviderDashboard() {
     if (provider) {
       profileForm.reset({
         businessName: provider.businessName,
-        categories: provider.categories || [],
         bio: provider.bio || "",
         tagline: provider.tagline || "",
         address: provider.address || "",
@@ -264,23 +260,6 @@ export default function ServiceProviderDashboard() {
                           <FormControl>
                             <Input {...field} data-testid="input-business-name" />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={profileForm.control}
-                      name="categories"
-                      render={({ field }) => (
-                        <FormItem>
-                          <HierarchicalCategorySelector
-                            categories={SERVICES_CATEGORIES}
-                            selectedCategories={field.value || []}
-                            onChange={field.onChange}
-                            label="Service Categories"
-                            required
-                          />
                           <FormMessage />
                         </FormItem>
                       )}
