@@ -20,6 +20,7 @@ interface EventCardProps {
   ticketsAvailable: number;
   rsvpCount?: number;
   organizerName: string;
+  valueTags?: string[];
 }
 
 export default function EventCard({
@@ -32,6 +33,7 @@ export default function EventCard({
   ticketsAvailable,
   rsvpCount = 0,
   organizerName,
+  valueTags = [],
 }: EventCardProps) {
   const eventDate = new Date(dateTime);
   const isUpcoming = eventDate > new Date();
@@ -104,6 +106,16 @@ export default function EventCard({
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
+
+            {valueTags && valueTags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {valueTags.map((tag) => (
+                  <Badge key={tag} variant="outline" className="text-xs rounded-pill">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center gap-4 text-sm">

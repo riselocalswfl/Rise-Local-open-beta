@@ -73,6 +73,7 @@ export default function Events() {
                 ticketsAvailable={event.ticketsAvailable}
                 rsvpCount={event.rsvpCount}
                 organizerName={event.organizerName}
+                valueTags={event.valueTags as string[] || []}
               />
             ))
           )}
