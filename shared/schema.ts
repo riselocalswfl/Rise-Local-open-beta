@@ -33,7 +33,6 @@ export const users = pgTable("users", {
   // Common fields
   role: text("role").notNull().default("buyer"), // buyer, vendor, restaurant, service_provider, admin
   phone: text("phone"),
-  loyaltyPoints: integer("loyalty_points").notNull().default(0),
   
   // Buyer-specific fields
   zipCode: text("zip_code"),
@@ -134,7 +133,6 @@ export type FulfillmentDetails = z.infer<typeof fulfillmentDetailsSchema>;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
-  loyaltyPoints: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -878,45 +876,6 @@ export const insertRestaurantFAQSchema = createInsertSchema(restaurantFAQs).omit
 
 export type InsertRestaurantFAQ = z.infer<typeof insertRestaurantFAQSchema>;
 export type RestaurantFAQ = typeof restaurantFAQs.$inferSelect;
-
-// Loyalty Tiers
-export const loyaltyTiers = pgTable("loyalty_tiers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull().unique(), // Bronze, Silver, Gold, Platinum
-  minPoints: integer("min_points").notNull(), // minimum points to reach this tier
-  maxPoints: integer("max_points"), // null for highest tier
-  color: text("color").notNull(), // hex color for UI
-  benefits: text("benefits").array().notNull(), // list of benefits
-  discountPercent: integer("discount_percent").default(0), // percentage discount
-  displayOrder: integer("display_order").notNull(),
-});
-
-export const insertLoyaltyTierSchema = createInsertSchema(loyaltyTiers).omit({
-  id: true,
-});
-
-export type InsertLoyaltyTier = z.infer<typeof insertLoyaltyTierSchema>;
-export type LoyaltyTier = typeof loyaltyTiers.$inferSelect;
-
-// Loyalty Transactions
-export const loyaltyTransactions = pgTable("loyalty_transactions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  points: integer("points").notNull(), // positive for earning, negative for spending
-  type: text("type").notNull(), // purchase, signup_bonus, referral, redemption, adjustment
-  description: text("description").notNull(),
-  relatedOrderId: varchar("related_order_id"), // reference to order if applicable
-  balanceAfter: integer("balance_after").notNull(), // point balance after this transaction
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertLoyaltyTransactionSchema = createInsertSchema(loyaltyTransactions).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertLoyaltyTransaction = z.infer<typeof insertLoyaltyTransactionSchema>;
-export type LoyaltyTransaction = typeof loyaltyTransactions.$inferSelect;
 
 // Messages - Direct messaging between users (consumers and vendors)
 export const messages = pgTable("messages", {
