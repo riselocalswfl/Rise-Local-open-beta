@@ -14,10 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { ShoppingBag, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check } from "lucide-react";
-import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import type { FulfillmentOptions } from "@shared/schema";
-import { SHOP_CATEGORIES } from "@shared/categories";
 
 // Step 1: Business Basics Schema
 const step1Schema = z.object({
@@ -28,7 +26,6 @@ const step1Schema = z.object({
   city: z.string().min(1, "City is required"),
   zipCode: z.string().min(1, "Zip code is required"),
   bio: z.string().min(10, "Please provide at least 10 characters"),
-  categories: z.array(z.string()).min(1, "Select at least one category"),
 });
 
 // Step 2: Shop Details Schema
@@ -73,7 +70,6 @@ export default function ShopOnboarding() {
       city: "Fort Myers",
       zipCode: "",
       bio: "",
-      categories: [],
     },
   });
 
@@ -132,7 +128,6 @@ export default function ShopOnboarding() {
             city: draft.city || "Fort Myers",
             zipCode: draft.zipCode || "",
             bio: draft.bio || "",
-            categories: draft.categories || [],
           });
 
           // Populate form 2 fields
@@ -171,7 +166,6 @@ export default function ShopOnboarding() {
             city: draft.city,
             zipCode: draft.zipCode,
             bio: draft.bio,
-            categories: draft.categories,
             tagline: draft.tagline,
             localSourcingPercent: draft.localSourcingPercent,
             showLocalSourcing: draft.showLocalSourcing,
@@ -219,7 +213,6 @@ export default function ShopOnboarding() {
             bio: data.bio,
             city: data.city || "Fort Myers",
             zipCode: data.zipCode || "",
-            categories: data.categories || [],
             email: data.email || "",
             phone: data.phone || "",
           }),
@@ -253,7 +246,6 @@ export default function ShopOnboarding() {
           bio: data.bio,
           city: data.city,
           zipCode: data.zipCode,
-          categories: data.categories,
           contact: {
             email: data.email,
             phone: data.phone || "",
@@ -388,7 +380,6 @@ export default function ShopOnboarding() {
             bio: data.bio,
             city: data.city,
             zipCode: data.zipCode,
-            categories: data.categories,
             email: data.email,
             phone: data.phone,
           }),
@@ -413,7 +404,6 @@ export default function ShopOnboarding() {
             bio: data.bio,
             city: data.city,
             zipCode: data.zipCode,
-            categories: data.categories,
             contact: {
               email: data.email,
               phone: data.phone || "",
@@ -713,27 +703,6 @@ export default function ShopOnboarding() {
                       )}
                     />
                   </div>
-
-                  <FormField
-                    control={form1.control}
-                    name="categories"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categories *</FormLabel>
-                        <FormControl>
-                          <HierarchicalCategorySelector
-                            categories={SHOP_CATEGORIES}
-                            selectedCategories={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Choose categories that best describe your business
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
                   <FormField
                     control={form1.control}

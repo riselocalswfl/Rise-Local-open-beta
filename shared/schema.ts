@@ -176,9 +176,6 @@ export const vendors = pgTable("vendors", {
   contactName: text("contact_name").notNull(),
   bio: text("bio").notNull(), // min 280 chars enforced in validation
   
-  // Categories - hierarchical multi-select (parent + child categories)
-  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(),
-  
   // Media
   logoUrl: text("logo_url"),
   bannerUrl: text("banner_url"),
@@ -272,9 +269,6 @@ export const products = pgTable("products", {
   unitType: text("unit_type").default("per item"), // per lb, per dozen, per item, etc.
   status: text("status").notNull().default("active"), // active or hidden
   isFeatured: boolean("is_featured").notNull().default(false),
-  
-  // Categorization - hierarchical multi-select (parent + child categories from vendor's shop categories)
-  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(),
   
   // Sourcing & Transparency
   valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
@@ -546,7 +540,6 @@ export const restaurants = pgTable("restaurants", {
   bio: text("bio").notNull(),
   
   // Cuisine & Dining
-  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(), // hierarchical multi-select (Cuisine Types, Dining Experience, Values & Sourcing)
   dietaryOptions: text("dietary_options").array().default(sql`'{}'::text[]`), // Vegan, Gluten-Free, Keto, etc.
   priceRange: text("price_range"), // $, $$, $$$, $$$$
   
@@ -713,8 +706,7 @@ export const serviceProviders = pgTable("service_providers", {
   contactName: text("contact_name").notNull(),
   bio: text("bio").notNull(),
   
-  // Service Categories - hierarchical multi-select (parent + child categories)
-  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(),
+  // Service Categories
   serviceAreas: text("service_areas").array().default(sql`'{}'::text[]`), // Fort Myers, Cape Coral, etc.
   
   // Media

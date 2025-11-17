@@ -17,8 +17,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Utensils, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check } from "lucide-react";
-import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
-import { DINE_CATEGORIES } from "@shared/categories";
 
 // Step 1: Business Basics Schema
 const step1Schema = z.object({
@@ -29,7 +27,6 @@ const step1Schema = z.object({
   city: z.string().min(1, "City is required"),
   zipCode: z.string().min(1, "Zip code is required"),
   bio: z.string().min(10, "Please provide at least 10 characters"),
-  categories: z.array(z.string()).min(1, "Select at least one category"),
 });
 
 // Step 2: Dine Details Schema
@@ -75,7 +72,6 @@ export default function DineOnboarding() {
       city: "Fort Myers",
       zipCode: "",
       bio: "",
-      categories: [],
     },
   });
 
@@ -130,7 +126,6 @@ export default function DineOnboarding() {
             city: draft.city || "Fort Myers",
             zipCode: draft.zipCode || "",
             bio: draft.bio || "",
-            categories: draft.categories || [],
           });
 
           // Populate form 2 fields
@@ -165,7 +160,6 @@ export default function DineOnboarding() {
             city: draft.city,
             zipCode: draft.zipCode,
             bio: draft.bio,
-            categories: draft.categories,
             tagline: draft.tagline,
             priceRange: draft.priceRange,
             dietaryOptions: draft.dietaryOptions,
@@ -214,7 +208,6 @@ export default function DineOnboarding() {
             bio: data.bio,
             city: data.city || "Fort Myers",
             zipCode: data.zipCode || "",
-            categories: data.categories || [],
             email: data.email || "",
             phone: data.phone || "",
           }),
@@ -248,7 +241,6 @@ export default function DineOnboarding() {
           bio: data.bio,
           city: data.city,
           zipCode: data.zipCode,
-          categories: data.categories,
           contact: {
             email: data.email,
             phone: data.phone || "",
@@ -375,7 +367,6 @@ export default function DineOnboarding() {
             bio: data.bio,
             city: data.city,
             zipCode: data.zipCode,
-            categories: data.categories,
             email: data.email,
             phone: data.phone,
           }),
@@ -400,7 +391,6 @@ export default function DineOnboarding() {
             bio: data.bio,
             city: data.city,
             zipCode: data.zipCode,
-            categories: data.categories,
             contact: {
               email: data.email,
               phone: data.phone || "",
@@ -689,27 +679,6 @@ export default function DineOnboarding() {
                       )}
                     />
                   </div>
-
-                  <FormField
-                    control={form1.control}
-                    name="categories"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categories *</FormLabel>
-                        <FormControl>
-                          <HierarchicalCategorySelector
-                            categories={DINE_CATEGORIES}
-                            selectedCategories={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Choose categories that best describe your restaurant
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
                   <FormField
                     control={form1.control}
