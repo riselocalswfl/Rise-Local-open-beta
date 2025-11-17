@@ -92,6 +92,7 @@ export default function VendorDashboard() {
   const [activeTab, setActiveTab] = useState("profile");
   const [localValues, setLocalValues] = useState<string[]>([]);
   const [localSourcingPercent, setLocalSourcingPercent] = useState<number>(0);
+  const [showLocalSourcing, setShowLocalSourcing] = useState<boolean>(false);
   const [localHours, setLocalHours] = useState<Record<string, string>>({});
   const [productPreviewDialogOpen, setProductPreviewDialogOpen] = useState(false);
   const [previewProductData, setPreviewProductData] = useState<any>(null);
@@ -111,6 +112,7 @@ export default function VendorDashboard() {
     if (vendor) {
       setLocalValues(vendor.values || []);
       setLocalSourcingPercent(vendor.localSourcingPercent || 0);
+      setShowLocalSourcing(vendor.showLocalSourcing || false);
       setLocalHours((vendor.hours as Record<string, string>) || {});
     }
   }, [vendor]);
@@ -696,6 +698,22 @@ export default function VendorDashboard() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Checkbox
+                      id="showLocalSourcing"
+                      checked={showLocalSourcing}
+                      onCheckedChange={(checked) => {
+                        const newValue = checked === true;
+                        setShowLocalSourcing(newValue);
+                        updateVendorMutation.mutate({ showLocalSourcing: newValue });
+                      }}
+                      data-testid="checkbox-show-local-sourcing"
+                    />
+                    <Label htmlFor="showLocalSourcing" className="text-sm font-normal cursor-pointer">
+                      Display local sourcing percentage on my public profile
+                    </Label>
+                  </div>
+                  
                   <Label htmlFor="localSourcing">Local Sourcing: {localSourcingPercent}%</Label>
                   <Slider
                     id="localSourcing"
