@@ -72,18 +72,6 @@ export default function RestaurantProfile() {
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
     : 0;
 
-  const menuByCategory = menuItems.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, MenuItem[]>);
-
-  const categories = ["Appetizers", "Entrees", "Desserts", "Drinks", "Specials"];
-  const orderedCategories = categories.filter(cat => menuByCategory[cat]?.length > 0);
-  const otherCategories = Object.keys(menuByCategory).filter(cat => !categories.includes(cat));
-  const allCategories = [...orderedCategories, ...otherCategories];
 
   return (
     <div className="min-h-screen bg-bg">
