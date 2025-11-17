@@ -150,13 +150,9 @@ export default function ServicesOnboarding() {
           });
 
           // Populate form 3 fields if payment data exists
-          if (draft.paymentMethod) {
-            const paymentMethods = draft.paymentMethod 
-              ? draft.paymentMethod.split(", ").filter(Boolean)
-              : [];
-            
+          if (draft.paymentMethods) {
             form3.reset({
-              paymentMethods,
+              paymentMethods: draft.paymentMethods || [],
             });
           }
 
@@ -276,7 +272,7 @@ export default function ServicesOnboarding() {
         };
       } else if (formType === 'step3') {
         updateData = {
-          paymentMethod: data.paymentMethods.join(", "),
+          paymentMethods: data.paymentMethods || [],
         };
       }
 
@@ -483,7 +479,7 @@ export default function ServicesOnboarding() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            paymentMethod: data.paymentMethods.join(", "),
+            paymentMethods: data.paymentMethods || [],
           }),
         });
 
