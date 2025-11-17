@@ -64,6 +64,7 @@ export default function ServiceProviderDashboard() {
       categories: provider?.categories || [],
       bio: provider?.bio || "",
       tagline: provider?.tagline || "",
+      address: provider?.address || "",
       city: provider?.city || "Fort Myers",
       zipCode: provider?.zipCode || "",
       contactEmail: provider?.contactEmail || "",
@@ -85,6 +86,7 @@ export default function ServiceProviderDashboard() {
         categories: provider.categories || [],
         bio: provider.bio || "",
         tagline: provider.tagline || "",
+        address: provider.address || "",
         city: provider.city,
         zipCode: provider.zipCode || "",
         contactEmail: provider.contactEmail || "",
@@ -306,6 +308,20 @@ export default function ServiceProviderDashboard() {
                           <FormLabel>Business Bio</FormLabel>
                           <FormControl>
                             <Textarea {...field} rows={4} data-testid="input-bio" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={profileForm.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Street Address (optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="123 Main Street" data-testid="input-address" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
