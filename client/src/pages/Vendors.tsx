@@ -23,9 +23,9 @@ export default function Vendors() {
   };
 
   const getVendorLink = (vendor: UnifiedVendorListing) => {
-    if (vendor.vendorType === "shop") return `/vendors/${vendor.id}`;
-    if (vendor.vendorType === "dine") return `/restaurants/${vendor.id}`;
-    return `/service-providers/${vendor.id}`;
+    if (vendor.vendorType === "shop") return `/vendor/${vendor.id}`;
+    if (vendor.vendorType === "dine") return `/restaurant/${vendor.id}`;
+    return `/services/${vendor.id}`;
   };
 
   return (
