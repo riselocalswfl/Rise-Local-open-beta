@@ -194,10 +194,52 @@ export default function ServicesOnboarding() {
 
   // Auto-save function
   const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3') => {
-    if (!draftProviderId || isInitialLoadRef.current) return;
+    if (isInitialLoadRef.current) return;
 
     try {
       setSaveStatus("saving");
+
+      // If no draft service provider exists and this is step1, create it first
+      if (!draftProviderId && formType === 'step1') {
+        // Validate required fields before creating draft
+        if (!data.businessName || !data.contactName || !data.bio) {
+          setSaveStatus("idle");
+          return;
+        }
+
+        const createResponse = await fetch("/api/service-providers/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            businessName: data.businessName,
+            contactName: data.contactName,
+            bio: data.bio,
+            city: data.city || "Fort Myers",
+            zipCode: data.zipCode || "",
+            categories: data.categories || [],
+            email: data.email || "",
+            phone: data.phone || "",
+          }),
+        });
+
+        if (!createResponse.ok) {
+          throw new Error("Failed to create draft");
+        }
+
+        const provider = await createResponse.json();
+        setDraftProviderId(provider.id);
+        console.log("[AUTO-SAVE] Created draft service provider:", provider.id);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+        return;
+      }
+
+      // If no draft ID, can't auto-save step 2 or 3
+      if (!draftProviderId) {
+        setSaveStatus("idle");
+        return;
+      }
 
       // Prepare update data based on form type
       let updateData: any = {};
@@ -249,6 +291,7 @@ export default function ServicesOnboarding() {
         throw new Error("Failed to auto-save");
       }
 
+      console.log("[AUTO-SAVE] Updated draft service provider:", draftProviderId);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {

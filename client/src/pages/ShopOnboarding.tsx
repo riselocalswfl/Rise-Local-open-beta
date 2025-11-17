@@ -195,10 +195,53 @@ export default function ShopOnboarding() {
 
   // Auto-save function
   const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3') => {
-    if (!draftVendorId || isInitialLoadRef.current) return;
+    if (isInitialLoadRef.current) return;
 
     try {
       setSaveStatus("saving");
+
+      // If no draft vendor exists and this is step1, create it first
+      if (!draftVendorId && formType === 'step1') {
+        // Validate required fields before creating draft
+        if (!data.businessName || !data.contactName || !data.bio) {
+          setSaveStatus("idle");
+          return;
+        }
+
+        const createResponse = await fetch("/api/vendors/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            vendorType: "shop",
+            businessName: data.businessName,
+            contactName: data.contactName,
+            bio: data.bio,
+            city: data.city || "Fort Myers",
+            zipCode: data.zipCode || "",
+            categories: data.categories || [],
+            email: data.email || "",
+            phone: data.phone || "",
+          }),
+        });
+
+        if (!createResponse.ok) {
+          throw new Error("Failed to create draft");
+        }
+
+        const vendor = await createResponse.json();
+        setDraftVendorId(vendor.id);
+        console.log("[AUTO-SAVE] Created draft vendor:", vendor.id);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+        return;
+      }
+
+      // If no draft ID, can't auto-save step 2 or 3
+      if (!draftVendorId) {
+        setSaveStatus("idle");
+        return;
+      }
 
       // Prepare update data based on form type
       let updateData: any = {};
@@ -258,6 +301,7 @@ export default function ShopOnboarding() {
         throw new Error("Failed to auto-save");
       }
 
+      console.log("[AUTO-SAVE] Updated draft vendor:", draftVendorId);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {

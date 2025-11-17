@@ -191,10 +191,52 @@ export default function DineOnboarding() {
 
   // Auto-save function
   const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3') => {
-    if (!draftRestaurantId || isInitialLoadRef.current) return;
+    if (isInitialLoadRef.current) return;
 
     try {
       setSaveStatus("saving");
+
+      // If no draft restaurant exists and this is step1, create it first
+      if (!draftRestaurantId && formType === 'step1') {
+        // Validate required fields before creating draft
+        if (!data.businessName || !data.contactName || !data.bio) {
+          setSaveStatus("idle");
+          return;
+        }
+
+        const createResponse = await fetch("/api/restaurants/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            businessName: data.businessName,
+            contactName: data.contactName,
+            bio: data.bio,
+            city: data.city || "Fort Myers",
+            zipCode: data.zipCode || "",
+            categories: data.categories || [],
+            email: data.email || "",
+            phone: data.phone || "",
+          }),
+        });
+
+        if (!createResponse.ok) {
+          throw new Error("Failed to create draft");
+        }
+
+        const restaurant = await createResponse.json();
+        setDraftRestaurantId(restaurant.id);
+        console.log("[AUTO-SAVE] Created draft restaurant:", restaurant.id);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+        return;
+      }
+
+      // If no draft ID, can't auto-save step 2 or 3
+      if (!draftRestaurantId) {
+        setSaveStatus("idle");
+        return;
+      }
 
       // Prepare update data based on form type
       let updateData: any = {};
@@ -247,6 +289,7 @@ export default function DineOnboarding() {
         throw new Error("Failed to auto-save");
       }
 
+      console.log("[AUTO-SAVE] Updated draft restaurant:", draftRestaurantId);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
