@@ -182,7 +182,7 @@ export interface IStorage {
   getVerifiedRestaurants(): Promise<Restaurant[]>;
   getAllRestaurantValues(): Promise<string[]>;
   createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
-  updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<void>;
+  updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<Restaurant>;
   deleteRestaurant(id: string): Promise<void>;
   updateRestaurantVerification(id: string, isVerified: boolean): Promise<void>;
   
@@ -220,7 +220,7 @@ export interface IStorage {
   getVerifiedServiceProviders(): Promise<ServiceProvider[]>;
   getServiceProvidersByCategory(category: string): Promise<ServiceProvider[]>;
   createServiceProvider(provider: InsertServiceProvider): Promise<ServiceProvider>;
-  updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<void>;
+  updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<ServiceProvider>;
   deleteServiceProvider(id: string): Promise<void>;
 
   // Service Offering operations
@@ -829,8 +829,10 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<void> {
+  async updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<Restaurant> {
     await db.update(restaurants).set(data).where(eq(restaurants.id, id));
+    const updated = await db.select().from(restaurants).where(eq(restaurants.id, id));
+    return updated[0];
   }
 
   async deleteRestaurant(id: string): Promise<void> {
@@ -970,8 +972,10 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<void> {
+  async updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<ServiceProvider> {
     await db.update(serviceProviders).set(data).where(eq(serviceProviders.id, id));
+    const updated = await db.select().from(serviceProviders).where(eq(serviceProviders.id, id));
+    return updated[0];
   }
 
   async deleteServiceProvider(id: string): Promise<void> {

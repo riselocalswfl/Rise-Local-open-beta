@@ -550,6 +550,234 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // Draft Restaurant Profile Routes (Auto-save Support)
+  // ============================================================================
+
+  app.get("/api/restaurants/draft", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
+      if (existingRestaurant) {
+        return res.json(existingRestaurant);
+      }
+      res.json(null);
+    } catch (error) {
+      console.error("[DRAFT] Error fetching draft restaurant:", error);
+      res.status(500).json({ error: "Failed to fetch draft restaurant" });
+    }
+  });
+
+  app.post("/api/restaurants/draft", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { vendorType, ...data } = req.body;
+      
+      console.log("[DRAFT] Creating draft restaurant for userId:", userId);
+      
+      const user = await storage.getUser(userId);
+      const email = user?.email || "";
+      
+      const restaurantData = {
+        ownerId: userId,
+        restaurantName: data.businessName || "Draft Restaurant",
+        contactName: data.contactName || "",
+        bio: data.bio || "",
+        tagline: data.tagline || "",
+        city: data.city || "Fort Myers",
+        state: "FL",
+        zipCode: data.zipCode || "",
+        categories: data.categories || [],
+        contact: {
+          email: data.email || email,
+          phone: data.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
+        },
+        locationType: "Dine-in",
+        serviceOptions: [],
+        paymentMethod: "",
+        profileStatus: "draft",
+      };
+      
+      const restaurant = await storage.createRestaurant(restaurantData);
+      console.log("[DRAFT] Created draft restaurant:", restaurant.id);
+      
+      res.status(201).json(restaurant);
+    } catch (error) {
+      console.error("[DRAFT] Error creating draft restaurant:", error);
+      res.status(400).json({ 
+        error: "Failed to create draft restaurant",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.patch("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const restaurantId = req.params.id;
+      
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant || restaurant.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      console.log("[DRAFT] Updating restaurant:", restaurantId);
+      
+      const updatedRestaurant = await storage.updateRestaurant(restaurantId, req.body);
+      res.json(updatedRestaurant);
+    } catch (error) {
+      console.error("[DRAFT] Error updating restaurant:", error);
+      res.status(400).json({ 
+        error: "Failed to update restaurant",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/restaurants/:id/complete", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const restaurantId = req.params.id;
+      
+      const restaurant = await storage.getRestaurant(restaurantId);
+      if (!restaurant || restaurant.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      console.log("[COMPLETE] Marking restaurant as complete:", restaurantId);
+      
+      const updatedRestaurant = await storage.updateRestaurant(restaurantId, { 
+        profileStatus: "complete" 
+      });
+      
+      await storage.updateUser(userId, { role: "restaurant" });
+      
+      res.json({ success: true, restaurant: updatedRestaurant });
+    } catch (error) {
+      console.error("[COMPLETE] Error completing restaurant profile:", error);
+      res.status(400).json({ 
+        error: "Failed to complete restaurant profile",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // ============================================================================
+  // Draft Service Provider Profile Routes (Auto-save Support)
+  // ============================================================================
+
+  app.get("/api/service-providers/draft", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const existingProvider = await storage.getServiceProviderByOwnerId(userId);
+      if (existingProvider) {
+        return res.json(existingProvider);
+      }
+      res.json(null);
+    } catch (error) {
+      console.error("[DRAFT] Error fetching draft service provider:", error);
+      res.status(500).json({ error: "Failed to fetch draft service provider" });
+    }
+  });
+
+  app.post("/api/service-providers/draft", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { vendorType, ...data } = req.body;
+      
+      console.log("[DRAFT] Creating draft service provider for userId:", userId);
+      
+      const user = await storage.getUser(userId);
+      const email = user?.email || "";
+      
+      const providerData = {
+        ownerId: userId,
+        businessName: data.businessName || "Draft Service Provider",
+        contactName: data.contactName || "",
+        bio: data.bio || "",
+        tagline: data.tagline || "",
+        city: data.city || "Fort Myers",
+        state: "FL",
+        zipCode: data.zipCode || "",
+        categories: data.categories || [],
+        serviceAreas: [data.city || "Fort Myers"],
+        contactEmail: data.email || email,
+        contactPhone: data.phone || "",
+        contact: {
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
+        },
+        profileStatus: "draft",
+      };
+      
+      const provider = await storage.createServiceProvider(providerData);
+      console.log("[DRAFT] Created draft service provider:", provider.id);
+      
+      res.status(201).json(provider);
+    } catch (error) {
+      console.error("[DRAFT] Error creating draft service provider:", error);
+      res.status(400).json({ 
+        error: "Failed to create draft service provider",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.patch("/api/service-providers/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const providerId = req.params.id;
+      
+      const provider = await storage.getServiceProvider(providerId);
+      if (!provider || provider.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      console.log("[DRAFT] Updating service provider:", providerId);
+      
+      const updatedProvider = await storage.updateServiceProvider(providerId, req.body);
+      res.json(updatedProvider);
+    } catch (error) {
+      console.error("[DRAFT] Error updating service provider:", error);
+      res.status(400).json({ 
+        error: "Failed to update service provider",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/service-providers/:id/complete", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const providerId = req.params.id;
+      
+      const provider = await storage.getServiceProvider(providerId);
+      if (!provider || provider.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      console.log("[COMPLETE] Marking service provider as complete:", providerId);
+      
+      const updatedProvider = await storage.updateServiceProvider(providerId, { 
+        profileStatus: "complete" 
+      });
+      
+      await storage.updateUser(userId, { role: "service_provider" });
+      
+      res.json({ success: true, provider: updatedProvider });
+    } catch (error) {
+      console.error("[COMPLETE] Error completing service provider profile:", error);
+      res.status(400).json({ 
+        error: "Failed to complete service provider profile",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // ============================================================================
   // Stripe Connect Routes (Vendor Payment Setup)
   // ============================================================================
 

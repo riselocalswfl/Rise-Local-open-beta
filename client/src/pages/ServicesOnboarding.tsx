@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Wrench, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check } from "lucide-react";
 import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { SERVICES_CATEGORIES } from "@shared/categories";
 
@@ -61,6 +61,12 @@ export default function ServicesOnboarding() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Auto-save state
+  const [draftProviderId, setDraftProviderId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadRef = useRef(true);
+
   // Form data accumulator
   const [formData, setFormData] = useState<any>({});
 
@@ -101,46 +107,378 @@ export default function ServicesOnboarding() {
     },
   });
 
-  const handleStep1Submit = (data: any) => {
+  // Load draft service provider on mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const response = await fetch("/api/service-providers/draft", {
+          credentials: "include",
+        });
+        
+        if (!response.ok) {
+          console.error("Failed to fetch draft service provider");
+          return;
+        }
+
+        const draft = await response.json();
+        
+        if (draft && draft.id) {
+          console.log("Loaded draft service provider:", draft.id);
+          setDraftProviderId(draft.id);
+          
+          // Populate form 1 fields
+          form1.reset({
+            businessName: draft.businessName || "",
+            contactName: draft.contactName || "",
+            email: draft.contact?.email || "",
+            phone: draft.contact?.phone || "",
+            city: draft.city || "Fort Myers",
+            zipCode: draft.zipCode || "",
+            bio: draft.bio || "",
+            categories: draft.categories || [],
+          });
+
+          // Populate form 2 fields
+          form2.reset({
+            tagline: draft.tagline || "",
+            serviceAreas: draft.serviceAreas || [],
+            yearsInBusiness: draft.yearsInBusiness,
+            certifications: draft.certifications || "",
+            website: draft.contact?.website || "",
+            instagram: draft.contact?.instagram || "",
+            facebook: draft.contact?.facebook || "",
+          });
+
+          // Populate form 3 fields if payment data exists
+          if (draft.paymentMethod) {
+            const paymentMethods = draft.paymentMethod 
+              ? draft.paymentMethod.split(", ").filter(Boolean)
+              : [];
+            
+            form3.reset({
+              paymentMethods,
+            });
+          }
+
+          // Update form data state
+          setFormData({
+            businessName: draft.businessName,
+            contactName: draft.contactName,
+            email: draft.contact?.email,
+            phone: draft.contact?.phone,
+            city: draft.city,
+            zipCode: draft.zipCode,
+            bio: draft.bio,
+            categories: draft.categories,
+            tagline: draft.tagline,
+            serviceAreas: draft.serviceAreas,
+            yearsInBusiness: draft.yearsInBusiness,
+            certifications: draft.certifications,
+            website: draft.contact?.website,
+            instagram: draft.contact?.instagram,
+            facebook: draft.contact?.facebook,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading draft service provider:", error);
+      } finally {
+        // Mark initial load as complete
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 500);
+      }
+    };
+
+    loadDraft();
+  }, []);
+
+  // Auto-save function
+  const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3') => {
+    if (!draftProviderId || isInitialLoadRef.current) return;
+
+    try {
+      setSaveStatus("saving");
+
+      // Prepare update data based on form type
+      let updateData: any = {};
+      
+      if (formType === 'step1') {
+        updateData = {
+          businessName: data.businessName,
+          contactName: data.contactName,
+          bio: data.bio,
+          city: data.city,
+          zipCode: data.zipCode,
+          categories: data.categories,
+          contact: {
+            email: data.email,
+            phone: data.phone || "",
+            website: formData.website || "",
+            instagram: formData.instagram || "",
+            facebook: formData.facebook || "",
+          },
+        };
+      } else if (formType === 'step2') {
+        updateData = {
+          tagline: data.tagline || "",
+          serviceAreas: data.serviceAreas || [],
+          yearsInBusiness: data.yearsInBusiness,
+          certifications: data.certifications || "",
+          contact: {
+            email: formData.email || "",
+            phone: formData.phone || "",
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
+          },
+        };
+      } else if (formType === 'step3') {
+        updateData = {
+          paymentMethod: data.paymentMethods.join(", "),
+        };
+      }
+
+      const response = await fetch(`/api/service-providers/${draftProviderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to auto-save");
+      }
+
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (error) {
+      console.error("Auto-save error:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    }
+  }, [draftProviderId, formData]);
+
+  // Watch form1 for auto-save
+  useEffect(() => {
+    const subscription = form1.watch((value) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        autoSave(value, 'step1');
+      }, 2000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [form1, autoSave]);
+
+  // Watch form2 for auto-save
+  useEffect(() => {
+    const subscription = form2.watch((value) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        autoSave(value, 'step2');
+      }, 2000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [form2, autoSave]);
+
+  // Watch form3 for auto-save
+  useEffect(() => {
+    const subscription = form3.watch((value) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        autoSave(value, 'step3');
+      }, 2000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [form3, autoSave]);
+
+  const handleStep1Submit = async (data: any) => {
     setFormData({ ...formData, ...data });
-    setStep(2);
+    
+    try {
+      if (!draftProviderId) {
+        // Create draft service provider
+        const response = await fetch("/api/service-providers/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            businessName: data.businessName,
+            contactName: data.contactName,
+            bio: data.bio,
+            city: data.city,
+            zipCode: data.zipCode,
+            categories: data.categories,
+            email: data.email,
+            phone: data.phone,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create draft");
+        }
+
+        const provider = await response.json();
+        setDraftProviderId(provider.id);
+        console.log("Created draft service provider:", provider.id);
+      } else {
+        // Update existing draft
+        const response = await fetch(`/api/service-providers/${draftProviderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            businessName: data.businessName,
+            contactName: data.contactName,
+            bio: data.bio,
+            city: data.city,
+            zipCode: data.zipCode,
+            categories: data.categories,
+            contact: {
+              email: data.email,
+              phone: data.phone || "",
+              website: formData.website || "",
+              instagram: formData.instagram || "",
+              facebook: formData.facebook || "",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update draft");
+        }
+      }
+
+      setStep(2);
+    } catch (error) {
+      console.error("Error saving step 1:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Error",
+        description: "Failed to save your progress, but you can continue. Please try again.",
+      });
+      setStep(2);
+    }
   };
 
-  const handleStep2Submit = (data: any) => {
+  const handleStep2Submit = async (data: any) => {
     setFormData({ ...formData, ...data });
-    setStep(3);
+    
+    try {
+      if (draftProviderId) {
+        // Update draft with step 2 data
+        const response = await fetch(`/api/service-providers/${draftProviderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            tagline: data.tagline || "",
+            serviceAreas: data.serviceAreas || [],
+            yearsInBusiness: data.yearsInBusiness,
+            certifications: data.certifications || "",
+            contact: {
+              email: formData.email || "",
+              phone: formData.phone || "",
+              website: data.website || "",
+              instagram: data.instagram || "",
+              facebook: data.facebook || "",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save step 2");
+        }
+      }
+
+      setStep(3);
+    } catch (error) {
+      console.error("Error saving step 2:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Error",
+        description: "Failed to save your progress, but you can continue. Please try again.",
+      });
+      setStep(3);
+    }
   };
 
-  const handleStep3Submit = (data: any) => {
+  const handleStep3Submit = async (data: any) => {
     setFormData({ ...formData, ...data });
-    setStep(4);
+    
+    try {
+      if (draftProviderId) {
+        // Update draft with step 3 data
+        const response = await fetch(`/api/service-providers/${draftProviderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            paymentMethod: data.paymentMethods.join(", "),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save step 3");
+        }
+      }
+
+      setStep(4);
+    } catch (error) {
+      console.error("Error saving step 3:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Error",
+        description: "Failed to save your progress, but you can continue. Please try again.",
+      });
+      setStep(4);
+    }
   };
 
   const handleStep4Submit = async (connectStripe: boolean = false) => {
     setIsSubmitting(true);
-    // Service providers don't need complex fulfillment options
-    const completeData = { 
-      ...formData, 
-      vendorType: "service",
-      fulfillmentMethods: {
-        pickup: { enabled: false },
-        delivery: { enabled: false },
-        shipping: { enabled: false },
-        custom: [],
-      }
-    };
     
     try {
-      const response = await fetch("/api/vendors/onboard", {
+      if (!draftProviderId) {
+        throw new Error("No draft service provider found. Please start from the beginning.");
+      }
+
+      // Mark profile as complete
+      const response = await fetch(`/api/service-providers/${draftProviderId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(completeData),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create profile");
+        throw new Error(errorData.error || "Failed to complete profile");
       }
 
       const result = await response.json();
@@ -152,13 +490,9 @@ export default function ServicesOnboarding() {
           : "Welcome to Rise Local. You can connect Stripe later from Settings.",
       });
 
-      // Clear session storage
-      sessionStorage.removeItem("vendorType");
-
-      // Redirect to dashboard, opening Settings tab if connecting Stripe
-      const dashboardUrl = result.redirectUrl || "/dashboard";
+      // Redirect to dashboard
+      const dashboardUrl = "/service-provider-dashboard";
       if (connectStripe) {
-        // Store flag to open Settings tab
         sessionStorage.setItem("openStripeSettings", "true");
       }
       setLocation(dashboardUrl);
@@ -166,7 +500,7 @@ export default function ServicesOnboarding() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to create profile. Please try again.",
+        description: error.message || "Failed to complete profile. Please try again.",
       });
       setIsSubmitting(false);
     }
@@ -195,6 +529,29 @@ export default function ServicesOnboarding() {
             <span className="text-sm text-muted-foreground">{Math.round(progressPercentage)}% Complete</span>
           </div>
           <Progress value={progressPercentage} className="h-2" />
+          
+          {/* Save Status Indicator */}
+          {saveStatus !== "idle" && (
+            <div className="flex items-center justify-center gap-2 mt-3" data-testid="save-status-indicator">
+              {saveStatus === "saving" && (
+                <>
+                  <CloudUpload className="w-4 h-4 text-muted-foreground animate-pulse" />
+                  <span className="text-sm text-muted-foreground">Saving...</span>
+                </>
+              )}
+              {saveStatus === "saved" && (
+                <>
+                  <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm text-green-600 dark:text-green-400">Saved</span>
+                </>
+              )}
+              {saveStatus === "error" && (
+                <>
+                  <span className="text-sm text-destructive">Failed to save (will retry)</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Step 1: Business Basics */}
