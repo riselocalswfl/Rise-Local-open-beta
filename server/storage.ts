@@ -62,7 +62,7 @@ export interface IStorage {
   getVerifiedVendors(): Promise<Vendor[]>;
   getAllVendorValues(): Promise<string[]>;
   createVendor(vendor: InsertVendor): Promise<Vendor>;
-  updateVendor(id: string, data: Partial<InsertVendor>): Promise<void>;
+  updateVendor(id: string, data: Partial<InsertVendor>): Promise<Vendor>;
   deleteVendor(id: string): Promise<void>;
   updateVendorVerification(id: string, isVerified: boolean): Promise<void>;
 

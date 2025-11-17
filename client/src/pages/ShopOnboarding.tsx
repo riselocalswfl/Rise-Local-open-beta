@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingBag, CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import { ShoppingBag, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check } from "lucide-react";
 import { HierarchicalCategorySelector } from "@/components/HierarchicalCategorySelector";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import type { FulfillmentOptions } from "@shared/schema";
@@ -52,6 +52,12 @@ export default function ShopOnboarding() {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-save state
+  const [draftVendorId, setDraftVendorId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   // Form data accumulator
   const [formData, setFormData] = useState<any>({});
@@ -98,36 +104,399 @@ export default function ShopOnboarding() {
     },
   });
 
-  const handleStep1Submit = (data: any) => {
+  // Load draft vendor on mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const response = await fetch("/api/vendors/draft", {
+          credentials: "include",
+        });
+        
+        if (!response.ok) {
+          console.error("Failed to fetch draft vendor");
+          return;
+        }
+
+        const draft = await response.json();
+        
+        if (draft && draft.id) {
+          console.log("Loaded draft vendor:", draft.id);
+          setDraftVendorId(draft.id);
+          
+          // Populate form 1 fields
+          form1.reset({
+            businessName: draft.businessName || "",
+            contactName: draft.contactName || "",
+            email: draft.contact?.email || "",
+            phone: draft.contact?.phone || "",
+            city: draft.city || "Fort Myers",
+            zipCode: draft.zipCode || "",
+            bio: draft.bio || "",
+            categories: draft.categories || [],
+          });
+
+          // Populate form 2 fields
+          form2.reset({
+            tagline: draft.tagline || "",
+            localSourcingPercent: draft.localSourcingPercent || 50,
+            showLocalSourcing: draft.showLocalSourcing || false,
+            website: draft.contact?.website || "",
+            instagram: draft.contact?.instagram || "",
+            facebook: draft.contact?.facebook || "",
+          });
+
+          // Populate form 3 fields if payment/fulfillment data exists
+          if (draft.paymentMethod || draft.fulfillmentOptions) {
+            const paymentMethods = draft.paymentMethod 
+              ? draft.paymentMethod.split(", ").filter(Boolean)
+              : [];
+            
+            form3.reset({
+              paymentMethods,
+              fulfillmentMethods: draft.fulfillmentOptions || {
+                pickup: { enabled: false },
+                delivery: { enabled: false },
+                shipping: { enabled: false },
+                custom: [],
+              },
+            });
+          }
+
+          // Update form data state
+          setFormData({
+            businessName: draft.businessName,
+            contactName: draft.contactName,
+            email: draft.contact?.email,
+            phone: draft.contact?.phone,
+            city: draft.city,
+            zipCode: draft.zipCode,
+            bio: draft.bio,
+            categories: draft.categories,
+            tagline: draft.tagline,
+            localSourcingPercent: draft.localSourcingPercent,
+            showLocalSourcing: draft.showLocalSourcing,
+            website: draft.contact?.website,
+            instagram: draft.contact?.instagram,
+            facebook: draft.contact?.facebook,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading draft vendor:", error);
+      } finally {
+        // Mark initial load as complete
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 500);
+      }
+    };
+
+    loadDraft();
+  }, []);
+
+  // Auto-save function
+  const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3') => {
+    if (!draftVendorId || isInitialLoadRef.current) return;
+
+    try {
+      setSaveStatus("saving");
+
+      // Prepare update data based on form type
+      let updateData: any = {};
+      
+      if (formType === 'step1') {
+        updateData = {
+          businessName: data.businessName,
+          contactName: data.contactName,
+          bio: data.bio,
+          city: data.city,
+          zipCode: data.zipCode,
+          categories: data.categories,
+          contact: {
+            email: data.email,
+            phone: data.phone || "",
+            website: formData.website || "",
+            instagram: formData.instagram || "",
+            facebook: formData.facebook || "",
+          },
+        };
+      } else if (formType === 'step2') {
+        updateData = {
+          tagline: data.tagline || "",
+          localSourcingPercent: data.localSourcingPercent || 0,
+          showLocalSourcing: data.showLocalSourcing || false,
+          contact: {
+            email: formData.email || "",
+            phone: formData.phone || "",
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
+          },
+        };
+      } else if (formType === 'step3') {
+        const fulfillmentOptions = data.fulfillmentMethods;
+        const serviceOptions: string[] = [];
+        
+        if (fulfillmentOptions.pickup?.enabled) serviceOptions.push("Pickup");
+        if (fulfillmentOptions.delivery?.enabled) serviceOptions.push("Delivery");
+        if (fulfillmentOptions.shipping?.enabled) serviceOptions.push("Ship");
+        
+        updateData = {
+          paymentMethod: data.paymentMethods.join(", "),
+          fulfillmentOptions,
+          serviceOptions,
+        };
+      }
+
+      const response = await fetch(`/api/vendors/${draftVendorId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to auto-save");
+      }
+
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (error) {
+      console.error("Auto-save error:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    }
+  }, [draftVendorId, formData]);
+
+  // Watch form1 for auto-save
+  useEffect(() => {
+    const subscription = form1.watch((value) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        autoSave(value, 'step1');
+      }, 2000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [form1, autoSave]);
+
+  // Watch form2 for auto-save
+  useEffect(() => {
+    const subscription = form2.watch((value) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        autoSave(value, 'step2');
+      }, 2000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [form2, autoSave]);
+
+  // Watch form3 for auto-save
+  useEffect(() => {
+    const subscription = form3.watch((value) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      
+      debounceTimerRef.current = setTimeout(() => {
+        autoSave(value, 'step3');
+      }, 2000);
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [form3, autoSave]);
+
+  const handleStep1Submit = async (data: any) => {
     setFormData({ ...formData, ...data });
-    setStep(2);
+    
+    try {
+      if (!draftVendorId) {
+        // Create draft vendor
+        const response = await fetch("/api/vendors/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            vendorType: "shop",
+            businessName: data.businessName,
+            contactName: data.contactName,
+            bio: data.bio,
+            city: data.city,
+            zipCode: data.zipCode,
+            categories: data.categories,
+            email: data.email,
+            phone: data.phone,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create draft");
+        }
+
+        const vendor = await response.json();
+        setDraftVendorId(vendor.id);
+        console.log("Created draft vendor:", vendor.id);
+      } else {
+        // Update existing draft
+        const response = await fetch(`/api/vendors/${draftVendorId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            businessName: data.businessName,
+            contactName: data.contactName,
+            bio: data.bio,
+            city: data.city,
+            zipCode: data.zipCode,
+            categories: data.categories,
+            contact: {
+              email: data.email,
+              phone: data.phone || "",
+              website: formData.website || "",
+              instagram: formData.instagram || "",
+              facebook: formData.facebook || "",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update draft");
+        }
+      }
+
+      setStep(2);
+    } catch (error) {
+      console.error("Error saving step 1:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Error",
+        description: "Failed to save your progress, but you can continue. Please try again.",
+      });
+      setStep(2);
+    }
   };
 
-  const handleStep2Submit = (data: any) => {
+  const handleStep2Submit = async (data: any) => {
     setFormData({ ...formData, ...data });
-    setStep(3);
+    
+    try {
+      if (draftVendorId) {
+        // Update draft with step 2 data
+        const response = await fetch(`/api/vendors/${draftVendorId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            tagline: data.tagline || "",
+            localSourcingPercent: data.localSourcingPercent || 0,
+            showLocalSourcing: data.showLocalSourcing || false,
+            contact: {
+              email: formData.email || "",
+              phone: formData.phone || "",
+              website: data.website || "",
+              instagram: data.instagram || "",
+              facebook: data.facebook || "",
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save step 2");
+        }
+      }
+
+      setStep(3);
+    } catch (error) {
+      console.error("Error saving step 2:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Error",
+        description: "Failed to save your progress, but you can continue. Please try again.",
+      });
+      setStep(3);
+    }
   };
 
-  const handleStep3Submit = (data: any) => {
+  const handleStep3Submit = async (data: any) => {
     setFormData({ ...formData, ...data });
-    setStep(4);
+    
+    try {
+      if (draftVendorId) {
+        // Update draft with step 3 data
+        const fulfillmentOptions = data.fulfillmentMethods;
+        const serviceOptions: string[] = [];
+        
+        if (fulfillmentOptions.pickup?.enabled) serviceOptions.push("Pickup");
+        if (fulfillmentOptions.delivery?.enabled) serviceOptions.push("Delivery");
+        if (fulfillmentOptions.shipping?.enabled) serviceOptions.push("Ship");
+        
+        const response = await fetch(`/api/vendors/${draftVendorId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            paymentMethod: data.paymentMethods.join(", "),
+            fulfillmentOptions,
+            serviceOptions,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save step 3");
+        }
+      }
+
+      setStep(4);
+    } catch (error) {
+      console.error("Error saving step 3:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Error",
+        description: "Failed to save your progress, but you can continue. Please try again.",
+      });
+      setStep(4);
+    }
   };
 
   const handleStep4Submit = async (connectStripe: boolean = false) => {
     setIsSubmitting(true);
-    const completeData = { ...formData, vendorType: "shop" };
     
     try {
-      const response = await fetch("/api/vendors/onboard", {
+      if (!draftVendorId) {
+        throw new Error("No draft vendor found. Please start from the beginning.");
+      }
+
+      // Mark profile as complete
+      const response = await fetch(`/api/vendors/${draftVendorId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(completeData),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create profile");
+        throw new Error(errorData.error || "Failed to complete profile");
       }
 
       const result = await response.json();
@@ -139,8 +508,8 @@ export default function ShopOnboarding() {
           : "Welcome to Rise Local. You can connect Stripe later from Settings.",
       });
 
-      // Redirect to dashboard, opening Settings tab if connecting Stripe
-      const dashboardUrl = result.redirectUrl || "/dashboard";
+      // Redirect to dashboard
+      const dashboardUrl = "/vendor-dashboard";
       if (connectStripe) {
         sessionStorage.setItem("openStripeSettings", "true");
       }
@@ -149,7 +518,7 @@ export default function ShopOnboarding() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to create profile. Please try again.",
+        description: error.message || "Failed to complete profile. Please try again.",
       });
       setIsSubmitting(false);
     }
@@ -178,6 +547,29 @@ export default function ShopOnboarding() {
             <span className="text-sm text-muted-foreground">{Math.round(progressPercentage)}% Complete</span>
           </div>
           <Progress value={progressPercentage} className="h-2" />
+          
+          {/* Save Status Indicator */}
+          {saveStatus !== "idle" && (
+            <div className="flex items-center justify-center gap-2 mt-3" data-testid="save-status-indicator">
+              {saveStatus === "saving" && (
+                <>
+                  <CloudUpload className="w-4 h-4 text-muted-foreground animate-pulse" />
+                  <span className="text-sm text-muted-foreground">Saving...</span>
+                </>
+              )}
+              {saveStatus === "saved" && (
+                <>
+                  <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm text-green-600 dark:text-green-400">Saved</span>
+                </>
+              )}
+              {saveStatus === "error" && (
+                <>
+                  <span className="text-sm text-destructive">Failed to save (will retry)</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Step 1: Business Basics */}
