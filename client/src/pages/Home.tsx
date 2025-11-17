@@ -7,10 +7,11 @@ import HomeHero from "@/components/HomeHero";
 import ProductCard from "@/components/ProductCard";
 import VendorCard from "@/components/VendorCard";
 import EventCard from "@/components/EventCard";
+import ServiceProviderCard from "@/components/ServiceProviderCard";
 import MobileCategoryNav from "@/components/MobileCategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
-import type { Vendor } from "@shared/schema";
+import type { Vendor, ServiceProvider } from "@shared/schema";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -32,6 +33,10 @@ export default function Home() {
     queryKey: ["/api/vendors/verified"],
   });
 
+  const { data: serviceProviders, isLoading: servicesLoading } = useQuery<ServiceProvider[]>({
+    queryKey: ["/api/services"],
+  });
+
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["/api/events-with-organizers"],
     queryFn: getEventsWithOrganizers,
@@ -39,6 +44,7 @@ export default function Home() {
 
   const featuredProducts = products?.slice(0, 3) || [];
   const featuredVendors = vendors?.slice(0, 2) || [];
+  const featuredServices = serviceProviders?.slice(0, 3) || [];
   const upcomingEvents =
     events?.filter((e) => new Date(e.dateTime) > new Date()).slice(0, 2) || [];
 
@@ -87,7 +93,6 @@ export default function Home() {
                   price={product.price ? parseFloat(product.price) : 0}
                   vendorName={product.vendorName || "Unknown Vendor"}
                   vendorId={product.vendorId}
-                  category={product.category || "Uncategorized"}
                   inventory={product.inventory}
                   isVerifiedVendor={product.isVerifiedVendor}
                 />
@@ -131,10 +136,49 @@ export default function Home() {
                   name={vendor.businessName}
                   bio={vendor.bio || ""}
                   city={vendor.city}
-                  categories={vendor.category ? [vendor.category] : []}
+                  categories={vendor.categories as string[] || []}
                   values={vendor.values as string[] || undefined}
                   isVerified={vendor.isVerified}
                   followerCount={vendor.followerCount}
+                />
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-heading text-3xl text-text">Local Services</h2>
+              <p className="text-text/70 mt-1">
+                Find trusted professionals for your needs
+              </p>
+            </div>
+            <Link href="/services" data-testid="link-view-all-services">
+              <button className="hidden md:flex text-sm text-primary hover:text-primary/80 items-center gap-1 transition">
+                View All
+                <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
+              </button>
+            </Link>
+          </div>
+          
+          <MobileCategoryNav
+            categories={["Personal & Wellness", "Home & Property", "Events & Creative", "Professional"]}
+            baseUrl="/services"
+            title="Browse Services"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {servicesLoading ? (
+              <>
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+              </>
+            ) : (
+              featuredServices.map((provider) => (
+                <ServiceProviderCard
+                  key={provider.id}
+                  provider={provider}
                 />
               ))
             )}
@@ -170,7 +214,6 @@ export default function Home() {
                   title={event.title}
                   dateTime={event.dateTime.toString()}
                   location={event.location}
-                  category={event.category}
                   description={event.description}
                   ticketsAvailable={event.ticketsAvailable}
                   rsvpCount={event.rsvpCount}
