@@ -1,14 +1,28 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Wrench } from "lucide-react";
 import ServiceProviderCard from "@/components/ServiceProviderCard";
+import { CategoryFilter } from "@/components/CategoryFilter";
 import type { ServiceProvider } from "@shared/schema";
+import { SERVICES_CATEGORIES, categoriesMatch } from "@shared/categories";
 
 export default function Services() {
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  
   const { data: providers = [], isLoading } = useQuery<ServiceProvider[]>({
     queryKey: ["/api/services"],
   });
+
+  // Filter by hierarchical categories
+  let filteredProviders = providers;
+  if (selectedCategories.length > 0) {
+    filteredProviders = filteredProviders.filter(provider => {
+      if (!provider.categories) return false;
+      return categoriesMatch(provider.categories, selectedCategories, SERVICES_CATEGORIES);
+    });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,24 +45,43 @@ export default function Services() {
       </div>
 
       {/* Service Provider List */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Skeleton className="h-96" />
-            <Skeleton className="h-96" />
-            <Skeleton className="h-96" />
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* Sidebar with CategoryFilter */}
+          <aside className="w-64 flex-shrink-0 hidden lg:block">
+            <CategoryFilter
+              categories={SERVICES_CATEGORIES}
+              selectedCategories={selectedCategories}
+              onChange={setSelectedCategories}
+              title="Service Categories"
+            />
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <Skeleton className="h-96" />
+                <Skeleton className="h-96" />
+                <Skeleton className="h-96" />
+              </div>
+            ) : filteredProviders.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">
+                  {selectedCategories.length > 0 
+                    ? "No service providers found matching your filters. Try adjusting your category selections."
+                    : "No service providers currently listed. Check back soon!"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" data-testid="service-grid">
+                {filteredProviders.map((provider) => (
+                  <ServiceProviderCard key={provider.id} provider={provider} />
+                ))}
+              </div>
+            )}
           </div>
-        ) : providers.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No service providers currently listed. Check back soon!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="service-grid">
-            {providers.map((provider) => (
-              <ServiceProviderCard key={provider.id} provider={provider} />
-            ))}
-          </div>
-        )}
+        </div>
       </main>
     </div>
   );

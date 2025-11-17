@@ -31,16 +31,37 @@ export function CategoryFilter({
     });
   };
 
-  const toggleCategory = (categoryName: string) => {
-    if (selectedCategories.includes(categoryName)) {
-      onChange(selectedCategories.filter((c) => c !== categoryName));
+  const toggleCategory = (categoryName: string, isParent: boolean = false, children: string[] = []) => {
+    if (isParent) {
+      // Handle parent category toggle - only toggle children, not the parent itself
+      const anyChildSelected = children.some(child => selectedCategories.includes(child));
+      
+      if (anyChildSelected) {
+        // Deselecting parent - remove all its children
+        onChange(selectedCategories.filter((c) => !children.includes(c)));
+      } else {
+        // Selecting parent - add all its children
+        const newCategories = [...selectedCategories];
+        children.forEach(child => {
+          if (!newCategories.includes(child)) {
+            newCategories.push(child);
+          }
+        });
+        onChange(newCategories);
+      }
     } else {
-      onChange([...selectedCategories, categoryName]);
+      // Handle child category toggle normally
+      if (selectedCategories.includes(categoryName)) {
+        onChange(selectedCategories.filter((c) => c !== categoryName));
+      } else {
+        onChange([...selectedCategories, categoryName]);
+      }
     }
   };
 
   const isParentSelected = (group: CategoryNode): boolean => {
-    return selectedCategories.includes(group.parent);
+    // Parent is checked if ANY of its children are selected
+    return group.children.some(child => selectedCategories.includes(child));
   };
 
   const isChildSelected = (childName: string): boolean => {
@@ -60,7 +81,7 @@ export function CategoryFilter({
               <Checkbox
                 id={`filter-${group.parent}`}
                 checked={isParentSelected(group)}
-                onCheckedChange={() => toggleCategory(group.parent)}
+                onCheckedChange={() => toggleCategory(group.parent, true, group.children)}
                 data-testid={`checkbox-filter-${group.parent.toLowerCase().replace(/\s+/g, "-")}`}
               />
               <div className="flex-1 flex items-center justify-between">
