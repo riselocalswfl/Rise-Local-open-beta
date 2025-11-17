@@ -1,26 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/Header";
-import LoyaltyDisplay from "@/components/LoyaltyDisplay";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, Package, Award, Clock, MapPin, LogOut } from "lucide-react";
+import { User, Package, Clock, MapPin, LogOut } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { Order, LoyaltyTransaction } from "@shared/schema";
+import type { Order } from "@shared/schema";
 
 export default function CustomerProfile() {
   const { user, isLoading: userLoading } = useAuth();
   
   const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders/me"],
-    enabled: !!user,
-  });
-
-  const { data: transactions, isLoading: transactionsLoading } = useQuery<LoyaltyTransaction[]>({
-    queryKey: ["/api/loyalty/my-transactions"],
     enabled: !!user,
   });
 
@@ -78,12 +72,12 @@ export default function CustomerProfile() {
             My Account
           </h1>
           <p className="text-muted-foreground">
-            Manage your account, view orders, and track your loyalty rewards
+            Manage your account and view orders
           </p>
         </div>
 
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3" data-testid="tabs-profile">
+          <TabsList className="grid w-full grid-cols-2" data-testid="tabs-profile">
             <TabsTrigger value="account" data-testid="tab-account">
               <User className="h-4 w-4 mr-2" />
               Account
@@ -91,10 +85,6 @@ export default function CustomerProfile() {
             <TabsTrigger value="orders" data-testid="tab-orders">
               <Package className="h-4 w-4 mr-2" />
               Orders
-            </TabsTrigger>
-            <TabsTrigger value="loyalty" data-testid="tab-loyalty">
-              <Award className="h-4 w-4 mr-2" />
-              Rewards
             </TabsTrigger>
           </TabsList>
 
@@ -210,69 +200,6 @@ export default function CustomerProfile() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="loyalty" className="space-y-6">
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="md:col-span-1">
-                <LoyaltyDisplay />
-              </div>
-              
-              <div className="md:col-span-2">
-                <Card data-testid="card-recent-transactions">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Recent Activity
-                    </CardTitle>
-                    <CardDescription>Your latest loyalty point transactions</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {transactionsLoading ? (
-                      <div className="space-y-4">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="h-16 bg-muted animate-pulse rounded" />
-                        ))}
-                      </div>
-                    ) : !transactions || transactions.length === 0 ? (
-                      <div className="text-center py-12 text-muted-foreground">
-                        No transactions yet. Start shopping to earn points!
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {transactions.slice(0, 5).map((transaction) => (
-                          <div
-                            key={transaction.id}
-                            className="flex items-start justify-between p-3 rounded-md border"
-                            data-testid={`transaction-${transaction.id}`}
-                          >
-                            <div className="flex-1">
-                              <p className="text-sm font-medium" data-testid="text-transaction-desc">
-                                {transaction.description}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {transaction.createdAt && formatDistanceToNow(new Date(transaction.createdAt), { addSuffix: true })}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p
-                                className={`font-bold ${
-                                  transaction.points > 0 ? "text-green-600" : "text-red-600"
-                                }`}
-                                data-testid="text-transaction-pts"
-                              >
-                                {transaction.points > 0 ? "+" : ""}
-                                {transaction.points} pts
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
           </TabsContent>
         </Tabs>
       </main>

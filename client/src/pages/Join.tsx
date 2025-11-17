@@ -79,10 +79,6 @@ export default function Join() {
                     <span className="mr-2">✓</span>
                     <span>Support sustainable local businesses</span>
                   </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>Earn loyalty points with every purchase</span>
-                  </li>
                 </ul>
                 <Button 
                   className="w-full" 

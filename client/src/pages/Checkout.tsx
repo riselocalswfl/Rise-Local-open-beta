@@ -225,7 +225,7 @@ function CheckoutForm({ subtotal, tax, total }: { subtotal: number; tax: number;
       
       toast({
         title: "Order Placed Successfully!",
-        description: "You earned loyalty points. Check your email for confirmation.",
+        description: "Check your email for confirmation.",
       });
       
       setTimeout(() => {
@@ -340,7 +340,7 @@ function CheckoutForm({ subtotal, tax, total }: { subtotal: number; tax: number;
 
       toast({
         title: "Order Placed Successfully!",
-        description: "You earned loyalty points. Check your email for confirmation.",
+        description: "Check your email for confirmation.",
       });
 
       setTimeout(() => {

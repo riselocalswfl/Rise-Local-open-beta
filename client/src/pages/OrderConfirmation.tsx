@@ -55,7 +55,6 @@ interface MasterOrder {
 interface OrderConfirmationData {
   masterOrder: MasterOrder;
   vendorOrders: VendorOrder[];
-  pointsEarned: number;
 }
 
 interface Vendor {
@@ -101,7 +100,7 @@ export default function OrderConfirmation() {
     );
   }
 
-  const { masterOrder, vendorOrders, pointsEarned } = lastOrder;
+  const { masterOrder, vendorOrders } = lastOrder;
 
   const getVendorInfo = (vendorId: string) => {
     return vendors?.find(v => v.id === vendorId);
@@ -209,14 +208,6 @@ export default function OrderConfirmation() {
               ${formatCurrency(masterOrder.totalCents)}
             </span>
           </div>
-
-          {pointsEarned > 0 && (
-            <div className="bg-primary/10 p-3 rounded-lg">
-              <p className="text-sm font-medium text-primary" data-testid="text-points-earned">
-                You earned {pointsEarned} loyalty points! 🎉
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
