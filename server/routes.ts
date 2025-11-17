@@ -218,9 +218,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Vendor routes
   app.get("/api/vendors", async (req, res) => {
     try {
-      const vendors = await storage.getVendors();
-      res.json(vendors);
+      // Fetch all vendor types (shop, dine, service) in unified format
+      const allVendors = await storage.getAllVendorListings();
+      res.json(allVendors);
     } catch (error) {
+      console.error("[GET /api/vendors] Error fetching vendors:", error);
       res.status(500).json({ error: "Failed to fetch vendors" });
     }
   });
