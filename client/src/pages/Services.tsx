@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wrench } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Wrench, Filter } from "lucide-react";
 import ServiceProviderCard from "@/components/ServiceProviderCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import type { ServiceProvider } from "@shared/schema";
@@ -10,6 +12,7 @@ import { SERVICES_CATEGORIES, categoriesMatch } from "@shared/categories";
 
 export default function Services() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   
   const { data: providers = [], isLoading } = useQuery<ServiceProvider[]>({
     queryKey: ["/api/services"],
@@ -46,8 +49,38 @@ export default function Services() {
 
       {/* Service Provider List */}
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Mobile Filter Button */}
+        <div className="lg:hidden mb-4">
+          <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="w-full" data-testid="button-mobile-filter">
+                <Filter className="h-4 w-4 mr-2" />
+                Filter by Category
+                {selectedCategories.length > 0 && (
+                  <span className="ml-2 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                    {selectedCategories.length}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Service Categories</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <CategoryFilter
+                  categories={SERVICES_CATEGORIES}
+                  selectedCategories={selectedCategories}
+                  onChange={setSelectedCategories}
+                  title=""
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
         <div className="flex gap-6">
-          {/* Sidebar with CategoryFilter */}
+          {/* Sidebar with CategoryFilter (Desktop) */}
           <aside className="w-64 flex-shrink-0 hidden lg:block">
             <CategoryFilter
               categories={SERVICES_CATEGORIES}
