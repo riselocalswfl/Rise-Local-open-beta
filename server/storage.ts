@@ -371,8 +371,10 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateVendor(id: string, data: Partial<InsertVendor>): Promise<void> {
+  async updateVendor(id: string, data: Partial<InsertVendor>): Promise<Vendor> {
     await db.update(vendors).set(data as any).where(eq(vendors.id, id));
+    const updated = await db.select().from(vendors).where(eq(vendors.id, id));
+    return updated[0];
   }
 
   async deleteVendor(id: string): Promise<void> {

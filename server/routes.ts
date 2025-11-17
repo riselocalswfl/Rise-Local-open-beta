@@ -418,6 +418,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // Draft Vendor Profile Routes (Auto-save Support)
+  // ============================================================================
+
+  // Get or create draft vendor profile for current user
+  app.get("/api/vendors/draft", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check if vendor already exists for this user
+      const existingVendor = await storage.getVendorByOwnerId(userId);
+      if (existingVendor) {
+        return res.json(existingVendor);
+      }
+      
+      // No vendor found - return null so frontend can create one
+      res.json(null);
+    } catch (error) {
+      console.error("[DRAFT] Error fetching draft vendor:", error);
+      res.status(500).json({ error: "Failed to fetch draft vendor" });
+    }
+  });
+
+  // Create draft vendor profile (called on Step 1)
+  app.post("/api/vendors/draft", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { vendorType, ...data } = req.body;
+      
+      console.log("[DRAFT] Creating draft vendor for userId:", userId);
+      
+      // Get user info
+      const user = await storage.getUser(userId);
+      const email = user?.email || "";
+      
+      // Create minimal draft vendor
+      const vendorData = {
+        ownerId: userId,
+        vendorType: vendorType || "shop",
+        businessName: data.businessName || "Draft Vendor",
+        contactName: data.contactName || "",
+        bio: data.bio || "",
+        tagline: data.tagline || "",
+        city: data.city || "Fort Myers",
+        state: "FL",
+        zipCode: data.zipCode || "",
+        categories: data.categories || [],
+        contact: {
+          email: data.email || email,
+          phone: data.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
+        },
+        locationType: "Local Business",
+        serviceOptions: [],
+        paymentMethod: "",
+        profileStatus: "draft",
+      };
+      
+      const vendor = await storage.createVendor(vendorData);
+      console.log("[DRAFT] Created draft vendor:", vendor.id);
+      
+      res.status(201).json(vendor);
+    } catch (error) {
+      console.error("[DRAFT] Error creating draft vendor:", error);
+      res.status(400).json({ 
+        error: "Failed to create draft vendor",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Update draft vendor profile (auto-save during onboarding)
+  app.patch("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendorId = req.params.id;
+      
+      // Verify vendor belongs to user
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      console.log("[DRAFT] Updating vendor:", vendorId, "with data:", Object.keys(req.body));
+      
+      // Update vendor with provided fields
+      const updatedVendor = await storage.updateVendor(vendorId, req.body);
+      
+      res.json(updatedVendor);
+    } catch (error) {
+      console.error("[DRAFT] Error updating vendor:", error);
+      res.status(400).json({ 
+        error: "Failed to update vendor",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Mark vendor profile as complete
+  app.post("/api/vendors/:id/complete", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendorId = req.params.id;
+      
+      // Verify vendor belongs to user
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      console.log("[COMPLETE] Marking vendor as complete:", vendorId);
+      
+      // Update vendor to complete status
+      const updatedVendor = await storage.updateVendor(vendorId, { 
+        profileStatus: "complete" 
+      });
+      
+      // Update user role
+      await storage.updateUser(userId, { role: "vendor" });
+      
+      res.json({ success: true, vendor: updatedVendor });
+    } catch (error) {
+      console.error("[COMPLETE] Error completing vendor profile:", error);
+      res.status(400).json({ 
+        error: "Failed to complete vendor profile",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // ============================================================================
   // Stripe Connect Routes (Vendor Payment Setup)
   // ============================================================================
 

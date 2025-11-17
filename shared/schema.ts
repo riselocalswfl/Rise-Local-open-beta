@@ -213,6 +213,7 @@ export const vendors = pgTable("vendors", {
   // Membership & Verification
   isFoundingMember: boolean("is_founding_member").notNull().default(false), // First 25 vendors
   isVerified: boolean("is_verified").notNull().default(false),
+  profileStatus: text("profile_status").notNull().default("draft"), // draft or complete
   
   // Restaurant-specific (Eat Local)
   restaurantSources: text("restaurant_sources"), // sources locally from
@@ -580,6 +581,7 @@ export const restaurants = pgTable("restaurants", {
   // Membership & Verification
   isFoundingMember: boolean("is_founding_member").notNull().default(false),
   isVerified: boolean("is_verified").notNull().default(false),
+  profileStatus: text("profile_status").notNull().default("draft"), // draft or complete
   isFeatured: boolean("is_featured").default(false),
   
   // Compliance
@@ -744,6 +746,7 @@ export const serviceProviders = pgTable("service_providers", {
   // Membership & Verification
   isFoundingMember: boolean("is_founding_member").notNull().default(false),
   isVerified: boolean("is_verified").notNull().default(false),
+  profileStatus: text("profile_status").notNull().default("draft"), // draft or complete
   isFeatured: boolean("is_featured").default(false),
   
   // Compliance
