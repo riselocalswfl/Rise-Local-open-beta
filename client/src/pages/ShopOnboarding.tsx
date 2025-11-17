@@ -35,6 +35,7 @@ const step1Schema = z.object({
 const step2Schema = z.object({
   tagline: z.string().optional(),
   localSourcingPercent: z.number().min(0).max(100).optional(),
+  showLocalSourcing: z.boolean().optional(),
   website: z.string().url().optional().or(z.literal("")),
   instagram: z.string().optional(),
   facebook: z.string().optional(),
@@ -76,6 +77,7 @@ export default function ShopOnboarding() {
     defaultValues: {
       tagline: "",
       localSourcingPercent: 50,
+      showLocalSourcing: false,
       website: "",
       instagram: "",
       facebook: "",
@@ -384,6 +386,30 @@ export default function ShopOnboarding() {
                           What percentage of your products are sourced locally?
                         </FormDescription>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form2.control}
+                    name="showLocalSourcing"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-show-local-sourcing"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            Display local sourcing percentage on my public profile
+                          </FormLabel>
+                          <FormDescription>
+                            You can change this later in your dashboard settings
+                          </FormDescription>
+                        </div>
                       </FormItem>
                     )}
                   />
