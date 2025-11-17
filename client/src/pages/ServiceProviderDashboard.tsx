@@ -517,159 +517,161 @@ export default function ServiceProviderDashboard() {
                         Add Service
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white text-[#222] max-h-[80vh] overflow-y-auto" data-testid="dialog-add-service">
+                    <DialogContent className="bg-white text-[#222]" data-testid="dialog-add-service">
                       <DialogHeader>
                         <DialogTitle className="text-[#222]">Add Service Offering</DialogTitle>
                       </DialogHeader>
-                      <Form {...serviceForm}>
-                        <form onSubmit={serviceForm.handleSubmit(handleServiceSubmit)} className="space-y-4">
-                          <FormField
-                            control={serviceForm.control}
-                            name="offeringName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Service Name</FormLabel>
-                                <FormControl>
-                                  <Input {...field} data-testid="input-service-name" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={serviceForm.control}
-                            name="description"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Description</FormLabel>
-                                <FormControl>
-                                  <Textarea {...field} rows={3} data-testid="input-service-description" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={serviceForm.control}
-                            name="pricingModel"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Pricing Model</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger data-testid="select-pricing-model">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="fixed">Fixed Price</SelectItem>
-                                    <SelectItem value="hourly">Hourly Rate</SelectItem>
-                                    <SelectItem value="quote">Custom Quote</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {serviceForm.watch("pricingModel") === "fixed" && (
+                      <div className="max-h-[60vh] overflow-y-auto pr-2">
+                        <Form {...serviceForm}>
+                          <form onSubmit={serviceForm.handleSubmit(handleServiceSubmit)} className="space-y-4">
                             <FormField
                               control={serviceForm.control}
-                              name="fixedPrice"
+                              name="offeringName"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Fixed Price ($)</FormLabel>
+                                  <FormLabel>Service Name</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} data-testid="input-service-name" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={serviceForm.control}
+                              name="description"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description</FormLabel>
+                                  <FormControl>
+                                    <Textarea {...field} rows={3} data-testid="input-service-description" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={serviceForm.control}
+                              name="pricingModel"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Pricing Model</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                      <SelectTrigger data-testid="select-pricing-model">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="fixed">Fixed Price</SelectItem>
+                                      <SelectItem value="hourly">Hourly Rate</SelectItem>
+                                      <SelectItem value="quote">Custom Quote</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            {serviceForm.watch("pricingModel") === "fixed" && (
+                              <FormField
+                                control={serviceForm.control}
+                                name="fixedPrice"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Fixed Price ($)</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        {...field} 
+                                        type="number" 
+                                        step="0.01" 
+                                        min="0"
+                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                        data-testid="input-fixed-price"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+
+                            {serviceForm.watch("pricingModel") === "hourly" && (
+                              <FormField
+                                control={serviceForm.control}
+                                name="hourlyRate"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Hourly Rate ($)</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        {...field} 
+                                        type="number" 
+                                        step="0.01" 
+                                        min="0"
+                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                        data-testid="input-hourly-rate"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+
+                            <FormField
+                              control={serviceForm.control}
+                              name="durationMinutes"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Estimated Duration (minutes)</FormLabel>
                                   <FormControl>
                                     <Input 
                                       {...field} 
                                       type="number" 
-                                      step="0.01" 
                                       min="0"
-                                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                                      data-testid="input-fixed-price"
+                                      onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                                      data-testid="input-duration"
                                     />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
-                          )}
 
-                          {serviceForm.watch("pricingModel") === "hourly" && (
                             <FormField
                               control={serviceForm.control}
-                              name="hourlyRate"
+                              name="imageUrl"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Hourly Rate ($)</FormLabel>
+                                  <FormLabel>Service Image (optional)</FormLabel>
                                   <FormControl>
-                                    <Input 
-                                      {...field} 
-                                      type="number" 
-                                      step="0.01" 
-                                      min="0"
-                                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                                      data-testid="input-hourly-rate"
+                                    <ImageUpload
+                                      currentImageUrl={field.value}
+                                      onUploadComplete={(imageUrl) => {
+                                        field.onChange(imageUrl);
+                                      }}
+                                      onRemove={() => {
+                                        field.onChange("");
+                                      }}
+                                      maxSizeMB={5}
+                                      aspectRatio="square"
+                                      disabled={createServiceMutation.isPending}
                                     />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
-                          )}
 
-                          <FormField
-                            control={serviceForm.control}
-                            name="durationMinutes"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Estimated Duration (minutes)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    {...field} 
-                                    type="number" 
-                                    min="0"
-                                    onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                                    data-testid="input-duration"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={serviceForm.control}
-                            name="imageUrl"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Service Image (optional)</FormLabel>
-                                <FormControl>
-                                  <ImageUpload
-                                    currentImageUrl={field.value}
-                                    onUploadComplete={(imageUrl) => {
-                                      field.onChange(imageUrl);
-                                    }}
-                                    onRemove={() => {
-                                      field.onChange("");
-                                    }}
-                                    maxSizeMB={5}
-                                    aspectRatio="square"
-                                    disabled={createServiceMutation.isPending}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <Button type="submit" disabled={createServiceMutation.isPending} data-testid="button-submit-service">
-                            {createServiceMutation.isPending ? "Creating..." : "Create Service"}
-                          </Button>
-                        </form>
-                      </Form>
+                            <Button type="submit" disabled={createServiceMutation.isPending} data-testid="button-submit-service">
+                              {createServiceMutation.isPending ? "Creating..." : "Create Service"}
+                            </Button>
+                          </form>
+                        </Form>
+                      </div>
                     </DialogContent>
                   </Dialog>
                 </div>
