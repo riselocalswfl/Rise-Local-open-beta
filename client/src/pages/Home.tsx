@@ -9,7 +9,6 @@ import VendorCard from "@/components/VendorCard";
 import EventCard from "@/components/EventCard";
 import ServiceProviderCard from "@/components/ServiceProviderCard";
 import HorizontalCarousel from "@/components/HorizontalCarousel";
-import MobileCategoryNav from "@/components/MobileCategoryNav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
 import type { Vendor, ServiceProvider } from "@shared/schema";
@@ -73,11 +72,6 @@ export default function Home() {
             </Link>
           </div>
           
-          <MobileCategoryNav
-            categories={["Bakery", "Beverages", "Plants", "Organic", "Artisan"]}
-            baseUrl="/products"
-            title="Shop by Category"
-          />
           {productsLoading ? (
             <div className="flex gap-6 overflow-hidden">
               <Skeleton className="h-80 w-72 flex-none" />
@@ -119,11 +113,6 @@ export default function Home() {
             </Link>
           </div>
           
-          <MobileCategoryNav
-            categories={["Food", "Beverages", "Home & Garden", "Crafts"]}
-            baseUrl="/vendors"
-            title="Browse Vendors"
-          />
           {vendorsLoading ? (
             <div className="flex gap-6 overflow-hidden">
               <Skeleton className="h-40 w-96 flex-none" />
@@ -165,11 +154,6 @@ export default function Home() {
             </Link>
           </div>
           
-          <MobileCategoryNav
-            categories={["Personal & Wellness", "Home & Property", "Events & Creative", "Professional"]}
-            baseUrl="/services"
-            title="Browse Services"
-          />
           {servicesLoading ? (
             <div className="flex gap-6 overflow-hidden">
               <Skeleton className="h-64 w-80 flex-none" />
