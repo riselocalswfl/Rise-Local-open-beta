@@ -1,21 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
-import ValuesFilterDialog from "@/components/filters/ValuesFilterDialog";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import ProductCard from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { getProductsWithVendors } from "@/lib/api";
 import type { Vendor } from "@shared/schema";
-import { X, ShoppingBag, Filter } from "lucide-react";
+import { ShoppingBag, Filter } from "lucide-react";
 import { SHOP_CATEGORIES, categoriesMatch } from "@shared/categories";
 
 export default function Products() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -28,12 +25,7 @@ export default function Products() {
     queryKey: ["/api/vendors"],
   });
   
-  // Get all unique values from both vendors and restaurants
-  const { data: allValues = [] } = useQuery<string[]>({
-    queryKey: ["/api/values/unique"],
-  });
-  
-  // Filter by category and vendor values
+  // Filter by category
   let filteredProducts = products;
   
   // Filter by hierarchical categories
@@ -43,14 +35,6 @@ export default function Products() {
       if (!vendor?.categories) return false;
       // Use categoriesMatch helper to handle parent category expansion
       return categoriesMatch(vendor.categories, selectedCategories, SHOP_CATEGORIES);
-    });
-  }
-  
-  if (selectedValues.length > 0 && vendors) {
-    filteredProducts = filteredProducts?.filter(p => {
-      const vendor = vendors.find(v => v.id === p.vendorId);
-      const vendorValues = vendor?.values || [];
-      return selectedValues.some(sv => vendorValues.includes(sv));
     });
   }
 
@@ -128,54 +112,6 @@ export default function Products() {
           </Sheet>
         </div>
 
-        {/* Values Filter and Active Filters */}
-        {allValues.length > 0 && (
-          <div className="mb-4">
-            <ValuesFilterDialog
-              allValues={allValues}
-              selected={selectedValues}
-              onChange={setSelectedValues}
-            />
-          </div>
-        )}
-
-        {selectedValues.length > 0 && (
-          <div className="mb-6 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Active filters:</span>
-            {selectedValues.map(v => (
-              <Badge 
-                key={v} 
-                variant="outline" 
-                role="button"
-                tabIndex={0}
-                className="cursor-pointer hover-elevate active-elevate-2 pr-1 border-primary text-primary"
-                onClick={() => {
-                  const next = selectedValues.filter(x => x !== v);
-                  setSelectedValues(next);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    const next = selectedValues.filter(x => x !== v);
-                    setSelectedValues(next);
-                  }
-                }}
-                data-testid={`badge-active-filter-${v}`}
-              >
-                {v}
-                <X className="w-3 h-3 ml-1.5" strokeWidth={2} />
-              </Badge>
-            ))}
-            <Button 
-              variant="ghost" 
-              className="px-2 h-auto py-0.5 text-sm" 
-              onClick={() => setSelectedValues([])}
-              data-testid="button-clear-all-filters"
-            >
-              Clear all
-            </Button>
-          </div>
-        )}
         
         <div className="flex gap-6">
           {/* Sidebar with CategoryFilter (Desktop) */}
@@ -203,8 +139,8 @@ export default function Products() {
               ) : filteredProducts && filteredProducts.length === 0 ? (
                 <div className="col-span-full text-center py-12">
                   <p className="text-muted-foreground">
-                    {selectedCategories.length > 0 || selectedValues.length > 0
-                      ? "No products found matching your filters. Try adjusting your category or value selections."
+                    {selectedCategories.length > 0
+                      ? "No products found matching your selected categories. Try adjusting your filters."
                       : "No products currently listed. Check back soon!"}
                   </p>
                 </div>
