@@ -28,13 +28,12 @@ export default function Products() {
   // Filter by category
   let filteredProducts = products;
   
-  // Filter by hierarchical categories
+  // Filter by hierarchical categories based on product's own categories
   if (selectedCategories.length > 0) {
     filteredProducts = filteredProducts?.filter(p => {
-      const vendor = vendors?.find(v => v.id === p.vendorId);
-      if (!vendor?.categories) return false;
+      if (!p.categories || p.categories.length === 0) return false;
       // Use categoriesMatch helper to handle parent category expansion
-      return categoriesMatch(vendor.categories, selectedCategories, SHOP_CATEGORIES);
+      return categoriesMatch(p.categories, selectedCategories, SHOP_CATEGORIES);
     });
   }
 

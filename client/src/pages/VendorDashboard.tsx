@@ -519,6 +519,21 @@ export default function VendorDashboard() {
                 <CardDescription>Help customers reach and find you</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="address">Street Address (optional)</Label>
+                  <Input
+                    id="address"
+                    defaultValue={vendor.address || ""}
+                    placeholder="123 Main Street"
+                    data-testid="input-address"
+                    onBlur={(e) => {
+                      if (e.target.value !== vendor.address) {
+                        updateVendorMutation.mutate({ address: e.target.value });
+                      }
+                    }}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
