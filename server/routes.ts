@@ -249,13 +249,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log(`[/api/admin/stats] Request from user: ${userId}`);
+      
       const user = await storage.getUser(userId);
+      console.log(`[/api/admin/stats] User found:`, user ? `${user.email} (role: ${user.role})` : 'NOT FOUND');
       
       // Check if user is admin
       if (!user || user.role !== 'admin') {
+        console.log(`[/api/admin/stats] Access DENIED - User is not admin`);
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
+      console.log(`[/api/admin/stats] Access GRANTED - Fetching statistics`);
       // Fetch all data in parallel
       const [
         allUsers,
@@ -2654,14 +2659,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log(`[/api/users] Request from user: ${userId}`);
+      
       const currentUser = await storage.getUser(userId);
+      console.log(`[/api/users] User found:`, currentUser ? `${currentUser.email} (role: ${currentUser.role})` : 'NOT FOUND');
       
       // Only admins can access full user list
       if (!currentUser || currentUser.role !== 'admin') {
+        console.log(`[/api/users] Access DENIED - User is not admin`);
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
+      console.log(`[/api/users] Access GRANTED - Fetching all users`);
       const users = await storage.getUsers();
+      console.log(`[/api/users] Found ${users.length} users`);
       // Return complete user data (excluding password and sensitive auth fields)
       const safeUsers = users.map(user => ({
         id: user.id,

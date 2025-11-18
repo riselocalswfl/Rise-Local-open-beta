@@ -82,7 +82,7 @@ function UserAccountsList() {
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; currentRole: string } | null>(null);
   const [targetType, setTargetType] = useState<'vendor' | 'restaurant' | 'service_provider' | null>(null);
 
-  const { data: users, isLoading } = useQuery<User[]>({
+  const { data: users, isLoading, error, isError } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
@@ -140,6 +140,22 @@ function UserAccountsList() {
         <Skeleton className="h-20" />
         <Skeleton className="h-20" />
         <Skeleton className="h-20" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center py-8 space-y-4">
+        <div className="text-destructive font-medium">
+          Failed to load users
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Error: {error instanceof Error ? error.message : 'Unknown error occurred'}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Check browser console (F12) for more details
+        </div>
       </div>
     );
   }
@@ -296,7 +312,7 @@ export default function Admin() {
   const { toast } = useToast();
 
   // Fetch admin statistics
-  const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
+  const { data: stats, isLoading: statsLoading, error: statsError, isError: statsIsError } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
   });
 
@@ -435,6 +451,45 @@ export default function Admin() {
               <Skeleton key={i} className="h-32" />
             ))}
           </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (statsIsError) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="h-16" aria-hidden="true" />
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-semibold">Admin Dashboard</h1>
+            <Badge variant="destructive">Admin Access</Badge>
+          </div>
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Failed to Load Statistics</CardTitle>
+              <CardDescription>
+                Unable to fetch admin statistics from the server
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm">
+                <strong>Error:</strong> {statsError instanceof Error ? statsError.message : 'Unknown error occurred'}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                This usually means:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>You're not logged in as an admin</li>
+                  <li>Your admin role is not recognized by the server</li>
+                  <li>There's a server connection issue</li>
+                </ul>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Press F12 and check the Console tab for detailed error messages
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </div>
     );
