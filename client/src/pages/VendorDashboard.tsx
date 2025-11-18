@@ -279,6 +279,35 @@ export default function VendorDashboard() {
           <p className="text-muted-foreground">{vendor.businessName}</p>
         </div>
 
+        {/* Profile Completion Alert */}
+        {vendor.profileStatus === "draft" && (
+          <Alert className="mb-6 border-orange-500/20 bg-orange-500/5" data-testid="alert-profile-incomplete">
+            <AlertCircle className="h-4 w-4 text-orange-500" />
+            <AlertDescription className="ml-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Complete Your Profile</span>
+                    <Badge variant="secondary" className="text-xs">Required</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Please complete your vendor profile before creating products. Fill in all required information in the Profile tab to start selling.
+                  </p>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="default"
+                  onClick={() => setActiveTab("profile")}
+                  className="flex-shrink-0"
+                  data-testid="button-complete-profile"
+                >
+                  Complete Profile
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Stripe Connect Coming Soon Banner */}
         {stripeStatus && !stripeStatus.connected && (
           <Alert className="mb-6 border-primary/20 bg-primary/5" data-testid="alert-stripe-not-connected">

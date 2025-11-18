@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Wrench, Briefcase, Calendar, Star, Plus, Trash2, Edit, CheckCircle, XCircle, Clock, LogOut } from "lucide-react";
+import { Wrench, Briefcase, Calendar, Star, Plus, Trash2, Edit, CheckCircle, XCircle, Clock, LogOut, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { ServiceProvider, ServiceOffering, ServiceBooking } from "@shared/schema";
 import { insertServiceProviderSchema, insertServiceOfferingSchema } from "@shared/schema";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -220,6 +221,35 @@ export default function ServiceProviderDashboard() {
             {provider.businessName}
           </p>
         </div>
+
+        {/* Profile Completion Alert */}
+        {provider.profileStatus === "draft" && (
+          <Alert className="mb-6 border-orange-500/20 bg-orange-500/5" data-testid="alert-profile-incomplete">
+            <AlertCircle className="h-4 w-4 text-orange-500" />
+            <AlertDescription className="ml-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Complete Your Profile</span>
+                    <Badge variant="secondary" className="text-xs">Required</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Please complete your service provider profile before creating service offerings. Fill in all required information in the Profile tab to start offering services.
+                  </p>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="default"
+                  onClick={() => setActiveTab("profile")}
+                  className="flex-shrink-0"
+                  data-testid="button-complete-profile"
+                >
+                  Complete Profile
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4 mb-6">

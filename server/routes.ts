@@ -1257,6 +1257,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Unauthorized to create products for this vendor" });
       }
       
+      // Verify vendor profile is complete before allowing product creation
+      if (vendor.profileStatus !== "complete") {
+        return res.status(400).json({ error: "Please complete your vendor profile before creating products" });
+      }
+      
       const product = await storage.createProduct(validatedData);
       res.status(201).json(product);
     } catch (error) {
@@ -2800,6 +2805,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!restaurant || restaurant.ownerId !== userId) {
           return res.status(403).json({ error: "Unauthorized to create menu items for this restaurant" });
         }
+        
+        // Verify restaurant profile is complete before allowing menu item creation
+        if (restaurant.profileStatus !== "complete") {
+          return res.status(400).json({ error: "Please complete your restaurant profile before creating menu items" });
+        }
       }
       
       const menuItem = await storage.createMenuItem(validatedData);
@@ -3088,6 +3098,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const provider = await storage.getServiceProvider(validated.serviceProviderId);
       if (!provider || provider.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to create offerings for this provider" });
+      }
+      
+      // Verify service provider profile is complete before allowing offering creation
+      if (provider.profileStatus !== "complete") {
+        return res.status(400).json({ error: "Please complete your service provider profile before creating service offerings" });
       }
       
       const offering = await storage.createServiceOffering(validated);
