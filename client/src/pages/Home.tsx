@@ -30,7 +30,7 @@ export default function Home() {
   });
 
   const { data: vendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
-    queryKey: ["/api/vendors/verified"],
+    queryKey: ["/api/vendors"],
   });
 
   const { data: serviceProviders, isLoading: servicesLoading } = useQuery<ServiceProvider[]>({
@@ -127,7 +127,6 @@ export default function Home() {
                     name={vendor.businessName}
                     bio={vendor.bio || ""}
                     city={vendor.city}
-                    categories={vendor.categories as string[] || []}
                     values={vendor.values as string[] || undefined}
                     isVerified={vendor.isVerified}
                     followerCount={vendor.followerCount}

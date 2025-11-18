@@ -9,7 +9,6 @@ interface VendorCardProps {
   name: string;
   bio: string;
   city: string;
-  categories: string[];
   values?: string[];
   isVerified: boolean;
   followerCount?: number;
@@ -21,7 +20,6 @@ export default function VendorCard({
   name,
   bio,
   city,
-  categories,
   values,
   isVerified,
   followerCount = 0,
@@ -52,18 +50,6 @@ export default function VendorCard({
                 <span>{city}</span>
               </div>
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{bio || "No description available"}</p>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {(categories || []).slice(0, 3).map((category, idx) => (
-                  <span key={idx} className="le-chip text-xs">
-                    {category}
-                  </span>
-                ))}
-                {(categories || []).length > 3 && (
-                  <Badge variant="secondary" className="text-xs rounded-pill">
-                    +{(categories || []).length - 3} more
-                  </Badge>
-                )}
-              </div>
               <div className="space-y-2">
                 {followerCount > 0 && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
