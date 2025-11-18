@@ -207,8 +207,9 @@ export const vendors = pgTable("vendors", {
   
   // Fulfillment & Contact
   fulfillmentOptions: jsonb("fulfillment_options"), // [{type, name, address, days, time, fee}]
-  contact: jsonb("contact"), // {email, phone, preferredContact}
+  contact: jsonb("contact"), // {email, phone, preferredContact} - DEPRECATED: Use individual columns
   contactEmail: text("contact_email"), // Direct contact email for vendor
+  phone: text("phone"), // Contact phone number
   
   // Policies
   policies: jsonb("policies"), // {refund, cancellation, allergen, safety}
