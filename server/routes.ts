@@ -2650,17 +2650,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User routes
-  // Get all users (for vendor search)
-  app.get("/api/users", isAuthenticated, async (req, res) => {
+  // Get all users (admin only - returns complete user data)
+  app.get("/api/users", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const currentUser = await storage.getUser(userId);
+      
+      // Only admins can access full user list
+      if (!currentUser || currentUser.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
       const users = await storage.getUsers();
-      // Return only safe user data (no passwords)
+      // Return complete user data (excluding password and sensitive auth fields)
       const safeUsers = users.map(user => ({
         id: user.id,
         email: user.email,
+        username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        phone: user.phone,
+        zipCode: user.zipCode,
+        createdAt: user.createdAt,
       }));
       res.json(safeUsers);
     } catch (error) {
