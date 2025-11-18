@@ -436,6 +436,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Switch vendor type for a user
+  app.post("/api/admin/users/:userId/switch-vendor-type", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+      
+      // Check if user is admin
+      if (!adminUser || adminUser.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { userId } = req.params;
+      const { targetType } = req.body; // 'vendor', 'restaurant', or 'service_provider'
+
+      if (!['vendor', 'restaurant', 'service_provider'].includes(targetType)) {
+        return res.status(400).json({ error: "Invalid target type. Must be 'vendor', 'restaurant', or 'service_provider'" });
+      }
+
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Get existing profiles
+      const existingVendor = await storage.getVendorByOwnerId(userId);
+      const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
+      const existingServiceProvider = await storage.getServiceProviderByOwnerId(userId);
+
+      // Determine source profile to copy from
+      let sourceProfile: any = null;
+      let sourceType: string = '';
+
+      if (existingVendor) {
+        sourceProfile = existingVendor;
+        sourceType = 'vendor';
+      } else if (existingRestaurant) {
+        sourceProfile = existingRestaurant;
+        sourceType = 'restaurant';
+      } else if (existingServiceProvider) {
+        sourceProfile = existingServiceProvider;
+        sourceType = 'service_provider';
+      }
+
+      if (!sourceProfile) {
+        return res.status(400).json({ error: "User has no existing vendor profile to switch from" });
+      }
+
+      // Create new profile based on target type
+      try {
+        if (targetType === 'vendor') {
+          // Check if vendor profile already exists
+          if (existingVendor) {
+            return res.status(400).json({ error: "User already has a shop vendor profile" });
+          }
+
+          // Create vendor profile from source
+          const newVendor = await storage.createVendor({
+            ownerId: userId,
+            vendorType: 'shop',
+            businessName: sourceType === 'restaurant' ? sourceProfile.restaurantName : sourceProfile.businessName,
+            contactName: sourceProfile.contactName,
+            bio: sourceProfile.bio || '',
+            tagline: sourceProfile.tagline || '',
+            displayName: sourceProfile.displayName || null,
+            logoUrl: sourceProfile.logoUrl || null,
+            bannerUrl: sourceProfile.bannerUrl || null,
+            heroImageUrl: sourceProfile.heroImageUrl || null,
+            gallery: sourceProfile.gallery || [],
+            website: sourceProfile.website || null,
+            instagram: sourceProfile.instagram || null,
+            tiktok: sourceProfile.tiktok || null,
+            facebook: sourceProfile.facebook || null,
+            locationType: sourceProfile.locationType,
+            address: sourceProfile.address || null,
+            city: sourceProfile.city,
+            state: sourceProfile.state,
+            zipCode: sourceProfile.zipCode,
+            serviceOptions: sourceProfile.serviceOptions || [],
+            serviceRadius: sourceProfile.serviceRadius || null,
+            hours: sourceProfile.hours || null,
+            values: sourceProfile.values || sourceProfile.badges || [],
+            badges: sourceProfile.badges || [],
+            contactEmail: sourceProfile.contactEmail || null,
+            phone: sourceProfile.phone || null,
+            fulfillmentOptions: sourceProfile.fulfillmentOptions || null,
+            isVerified: sourceProfile.isVerified || false,
+            profileStatus: sourceProfile.profileStatus || 'complete',
+          });
+
+          await storage.updateUser(userId, { role: 'vendor' });
+          return res.json({ success: true, newProfile: newVendor, message: 'User switched to shop vendor' });
+
+        } else if (targetType === 'restaurant') {
+          // Check if restaurant profile already exists
+          if (existingRestaurant) {
+            return res.status(400).json({ error: "User already has a restaurant profile" });
+          }
+
+          // Create restaurant profile from source
+          const newRestaurant = await storage.createRestaurant({
+            ownerId: userId,
+            restaurantName: sourceProfile.businessName || sourceProfile.restaurantName,
+            contactName: sourceProfile.contactName,
+            bio: sourceProfile.bio || '',
+            tagline: sourceProfile.tagline || '',
+            displayName: sourceProfile.displayName || null,
+            logoUrl: sourceProfile.logoUrl || null,
+            heroImageUrl: sourceProfile.heroImageUrl || null,
+            gallery: sourceProfile.gallery || [],
+            website: sourceProfile.website || null,
+            instagram: sourceProfile.instagram || null,
+            facebook: sourceProfile.facebook || null,
+            locationType: sourceProfile.locationType,
+            address: sourceProfile.address || null,
+            city: sourceProfile.city,
+            state: sourceProfile.state,
+            zipCode: sourceProfile.zipCode,
+            hours: sourceProfile.hours || null,
+            badges: sourceProfile.badges || sourceProfile.values || [],
+            contactEmail: sourceProfile.contactEmail || null,
+            phone: sourceProfile.phone || null,
+            isVerified: sourceProfile.isVerified || false,
+            profileStatus: sourceProfile.profileStatus || 'complete',
+          });
+
+          await storage.updateUser(userId, { role: 'restaurant' });
+          return res.json({ success: true, newProfile: newRestaurant, message: 'User switched to restaurant' });
+
+        } else if (targetType === 'service_provider') {
+          // Check if service provider profile already exists
+          if (existingServiceProvider) {
+            return res.status(400).json({ error: "User already has a service provider profile" });
+          }
+
+          // Create service provider profile from source
+          const newServiceProvider = await storage.createServiceProvider({
+            ownerId: userId,
+            businessName: sourceType === 'restaurant' ? sourceProfile.restaurantName : sourceProfile.businessName,
+            contactName: sourceProfile.contactName,
+            bio: sourceProfile.bio || '',
+            tagline: sourceProfile.tagline || '',
+            displayName: sourceProfile.displayName || null,
+            logoUrl: sourceProfile.logoUrl || null,
+            heroImageUrl: sourceProfile.heroImageUrl || null,
+            gallery: sourceProfile.gallery || [],
+            website: sourceProfile.website || null,
+            instagram: sourceProfile.instagram || null,
+            facebook: sourceProfile.facebook || null,
+            locationType: sourceProfile.locationType,
+            address: sourceProfile.address || null,
+            city: sourceProfile.city,
+            state: sourceProfile.state,
+            zipCode: sourceProfile.zipCode,
+            serviceRadius: sourceProfile.serviceRadius || null,
+            hours: sourceProfile.hours || null,
+            badges: sourceProfile.badges || sourceProfile.values || [],
+            contactEmail: sourceProfile.contactEmail || null,
+            phone: sourceProfile.phone || null,
+            isVerified: sourceProfile.isVerified || false,
+            profileStatus: sourceProfile.profileStatus || 'complete',
+          });
+
+          await storage.updateUser(userId, { role: 'service_provider' });
+          return res.json({ success: true, newProfile: newServiceProvider, message: 'User switched to service provider' });
+        }
+      } catch (error) {
+        console.error("Error creating new profile:", error);
+        return res.status(500).json({ error: "Failed to create new vendor profile" });
+      }
+    } catch (error) {
+      console.error("Error switching vendor type:", error);
+      res.status(500).json({ error: "Failed to switch vendor type" });
+    }
+  });
+
   app.get("/api/vendors/values/all", async (req, res) => {
     try {
       const values = await storage.getAllVendorValues();
