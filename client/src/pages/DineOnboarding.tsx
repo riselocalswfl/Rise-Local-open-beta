@@ -121,8 +121,8 @@ export default function DineOnboarding() {
           form1.reset({
             businessName: draft.businessName || "",
             contactName: draft.contactName || "",
-            email: draft.contact?.email || "",
-            phone: draft.contact?.phone || "",
+            email: draft.contactEmail || "",
+            phone: draft.phone || "",
             city: draft.city || "Fort Myers",
             zipCode: draft.zipCode || "",
             bio: draft.bio || "",
@@ -135,9 +135,9 @@ export default function DineOnboarding() {
             dietaryOptions: draft.dietaryOptions || [],
             seatingCapacity: draft.seatingCapacity || ("" as any),
             reservationsRequired: draft.reservationsRequired || false,
-            website: draft.contact?.website || "",
-            instagram: draft.contact?.instagram || "",
-            facebook: draft.contact?.facebook || "",
+            website: draft.website || "",
+            instagram: draft.instagram || "",
+            facebook: draft.facebook || "",
           });
 
           // Populate form 3 fields if payment data exists
@@ -155,8 +155,8 @@ export default function DineOnboarding() {
           setFormData({
             businessName: draft.businessName,
             contactName: draft.contactName,
-            email: draft.contact?.email,
-            phone: draft.contact?.phone,
+            email: draft.contactEmail,
+            phone: draft.phone,
             city: draft.city,
             zipCode: draft.zipCode,
             bio: draft.bio,
@@ -165,9 +165,9 @@ export default function DineOnboarding() {
             dietaryOptions: draft.dietaryOptions,
             seatingCapacity: draft.seatingCapacity,
             reservationsRequired: draft.reservationsRequired,
-            website: draft.contact?.website,
-            instagram: draft.contact?.instagram,
-            facebook: draft.contact?.facebook,
+            website: draft.website,
+            instagram: draft.instagram,
+            facebook: draft.facebook,
           });
         }
       } catch (error) {
@@ -241,13 +241,11 @@ export default function DineOnboarding() {
           bio: data.bio,
           city: data.city,
           zipCode: data.zipCode,
-          contact: {
-            email: data.email,
-            phone: data.phone || "",
-            website: formData.website || "",
-            instagram: formData.instagram || "",
-            facebook: formData.facebook || "",
-          },
+          contactEmail: data.email,
+          phone: data.phone || "",
+          website: formData.website || "",
+          instagram: formData.instagram || "",
+          facebook: formData.facebook || "",
         };
       } else if (formType === 'step2') {
         updateData = {
@@ -256,13 +254,11 @@ export default function DineOnboarding() {
           dietaryOptions: data.dietaryOptions || [],
           seatingCapacity: data.seatingCapacity || null,
           reservationsRequired: data.reservationsRequired || false,
-          contact: {
-            email: formData.email || "",
-            phone: formData.phone || "",
-            website: data.website || "",
-            instagram: data.instagram || "",
-            facebook: data.facebook || "",
-          },
+          contactEmail: formData.email || "",
+          phone: formData.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
         };
       } else if (formType === 'step3') {
         updateData = {
@@ -391,13 +387,11 @@ export default function DineOnboarding() {
             bio: data.bio,
             city: data.city,
             zipCode: data.zipCode,
-            contact: {
-              email: data.email,
-              phone: data.phone || "",
-              website: formData.website || "",
-              instagram: formData.instagram || "",
-              facebook: formData.facebook || "",
-            },
+            contactEmail: data.email,
+            phone: data.phone || "",
+            website: formData.website || "",
+            instagram: formData.instagram || "",
+            facebook: formData.facebook || "",
           }),
         });
 
@@ -434,13 +428,11 @@ export default function DineOnboarding() {
             dietaryOptions: data.dietaryOptions || [],
             seatingCapacity: data.seatingCapacity || null,
             reservationsRequired: data.reservationsRequired || false,
-            contact: {
-              email: formData.email || "",
-              phone: formData.phone || "",
-              website: data.website || "",
-              instagram: data.instagram || "",
-              facebook: data.facebook || "",
-            },
+            contactEmail: formData.email || "",
+            phone: formData.phone || "",
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
           }),
         });
 

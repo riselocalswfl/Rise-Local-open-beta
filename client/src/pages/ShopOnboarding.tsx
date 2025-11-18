@@ -123,8 +123,8 @@ export default function ShopOnboarding() {
           form1.reset({
             businessName: draft.businessName || "",
             contactName: draft.contactName || "",
-            email: draft.contact?.email || "",
-            phone: draft.contact?.phone || "",
+            email: draft.contactEmail || "",
+            phone: draft.phone || "",
             city: draft.city || "Fort Myers",
             zipCode: draft.zipCode || "",
             bio: draft.bio || "",
@@ -135,9 +135,9 @@ export default function ShopOnboarding() {
             tagline: draft.tagline || "",
             localSourcingPercent: draft.localSourcingPercent || 50,
             showLocalSourcing: draft.showLocalSourcing || false,
-            website: draft.contact?.website || "",
-            instagram: draft.contact?.instagram || "",
-            facebook: draft.contact?.facebook || "",
+            website: draft.website || "",
+            instagram: draft.instagram || "",
+            facebook: draft.facebook || "",
           });
 
           // Populate form 3 fields if payment/fulfillment data exists
@@ -161,17 +161,17 @@ export default function ShopOnboarding() {
           setFormData({
             businessName: draft.businessName,
             contactName: draft.contactName,
-            email: draft.contact?.email,
-            phone: draft.contact?.phone,
+            email: draft.contactEmail,
+            phone: draft.phone,
             city: draft.city,
             zipCode: draft.zipCode,
             bio: draft.bio,
             tagline: draft.tagline,
             localSourcingPercent: draft.localSourcingPercent,
             showLocalSourcing: draft.showLocalSourcing,
-            website: draft.contact?.website,
-            instagram: draft.contact?.instagram,
-            facebook: draft.contact?.facebook,
+            website: draft.website,
+            instagram: draft.instagram,
+            facebook: draft.facebook,
           });
         }
       } catch (error) {
@@ -246,26 +246,22 @@ export default function ShopOnboarding() {
           bio: data.bio,
           city: data.city,
           zipCode: data.zipCode,
-          contact: {
-            email: data.email,
-            phone: data.phone || "",
-            website: formData.website || "",
-            instagram: formData.instagram || "",
-            facebook: formData.facebook || "",
-          },
+          contactEmail: data.email,
+          phone: data.phone || "",
+          website: formData.website || "",
+          instagram: formData.instagram || "",
+          facebook: formData.facebook || "",
         };
       } else if (formType === 'step2') {
         updateData = {
           tagline: data.tagline || "",
           localSourcingPercent: data.localSourcingPercent || 0,
           showLocalSourcing: data.showLocalSourcing || false,
-          contact: {
-            email: formData.email || "",
-            phone: formData.phone || "",
-            website: data.website || "",
-            instagram: data.instagram || "",
-            facebook: data.facebook || "",
-          },
+          contactEmail: formData.email || "",
+          phone: formData.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
         };
       } else if (formType === 'step3') {
         const fulfillmentOptions = data.fulfillmentMethods;
@@ -404,13 +400,11 @@ export default function ShopOnboarding() {
             bio: data.bio,
             city: data.city,
             zipCode: data.zipCode,
-            contact: {
-              email: data.email,
-              phone: data.phone || "",
-              website: formData.website || "",
-              instagram: formData.instagram || "",
-              facebook: formData.facebook || "",
-            },
+            contactEmail: data.email,
+            phone: data.phone || "",
+            website: formData.website || "",
+            instagram: formData.instagram || "",
+            facebook: formData.facebook || "",
           }),
         });
 
@@ -445,13 +439,11 @@ export default function ShopOnboarding() {
             tagline: data.tagline || "",
             localSourcingPercent: data.localSourcingPercent || 0,
             showLocalSourcing: data.showLocalSourcing || false,
-            contact: {
-              email: formData.email || "",
-              phone: formData.phone || "",
-              website: data.website || "",
-              instagram: data.instagram || "",
-              facebook: data.facebook || "",
-            },
+            contactEmail: formData.email || "",
+            phone: formData.phone || "",
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
           }),
         });
 

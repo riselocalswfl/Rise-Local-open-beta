@@ -126,8 +126,8 @@ export default function ServicesOnboarding() {
           form1.reset({
             businessName: draft.businessName || "",
             contactName: draft.contactName || "",
-            email: draft.contact?.email || "",
-            phone: draft.contact?.phone || "",
+            email: draft.contactEmail || "",
+            phone: draft.phone || "",
             city: draft.city || "Fort Myers",
             zipCode: draft.zipCode || "",
             bio: draft.bio || "",
@@ -139,9 +139,9 @@ export default function ServicesOnboarding() {
             serviceAreas: draft.serviceAreas || [],
             yearsInBusiness: draft.yearsInBusiness,
             certifications: draft.certifications || "",
-            website: draft.contact?.website || "",
-            instagram: draft.contact?.instagram || "",
-            facebook: draft.contact?.facebook || "",
+            website: draft.website || "",
+            instagram: draft.instagram || "",
+            facebook: draft.facebook || "",
           });
 
           // Populate form 3 fields if payment data exists
@@ -155,8 +155,8 @@ export default function ServicesOnboarding() {
           setFormData({
             businessName: draft.businessName,
             contactName: draft.contactName,
-            email: draft.contact?.email,
-            phone: draft.contact?.phone,
+            email: draft.contactEmail,
+            phone: draft.phone,
             city: draft.city,
             zipCode: draft.zipCode,
             bio: draft.bio,
@@ -164,9 +164,9 @@ export default function ServicesOnboarding() {
             serviceAreas: draft.serviceAreas,
             yearsInBusiness: draft.yearsInBusiness,
             certifications: draft.certifications,
-            website: draft.contact?.website,
-            instagram: draft.contact?.instagram,
-            facebook: draft.contact?.facebook,
+            website: draft.website,
+            instagram: draft.instagram,
+            facebook: draft.facebook,
           });
         }
       } catch (error) {
@@ -240,13 +240,11 @@ export default function ServicesOnboarding() {
           bio: data.bio,
           city: data.city,
           zipCode: data.zipCode,
-          contact: {
-            email: data.email,
-            phone: data.phone || "",
-            website: formData.website || "",
-            instagram: formData.instagram || "",
-            facebook: formData.facebook || "",
-          },
+          contactEmail: data.email,
+          phone: data.phone || "",
+          website: formData.website || "",
+          instagram: formData.instagram || "",
+          facebook: formData.facebook || "",
         };
       } else if (formType === 'step2') {
         updateData = {
@@ -254,13 +252,11 @@ export default function ServicesOnboarding() {
           serviceAreas: data.serviceAreas || [],
           yearsInBusiness: data.yearsInBusiness,
           certifications: data.certifications || "",
-          contact: {
-            email: formData.email || "",
-            phone: formData.phone || "",
-            website: data.website || "",
-            instagram: data.instagram || "",
-            facebook: data.facebook || "",
-          },
+          contactEmail: formData.email || "",
+          phone: formData.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
         };
       } else if (formType === 'step3') {
         updateData = {
@@ -389,13 +385,11 @@ export default function ServicesOnboarding() {
             bio: data.bio,
             city: data.city,
             zipCode: data.zipCode,
-            contact: {
-              email: data.email,
-              phone: data.phone || "",
-              website: formData.website || "",
-              instagram: formData.instagram || "",
-              facebook: formData.facebook || "",
-            },
+            contactEmail: data.email,
+            phone: data.phone || "",
+            website: formData.website || "",
+            instagram: formData.instagram || "",
+            facebook: formData.facebook || "",
           }),
         });
 
@@ -431,13 +425,11 @@ export default function ServicesOnboarding() {
             serviceAreas: data.serviceAreas || [],
             yearsInBusiness: data.yearsInBusiness,
             certifications: data.certifications || "",
-            contact: {
-              email: formData.email || "",
-              phone: formData.phone || "",
-              website: data.website || "",
-              instagram: data.instagram || "",
-              facebook: data.facebook || "",
-            },
+            contactEmail: formData.email || "",
+            phone: formData.phone || "",
+            website: data.website || "",
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
           }),
         });
 
