@@ -245,6 +245,197 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin statistics endpoint
+  app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      // Fetch all data in parallel
+      const [
+        allUsers,
+        allVendors,
+        allRestaurants,
+        allServiceProviders,
+        allProducts,
+        allMenuItems,
+        allServiceOfferings,
+        allEvents,
+        allVendorOrders,
+      ] = await Promise.all([
+        storage.getUsers(),
+        storage.getVendors(),
+        storage.getRestaurants(),
+        storage.getServiceProviders(),
+        storage.getProducts(),
+        storage.getMenuItems(),
+        storage.getAllServiceOfferings(),
+        storage.getEvents(),
+        storage.getAllVendorOrders(),
+      ]);
+
+      // Calculate statistics
+      const totalUsers = allUsers.length;
+      const totalVendors = allVendors.length;
+      const totalRestaurants = allRestaurants.length;
+      const totalServiceProviders = allServiceProviders.length;
+      const totalProducts = allProducts.length;
+      const totalMenuItems = allMenuItems.length;
+      const totalServiceOfferings = allServiceOfferings.length;
+      const totalEvents = allEvents.length;
+      const totalOrders = allVendorOrders.length;
+
+      // Verified counts
+      const verifiedVendors = allVendors.filter(v => v.isVerified).length;
+      const unverifiedVendors = allVendors.filter(v => !v.isVerified).length;
+      const verifiedRestaurants = allRestaurants.filter(r => r.isVerified).length;
+      const unverifiedRestaurants = allRestaurants.filter(r => !r.isVerified).length;
+      const verifiedServiceProviders = allServiceProviders.filter(sp => sp.isVerified).length;
+      const unverifiedServiceProviders = allServiceProviders.filter(sp => !sp.isVerified).length;
+
+      // Revenue calculations
+      const totalRevenueCents = allVendorOrders.reduce((sum, order) => sum + order.totalCents, 0);
+      const paidOrders = allVendorOrders.filter(o => o.paymentStatus === 'paid');
+      const paidRevenueCents = paidOrders.reduce((sum, order) => sum + order.totalCents, 0);
+      const pendingRevenueCents = totalRevenueCents - paidRevenueCents;
+
+      // Pending verifications
+      const pendingVendorVerifications = allVendors.filter(v => !v.isVerified);
+      const pendingRestaurantVerifications = allRestaurants.filter(r => !r.isVerified);
+      const pendingServiceProviderVerifications = allServiceProviders.filter(sp => !sp.isVerified);
+
+      res.json({
+        users: {
+          total: totalUsers,
+        },
+        vendors: {
+          total: totalVendors,
+          verified: verifiedVendors,
+          unverified: unverifiedVendors,
+          pendingVerifications: pendingVendorVerifications.map(v => ({
+            id: v.id,
+            businessName: v.businessName,
+            contactEmail: v.contactEmail,
+            city: v.city,
+            type: 'vendor' as const,
+          })),
+        },
+        restaurants: {
+          total: totalRestaurants,
+          verified: verifiedRestaurants,
+          unverified: unverifiedRestaurants,
+          pendingVerifications: pendingRestaurantVerifications.map(r => ({
+            id: r.id,
+            businessName: r.businessName,
+            contactEmail: r.contactEmail,
+            city: r.city,
+            type: 'restaurant' as const,
+          })),
+        },
+        serviceProviders: {
+          total: totalServiceProviders,
+          verified: verifiedServiceProviders,
+          unverified: unverifiedServiceProviders,
+          pendingVerifications: pendingServiceProviderVerifications.map(sp => ({
+            id: sp.id,
+            businessName: sp.businessName,
+            contactEmail: sp.contactEmail,
+            city: sp.city,
+            type: 'service_provider' as const,
+          })),
+        },
+        products: {
+          total: totalProducts,
+        },
+        menuItems: {
+          total: totalMenuItems,
+        },
+        serviceOfferings: {
+          total: totalServiceOfferings,
+        },
+        events: {
+          total: totalEvents,
+        },
+        orders: {
+          total: totalOrders,
+          paid: paidOrders.length,
+          pending: totalOrders - paidOrders.length,
+        },
+        revenue: {
+          totalCents: totalRevenueCents,
+          paidCents: paidRevenueCents,
+          pendingCents: pendingRevenueCents,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ error: "Failed to fetch admin statistics" });
+    }
+  });
+
+  // Admin vendor verification endpoints
+  app.patch("/api/admin/vendors/:id/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { isVerified } = req.body;
+      await storage.updateVendorVerification(req.params.id, isVerified);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error verifying vendor:", error);
+      res.status(500).json({ error: "Failed to verify vendor" });
+    }
+  });
+
+  app.patch("/api/admin/restaurants/:id/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { isVerified } = req.body;
+      await storage.updateRestaurantVerification(req.params.id, isVerified);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error verifying restaurant:", error);
+      res.status(500).json({ error: "Failed to verify restaurant" });
+    }
+  });
+
+  app.patch("/api/admin/service-providers/:id/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { isVerified } = req.body;
+      await storage.updateServiceProviderVerification(req.params.id, isVerified);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error verifying service provider:", error);
+      res.status(500).json({ error: "Failed to verify service provider" });
+    }
+  });
+
   app.get("/api/vendors/values/all", async (req, res) => {
     try {
       const values = await storage.getAllVendorValues();

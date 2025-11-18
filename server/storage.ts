@@ -771,6 +771,10 @@ export class DbStorage implements IStorage {
     await db.update(vendorOrders).set({ paymentStatus, updatedAt: new Date() }).where(eq(vendorOrders.id, id));
   }
 
+  async getAllVendorOrders(): Promise<VendorOrder[]> {
+    return await db.select().from(vendorOrders).orderBy(desc(vendorOrders.createdAt));
+  }
+
   // Spotlight operations
   async getActiveSpotlight(): Promise<Spotlight | undefined> {
     const result = await db.select().from(spotlight)
@@ -1047,6 +1051,10 @@ export class DbStorage implements IStorage {
     await db.delete(serviceProviders).where(eq(serviceProviders.id, id));
   }
 
+  async updateServiceProviderVerification(id: string, isVerified: boolean): Promise<void> {
+    await db.update(serviceProviders).set({ isVerified }).where(eq(serviceProviders.id, id));
+  }
+
   // Service Offering operations
   async getServiceOffering(id: string): Promise<ServiceOffering | undefined> {
     const result = await db.select().from(serviceOfferings).where(eq(serviceOfferings.id, id));
@@ -1070,6 +1078,10 @@ export class DbStorage implements IStorage {
 
   async deleteServiceOffering(id: string): Promise<void> {
     await db.delete(serviceOfferings).where(eq(serviceOfferings.id, id));
+  }
+
+  async getAllServiceOfferings(): Promise<ServiceOffering[]> {
+    return await db.select().from(serviceOfferings);
   }
 
   // Service Booking operations
