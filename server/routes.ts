@@ -331,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           unverified: unverifiedRestaurants,
           pendingVerifications: pendingRestaurantVerifications.map(r => ({
             id: r.id,
-            businessName: r.businessName,
+            businessName: r.restaurantName,
             contactEmail: r.contactEmail,
             city: r.city,
             type: 'restaurant' as const,

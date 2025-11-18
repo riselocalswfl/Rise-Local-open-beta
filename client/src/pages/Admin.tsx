@@ -165,11 +165,7 @@ export default function Admin() {
         ? `/api/admin/restaurants/${id}/verify`
         : `/api/admin/service-providers/${id}/verify`;
       
-      return await apiRequest(endpoint, {
-        method: 'PATCH',
-        body: JSON.stringify({ isVerified: true }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return await apiRequest('PATCH', endpoint, { isVerified: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
@@ -185,11 +181,7 @@ export default function Admin() {
         ? `/api/admin/restaurants/${id}/verify`
         : `/api/admin/service-providers/${id}/verify`;
       
-      return await apiRequest(endpoint, {
-        method: 'PATCH',
-        body: JSON.stringify({ isVerified: false }),
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return await apiRequest('PATCH', endpoint, { isVerified: false });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
