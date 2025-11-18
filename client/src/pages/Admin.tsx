@@ -86,6 +86,23 @@ function UserAccountsList() {
 export default function Admin() {
   const { toast } = useToast();
 
+  // Fetch real data
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  const { data: vendors = [] } = useQuery({
+    queryKey: ["/api/vendors"],
+  });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["/api/products"],
+  });
+
+  const { data: events = [] } = useQuery({
+    queryKey: ["/api/events/upcoming"],
+  });
+
   // todo: remove mock functionality
   const [pendingVendors, setPendingVendors] = useState([
     { id: "v4", name: "Farm Table Bistro", city: "Fort Myers", email: "bistro@farmtable.com" },
@@ -93,10 +110,10 @@ export default function Admin() {
   ]);
 
   const stats = [
-    { label: "Total Users", value: "1,234", icon: Users, color: "text-chart-1" },
-    { label: "Active Vendors", value: "156", icon: ShoppingBag, color: "text-chart-2" },
-    { label: "Products Listed", value: "892", icon: ShoppingBag, color: "text-chart-3" },
-    { label: "Upcoming Events", value: "23", icon: Calendar, color: "text-chart-4" },
+    { label: "Total Users", value: users.length.toLocaleString(), icon: Users, color: "text-chart-1" },
+    { label: "Active Vendors", value: vendors.length.toLocaleString(), icon: ShoppingBag, color: "text-chart-2" },
+    { label: "Products Listed", value: products.length.toLocaleString(), icon: ShoppingBag, color: "text-chart-3" },
+    { label: "Upcoming Events", value: events.length.toLocaleString(), icon: Calendar, color: "text-chart-4" },
   ];
 
   const handleVerifyVendor = (id: string, name: string) => {
