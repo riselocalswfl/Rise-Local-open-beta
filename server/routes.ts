@@ -464,19 +464,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
       const existingServiceProvider = await storage.getServiceProviderByOwnerId(userId);
 
-      // Determine source profile to copy from
+      // Determine source profile based on user's CURRENT role (not just first available)
       let sourceProfile: any = null;
       let sourceType: string = '';
 
-      if (existingVendor) {
+      if (targetUser.role === 'vendor' && existingVendor) {
         sourceProfile = existingVendor;
         sourceType = 'vendor';
-      } else if (existingRestaurant) {
+      } else if (targetUser.role === 'restaurant' && existingRestaurant) {
         sourceProfile = existingRestaurant;
         sourceType = 'restaurant';
-      } else if (existingServiceProvider) {
+      } else if (targetUser.role === 'service_provider' && existingServiceProvider) {
         sourceProfile = existingServiceProvider;
         sourceType = 'service_provider';
+      } else {
+        // Fallback: use first available profile if current role doesn't match any profile
+        if (existingVendor) {
+          sourceProfile = existingVendor;
+          sourceType = 'vendor';
+        } else if (existingRestaurant) {
+          sourceProfile = existingRestaurant;
+          sourceType = 'restaurant';
+        } else if (existingServiceProvider) {
+          sourceProfile = existingServiceProvider;
+          sourceType = 'service_provider';
+        }
       }
 
       if (!sourceProfile) {
@@ -486,9 +498,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new profile based on target type
       try {
         if (targetType === 'vendor') {
-          // Check if vendor profile already exists
+          // If vendor profile already exists, just update the user role
           if (existingVendor) {
-            return res.status(400).json({ error: "User already has a shop vendor profile" });
+            await storage.updateUser(userId, { role: 'vendor' });
+            return res.json({ success: true, newProfile: existingVendor, message: 'User switched to shop vendor (existing profile)' });
           }
 
           // Create vendor profile from source
@@ -529,9 +542,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({ success: true, newProfile: newVendor, message: 'User switched to shop vendor' });
 
         } else if (targetType === 'restaurant') {
-          // Check if restaurant profile already exists
+          // If restaurant profile already exists, just update the user role
           if (existingRestaurant) {
-            return res.status(400).json({ error: "User already has a restaurant profile" });
+            await storage.updateUser(userId, { role: 'restaurant' });
+            return res.json({ success: true, newProfile: existingRestaurant, message: 'User switched to restaurant (existing profile)' });
           }
 
           // Create restaurant profile from source
@@ -565,9 +579,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({ success: true, newProfile: newRestaurant, message: 'User switched to restaurant' });
 
         } else if (targetType === 'service_provider') {
-          // Check if service provider profile already exists
+          // If service provider profile already exists, just update the user role
           if (existingServiceProvider) {
-            return res.status(400).json({ error: "User already has a service provider profile" });
+            await storage.updateUser(userId, { role: 'service_provider' });
+            return res.json({ success: true, newProfile: existingServiceProvider, message: 'User switched to service provider (existing profile)' });
           }
 
           // Create service provider profile from source
