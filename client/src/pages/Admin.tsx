@@ -8,6 +8,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface AdminStats {
   users: {
@@ -74,9 +77,62 @@ interface AdminStats {
 }
 
 function UserAccountsList() {
+  const { toast } = useToast();
+  const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; currentRole: string } | null>(null);
+  const [targetType, setTargetType] = useState<'vendor' | 'restaurant' | 'service_provider' | null>(null);
+
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
+
+  const switchVendorTypeMutation = useMutation({
+    mutationFn: async ({ userId, targetType }: { userId: string; targetType: 'vendor' | 'restaurant' | 'service_provider' }) => {
+      return await apiRequest('POST', `/api/admin/users/${userId}/switch-vendor-type`, { targetType });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Vendor Type Switched",
+        description: `Account type successfully updated. All existing listings have been preserved.`,
+      });
+      setSwitchDialogOpen(false);
+      setSelectedUser(null);
+      setTargetType(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Switch Type",
+        description: error.message || "An error occurred while switching vendor type.",
+        variant: "destructive",
+      });
+      setSwitchDialogOpen(false);
+    },
+  });
+
+  const handleSwitchTypeSelect = (user: User, newType: 'vendor' | 'restaurant' | 'service_provider') => {
+    const userName = user.firstName && user.lastName 
+      ? `${user.firstName} ${user.lastName}`
+      : user.username || user.email?.split('@')[0] || 'Unknown User';
+    
+    setSelectedUser({ 
+      id: user.id, 
+      name: userName, 
+      currentRole: user.role 
+    });
+    setTargetType(newType);
+    setSwitchDialogOpen(true);
+  };
+
+  const confirmSwitch = () => {
+    if (selectedUser && targetType) {
+      switchVendorTypeMutation.mutate({ 
+        userId: selectedUser.id, 
+        targetType 
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -96,55 +152,143 @@ function UserAccountsList() {
     );
   }
 
+  const getTypeName = (type: string) => {
+    switch (type) {
+      case 'vendor': return 'Shop Vendor';
+      case 'restaurant': return 'Restaurant';
+      case 'service_provider': return 'Service Provider';
+      default: return type;
+    }
+  };
+
   return (
-    <div className="space-y-3">
-      {users.map((user) => (
-        <div
-          key={user.id}
-          className="flex items-start justify-between p-4 border rounded-lg hover-elevate"
-          data-testid={`user-card-${user.id}`}
-        >
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-medium">
-                {user.firstName && user.lastName 
-                  ? `${user.firstName} ${user.lastName}`
-                  : user.username || user.email?.split('@')[0] || 'Unknown User'}
-              </h3>
-              <Badge variant={
-                user.role === 'admin' ? 'destructive' : 
-                user.role === 'vendor' || user.role === 'restaurant' || user.role === 'service_provider' ? 'default' : 
-                'secondary'
-              }>
-                {user.role}
-              </Badge>
+    <>
+      <div className="space-y-3">
+        {users.map((user) => {
+          const isVendorType = ['vendor', 'restaurant', 'service_provider'].includes(user.role);
+          
+          return (
+            <div
+              key={user.id}
+              className="flex items-start justify-between gap-4 p-4 border rounded-lg hover-elevate"
+              data-testid={`user-card-${user.id}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h3 className="font-medium">
+                    {user.firstName && user.lastName 
+                      ? `${user.firstName} ${user.lastName}`
+                      : user.username || user.email?.split('@')[0] || 'Unknown User'}
+                  </h3>
+                  <Badge variant={
+                    user.role === 'admin' ? 'destructive' : 
+                    user.role === 'vendor' || user.role === 'restaurant' || user.role === 'service_provider' ? 'default' : 
+                    'secondary'
+                  }>
+                    {user.role}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  {user.email && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      {user.email}
+                    </p>
+                  )}
+                  {user.phone && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Phone className="h-3 w-3" />
+                      {user.phone}
+                    </p>
+                  )}
+                  {user.zipCode && (
+                    <p className="text-sm text-muted-foreground">
+                      Zip: {user.zipCode}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-xs text-muted-foreground">
+                  {user.createdAt && new Date(user.createdAt).toLocaleDateString()}
+                </div>
+                
+                {isVendorType && (
+                  <Select
+                    onValueChange={(value) => handleSwitchTypeSelect(user, value as 'vendor' | 'restaurant' | 'service_provider')}
+                    disabled={switchVendorTypeMutation.isPending}
+                  >
+                    <SelectTrigger 
+                      className="w-[180px] h-8"
+                      data-testid={`select-switch-type-${user.id}`}
+                    >
+                      <SelectValue placeholder="Switch type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {user.role !== 'vendor' && (
+                        <SelectItem value="vendor">
+                          <div className="flex items-center gap-2">
+                            <Store className="h-3 w-3" />
+                            Shop Vendor
+                          </div>
+                        </SelectItem>
+                      )}
+                      {user.role !== 'restaurant' && (
+                        <SelectItem value="restaurant">
+                          <div className="flex items-center gap-2">
+                            <Utensils className="h-3 w-3" />
+                            Restaurant
+                          </div>
+                        </SelectItem>
+                      )}
+                      {user.role !== 'service_provider' && (
+                        <SelectItem value="service_provider">
+                          <div className="flex items-center gap-2">
+                            <Wrench className="h-3 w-3" />
+                            Service Provider
+                          </div>
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </div>
-            <div className="space-y-1">
-              {user.email && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Mail className="h-3 w-3" />
-                  {user.email}
-                </p>
+          );
+        })}
+      </div>
+
+      <AlertDialog open={switchDialogOpen} onOpenChange={setSwitchDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch Vendor Type?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser && targetType && (
+                <>
+                  You are about to switch <strong>{selectedUser.name}</strong> from{' '}
+                  <strong>{getTypeName(selectedUser.currentRole)}</strong> to{' '}
+                  <strong>{getTypeName(targetType)}</strong>.
+                  <br /><br />
+                  A new business profile will be created for the selected type. All existing listings 
+                  (products, menu items, or service offerings) will be preserved and remain accessible.
+                </>
               )}
-              {user.phone && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Phone className="h-3 w-3" />
-                  {user.phone}
-                </p>
-              )}
-              {user.zipCode && (
-                <p className="text-sm text-muted-foreground">
-                  Zip: {user.zipCode}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {user.createdAt && new Date(user.createdAt).toLocaleDateString()}
-          </div>
-        </div>
-      ))}
-    </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-switch">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmSwitch}
+              data-testid="button-confirm-switch"
+              disabled={switchVendorTypeMutation.isPending}
+            >
+              {switchVendorTypeMutation.isPending ? 'Switching...' : 'Switch Type'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
