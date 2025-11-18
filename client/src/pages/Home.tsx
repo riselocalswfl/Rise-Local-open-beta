@@ -130,6 +130,7 @@ export default function Home() {
                     values={vendor.values as string[] || undefined}
                     isVerified={vendor.isVerified}
                     followerCount={vendor.followerCount}
+                    avatarUrl={vendor.logoUrl || undefined}
                   />
                 </div>
               ))}
