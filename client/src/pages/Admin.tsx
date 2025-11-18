@@ -1,10 +1,87 @@
 import { useState } from "react";
-import { CheckCircle, XCircle, Users, ShoppingBag, Calendar, Star } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Calendar, Star, Mail, Phone } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import type { User } from "@shared/schema";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function UserAccountsList() {
+  const { data: users, isLoading } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
+      </div>
+    );
+  }
+
+  if (!users || users.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No users registered yet
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {users.map((user) => (
+        <div
+          key={user.id}
+          className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+        >
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-medium">
+                {user.firstName && user.lastName 
+                  ? `${user.firstName} ${user.lastName}`
+                  : user.username || user.email?.split('@')[0] || 'Unknown User'}
+              </h3>
+              <Badge variant={
+                user.role === 'admin' ? 'destructive' : 
+                user.role === 'vendor' || user.role === 'restaurant' || user.role === 'service_provider' ? 'default' : 
+                'secondary'
+              }>
+                {user.role}
+              </Badge>
+            </div>
+            <div className="space-y-1">
+              {user.email && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  {user.email}
+                </p>
+              )}
+              {user.phone && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {user.phone}
+                </p>
+              )}
+              {user.zipCode && (
+                <p className="text-sm text-muted-foreground">
+                  Zip: {user.zipCode}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {user.createdAt && new Date(user.createdAt).toLocaleDateString()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Admin() {
   const { toast } = useToast();
@@ -115,6 +192,19 @@ export default function Admin() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* User Accounts */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>All User Accounts</CardTitle>
+            <CardDescription>
+              View and manage all registered users
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UserAccountsList />
           </CardContent>
         </Card>
 
