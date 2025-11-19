@@ -46,7 +46,7 @@ export const users = pgTable("users", {
   password: text("password"),
   
   // Common fields
-  role: text("role").notNull().default("buyer"), // buyer, vendor, restaurant, service_provider, admin
+  role: text("role").notNull().default("buyer"), // buyer, vendor, admin (Note: vendor replaces legacy roles: restaurant, service_provider)
   phone: text("phone"),
   
   // Buyer-specific fields
@@ -167,7 +167,10 @@ export type User = typeof users.$inferSelect;
 export const vendors = pgTable("vendors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => users.id),
-  vendorType: text("vendor_type").notNull().default("shop"), // "shop" | "service" | "dine"
+  vendorType: text("vendor_type").notNull().default("shop"), // "shop" | "dine" | "service" - self-labeled category
+  
+  // Capabilities - which features this vendor has enabled
+  capabilities: jsonb("capabilities").notNull().default(sql`'{"products":false,"services":false,"menu":false}'::jsonb`), // {products: boolean, services: boolean, menu: boolean}
   
   // Business Profile
   businessName: text("business_name").notNull(),
@@ -228,30 +231,100 @@ export const vendors = pgTable("vendors", {
   isVerified: boolean("is_verified").notNull().default(false),
   profileStatus: text("profile_status").notNull().default("draft"), // draft or complete
   
-  // Restaurant-specific (Eat Local)
+  // Type-specific details stored as JSON
+  // For "dine" vendors: {dietaryOptions, priceRange, seatingCapacity, reservationsRequired, reservationsUrl, reservationsPhone, restaurantSources, localMenuPercent, menuUrl}
+  // For "service" vendors: {serviceAreas, licenses, insurance, yearsInBusiness, availabilityWindows, minBookingNoticeHours, maxBookingAdvanceDays, bookingPreferences, completedBookings, averageRating}
+  restaurantDetails: jsonb("restaurant_details"),
+  serviceDetails: jsonb("service_details"),
+  
+  // Legacy restaurant-specific fields (kept for backward compatibility, will be migrated to restaurantDetails)
   restaurantSources: text("restaurant_sources"), // sources locally from
   localMenuPercent: integer("local_menu_percent"), // % of menu sourced locally
   menuUrl: text("menu_url"),
+  
+  // Migration tracking
+  legacySourceTable: text("legacy_source_table"), // tracks which table data came from: "vendors", "restaurants", or "serviceProviders"
+  legacySourceId: varchar("legacy_source_id"), // original ID from legacy table
   
   // Compliance
   termsAccepted: boolean("terms_accepted").notNull().default(true),
   privacyAccepted: boolean("privacy_accepted").notNull().default(true),
   marketingConsent: boolean("marketing_consent").default(false),
   ein: text("ein"), // optional for MVP
+  paidUntil: timestamp("paid_until"), // membership expiration (migrated from restaurants/serviceProviders)
   
   // Legacy/Analytics
   followerCount: integer("follower_count").notNull().default(0),
+  completedBookings: integer("completed_bookings").default(0), // for service providers
+  averageRating: integer("average_rating"), // 0-500 (5.00 stars = 500) for service providers
+  isFeatured: boolean("is_featured").default(false), // migrated from restaurants/serviceProviders
   
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Vendor capabilities schema - which features are enabled for this vendor
+export const vendorCapabilitiesSchema = z.object({
+  products: z.boolean().default(false), // Can create and sell products
+  services: z.boolean().default(false), // Can offer services
+  menu: z.boolean().default(false), // Can create menu items
+});
+
+// Restaurant-specific details schema
+export const restaurantDetailsSchema = z.object({
+  dietaryOptions: z.array(z.string()).optional(), // Vegan, Gluten-Free, Keto, etc.
+  priceRange: z.string().optional(), // $, $$, $$$, $$$$
+  seatingCapacity: z.number().optional(),
+  reservationsRequired: z.boolean().optional(),
+  reservationsUrl: z.string().optional(),
+  reservationsPhone: z.string().optional(),
+}).optional();
+
+// Service provider-specific details schema
+export const serviceDetailsSchema = z.object({
+  serviceAreas: z.array(z.string()).optional(), // Fort Myers, Cape Coral, etc.
+  licenses: z.array(z.object({
+    type: z.string(),
+    number: z.string(),
+    issuedBy: z.string(),
+    expiresOn: z.string().optional(),
+  })).optional(),
+  insurance: z.object({
+    liability: z.boolean().optional(),
+    bonded: z.boolean().optional(),
+    amount: z.number().optional(),
+  }).optional(),
+  yearsInBusiness: z.number().optional(),
+  availabilityWindows: z.array(z.object({
+    day: z.string(),
+    startTime: z.string(),
+    endTime: z.string(),
+  })).optional(),
+  minBookingNoticeHours: z.number().optional(),
+  maxBookingAdvanceDays: z.number().optional(),
+  bookingPreferences: z.object({
+    autoConfirm: z.boolean().optional(),
+    depositRequired: z.boolean().optional(),
+    cancellationPolicy: z.string().optional(),
+  }).optional(),
+}).optional();
+
+export type VendorCapabilities = z.infer<typeof vendorCapabilitiesSchema>;
+export type RestaurantDetails = z.infer<typeof restaurantDetailsSchema>;
+export type ServiceDetails = z.infer<typeof serviceDetailsSchema>;
+
 export const insertVendorSchema = createInsertSchema(vendors).omit({
   id: true,
   followerCount: true,
+  completedBookings: true,
+  averageRating: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  capabilities: vendorCapabilitiesSchema,
+  restaurantDetails: restaurantDetailsSchema,
+  serviceDetails: serviceDetailsSchema,
 });
 
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
@@ -618,8 +691,8 @@ export type Restaurant = typeof restaurants.$inferSelect;
 
 export const menuItems = pgTable("menu_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").references(() => vendors.id), // For restaurant vendors
-  restaurantId: varchar("restaurant_id").references(() => restaurants.id), // Legacy support
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Links to unified vendors table
+  restaurantId: varchar("restaurant_id"), // Legacy field - kept for migration, will be deprecated
   name: text("name").notNull(),
   description: text("description"),
   priceCents: integer("price_cents").notNull(),
@@ -636,10 +709,7 @@ export const menuItems = pgTable("menu_items", {
   sourceFarm: text("source_farm"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-}, (table) => ({
-  // Check constraint: at least one of vendorId or restaurantId must be set
-  ownerCheck: sql`CHECK (vendor_id IS NOT NULL OR restaurant_id IS NOT NULL)`
-}));
+});
 
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
   id: true,
@@ -786,7 +856,8 @@ export type ServiceProvider = typeof serviceProviders.$inferSelect;
 
 export const serviceOfferings = pgTable("service_offerings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  serviceProviderId: varchar("service_provider_id").notNull().references(() => serviceProviders.id),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Links to unified vendors table
+  serviceProviderId: varchar("service_provider_id"), // Legacy field - kept for migration, will be deprecated
   
   // Offering Details
   offeringName: text("offering_name").notNull(),
@@ -826,7 +897,8 @@ export type ServiceOffering = typeof serviceOfferings.$inferSelect;
 export const serviceBookings = pgTable("service_bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  serviceProviderId: varchar("service_provider_id").notNull().references(() => serviceProviders.id),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Links to unified vendors table
+  serviceProviderId: varchar("service_provider_id"), // Legacy field - kept for migration, will be deprecated
   offeringId: varchar("offering_id").notNull().references(() => serviceOfferings.id),
   
   // Booking Details
