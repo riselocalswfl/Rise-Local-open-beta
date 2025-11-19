@@ -96,8 +96,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Object Storage Routes
-  // Serve uploaded images with ACL check
-  app.get("/objects/:objectPath(*)", isAuthenticated, async (req: any, res) => {
+  // Serve uploaded images with ACL check (public objects don't require authentication)
+  app.get("/objects/:objectPath(*)", async (req: any, res) => {
     const userId = req.user?.claims?.sub;
     const objectStorageService = new ObjectStorageService();
     try {
