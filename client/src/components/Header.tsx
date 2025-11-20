@@ -172,7 +172,7 @@ export default function Header() {
                           data-testid="button-join-movement"
                         >
                           <Heart className="h-4 w-4 mr-2" />
-                          Join the Movement
+                          Create a Rise Local account
                         </BrandButton>
                       </Link>
                     </div>

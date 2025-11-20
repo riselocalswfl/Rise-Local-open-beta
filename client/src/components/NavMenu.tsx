@@ -22,7 +22,7 @@ const publicNavigationItems = [
   { name: "Events", href: "/events", icon: Calendar },
   { name: "All Vendors", href: "/vendors", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
-  { name: "Join the Movement", href: "/join", icon: Heart },
+  { name: "Create a Rise Local account", href: "/join", icon: Heart },
 ];
 
 const buyerNavigationItems = [
