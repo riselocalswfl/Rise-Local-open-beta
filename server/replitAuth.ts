@@ -197,12 +197,6 @@ export async function setupAuth(app: Express) {
             
             // Handle vendor-type signups: redirect to onboarding if no profile exists
             if (intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider") {
-              // Normalize role to vendorType early for consistency
-              const vendorType = intendedRole === "vendor" ? "shop" 
-                : intendedRole === "service_provider" ? "service"
-                : intendedRole === "restaurant" ? "restaurant"
-                : "shop"; // fallback
-              
               // Check for existing vendor profile (unified system)
               const existingVendor = await storage.getVendorByOwnerId(userId);
               
@@ -212,25 +206,15 @@ export async function setupAuth(app: Express) {
                 await storage.updateUser(userId, { role: "vendor" });
                 console.log("[AUTH] User has existing vendor profile, setting role as vendor");
               } else {
-                // No existing profile - redirect to type-specific onboarding
-                console.log("[AUTH] No vendor profile found, redirecting to type-specific onboarding");
+                // No existing profile - redirect to unified onboarding
+                console.log("[AUTH] No vendor profile found, redirecting to unified onboarding");
                 // Set unified vendor role to track they're a vendor in progress
                 userRole = "vendor";
                 await storage.updateUser(userId, { role: "vendor" });
-                // Set onboarding flags
+                // Set onboarding flag
                 (req.session as any).needsOnboarding = true;
-                (req.session as any).vendorType = vendorType;
-                console.log("[AUTH] Set vendorType in session:", vendorType);
-                // Redirect to type-specific onboarding route
-                if (vendorType === "shop") {
-                  redirectUrl = "/onboarding/shop";
-                } else if (vendorType === "restaurant") {
-                  redirectUrl = "/onboarding/dine";
-                } else if (vendorType === "service") {
-                  redirectUrl = "/onboarding/services";
-                } else {
-                  redirectUrl = "/onboarding"; // fallback to generic onboarding
-                }
+                // Redirect to unified onboarding (vendor type selected in onboarding form)
+                redirectUrl = "/onboarding";
                 console.log("[AUTH] Redirecting to:", redirectUrl);
               }
             } else if (intendedRole === "buyer") {

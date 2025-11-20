@@ -34,6 +34,7 @@ import BusinessDashboard from "@/pages/BusinessDashboard";
 import ShopOnboarding from "@/pages/ShopOnboarding";
 import DineOnboarding from "@/pages/DineOnboarding";
 import ServicesOnboarding from "@/pages/ServicesOnboarding";
+import UnifiedOnboarding from "@/pages/UnifiedOnboarding";
 import CustomerProfile from "@/pages/CustomerProfile";
 import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
@@ -77,11 +78,15 @@ function Router() {
       <Route path="/join/vendor" component={VendorSignup} />
       <Route path="/join/restaurant" component={RestaurantSignup} />
       <Route path="/join/service-provider" component={ServiceProviderSignup} />
-      <Route path="/onboarding/shop" component={ShopOnboarding} />
-      <Route path="/onboarding/dine" component={DineOnboarding} />
-      <Route path="/onboarding/services" component={ServicesOnboarding} />
-      <Route path="/onboarding">
-        {() => <Redirect to="/join" />}
+      <Route path="/onboarding" component={UnifiedOnboarding} />
+      <Route path="/onboarding/shop">
+        {() => <Redirect to="/onboarding" />}
+      </Route>
+      <Route path="/onboarding/dine">
+        {() => <Redirect to="/onboarding" />}
+      </Route>
+      <Route path="/onboarding/services">
+        {() => <Redirect to="/onboarding" />}
       </Route>
       <Route path="/profile" component={CustomerProfile} />
       <Route path="/messages" component={Messages} />
