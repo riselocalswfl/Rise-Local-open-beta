@@ -517,7 +517,7 @@ export default function DineOnboarding() {
       });
 
       // Redirect to dashboard
-      const dashboardUrl = "/restaurant-dashboard";
+      const dashboardUrl = "/dashboard";
       if (connectStripe) {
         sessionStorage.setItem("openStripeSettings", "true");
       }

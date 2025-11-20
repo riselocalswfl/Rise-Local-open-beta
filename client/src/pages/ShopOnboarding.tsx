@@ -537,7 +537,7 @@ export default function ShopOnboarding() {
       });
 
       // Redirect to dashboard
-      const dashboardUrl = "/vendor-dashboard";
+      const dashboardUrl = "/dashboard";
       if (connectStripe) {
         sessionStorage.setItem("openStripeSettings", "true");
       }

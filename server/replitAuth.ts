@@ -200,35 +200,23 @@ export async function setupAuth(app: Express) {
               // Normalize role to vendorType early for consistency
               const vendorType = intendedRole === "vendor" ? "shop" 
                 : intendedRole === "service_provider" ? "service"
-                : intendedRole; // restaurant stays as-is
+                : intendedRole === "restaurant" ? "restaurant"
+                : "shop"; // fallback
               
-              // Check for existing vendor-type profiles
-              const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
-              const existingProvider = await storage.getServiceProviderByOwnerId(userId);
+              // Check for existing vendor profile (unified system)
               const existingVendor = await storage.getVendorByOwnerId(userId);
               
-              // Preserve existing vendor type based on profile existence
-              if (existingRestaurant) {
-                userRole = "restaurant";
-                await storage.updateUser(userId, { role: "restaurant" });
-                // Flags already cleared at top - profile exists, no onboarding needed
-                console.log("[AUTH] User has existing restaurant profile, preserving role as restaurant");
-              } else if (existingProvider) {
-                userRole = "service_provider";
-                await storage.updateUser(userId, { role: "service_provider" });
-                // Flags already cleared at top - profile exists, no onboarding needed
-                console.log("[AUTH] User has existing service provider profile, preserving role as service_provider");
-              } else if (existingVendor) {
+              if (existingVendor) {
+                // Vendor profile exists - use unified "vendor" role
                 userRole = "vendor";
                 await storage.updateUser(userId, { role: "vendor" });
-                // Flags already cleared at top - profile exists, no onboarding needed
-                console.log("[AUTH] User has existing vendor profile, preserving role as vendor");
+                console.log("[AUTH] User has existing vendor profile, setting role as vendor");
               } else {
                 // No existing profile - redirect to type-specific onboarding
                 console.log("[AUTH] No vendor profile found, redirecting to type-specific onboarding");
-                // Set temporary role to track they're a vendor in progress
-                userRole = intendedRole;
-                await storage.updateUser(userId, { role: intendedRole });
+                // Set unified vendor role to track they're a vendor in progress
+                userRole = "vendor";
+                await storage.updateUser(userId, { role: "vendor" });
                 // Set onboarding flags
                 (req.session as any).needsOnboarding = true;
                 (req.session as any).vendorType = vendorType;

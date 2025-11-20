@@ -1843,14 +1843,19 @@ export default function VendorDashboard() {
                     id="menu-capability"
                     checked={(vendor.capabilities as any)?.menu === true}
                     onCheckedChange={(checked) => {
+                      console.log('[MENU TOGGLE] Toggling menu capability to:', checked);
                       const currentCapabilities = (vendor.capabilities || {}) as any;
+                      console.log('[MENU TOGGLE] Current capabilities:', currentCapabilities);
+                      const newCapabilities = { 
+                        ...currentCapabilities, 
+                        menu: checked 
+                      };
+                      console.log('[MENU TOGGLE] New capabilities:', newCapabilities);
                       updateVendorMutation.mutate({ 
-                        capabilities: { 
-                          ...currentCapabilities, 
-                          menu: checked 
-                        } 
+                        capabilities: newCapabilities
                       });
                     }}
+                    disabled={updateVendorMutation.isPending}
                     data-testid="switch-menu-capability"
                   />
                 </div>
