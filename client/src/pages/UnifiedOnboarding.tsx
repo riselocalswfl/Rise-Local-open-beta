@@ -238,6 +238,16 @@ export default function UnifiedOnboarding() {
         });
         
         if (!response.ok) {
+          // Handle 401 authentication errors
+          if (response.status === 401) {
+            toast({
+              title: "Session expired",
+              description: "Please log in again to continue.",
+              variant: "destructive",
+            });
+            sessionStorage.setItem("returnTo", "/onboarding");
+            setLocation("/join");
+          }
           return;
         }
 
@@ -361,6 +371,19 @@ export default function UnifiedOnboarding() {
         if (!createResponse.ok) {
           const errorText = await createResponse.text();
           console.error("[Auto-save] Create failed:", createResponse.status, errorText);
+          
+          // Handle 401 authentication errors
+          if (createResponse.status === 401) {
+            toast({
+              title: "Session expired",
+              description: "Please log in again to continue.",
+              variant: "destructive",
+            });
+            sessionStorage.setItem("returnTo", "/onboarding");
+            setLocation("/join");
+            return;
+          }
+          
           throw new Error(`Failed to create draft: ${createResponse.status}`);
         }
 
@@ -429,6 +452,19 @@ export default function UnifiedOnboarding() {
         if (!updateResponse.ok) {
           const errorText = await updateResponse.text();
           console.error("[Auto-save] Update failed:", updateResponse.status, errorText);
+          
+          // Handle 401 authentication errors
+          if (updateResponse.status === 401) {
+            toast({
+              title: "Session expired",
+              description: "Please log in again to continue.",
+              variant: "destructive",
+            });
+            sessionStorage.setItem("returnTo", "/onboarding");
+            setLocation("/join");
+            return;
+          }
+          
           throw new Error(`Failed to update draft: ${updateResponse.status}`);
         }
 
@@ -529,6 +565,17 @@ export default function UnifiedOnboarding() {
       });
 
       if (!response.ok) {
+        // Handle 401 authentication errors
+        if (response.status === 401) {
+          toast({
+            title: "Session expired",
+            description: "Please log in again to complete your profile.",
+            variant: "destructive",
+          });
+          sessionStorage.setItem("returnTo", "/onboarding");
+          setLocation("/join");
+          return;
+        }
         throw new Error("Failed to complete onboarding");
       }
 

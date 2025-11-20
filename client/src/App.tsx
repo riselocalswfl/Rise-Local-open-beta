@@ -40,6 +40,7 @@ import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
 import NavMenu from "@/components/NavMenu";
 import { NavMenuProvider } from "@/contexts/NavMenuContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
   return (
@@ -48,7 +49,13 @@ function Router() {
       <Route path="/products" component={Products} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/vendor/:id" component={VendorProfile} />
-      <Route path="/dashboard" component={BusinessDashboard} />
+      <Route path="/dashboard">
+        {() => (
+          <ProtectedRoute>
+            <BusinessDashboard />
+          </ProtectedRoute>
+        )}
+      </Route>
       <Route path="/restaurant/:id" component={RestaurantProfile} />
       <Route path="/restaurant-dashboard">
         {() => <Redirect to="/dashboard" />}
@@ -67,9 +74,27 @@ function Router() {
         {() => <Redirect to="/events/my" />}
       </Route>
       <Route path="/cart" component={Cart} />
-      <Route path="/checkout" component={Checkout} />
-      <Route path="/order-confirmation" component={OrderConfirmation} />
-      <Route path="/orders" component={Orders} />
+      <Route path="/checkout">
+        {() => (
+          <ProtectedRoute>
+            <Checkout />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/order-confirmation">
+        {() => (
+          <ProtectedRoute>
+            <OrderConfirmation />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/orders">
+        {() => (
+          <ProtectedRoute>
+            <Orders />
+          </ProtectedRoute>
+        )}
+      </Route>
       <Route path="/spotlight" component={Spotlight} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
@@ -78,7 +103,13 @@ function Router() {
       <Route path="/join/vendor" component={VendorSignup} />
       <Route path="/join/restaurant" component={RestaurantSignup} />
       <Route path="/join/service-provider" component={ServiceProviderSignup} />
-      <Route path="/onboarding" component={UnifiedOnboarding} />
+      <Route path="/onboarding">
+        {() => (
+          <ProtectedRoute>
+            <UnifiedOnboarding />
+          </ProtectedRoute>
+        )}
+      </Route>
       <Route path="/onboarding/shop">
         {() => <Redirect to="/onboarding" />}
       </Route>
@@ -88,10 +119,34 @@ function Router() {
       <Route path="/onboarding/services">
         {() => <Redirect to="/onboarding" />}
       </Route>
-      <Route path="/profile" component={CustomerProfile} />
-      <Route path="/messages" component={Messages} />
-      <Route path="/messages/:userId" component={MessageThread} />
-      <Route path="/admin" component={Admin} />
+      <Route path="/profile">
+        {() => (
+          <ProtectedRoute>
+            <CustomerProfile />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/messages">
+        {() => (
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/messages/:userId">
+        {() => (
+          <ProtectedRoute>
+            <MessageThread />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/admin">
+        {() => (
+          <ProtectedRoute>
+            <Admin />
+          </ProtectedRoute>
+        )}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
