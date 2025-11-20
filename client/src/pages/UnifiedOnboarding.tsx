@@ -584,7 +584,10 @@ export default function UnifiedOnboarding() {
         description: "Your vendor profile has been created successfully.",
       });
 
-      setLocation("/dashboard");
+      // Small delay so user can see the success message
+      setTimeout(() => {
+        setLocation("/dashboard");
+      }, 1500);
     } catch (error) {
       console.error("Onboarding completion error:", error);
       toast({
