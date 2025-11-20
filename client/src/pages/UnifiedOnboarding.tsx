@@ -313,16 +313,36 @@ export default function UnifiedOnboarding() {
     loadDraft();
   }, []);
 
+  // Helper function: fetch with timeout
+  const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 15000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  };
+
   // Auto-save function
   const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3') => {
     if (isInitialLoadRef.current) return;
 
     try {
       setSaveStatus("saving");
+      console.log("[Auto-save] Starting save for", formType, "with vendor ID:", draftVendorId);
 
       // If no draft exists, create it first
       if (!draftVendorId && formType === 'step1' && data.vendorType && data.businessName) {
-        const createResponse = await fetch("/api/vendors/draft", {
+        console.log("[Auto-save] Creating new draft vendor");
+        const createResponse = await fetchWithTimeout("/api/vendors/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -338,12 +358,17 @@ export default function UnifiedOnboarding() {
           }),
         });
 
-        if (createResponse.ok) {
-          const newDraft = await createResponse.json();
-          setDraftVendorId(newDraft.id);
-          setSaveStatus("saved");
-          setTimeout(() => setSaveStatus("idle"), 2000);
+        if (!createResponse.ok) {
+          const errorText = await createResponse.text();
+          console.error("[Auto-save] Create failed:", createResponse.status, errorText);
+          throw new Error(`Failed to create draft: ${createResponse.status}`);
         }
+
+        const newDraft = await createResponse.json();
+        console.log("[Auto-save] Draft created successfully:", newDraft.id);
+        setDraftVendorId(newDraft.id);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
         return;
       }
 
@@ -393,20 +418,35 @@ export default function UnifiedOnboarding() {
           }
         }
 
-        const updateResponse = await fetch(`/api/vendors/${draftVendorId}`, {
+        console.log("[Auto-save] Updating draft vendor with fields:", Object.keys(updateData));
+        const updateResponse = await fetchWithTimeout(`/api/vendors/${draftVendorId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(updateData),
         });
 
-        if (updateResponse.ok) {
-          setSaveStatus("saved");
-          setTimeout(() => setSaveStatus("idle"), 2000);
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          console.error("[Auto-save] Update failed:", updateResponse.status, errorText);
+          throw new Error(`Failed to update draft: ${updateResponse.status}`);
         }
+
+        console.log("[Auto-save] Update successful");
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      } else {
+        console.log("[Auto-save] No draft ID yet, skipping update");
+        setSaveStatus("idle");
       }
     } catch (error) {
-      console.error("Auto-save error:", error);
+      console.error("[Auto-save] Error:", error);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.error("[Auto-save] Request timed out after 15 seconds");
+        }
+        console.error("[Auto-save] Error details:", error.message);
+      }
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
