@@ -16,29 +16,27 @@ export default function VendorProfile() {
     enabled: !!vendorId,
   });
 
-  const { data: vendorOwner } = useQuery<User>({
-    queryKey: [`/api/users/${vendor?.ownerId}`],
-    enabled: !!vendor?.ownerId,
-  });
+  // Fetch data based on vendor capabilities (unified vendor system)
+  const capabilities = vendor?.capabilities as { products?: boolean; services?: boolean; menu?: boolean } | undefined;
 
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: [`/api/products?vendorId=${vendorId}`],
-    enabled: !!vendorId && vendorOwner?.role === "vendor",
+    enabled: !!vendorId && !!capabilities?.products,
   });
 
   const { data: events = [] } = useQuery<Event[]>({
     queryKey: [`/api/vendors/${vendorId}/events`],
-    enabled: !!vendorId && vendorOwner?.role === "vendor",
+    enabled: !!vendorId,
   });
 
   const { data: menuItems = [], isLoading: menuItemsLoading } = useQuery<MenuItem[]>({
     queryKey: [`/api/vendors/${vendorId}/menu`],
-    enabled: !!vendorId && vendorOwner?.role === "restaurant",
+    enabled: !!vendorId && !!capabilities?.menu,
   });
 
   const { data: services = [], isLoading: servicesLoading } = useQuery<Service[]>({
     queryKey: [`/api/vendors/${vendorId}/services`],
-    enabled: !!vendorId && vendorOwner?.role === "service_provider",
+    enabled: !!vendorId && !!capabilities?.services,
   });
 
   const { data: reviews = [] } = useQuery<VendorReview[]>({
@@ -74,26 +72,53 @@ export default function VendorProfile() {
     );
   }
 
-  // Determine which category-specific section to render based on vendor owner's role
-  const renderCategorySection = () => {
-    if (!vendorOwner) return null;
+  // Determine which sections to render based on vendor capabilities
+  const renderCategorySections = () => {
+    if (!vendor) return null;
 
-    switch (vendorOwner.role) {
-      case "vendor":
-        return <ShopProfileSection products={products} events={events} isLoading={productsLoading} />;
-      case "restaurant":
-        return <DineProfileSection menuItems={menuItems} isLoading={menuItemsLoading} />;
-      case "service_provider":
-        return <ServiceProfileSection services={services} isLoading={servicesLoading} />;
-      default:
-        return null;
+    const sections = [];
+
+    // Show products section if vendor has products capability
+    if (capabilities?.products) {
+      sections.push(
+        <ShopProfileSection 
+          key="products" 
+          products={products} 
+          events={events} 
+          isLoading={productsLoading} 
+        />
+      );
     }
+
+    // Show menu section if vendor has menu capability
+    if (capabilities?.menu) {
+      sections.push(
+        <DineProfileSection 
+          key="menu" 
+          menuItems={menuItems} 
+          isLoading={menuItemsLoading} 
+        />
+      );
+    }
+
+    // Show services section if vendor has services capability
+    if (capabilities?.services) {
+      sections.push(
+        <ServiceProfileSection 
+          key="services" 
+          services={services} 
+          isLoading={servicesLoading} 
+        />
+      );
+    }
+
+    return sections.length > 0 ? sections : null;
   };
 
   return (
     <div className="min-h-screen bg-bg">
       <MasterProfile vendor={vendor} reviews={reviews} faqs={faqs}>
-        {renderCategorySection()}
+        {renderCategorySections()}
       </MasterProfile>
     </div>
   );

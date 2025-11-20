@@ -15,7 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertServiceBookingSchema } from "@shared/schema";
-import type { ServiceProvider, ServiceOffering } from "@shared/schema";
+import type { Vendor, ServiceOffering } from "@shared/schema";
 import { z } from "zod";
 import { 
   MapPin, Mail, Globe, Calendar, Clock, DollarSign, 
@@ -111,20 +111,32 @@ function ServiceOfferingCard({
 
 export default function ServiceProviderProfile() {
   const [, params] = useRoute("/services/:id");
-  const providerId = params?.id;
+  const vendorId = params?.id;
   const [selectedOffering, setSelectedOffering] = useState<ServiceOffering | null>(null);
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: providerData, isLoading } = useQuery<ServiceProvider & { offerings: ServiceOffering[] }>({
-    queryKey: ["/api/services", providerId],
-    enabled: !!providerId,
+  // Use unified vendor endpoint
+  const { data: vendor, isLoading: vendorLoading } = useQuery<Vendor>({
+    queryKey: [`/api/vendors/${vendorId}`],
+    enabled: !!vendorId,
   });
+
+  // Extract service capabilities
+  const capabilities = vendor?.capabilities as { products?: boolean; services?: boolean; menu?: boolean } | undefined;
+
+  // Only fetch service offerings if vendor has services capability
+  const { data: offerings = [], isLoading: offeringsLoading } = useQuery<ServiceOffering[]>({
+    queryKey: [`/api/vendors/${vendorId}/services`],
+    enabled: !!vendorId && !!capabilities?.services,
+  });
+
+  const isLoading = vendorLoading || offeringsLoading;
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
-      serviceProviderId: providerId || "",
+      serviceProviderId: vendorId || "",
       offeringId: "",
       requestedDate: new Date(),
       requestedTime: "",
@@ -182,7 +194,7 @@ export default function ServiceProviderProfile() {
     );
   }
 
-  if (!providerData) {
+  if (!vendor) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -205,29 +217,29 @@ export default function ServiceProviderProfile() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-semibold" data-testid="text-provider-name">
-                  {providerData.businessName}
+                  {vendor.businessName}
                 </h1>
-                {providerData.isVerified && (
+                {vendor.isVerified && (
                   <Badge variant="outline" className="border-primary text-primary" data-testid="badge-verified">
                     <Award className="w-3 h-3 mr-1" />
                     Verified
                   </Badge>
                 )}
               </div>
-              {providerData.tagline && (
+              {vendor.tagline && (
                 <p className="text-lg text-muted-foreground" data-testid="text-tagline">
-                  {providerData.tagline}
+                  {vendor.tagline}
                 </p>
               )}
             </div>
-            <Badge data-testid="badge-category">{providerData.category}</Badge>
+            <Badge data-testid="badge-category">{vendor.vendorType}</Badge>
           </div>
 
-          {(providerData.heroImageUrl || providerData.logoUrl) && (
+          {(vendor.heroImageUrl || vendor.logoUrl) && (
             <div className="aspect-[3/1] rounded-lg overflow-hidden mb-6">
               <img 
-                src={providerData.heroImageUrl || providerData.logoUrl || ''} 
-                alt={providerData.businessName}
+                src={vendor.heroImageUrl || vendor.logoUrl || ''} 
+                alt={vendor.businessName}
                 className="object-cover w-full h-full"
               />
             </div>
@@ -235,48 +247,48 @@ export default function ServiceProviderProfile() {
 
           {/* Contact Info */}
           <div className="flex flex-wrap gap-4 text-sm">
-            {providerData.city && (
+            {vendor.city && (
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-muted-foreground" />
-                <span data-testid="text-city">{providerData.city}, FL</span>
+                <span data-testid="text-city">{vendor.city}, FL</span>
               </div>
             )}
-            {providerData.contactEmail && (
+            {vendor.contactEmail && (
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-muted-foreground" />
-                <a href={`mailto:${providerData.contactEmail}`} className="hover:underline" data-testid="link-email">
-                  {providerData.contactEmail}
+                <a href={`mailto:${vendor.contactEmail}`} className="hover:underline" data-testid="link-email">
+                  {vendor.contactEmail}
                 </a>
               </div>
             )}
-            {providerData.contactPhone && (
+            {vendor.phone && (
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-muted-foreground" />
-                <a href={`tel:${providerData.contactPhone}`} className="hover:underline" data-testid="link-phone">
-                  {providerData.contactPhone}
+                <a href={`tel:${vendor.phone}`} className="hover:underline" data-testid="link-phone">
+                  {vendor.phone}
                 </a>
               </div>
             )}
-            {providerData.website && (
+            {vendor.website && (
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-muted-foreground" />
-                <a href={providerData.website} target="_blank" rel="noopener noreferrer" className="hover:underline" data-testid="link-website">
+                <a href={vendor.website} target="_blank" rel="noopener noreferrer" className="hover:underline" data-testid="link-website">
                   Website
                 </a>
               </div>
             )}
-            {providerData.instagram && (
+            {vendor.instagram && (
               <div className="flex items-center gap-2">
                 <Instagram className="w-4 h-4 text-muted-foreground" />
-                <a href={`https://instagram.com/${providerData.instagram}`} target="_blank" rel="noopener noreferrer" className="hover:underline" data-testid="link-instagram">
-                  @{providerData.instagram}
+                <a href={`https://instagram.com/${vendor.instagram}`} target="_blank" rel="noopener noreferrer" className="hover:underline" data-testid="link-instagram">
+                  @{vendor.instagram}
                 </a>
               </div>
             )}
-            {providerData.facebook && (
+            {vendor.facebook && (
               <div className="flex items-center gap-2">
                 <Facebook className="w-4 h-4 text-muted-foreground" />
-                <a href={`https://facebook.com/${providerData.facebook}`} target="_blank" rel="noopener noreferrer" className="hover:underline" data-testid="link-facebook">
+                <a href={`https://facebook.com/${vendor.facebook}`} target="_blank" rel="noopener noreferrer" className="hover:underline" data-testid="link-facebook">
                   Facebook
                 </a>
               </div>
@@ -287,21 +299,21 @@ export default function ServiceProviderProfile() {
         <Separator className="my-8" />
 
         {/* About Section */}
-        {providerData.bio && (
+        {vendor.bio && (
           <div className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">About</h2>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap" data-testid="text-bio">
-              {providerData.bio}
+              {vendor.bio}
             </p>
           </div>
         )}
 
         {/* Badges & Values */}
-        {providerData.badges && providerData.badges.length > 0 && (
+        {vendor.badges && vendor.badges.length > 0 && (
           <div className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Credentials & Badges</h2>
             <div className="flex flex-wrap gap-2">
-              {providerData.badges.map((badge, idx) => (
+              {vendor.badges.map((badge, idx) => (
                 <Badge key={idx} variant="secondary" data-testid={`badge-credential-${idx}`}>
                   <Award className="w-3 h-3 mr-1" />
                   {badge}
@@ -311,11 +323,11 @@ export default function ServiceProviderProfile() {
           </div>
         )}
 
-        {providerData.values && providerData.values.length > 0 && (
+        {vendor.values && vendor.values.length > 0 && (
           <div className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Values & Commitments</h2>
             <div className="flex flex-wrap gap-2">
-              {providerData.values.map((value, idx) => (
+              {vendor.values.map((value, idx) => (
                 <Badge key={idx} variant="outline" className="border-primary text-primary" data-testid={`badge-value-${idx}`}>
                   {value}
                 </Badge>
@@ -324,49 +336,36 @@ export default function ServiceProviderProfile() {
           </div>
         )}
 
-        {/* Service Offerings */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">Services Offered</h2>
-          {providerData.offerings && providerData.offerings.length > 0 ? (
-            <div className="grid gap-4">
-              {providerData.offerings
-                .filter(o => o.isActive)
-                .map((offering) => (
-                  <ServiceOfferingCard
-                    key={offering.id}
-                    offering={offering}
-                    providerId={providerData.id}
-                    onBookNow={handleBookNow}
-                  />
-                ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">No active services available at this time.</p>
-          )}
-        </div>
-
-        {/* Trust Signals */}
-        {providerData.completedBookings > 0 && (
+        {/* Service Offerings - Only show if vendor has services capability */}
+        {capabilities?.services && (
           <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Experience</h2>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-muted-foreground" />
-                <span data-testid="text-completed-bookings">
-                  {providerData.completedBookings} completed bookings
-                </span>
-              </div>
-              {providerData.averageRating !== null && providerData.averageRating > 0 && (
-                <div className="flex items-center gap-2">
-                  <Star className="w-5 h-5 fill-primary text-primary" />
-                  <span className="font-medium" data-testid="text-average-rating">
-                    {(providerData.averageRating / 100).toFixed(1)} rating
-                  </span>
-                </div>
-              )}
-            </div>
+            <h2 className="text-2xl font-semibold mb-4">Services Offered</h2>
+            {offerings && offerings.length > 0 ? (
+              <>
+                {offerings.filter(o => o.isActive).length > 0 ? (
+                  <div className="grid gap-4">
+                    {offerings
+                      .filter(o => o.isActive)
+                      .map((offering) => (
+                        <ServiceOfferingCard
+                          key={offering.id}
+                          offering={offering}
+                          providerId={vendor.id}
+                          onBookNow={handleBookNow}
+                        />
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No active services available at this time.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-muted-foreground">No services listed yet.</p>
+            )}
           </div>
         )}
+
+        {/* Trust Signals - Hidden for now until we implement reviews/booking tracking */}
       </main>
 
       {/* Booking Dialog */}
@@ -380,7 +379,7 @@ export default function ServiceProviderProfile() {
               {selectedOffering && (
                 <div className="p-3 bg-muted rounded-md">
                   <p className="font-medium">{selectedOffering.offeringName}</p>
-                  <p className="text-sm text-muted-foreground">{providerData.businessName}</p>
+                  <p className="text-sm text-muted-foreground">{vendor.businessName}</p>
                 </div>
               )}
 
