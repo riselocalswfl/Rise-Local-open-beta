@@ -18,10 +18,10 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart, CreditCard } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart, CreditCard, UtensilsCrossed, Briefcase } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions } from "@shared/schema";
-import { insertProductSchema, insertEventSchema, insertVendorFAQSchema } from "@shared/schema";
+import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions, MenuItem, ServiceOffering } from "@shared/schema";
+import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -53,6 +53,36 @@ const eventFormSchema = insertEventSchema.omit({ vendorId: true, restaurantId: t
 
 const faqFormSchema = insertVendorFAQSchema.omit({ vendorId: true });
 
+const menuItemFormSchema = z.object({
+  name: z.string().min(1, "Item name is required"),
+  price: z.number().min(0, "Price must be positive"), // In dollars for the form
+  description: z.string().optional(),
+  category: z.string().min(1, "Category is required"),
+  imageUrl: z.string().optional(),
+  isAvailable: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
+  dietaryTags: z.array(z.string()).default([]),
+  valueTags: z.array(z.string()).default([]),
+  ingredients: z.string().optional(),
+  allergens: z.array(z.string()).default([]),
+  isLocallySourced: z.boolean().default(false),
+  sourceFarm: z.string().optional(),
+});
+
+const serviceFormSchema = z.object({
+  offeringName: z.string().min(1, "Service name is required"),
+  description: z.string().min(1, "Description is required"),
+  pricingModel: z.enum(["fixed", "hourly", "quote"]),
+  price: z.number().min(0, "Price must be positive").optional(), // In dollars for the form
+  hourlyRate: z.number().min(0, "Hourly rate must be positive").optional(),
+  durationMinutes: z.number().int().min(0, "Duration must be positive").optional(),
+  tags: z.array(z.string()).default([]),
+  requirements: z.string().optional(),
+  includes: z.string().optional(),
+  isActive: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
+});
+
 export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
@@ -67,6 +97,8 @@ export default function VendorDashboard() {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [faqDialogOpen, setFaqDialogOpen] = useState(false);
+  const [menuItemDialogOpen, setMenuItemDialogOpen] = useState(false);
+  const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
 
   // Fetch the authenticated user's vendor
   const { data: vendor, isLoading: vendorLoading, isError } = useQuery<Vendor>({
@@ -104,6 +136,18 @@ export default function VendorDashboard() {
 
   const { data: faqs = [] } = useQuery<VendorFAQ[]>({
     queryKey: [`/api/vendors/${vendor?.id}/faqs`],
+    enabled: !!vendor?.id,
+  });
+
+  // Fetch menu items
+  const { data: menuItems = [] } = useQuery<MenuItem[]>({
+    queryKey: [`/api/menu-items?vendorId=${vendor?.id}`],
+    enabled: !!vendor?.id,
+  });
+
+  // Fetch service offerings
+  const { data: serviceOfferings = [] } = useQuery<ServiceOffering[]>({
+    queryKey: [`/api/service-offerings?providerId=${vendor?.id}`],
     enabled: !!vendor?.id,
   });
 
@@ -240,6 +284,102 @@ export default function VendorDashboard() {
     },
   });
 
+  // Menu Item Mutations
+  const createMenuItemMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (!vendor?.id) throw new Error("No vendor ID");
+      return await apiRequest("POST", "/api/menu-items", { ...data, vendorId: vendor.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/menu-items');
+        }
+      });
+      setMenuItemDialogOpen(false);
+      toast({ title: "Menu item created successfully" });
+    },
+  });
+
+  const updateMenuItemMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest("PATCH", `/api/menu-items/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/menu-items');
+        }
+      });
+      toast({ title: "Menu item updated successfully" });
+    },
+  });
+
+  const deleteMenuItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/menu-items/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/menu-items');
+        }
+      });
+      toast({ title: "Menu item deleted successfully" });
+    },
+  });
+
+  // Service Offering Mutations
+  const createServiceMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (!vendor?.id) throw new Error("No vendor ID");
+      return await apiRequest("POST", "/api/service-offerings", { ...data, vendorId: vendor.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/service-offerings');
+        }
+      });
+      setServiceDialogOpen(false);
+      toast({ title: "Service created successfully" });
+    },
+  });
+
+  const updateServiceMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest("PATCH", `/api/service-offerings/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/service-offerings');
+        }
+      });
+      toast({ title: "Service updated successfully" });
+    },
+  });
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/service-offerings/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/service-offerings');
+        }
+      });
+      toast({ title: "Service deleted successfully" });
+    },
+  });
+
   if (vendorLoading) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
@@ -351,12 +491,30 @@ export default function VendorDashboard() {
                     <span>Profile</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="products" data-testid="select-option-products">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4" />
-                    <span>Products ({products.length})</span>
-                  </div>
-                </SelectItem>
+                {(vendor.capabilities as any)?.products && (
+                  <SelectItem value="products" data-testid="select-option-products">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      <span>Products ({products.length})</span>
+                    </div>
+                  </SelectItem>
+                )}
+                {(vendor.capabilities as any)?.services && (
+                  <SelectItem value="services" data-testid="select-option-services">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" />
+                      <span>Services ({serviceOfferings.length})</span>
+                    </div>
+                  </SelectItem>
+                )}
+                {(vendor.capabilities as any)?.menu && (
+                  <SelectItem value="menu" data-testid="select-option-menu">
+                    <div className="flex items-center gap-2">
+                      <UtensilsCrossed className="w-4 h-4" />
+                      <span>Menu ({menuItems.length})</span>
+                    </div>
+                  </SelectItem>
+                )}
                 <SelectItem value="orders" data-testid="select-option-orders">
                   <div className="flex items-center gap-2">
                     <ShoppingCart className="w-4 h-4" />
@@ -386,15 +544,29 @@ export default function VendorDashboard() {
           </div>
 
           {/* Desktop TabsList */}
-          <TabsList className="hidden md:grid w-full grid-cols-6">
+          <TabsList className="hidden md:inline-flex w-full">
             <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
               <Store className="w-4 h-4" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="products" className="gap-2" data-testid="tab-products">
-              <Package className="w-4 h-4" />
-              Products ({products.length})
-            </TabsTrigger>
+            {(vendor.capabilities as any)?.products && (
+              <TabsTrigger value="products" className="gap-2" data-testid="tab-products">
+                <Package className="w-4 h-4" />
+                Products ({products.length})
+              </TabsTrigger>
+            )}
+            {(vendor.capabilities as any)?.services && (
+              <TabsTrigger value="services" className="gap-2" data-testid="tab-services">
+                <Briefcase className="w-4 h-4" />
+                Services ({serviceOfferings.length})
+              </TabsTrigger>
+            )}
+            {(vendor.capabilities as any)?.menu && (
+              <TabsTrigger value="menu" className="gap-2" data-testid="tab-menu">
+                <UtensilsCrossed className="w-4 h-4" />
+                Menu ({menuItems.length})
+              </TabsTrigger>
+            )}
             <TabsTrigger value="orders" className="gap-2" data-testid="tab-orders">
               <ShoppingCart className="w-4 h-4" />
               Orders ({vendorOrders.length})
@@ -1028,6 +1200,234 @@ export default function VendorDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Services Tab */}
+          <TabsContent value="services">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Service Offerings</CardTitle>
+                  <CardDescription>Manage your service offerings and pricing</CardDescription>
+                </div>
+                <Dialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-service">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Service
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
+                    <DialogHeader>
+                      <DialogTitle className="text-[#222]">Add New Service</DialogTitle>
+                    </DialogHeader>
+                    <AddServiceForm 
+                      onSubmit={createServiceMutation.mutate}
+                      isPending={createServiceMutation.isPending}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {serviceOfferings.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No services yet. Add your first service offering to attract customers!</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {serviceOfferings.map((service) => (
+                      <Card key={service.id} className="border-muted" data-testid={`service-${service.id}`}>
+                        <CardContent className="p-4 space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="font-semibold line-clamp-1">{service.offeringName}</h3>
+                              {service.isFeatured && (
+                                <Badge variant="default" className="shrink-0">Featured</Badge>
+                              )}
+                            </div>
+                            {service.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-1">
+                            {service.pricingModel === "fixed" && service.fixedPriceCents && (
+                              <span className="text-lg font-bold" data-testid={`service-price-${service.id}`}>
+                                ${(service.fixedPriceCents / 100).toFixed(2)}
+                              </span>
+                            )}
+                            {service.pricingModel === "hourly" && service.hourlyRateCents && (
+                              <span className="text-lg font-bold" data-testid={`service-price-${service.id}`}>
+                                ${(service.hourlyRateCents / 100).toFixed(2)}/hr
+                              </span>
+                            )}
+                            {service.pricingModel === "quote" && service.startingAtCents && (
+                              <span className="text-lg font-bold" data-testid={`service-price-${service.id}`}>
+                                Starting at ${(service.startingAtCents / 100).toFixed(2)}
+                              </span>
+                            )}
+                            {service.durationMinutes && (
+                              <p className="text-sm text-muted-foreground">
+                                Duration: {service.durationMinutes} min
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Status:</span>
+                              <Switch
+                                checked={service.isActive === true}
+                                onCheckedChange={(checked) => {
+                                  updateServiceMutation.mutate({
+                                    id: service.id,
+                                    data: { isActive: checked }
+                                  });
+                                }}
+                                data-testid={`switch-service-status-${service.id}`}
+                              />
+                              <span className="text-xs">{service.isActive ? "Active" : "Inactive"}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              data-testid={`button-edit-service-${service.id}`}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => deleteServiceMutation.mutate(service.id)}
+                              data-testid={`button-delete-service-${service.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Menu Tab */}
+          <TabsContent value="menu">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Menu Items</CardTitle>
+                  <CardDescription>Manage your menu items and pricing</CardDescription>
+                </div>
+                <Dialog open={menuItemDialogOpen} onOpenChange={setMenuItemDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-menu-item">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Menu Item
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
+                    <DialogHeader>
+                      <DialogTitle className="text-[#222]">Add New Menu Item</DialogTitle>
+                    </DialogHeader>
+                    <AddMenuItemForm 
+                      onSubmit={createMenuItemMutation.mutate}
+                      isPending={createMenuItemMutation.isPending}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {menuItems.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <UtensilsCrossed className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No menu items yet. Add your first menu item to showcase your offerings!</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {menuItems.map((item) => (
+                      <Card key={item.id} className="border-muted" data-testid={`menu-item-${item.id}`}>
+                        <CardContent className="p-4 space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="font-semibold line-clamp-1">{item.name}</h3>
+                              {item.isFeatured && (
+                                <Badge variant="default" className="shrink-0">Featured</Badge>
+                              )}
+                            </div>
+                            {item.category && (
+                              <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                            )}
+                            {item.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-bold" data-testid={`menu-item-price-${item.id}`}>
+                              ${((item.priceCents || 0) / 100).toFixed(2)}
+                            </span>
+                          </div>
+
+                          {item.dietaryTags && item.dietaryTags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {item.dietaryTags.map((tag: string, i: number) => (
+                                <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Status:</span>
+                              <Switch
+                                checked={item.isAvailable === true}
+                                onCheckedChange={(checked) => {
+                                  updateMenuItemMutation.mutate({
+                                    id: item.id,
+                                    data: { isAvailable: checked }
+                                  });
+                                }}
+                                data-testid={`switch-menu-item-status-${item.id}`}
+                              />
+                              <span className="text-xs">{item.isAvailable ? "Available" : "Unavailable"}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              data-testid={`button-edit-menu-item-${item.id}`}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => deleteMenuItemMutation.mutate(item.id)}
+                              data-testid={`button-delete-menu-item-${item.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Orders Tab */}
           <TabsContent value="orders">
             <Card>
@@ -1373,6 +1773,94 @@ export default function VendorDashboard() {
                     Log Out
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Business Features</CardTitle>
+                <CardDescription>Enable or disable features for your business</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="products-capability" className="text-base">Products</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Sell physical products with inventory, pricing, and variants
+                    </p>
+                  </div>
+                  <Switch
+                    id="products-capability"
+                    checked={(vendor.capabilities as any)?.products === true}
+                    onCheckedChange={(checked) => {
+                      const currentCapabilities = (vendor.capabilities || {}) as any;
+                      updateVendorMutation.mutate({ 
+                        capabilities: { 
+                          ...currentCapabilities, 
+                          products: checked 
+                        } 
+                      });
+                    }}
+                    data-testid="switch-products-capability"
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="services-capability" className="text-base">Services</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Offer services with booking, pricing models, and scheduling
+                    </p>
+                  </div>
+                  <Switch
+                    id="services-capability"
+                    checked={(vendor.capabilities as any)?.services === true}
+                    onCheckedChange={(checked) => {
+                      const currentCapabilities = (vendor.capabilities || {}) as any;
+                      updateVendorMutation.mutate({ 
+                        capabilities: { 
+                          ...currentCapabilities, 
+                          services: checked 
+                        } 
+                      });
+                    }}
+                    data-testid="switch-services-capability"
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="menu-capability" className="text-base">Menu</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Display menu items with categories, dietary info, and pricing
+                    </p>
+                  </div>
+                  <Switch
+                    id="menu-capability"
+                    checked={(vendor.capabilities as any)?.menu === true}
+                    onCheckedChange={(checked) => {
+                      const currentCapabilities = (vendor.capabilities || {}) as any;
+                      updateVendorMutation.mutate({ 
+                        capabilities: { 
+                          ...currentCapabilities, 
+                          menu: checked 
+                        } 
+                      });
+                    }}
+                    data-testid="switch-menu-capability"
+                  />
+                </div>
+
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Toggling features will show or hide the corresponding tabs in your dashboard. Your existing content will not be deleted.
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
 
@@ -1863,6 +2351,483 @@ function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; is
         <div className="flex justify-end gap-2 pt-4">
           <Button type="submit" disabled={isPending} data-testid="button-submit-faq">
             {isPending ? "Creating..." : "Create FAQ"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+function AddMenuItemForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
+  const [dietaryTags, setDietaryTags] = useState<string[]>([]);
+  const [valueTags, setValueTags] = useState<string[]>([]);
+  const [allergens, setAllergens] = useState<string[]>([]);
+  
+  const form = useForm<z.infer<typeof menuItemFormSchema>>({
+    resolver: zodResolver(menuItemFormSchema),
+    defaultValues: {
+      name: "",
+      price: 0,
+      description: "",
+      category: "",
+      imageUrl: "",
+      isAvailable: true,
+      isFeatured: false,
+      dietaryTags: [],
+      valueTags: [],
+      ingredients: "",
+      allergens: [],
+      isLocallySourced: false,
+      sourceFarm: "",
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof menuItemFormSchema>) => {
+    const { price, ...rest } = data;
+    
+    const cleanData: any = {
+      name: rest.name,
+      category: rest.category,
+      priceCents: Math.round(price * 100),
+      isAvailable: rest.isAvailable ?? true,
+      isFeatured: rest.isFeatured ?? false,
+      dietaryTags: dietaryTags,
+      valueTags: valueTags,
+      allergens: allergens,
+    };
+    
+    if (rest.description) cleanData.description = rest.description;
+    if (rest.imageUrl) cleanData.imageUrl = rest.imageUrl;
+    if (rest.ingredients) cleanData.ingredients = rest.ingredients;
+    if (rest.isLocallySourced) cleanData.isLocallySourced = rest.isLocallySourced;
+    if (rest.sourceFarm) cleanData.sourceFarm = rest.sourceFarm;
+    
+    onSubmit(cleanData);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Item Name *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Margherita Pizza" {...field} data-testid="input-menu-item-name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category *</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-menu-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Appetizers">Appetizers</SelectItem>
+                    <SelectItem value="Entrees">Entrees</SelectItem>
+                    <SelectItem value="Sides">Sides</SelectItem>
+                    <SelectItem value="Desserts">Desserts</SelectItem>
+                    <SelectItem value="Drinks">Drinks</SelectItem>
+                    <SelectItem value="Specials">Specials</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Price ($) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="12.99"
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    data-testid="input-menu-item-price"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Describe the menu item..."
+                  rows={3}
+                  {...field}
+                  value={field.value || ""}
+                  data-testid="input-menu-item-description"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="space-y-2">
+          <Label>Dietary Tags (optional)</Label>
+          <TagInput
+            tags={dietaryTags}
+            onChange={setDietaryTags}
+            placeholder="e.g., Vegan, Gluten-Free, Keto"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Value Tags (optional)</Label>
+          <TagInput
+            tags={valueTags}
+            onChange={setValueTags}
+            placeholder="e.g., Local, Organic, Sustainable"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Allergens (optional)</Label>
+          <TagInput
+            tags={allergens}
+            onChange={setAllergens}
+            placeholder="e.g., Nuts, Dairy, Gluten"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="isAvailable"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-md border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel>Available</FormLabel>
+                  <FormDescription>Currently available to order</FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="switch-menu-item-available"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="isFeatured"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-md border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel>Featured Item</FormLabel>
+                  <FormDescription>Highlight on menu</FormDescription>
+                </div>
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-menu-item-featured"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="submit" disabled={isPending} data-testid="button-submit-menu-item">
+            {isPending ? "Creating..." : "Create Menu Item"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+function AddServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
+  const [serviceTags, setServiceTags] = useState<string[]>([]);
+  
+  const form = useForm<z.infer<typeof serviceFormSchema>>({
+    resolver: zodResolver(serviceFormSchema),
+    defaultValues: {
+      offeringName: "",
+      description: "",
+      pricingModel: "fixed",
+      price: 0,
+      hourlyRate: 0,
+      durationMinutes: 0,
+      tags: [],
+      requirements: "",
+      includes: "",
+      isActive: true,
+      isFeatured: false,
+    },
+  });
+
+  const pricingModel = form.watch("pricingModel");
+
+  const handleSubmit = (data: z.infer<typeof serviceFormSchema>) => {
+    const { price, hourlyRate, ...rest } = data;
+    
+    const cleanData: any = {
+      offeringName: rest.offeringName,
+      description: rest.description,
+      pricingModel: rest.pricingModel,
+      isActive: rest.isActive ?? true,
+      isFeatured: rest.isFeatured ?? false,
+      tags: serviceTags,
+    };
+    
+    if (rest.pricingModel === "fixed" && price) {
+      cleanData.fixedPriceCents = Math.round(price * 100);
+      cleanData.startingAtCents = Math.round(price * 100);
+    }
+    
+    if (rest.pricingModel === "hourly" && hourlyRate) {
+      cleanData.hourlyRateCents = Math.round(hourlyRate * 100);
+      cleanData.startingAtCents = Math.round(hourlyRate * 100);
+    }
+    
+    if (rest.pricingModel === "quote" && price) {
+      cleanData.startingAtCents = Math.round(price * 100);
+    }
+    
+    if (rest.durationMinutes && rest.durationMinutes > 0) cleanData.durationMinutes = rest.durationMinutes;
+    if (rest.requirements) cleanData.requirements = rest.requirements;
+    if (rest.includes) cleanData.includes = rest.includes;
+    
+    onSubmit(cleanData);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="offeringName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Service Name *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Yoga Session" {...field} data-testid="input-service-name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description *</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Describe your service..."
+                  rows={3}
+                  {...field}
+                  data-testid="input-service-description"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="pricingModel"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pricing Model *</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-pricing-model">
+                    <SelectValue placeholder="Select pricing model" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="fixed">Fixed Price</SelectItem>
+                  <SelectItem value="hourly">Hourly Rate</SelectItem>
+                  <SelectItem value="quote">Custom Quote</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {pricingModel === "fixed" && (
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Fixed Price ($) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="50.00"
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    data-testid="input-service-price"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {pricingModel === "hourly" && (
+          <FormField
+            control={form.control}
+            name="hourlyRate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Hourly Rate ($) *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="75.00"
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    data-testid="input-service-hourly-rate"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {pricingModel === "quote" && (
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Starting At ($)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="100.00"
+                    value={field.value || ""}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    data-testid="input-service-starting-price"
+                  />
+                </FormControl>
+                <FormDescription>Optional starting price for display</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        <FormField
+          control={form.control}
+          name="durationMinutes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Duration (minutes)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder="60"
+                  value={field.value || ""}
+                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                  data-testid="input-service-duration"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="space-y-2">
+          <Label>Service Tags (optional)</Label>
+          <TagInput
+            tags={serviceTags}
+            onChange={setServiceTags}
+            placeholder="e.g., Wellness, Local, Certified"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="isActive"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-md border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel>Active</FormLabel>
+                  <FormDescription>Available for booking</FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="switch-service-active"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="isFeatured"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between rounded-md border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel>Featured Service</FormLabel>
+                  <FormDescription>Highlight on profile</FormDescription>
+                </div>
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    data-testid="checkbox-service-featured"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="submit" disabled={isPending} data-testid="button-submit-service">
+            {isPending ? "Creating..." : "Create Service"}
           </Button>
         </div>
       </form>

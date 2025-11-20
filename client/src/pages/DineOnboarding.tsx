@@ -210,6 +210,7 @@ export default function DineOnboarding() {
             zipCode: data.zipCode || "",
             email: data.email || "",
             phone: data.phone || "",
+            capabilities: { products: false, services: false, menu: true },
           }),
         });
 
@@ -365,6 +366,7 @@ export default function DineOnboarding() {
             zipCode: data.zipCode,
             email: data.email,
             phone: data.phone,
+            capabilities: { products: false, services: false, menu: true },
           }),
         });
 

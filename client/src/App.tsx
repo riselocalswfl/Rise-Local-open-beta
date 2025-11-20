@@ -30,8 +30,6 @@ import Admin from "@/pages/Admin";
 import VendorProfile from "@/pages/VendorProfile";
 import VendorDashboard from "@/pages/VendorDashboard";
 import RestaurantProfile from "@/pages/RestaurantProfile";
-import RestaurantDashboard from "@/pages/RestaurantDashboard";
-import ServiceProviderDashboard from "@/pages/ServiceProviderDashboard";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import ShopOnboarding from "@/pages/ShopOnboarding";
 import DineOnboarding from "@/pages/DineOnboarding";
@@ -50,10 +48,13 @@ function Router() {
       <Route path="/vendors" component={Vendors} />
       <Route path="/vendor/:id" component={VendorProfile} />
       <Route path="/dashboard" component={BusinessDashboard} />
-      <Route path="/vendor-dashboard" component={VendorDashboard} />
       <Route path="/restaurant/:id" component={RestaurantProfile} />
-      <Route path="/restaurant-dashboard" component={RestaurantDashboard} />
-      <Route path="/service-provider-dashboard" component={ServiceProviderDashboard} />
+      <Route path="/restaurant-dashboard">
+        {() => <Redirect to="/dashboard" />}
+      </Route>
+      <Route path="/service-provider-dashboard">
+        {() => <Redirect to="/dashboard" />}
+      </Route>
       <Route path="/eat-local" component={EatLocal} />
       <Route path="/live-local" component={LiveLocal} />
       <Route path="/services" component={Services} />

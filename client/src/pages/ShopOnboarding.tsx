@@ -215,6 +215,7 @@ export default function ShopOnboarding() {
             zipCode: data.zipCode || "",
             email: data.email || "",
             phone: data.phone || "",
+            capabilities: { products: true, services: false, menu: false },
           }),
         });
 
@@ -378,6 +379,7 @@ export default function ShopOnboarding() {
             zipCode: data.zipCode,
             email: data.email,
             phone: data.phone,
+            capabilities: { products: true, services: false, menu: false },
           }),
         });
 

@@ -87,6 +87,7 @@ export default function ServiceProviderSignup() {
       userId: user.id,
       ...formData,
       paymentPreferences: allPaymentPreferences,
+      capabilities: { products: false, services: true, menu: false },
     });
   };
 
