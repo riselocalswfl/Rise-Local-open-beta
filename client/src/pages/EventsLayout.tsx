@@ -1,12 +1,33 @@
 import { useLocation, Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/Header";
-import Events from "@/pages/Events";
-import MyEvents from "@/pages/MyEvents";
+import EventCard from "@/components/EventCard";
+import { getEventsWithOrganizers } from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function EventsLayout() {
   const [location] = useLocation();
   const activeTab = location === "/events/my" ? "my" : "browse";
+
+  // Fetch all events
+  const { data: allEvents, isLoading: eventsLoading } = useQuery({
+    queryKey: ["/api/events-with-organizers"],
+    queryFn: getEventsWithOrganizers,
+  });
+
+  // Fetch user's RSVPs (for "My Events" tab)
+  const { data: userRsvps, isLoading: rsvpsLoading } = useQuery<any[]>({
+    queryKey: ["/api/events/rsvps/me"],
+    enabled: activeTab === "my", // Only fetch when on "My Events" tab
+  });
+
+  // Filter events based on active tab
+  const displayEvents = activeTab === "my" 
+    ? allEvents?.filter(event => userRsvps?.some((rsvp) => rsvp.eventId === event.id))
+    : allEvents;
+
+  const isLoading = activeTab === "my" ? (eventsLoading || rsvpsLoading) : eventsLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,7 +60,57 @@ export default function EventsLayout() {
         </div>
       </div>
 
-      {activeTab === "my" ? <MyEvents /> : <Events />}
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+        {activeTab === "my" && (
+          <div className="mb-6">
+            <h1 className="text-3xl font-playfair font-bold mb-2">My Events</h1>
+            <p className="text-muted-foreground">Events you've RSVP'd to or are interested in</p>
+          </div>
+        )}
+        
+        {activeTab === "browse" && (
+          <div className="mb-6">
+            <h1 className="text-3xl font-playfair font-bold mb-2">Browse Events</h1>
+            <p className="text-muted-foreground">Discover local events in Fort Myers</p>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Skeleton className="h-80 w-full" />
+            <Skeleton className="h-80 w-full" />
+            <Skeleton className="h-80 w-full" />
+          </div>
+        ) : displayEvents && displayEvents.length > 0 ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {displayEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                id={event.id}
+                title={event.title}
+                dateTime={typeof event.dateTime === 'string' ? event.dateTime : new Date(event.dateTime).toISOString()}
+                location={event.location}
+                description={event.description || ""}
+                organizerName={event.organizerName}
+                ticketsAvailable={event.ticketsAvailable || 0}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground text-lg">
+              {activeTab === "my" 
+                ? "You haven't RSVP'd to any events yet. Browse events to get started!"
+                : "No events found. Check back soon!"}
+            </p>
+            {activeTab === "my" && (
+              <Link href="/events" className="text-primary hover:underline mt-4 inline-block">
+                Browse Events
+              </Link>
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

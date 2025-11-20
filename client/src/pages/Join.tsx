@@ -1,22 +1,22 @@
 import { Link } from "wouter";
-import { ShoppingBag, Store } from "lucide-react";
+import { Store, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import BrandLogo from "@/components/BrandLogo";
 
 export default function Join() {
-  const handleVendorSelect = () => {
-    // All vendors go to unified onboarding after auth
+  const handleStartSelling = () => {
+    // Vendor flow: click button → authenticate → onboarding
     window.location.href = "/api/login?intended_role=vendor";
   };
 
-  const handleBuyerSelect = () => {
+  const handleBuyerSignup = () => {
+    // Buyer flow: simple authentication for checkout/orders
     window.location.href = "/api/login?intended_role=buyer";
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-muted/30 to-background">
+      <header className="border-b bg-background/80 backdrop-blur">
         <div className="container mx-auto px-4 py-4">
           <Link href="/" data-testid="link-home">
             <BrandLogo />
@@ -25,102 +25,89 @@ export default function Join() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-5xl">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-playfair font-bold mb-4">
-              Join Rise Local
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Choose how you'd like to join our community of local buyers and vendors in Fort Myers
-            </p>
-          </div>
+        <div className="w-full max-w-4xl">
+          <div className="text-center space-y-8">
+            {/* Hero Section */}
+            <div className="space-y-4">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-4">
+                <Store className="w-10 h-10 text-primary" />
+              </div>
+              
+              <h1 className="text-4xl md:text-6xl font-playfair font-bold">
+                Start Selling Locally
+              </h1>
+              
+              <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+                Join Fort Myers' premier marketplace and connect with local customers who value what you offer
+              </p>
+            </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card className="hover-elevate transition-all">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <ShoppingBag className="w-8 h-8 text-primary" />
+            {/* Benefits */}
+            <div className="grid md:grid-cols-3 gap-6 my-12 max-w-3xl mx-auto">
+              <div className="flex flex-col items-center text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-primary mb-2" />
+                <h3 className="font-semibold">Simple Setup</h3>
+                <p className="text-sm text-muted-foreground">
+                  Create your profile in minutes
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-primary mb-2" />
+                <h3 className="font-semibold">No Transaction Fees</h3>
+                <p className="text-sm text-muted-foreground">
+                  Keep more of what you earn
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 text-primary mb-2" />
+                <h3 className="font-semibold">Local Community</h3>
+                <p className="text-sm text-muted-foreground">
+                  Connect with Fort Myers customers
+                </p>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="space-y-4">
+              <Button 
+                size="lg"
+                className="text-lg px-8 py-6 h-auto"
+                data-testid="button-start-selling"
+                onClick={handleStartSelling}
+              >
+                Start Selling on Rise Local
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+              
+              <p className="text-sm text-muted-foreground">
+                Takes less than 5 minutes to get started
+              </p>
+            </div>
+
+            {/* Secondary Info */}
+            <div className="pt-8 border-t max-w-2xl mx-auto space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Perfect for shops, restaurants, food vendors, and service providers in Fort Myers, FL
+              </p>
+              
+              <div className="flex flex-col items-center gap-3">
+                <Link href="/" className="text-sm text-primary hover:underline inline-flex items-center" data-testid="link-browse">
+                  Just browsing? Explore our marketplace
+                  <ArrowRight className="ml-1 w-4 h-4" />
+                </Link>
+                
+                <div className="text-sm text-muted-foreground">
+                  Need an account to track orders?{" "}
+                  <button 
+                    onClick={handleBuyerSignup}
+                    className="text-primary hover:underline"
+                    data-testid="button-buyer-signup"
+                  >
+                    Sign up as a customer
+                  </button>
                 </div>
-                <CardTitle className="text-2xl">I'm a Buyer</CardTitle>
-                <CardDescription className="text-base">
-                  Shop local products and support Fort Myers vendors
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>Discover local vendors and artisans</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>Filter by values that matter to you</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>Support sustainable local businesses</span>
-                  </li>
-                </ul>
-                <Button 
-                  className="w-full" 
-                  size="lg" 
-                  data-testid="button-join-buyer"
-                  onClick={handleBuyerSelect}
-                >
-                  Sign Up as Buyer
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover-elevate transition-all border-primary/20">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <Store className="w-8 h-8 text-primary" />
-                </div>
-                <CardTitle className="text-2xl">I'm a Vendor</CardTitle>
-                <CardDescription className="text-base">
-                  Grow your business in the local community
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>Reach local customers actively seeking your products</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>No transaction fees for vendors</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>Showcase your business values and story</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">✓</span>
-                    <span>Host events and build community</span>
-                  </li>
-                </ul>
-                <Button 
-                  className="w-full" 
-                  size="lg" 
-                  variant="default" 
-                  data-testid="button-join-vendor"
-                  onClick={handleVendorSelect}
-                >
-                  Sign Up as Vendor
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="text-center mt-8">
-            <p className="text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline" data-testid="link-login">
-                Log in
-              </Link>
-            </p>
+              </div>
+            </div>
           </div>
         </div>
       </main>

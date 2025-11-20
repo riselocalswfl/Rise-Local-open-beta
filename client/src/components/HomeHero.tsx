@@ -16,11 +16,11 @@ export default function HomeHero() {
           </p>
           <div className="flex justify-center mb-6">
             <Link 
-              href="/onboarding" 
-              data-testid="join-movement-cta"
+              href="/join" 
+              data-testid="start-selling-cta"
               className="bg-secondary hover:bg-secondary/90 text-white px-8 py-3 rounded-md font-medium transition no-underline"
             >
-              Join the Movement
+              Start Selling on Rise Local
             </Link>
           </div>
           <div className="w-full max-w-md mx-auto">
