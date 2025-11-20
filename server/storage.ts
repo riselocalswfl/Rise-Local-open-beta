@@ -12,21 +12,15 @@ import {
   type Spotlight, type InsertSpotlight,
   type VendorReview, type InsertVendorReview,
   type VendorFAQ, type InsertVendorFAQ,
-  type Restaurant, type InsertRestaurant,
   type MenuItem, type InsertMenuItem,
-  type RestaurantReview, type InsertRestaurantReview,
-  type RestaurantFAQ, type InsertRestaurantFAQ,
-  type LoyaltyTier, type InsertLoyaltyTier,
-  type LoyaltyTransaction, type InsertLoyaltyTransaction,
-  type ServiceProvider, type InsertServiceProvider,
   type ServiceOffering, type InsertServiceOffering,
   type ServiceBooking, type InsertServiceBooking,
   type Service, type InsertService,
   type Message, type InsertMessage,
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
-  restaurants, menuItems, restaurantReviews, restaurantFAQs, loyaltyTiers, loyaltyTransactions,
-  serviceProviders, serviceOfferings, serviceBookings, services, messages,
+  menuItems, serviceOfferings, serviceBookings, services, messages,
+  restaurants, serviceProviders,
   fulfillmentDetailsSchema
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -79,6 +73,7 @@ export interface IStorage {
 
   // Menu Item operations
   getMenuItem(id: string): Promise<MenuItem | undefined>;
+  getMenuItems(): Promise<MenuItem[]>;
   getMenuItemsByVendor(vendorId: string): Promise<MenuItem[]>;
   createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
   updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<void>;
@@ -175,54 +170,6 @@ export interface IStorage {
 
   // Extended Event operations
   getEventsByVendor(vendorId: string): Promise<Event[]>;
-
-  // Restaurant operations
-  getRestaurant(id: string): Promise<Restaurant | undefined>;
-  getRestaurantByOwnerId(ownerId: string): Promise<Restaurant | undefined>;
-  getRestaurants(): Promise<Restaurant[]>;
-  getVerifiedRestaurants(): Promise<Restaurant[]>;
-  getAllRestaurantValues(): Promise<string[]>;
-  createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant>;
-  updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<Restaurant>;
-  deleteRestaurant(id: string): Promise<void>;
-  updateRestaurantVerification(id: string, isVerified: boolean): Promise<void>;
-  
-  // Combined operations
-  getAllUniqueValues(): Promise<string[]>;
-
-  // Menu Item operations
-  getMenuItem(id: string): Promise<MenuItem | undefined>;
-  getMenuItems(): Promise<MenuItem[]>;
-  getMenuItemsByRestaurant(restaurantId: string): Promise<MenuItem[]>;
-  getMenuItemsByCategory(restaurantId: string, category: string): Promise<MenuItem[]>;
-  createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem>;
-  updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<void>;
-  deleteMenuItem(id: string): Promise<void>;
-
-  // Restaurant Review operations
-  getRestaurantReviews(restaurantId: string): Promise<RestaurantReview[]>;
-  createRestaurantReview(review: InsertRestaurantReview): Promise<RestaurantReview>;
-  deleteRestaurantReview(id: string): Promise<void>;
-
-  // Restaurant FAQ operations
-  getRestaurantFAQ(id: string): Promise<RestaurantFAQ | undefined>;
-  getRestaurantFAQs(restaurantId: string): Promise<RestaurantFAQ[]>;
-  createRestaurantFAQ(faq: InsertRestaurantFAQ): Promise<RestaurantFAQ>;
-  updateRestaurantFAQ(id: string, data: Partial<InsertRestaurantFAQ>): Promise<void>;
-  deleteRestaurantFAQ(id: string): Promise<void>;
-
-  // Extended Restaurant Event operations
-  getEventsByRestaurant(restaurantId: string): Promise<Event[]>;
-
-  // Service Provider operations
-  getServiceProvider(id: string): Promise<ServiceProvider | undefined>;
-  getServiceProviderByOwnerId(ownerId: string): Promise<ServiceProvider | undefined>;
-  getServiceProviders(): Promise<ServiceProvider[]>;
-  getVerifiedServiceProviders(): Promise<ServiceProvider[]>;
-  getServiceProvidersByCategory(category: string): Promise<ServiceProvider[]>;
-  createServiceProvider(provider: InsertServiceProvider): Promise<ServiceProvider>;
-  updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<ServiceProvider>;
-  deleteServiceProvider(id: string): Promise<void>;
 
   // Service Offering operations
   getServiceOffering(id: string): Promise<ServiceOffering | undefined>;
@@ -359,8 +306,8 @@ export class DbStorage implements IStorage {
       businessName: v.businessName,
       bio: v.bio,
       city: v.city,
-      categories: v.categories || [],
-      values: v.values || [],
+      categories: (v as any).categories || [],
+      values: (v as any).values || [],
       isVerified: v.isVerified,
       followerCount: v.followerCount,
       logoUrl: v.logoUrl || undefined,
@@ -371,11 +318,11 @@ export class DbStorage implements IStorage {
     const restaurantListings: import("@shared/schema").UnifiedVendorListing[] = restaurantsList.map(r => ({
       id: r.id,
       vendorType: "dine" as const,
-      businessName: r.restaurantName,
+      businessName: (r as any).restaurantName,
       bio: r.bio,
       city: r.city,
-      categories: r.categories || [],
-      values: r.badges || [], // restaurants use badges as values
+      categories: (r as any).categories || [],
+      values: (r as any).badges || [], // restaurants use badges as values
       isVerified: r.isVerified,
       followerCount: r.followerCount,
       logoUrl: r.logoUrl || undefined,
@@ -389,8 +336,8 @@ export class DbStorage implements IStorage {
       businessName: sp.businessName,
       bio: sp.bio,
       city: sp.city,
-      categories: sp.categories || [],
-      values: sp.values || [],
+      categories: (sp as any).categories || [],
+      values: (sp as any).values || [],
       isVerified: sp.isVerified,
       followerCount: sp.followerCount,
       logoUrl: sp.logoUrl || undefined,
@@ -482,6 +429,10 @@ export class DbStorage implements IStorage {
   async getMenuItem(id: string): Promise<MenuItem | undefined> {
     const result = await db.select().from(menuItems).where(eq(menuItems.id, id));
     return result[0];
+  }
+
+  async getMenuItems(): Promise<MenuItem[]> {
+    return await db.select().from(menuItems);
   }
 
   async getMenuItemsByVendor(vendorId: string): Promise<MenuItem[]> {
@@ -846,213 +797,6 @@ export class DbStorage implements IStorage {
     return await db.select().from(events)
       .where(eq(events.vendorId, vendorId))
       .orderBy(events.dateTime);
-  }
-
-  // Restaurant operations
-  async getRestaurant(id: string): Promise<Restaurant | undefined> {
-    const result = await db.select().from(restaurants).where(eq(restaurants.id, id));
-    return result[0];
-  }
-
-  async getRestaurantByOwnerId(ownerId: string): Promise<Restaurant | undefined> {
-    const result = await db.select().from(restaurants).where(eq(restaurants.ownerId, ownerId));
-    return result[0];
-  }
-
-  async getRestaurants(): Promise<Restaurant[]> {
-    return await db.select().from(restaurants);
-  }
-
-  async getVerifiedRestaurants(): Promise<Restaurant[]> {
-    return await db.select().from(restaurants).where(eq(restaurants.isVerified, true));
-  }
-
-  async getAllRestaurantValues(): Promise<string[]> {
-    const allRestaurants = await db.select().from(restaurants);
-    const allValues = new Set<string>();
-    
-    for (const restaurant of allRestaurants) {
-      if (restaurant.badges && Array.isArray(restaurant.badges)) {
-        restaurant.badges.forEach((value: string) => {
-          if (value && value.trim()) {
-            allValues.add(value.trim().toLowerCase());
-          }
-        });
-      }
-    }
-    
-    return Array.from(allValues).sort();
-  }
-
-  async createRestaurant(restaurant: InsertRestaurant): Promise<Restaurant> {
-    const result = await db.insert(restaurants).values(restaurant).returning();
-    return result[0];
-  }
-
-  async updateRestaurant(id: string, data: Partial<InsertRestaurant>): Promise<Restaurant> {
-    await db.update(restaurants).set(data).where(eq(restaurants.id, id));
-    const updated = await db.select().from(restaurants).where(eq(restaurants.id, id));
-    return updated[0];
-  }
-
-  async deleteRestaurant(id: string): Promise<void> {
-    await db.delete(restaurants).where(eq(restaurants.id, id));
-  }
-
-  async updateRestaurantVerification(id: string, isVerified: boolean): Promise<void> {
-    await db.update(restaurants).set({ isVerified }).where(eq(restaurants.id, id));
-  }
-
-  // Menu Item operations
-  async getMenuItem(id: string): Promise<MenuItem | undefined> {
-    const result = await db.select().from(menuItems).where(eq(menuItems.id, id));
-    return result[0];
-  }
-
-  async getMenuItems(): Promise<MenuItem[]> {
-    return await db.select().from(menuItems);
-  }
-
-  async getMenuItemsByRestaurant(restaurantId: string): Promise<MenuItem[]> {
-    return await db.select().from(menuItems)
-      .where(eq(menuItems.restaurantId, restaurantId))
-      .orderBy(menuItems.displayOrder);
-  }
-
-  async getMenuItemsByCategory(restaurantId: string, category: string): Promise<MenuItem[]> {
-    return await db.select().from(menuItems)
-      .where(and(
-        eq(menuItems.restaurantId, restaurantId),
-        eq(menuItems.category, category)
-      ))
-      .orderBy(menuItems.displayOrder);
-  }
-
-  async createMenuItem(menuItem: InsertMenuItem): Promise<MenuItem> {
-    const result = await db.insert(menuItems).values(menuItem).returning();
-    return result[0];
-  }
-
-  async updateMenuItem(id: string, data: Partial<InsertMenuItem>): Promise<void> {
-    await db.update(menuItems).set(data).where(eq(menuItems.id, id));
-  }
-
-  async deleteMenuItem(id: string): Promise<void> {
-    await db.delete(menuItems).where(eq(menuItems.id, id));
-  }
-
-  // Restaurant Review operations
-  async getRestaurantReviews(restaurantId: string): Promise<RestaurantReview[]> {
-    return await db.select().from(restaurantReviews)
-      .where(eq(restaurantReviews.restaurantId, restaurantId))
-      .orderBy(desc(restaurantReviews.createdAt));
-  }
-
-  async createRestaurantReview(review: InsertRestaurantReview): Promise<RestaurantReview> {
-    const result = await db.insert(restaurantReviews).values(review).returning();
-    return result[0];
-  }
-
-  async deleteRestaurantReview(id: string): Promise<void> {
-    await db.delete(restaurantReviews).where(eq(restaurantReviews.id, id));
-  }
-
-  // Restaurant FAQ operations
-  async getRestaurantFAQ(id: string): Promise<RestaurantFAQ | undefined> {
-    const result = await db.select().from(restaurantFAQs).where(eq(restaurantFAQs.id, id));
-    return result[0];
-  }
-
-  async getRestaurantFAQs(restaurantId: string): Promise<RestaurantFAQ[]> {
-    return await db.select().from(restaurantFAQs)
-      .where(eq(restaurantFAQs.restaurantId, restaurantId))
-      .orderBy(restaurantFAQs.displayOrder);
-  }
-
-  async createRestaurantFAQ(faq: InsertRestaurantFAQ): Promise<RestaurantFAQ> {
-    const result = await db.insert(restaurantFAQs).values(faq).returning();
-    return result[0];
-  }
-
-  async updateRestaurantFAQ(id: string, data: Partial<InsertRestaurantFAQ>): Promise<void> {
-    await db.update(restaurantFAQs).set(data).where(eq(restaurantFAQs.id, id));
-  }
-
-  async deleteRestaurantFAQ(id: string): Promise<void> {
-    await db.delete(restaurantFAQs).where(eq(restaurantFAQs.id, id));
-  }
-
-  // Combined operations
-  async getAllUniqueValues(): Promise<string[]> {
-    const [vendorValues, restaurantValues] = await Promise.all([
-      this.getAllVendorValues(),
-      this.getAllRestaurantValues()
-    ]);
-    
-    const allValues = new Set([...vendorValues, ...restaurantValues]);
-    return Array.from(allValues).sort();
-  }
-
-  // Extended Restaurant Event operations
-  async getEventsByRestaurant(restaurantId: string): Promise<Event[]> {
-    return await db.select().from(events)
-      .where(eq(events.restaurantId, restaurantId))
-      .orderBy(events.dateTime);
-  }
-
-  // Service Provider operations
-  async getServiceProvider(id: string): Promise<ServiceProvider | undefined> {
-    const result = await db.select().from(serviceProviders).where(eq(serviceProviders.id, id));
-    return result[0];
-  }
-
-  async getServiceProviderByOwnerId(ownerId: string): Promise<ServiceProvider | undefined> {
-    const result = await db.select().from(serviceProviders).where(eq(serviceProviders.ownerId, ownerId));
-    return result[0];
-  }
-
-  async getServiceProviders(): Promise<ServiceProvider[]> {
-    // Only return service providers with complete profiles to match getAllVendorListings behavior
-    return await db.select().from(serviceProviders)
-      .where(eq(serviceProviders.profileStatus, "complete"))
-      .orderBy(desc(serviceProviders.createdAt));
-  }
-
-  async getVerifiedServiceProviders(): Promise<ServiceProvider[]> {
-    return await db.select().from(serviceProviders)
-      .where(eq(serviceProviders.isVerified, true))
-      .orderBy(desc(serviceProviders.isFeatured), desc(serviceProviders.createdAt));
-  }
-
-  async getServiceProvidersByCategory(category: string): Promise<ServiceProvider[]> {
-    // Get all service providers with complete profiles
-    const allProviders = await this.getServiceProviders();
-    
-    // Filter for providers whose categories array includes the requested category
-    // Note: This does simple string matching. For hierarchical category filtering,
-    // use client-side categoriesMatch helper
-    return allProviders.filter(provider => 
-      provider.categories && provider.categories.includes(category)
-    );
-  }
-
-  async createServiceProvider(provider: InsertServiceProvider): Promise<ServiceProvider> {
-    const result = await db.insert(serviceProviders).values(provider).returning();
-    return result[0];
-  }
-
-  async updateServiceProvider(id: string, data: Partial<InsertServiceProvider>): Promise<ServiceProvider> {
-    await db.update(serviceProviders).set(data).where(eq(serviceProviders.id, id));
-    const updated = await db.select().from(serviceProviders).where(eq(serviceProviders.id, id));
-    return updated[0];
-  }
-
-  async deleteServiceProvider(id: string): Promise<void> {
-    await db.delete(serviceProviders).where(eq(serviceProviders.id, id));
-  }
-
-  async updateServiceProviderVerification(id: string, isVerified: boolean): Promise<void> {
-    await db.update(serviceProviders).set({ isVerified }).where(eq(serviceProviders.id, id));
   }
 
   // Service Offering operations

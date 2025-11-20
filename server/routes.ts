@@ -191,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current user's vendor business
+  // Get current user's vendor business (unified for all vendor types: shop, dine, service)
   app.get('/api/auth/my-vendor', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -203,15 +203,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current user's restaurant business
+  // Legacy endpoint - redirects to unified /api/auth/my-vendor
   app.get('/api/auth/my-restaurant', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const restaurant = await storage.getRestaurantByOwnerId(userId);
-      res.json(restaurant || null);
+      const vendor = await storage.getVendorByOwnerId(userId);
+      res.json(vendor || null);
     } catch (error) {
       console.error("Error fetching user's restaurant:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant profile" });
+      res.status(500).json({ message: "Failed to fetch vendor profile" });
     }
   });
 
@@ -265,8 +265,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [
         allUsers,
         allVendors,
-        allRestaurants,
-        allServiceProviders,
         allProducts,
         allMenuItems,
         allServiceOfferings,
@@ -275,8 +273,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ] = await Promise.all([
         storage.getUsers(),
         storage.getVendors(),
-        storage.getRestaurants(),
-        storage.getServiceProviders(),
         storage.getProducts(),
         storage.getMenuItems(),
         storage.getAllServiceOfferings(),
@@ -284,11 +280,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getAllVendorOrders(),
       ]);
 
+      // Filter vendors by type
+      const allShopVendors = allVendors.filter((v: any) => v.vendorType === 'shop');
+      const allDineVendors = allVendors.filter((v: any) => v.vendorType === 'dine');
+      const allServiceVendors = allVendors.filter((v: any) => v.vendorType === 'service');
+
       // Calculate statistics
       const totalUsers = allUsers.length;
-      const totalVendors = allVendors.length;
-      const totalRestaurants = allRestaurants.length;
-      const totalServiceProviders = allServiceProviders.length;
+      const totalVendors = allShopVendors.length;
+      const totalRestaurants = allDineVendors.length;
+      const totalServiceProviders = allServiceVendors.length;
       const totalProducts = allProducts.length;
       const totalMenuItems = allMenuItems.length;
       const totalServiceOfferings = allServiceOfferings.length;
@@ -296,23 +297,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalOrders = allVendorOrders.length;
 
       // Verified counts
-      const verifiedVendors = allVendors.filter(v => v.isVerified).length;
-      const unverifiedVendors = allVendors.filter(v => !v.isVerified).length;
-      const verifiedRestaurants = allRestaurants.filter(r => r.isVerified).length;
-      const unverifiedRestaurants = allRestaurants.filter(r => !r.isVerified).length;
-      const verifiedServiceProviders = allServiceProviders.filter(sp => sp.isVerified).length;
-      const unverifiedServiceProviders = allServiceProviders.filter(sp => !sp.isVerified).length;
+      const verifiedVendors = allShopVendors.filter((v: any) => v.isVerified).length;
+      const unverifiedVendors = allShopVendors.filter((v: any) => !v.isVerified).length;
+      const verifiedRestaurants = allDineVendors.filter((v: any) => v.isVerified).length;
+      const unverifiedRestaurants = allDineVendors.filter((v: any) => !v.isVerified).length;
+      const verifiedServiceProviders = allServiceVendors.filter((v: any) => v.isVerified).length;
+      const unverifiedServiceProviders = allServiceVendors.filter((v: any) => !v.isVerified).length;
 
       // Revenue calculations
-      const totalRevenueCents = allVendorOrders.reduce((sum, order) => sum + order.totalCents, 0);
-      const paidOrders = allVendorOrders.filter(o => o.paymentStatus === 'paid');
-      const paidRevenueCents = paidOrders.reduce((sum, order) => sum + order.totalCents, 0);
+      const totalRevenueCents = allVendorOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
+      const paidOrders = allVendorOrders.filter((o: any) => o.paymentStatus === 'paid');
+      const paidRevenueCents = paidOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
       const pendingRevenueCents = totalRevenueCents - paidRevenueCents;
 
       // Pending verifications
-      const pendingVendorVerifications = allVendors.filter(v => !v.isVerified);
-      const pendingRestaurantVerifications = allRestaurants.filter(r => !r.isVerified);
-      const pendingServiceProviderVerifications = allServiceProviders.filter(sp => !sp.isVerified);
+      const pendingVendorVerifications = allShopVendors.filter((v: any) => !v.isVerified);
+      const pendingRestaurantVerifications = allDineVendors.filter((v: any) => !v.isVerified);
+      const pendingServiceProviderVerifications = allServiceVendors.filter((v: any) => !v.isVerified);
 
       res.json({
         users: {
@@ -322,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           total: totalVendors,
           verified: verifiedVendors,
           unverified: unverifiedVendors,
-          pendingVerifications: pendingVendorVerifications.map(v => ({
+          pendingVerifications: pendingVendorVerifications.map((v: any) => ({
             id: v.id,
             businessName: v.businessName,
             contactEmail: v.contactEmail,
@@ -334,11 +335,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           total: totalRestaurants,
           verified: verifiedRestaurants,
           unverified: unverifiedRestaurants,
-          pendingVerifications: pendingRestaurantVerifications.map(r => ({
-            id: r.id,
-            businessName: r.restaurantName,
-            contactEmail: r.contactEmail,
-            city: r.city,
+          pendingVerifications: pendingRestaurantVerifications.map((v: any) => ({
+            id: v.id,
+            businessName: v.businessName,
+            contactEmail: v.contactEmail,
+            city: v.city,
             type: 'restaurant' as const,
           })),
         },
@@ -346,11 +347,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           total: totalServiceProviders,
           verified: verifiedServiceProviders,
           unverified: unverifiedServiceProviders,
-          pendingVerifications: pendingServiceProviderVerifications.map(sp => ({
-            id: sp.id,
-            businessName: sp.businessName,
-            contactEmail: sp.contactEmail,
-            city: sp.city,
+          pendingVerifications: pendingServiceProviderVerifications.map((v: any) => ({
+            id: v.id,
+            businessName: v.businessName,
+            contactEmail: v.contactEmail,
+            city: v.city,
             type: 'service_provider' as const,
           })),
         },
@@ -414,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { isVerified } = req.body;
-      await storage.updateRestaurantVerification(req.params.id, isVerified);
+      await storage.updateVendorVerification(req.params.id, isVerified);
       res.json({ success: true });
     } catch (error) {
       console.error("Error verifying restaurant:", error);
@@ -433,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { isVerified } = req.body;
-      await storage.updateServiceProviderVerification(req.params.id, isVerified);
+      await storage.updateVendorVerification(req.params.id, isVerified);
       res.json({ success: true });
     } catch (error) {
       console.error("Error verifying service provider:", error);
@@ -464,36 +465,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Get existing profiles
+      // Get existing vendor profile (unified system)
       const existingVendor = await storage.getVendorByOwnerId(userId);
-      const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
-      const existingServiceProvider = await storage.getServiceProviderByOwnerId(userId);
 
-      // Determine source profile based on user's CURRENT role (not just first available)
+      // Determine source profile based on user's CURRENT role
       let sourceProfile: any = null;
       let sourceType: string = '';
 
       if (targetUser.role === 'vendor' && existingVendor) {
         sourceProfile = existingVendor;
         sourceType = 'vendor';
-      } else if (targetUser.role === 'restaurant' && existingRestaurant) {
-        sourceProfile = existingRestaurant;
+      } else if (targetUser.role === 'restaurant' && existingVendor && existingVendor.vendorType === 'dine') {
+        sourceProfile = existingVendor;
         sourceType = 'restaurant';
-      } else if (targetUser.role === 'service_provider' && existingServiceProvider) {
-        sourceProfile = existingServiceProvider;
+      } else if (targetUser.role === 'service_provider' && existingVendor && existingVendor.vendorType === 'service') {
+        sourceProfile = existingVendor;
         sourceType = 'service_provider';
-      } else {
-        // Fallback: use first available profile if current role doesn't match any profile
-        if (existingVendor) {
-          sourceProfile = existingVendor;
-          sourceType = 'vendor';
-        } else if (existingRestaurant) {
-          sourceProfile = existingRestaurant;
-          sourceType = 'restaurant';
-        } else if (existingServiceProvider) {
-          sourceProfile = existingServiceProvider;
-          sourceType = 'service_provider';
-        }
+      } else if (existingVendor) {
+        // Fallback: use existing vendor profile
+        sourceProfile = existingVendor;
+        sourceType = existingVendor.vendorType === 'shop' ? 'vendor' : existingVendor.vendorType === 'dine' ? 'restaurant' : 'service_provider';
       }
 
       if (!sourceProfile) {
@@ -503,17 +494,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new profile based on target type
       try {
         if (targetType === 'vendor') {
-          // If vendor profile already exists, just update the user role
-          if (existingVendor) {
+          // If vendor profile already exists with shop type, just update the user role
+          if (existingVendor && existingVendor.vendorType === 'shop') {
             await storage.updateUser(userId, { role: 'vendor' });
             return res.json({ success: true, newProfile: existingVendor, message: 'User switched to shop vendor (existing profile)' });
           }
 
-          // Create vendor profile from source
+          // If vendor exists but different type, update to shop type
+          if (existingVendor) {
+            const updatedVendor = await storage.updateVendor(existingVendor.id, {
+              vendorType: 'shop',
+              capabilities: { products: true, services: false, menu: false },
+            });
+            await storage.updateUser(userId, { role: 'vendor' });
+            return res.json({ success: true, newProfile: updatedVendor, message: 'User switched to shop vendor' });
+          }
+
+          // Create new shop vendor profile
           const newVendor = await storage.createVendor({
             ownerId: userId,
             vendorType: 'shop',
-            businessName: sourceType === 'restaurant' ? sourceProfile.restaurantName : sourceProfile.businessName,
+            businessName: sourceProfile.businessName,
             contactName: sourceProfile.contactName,
             bio: sourceProfile.bio || '',
             tagline: sourceProfile.tagline || '',
@@ -526,12 +527,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             instagram: sourceProfile.instagram || null,
             tiktok: sourceProfile.tiktok || null,
             facebook: sourceProfile.facebook || null,
-            locationType: sourceProfile.locationType,
+            locationType: sourceProfile.locationType || 'Physical storefront',
             address: sourceProfile.address || null,
             city: sourceProfile.city,
             state: sourceProfile.state,
             zipCode: sourceProfile.zipCode,
             serviceOptions: sourceProfile.serviceOptions || [],
+            paymentMethod: sourceProfile.paymentMethod || 'Through Platform',
+            capabilities: { products: true, services: false, menu: false },
             serviceRadius: sourceProfile.serviceRadius || null,
             hours: sourceProfile.hours || null,
             values: sourceProfile.values || sourceProfile.badges || [],
@@ -547,16 +550,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.json({ success: true, newProfile: newVendor, message: 'User switched to shop vendor' });
 
         } else if (targetType === 'restaurant') {
-          // If restaurant profile already exists, just update the user role
-          if (existingRestaurant) {
+          // If vendor profile already exists with dine type, just update the user role
+          if (existingVendor && existingVendor.vendorType === 'dine') {
             await storage.updateUser(userId, { role: 'restaurant' });
-            return res.json({ success: true, newProfile: existingRestaurant, message: 'User switched to restaurant (existing profile)' });
+            return res.json({ success: true, newProfile: existingVendor, message: 'User switched to restaurant (existing profile)' });
           }
 
-          // Create restaurant profile from source
-          const newRestaurant = await storage.createRestaurant({
+          // If vendor exists but different type, update to dine type
+          if (existingVendor) {
+            const updatedVendor = await storage.updateVendor(existingVendor.id, {
+              vendorType: 'dine',
+              capabilities: { products: false, services: false, menu: true },
+            });
+            await storage.updateUser(userId, { role: 'restaurant' });
+            return res.json({ success: true, newProfile: updatedVendor, message: 'User switched to restaurant' });
+          }
+
+          // Create new dine vendor profile
+          const newVendor = await storage.createVendor({
             ownerId: userId,
-            restaurantName: sourceProfile.businessName || sourceProfile.restaurantName,
+            vendorType: 'dine',
+            businessName: sourceProfile.businessName,
             contactName: sourceProfile.contactName,
             bio: sourceProfile.bio || '',
             tagline: sourceProfile.tagline || '',
@@ -567,11 +581,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             website: sourceProfile.website || null,
             instagram: sourceProfile.instagram || null,
             facebook: sourceProfile.facebook || null,
-            locationType: sourceProfile.locationType,
+            locationType: sourceProfile.locationType || 'Physical storefront',
             address: sourceProfile.address || null,
             city: sourceProfile.city,
             state: sourceProfile.state,
             zipCode: sourceProfile.zipCode,
+            serviceOptions: sourceProfile.serviceOptions || ['On-site dining'],
+            paymentMethod: sourceProfile.paymentMethod || 'Through Platform',
+            capabilities: { products: false, services: false, menu: true },
             hours: sourceProfile.hours || null,
             badges: sourceProfile.badges || sourceProfile.values || [],
             contactEmail: sourceProfile.contactEmail || null,
@@ -581,19 +598,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           await storage.updateUser(userId, { role: 'restaurant' });
-          return res.json({ success: true, newProfile: newRestaurant, message: 'User switched to restaurant' });
+          return res.json({ success: true, newProfile: newVendor, message: 'User switched to restaurant' });
 
         } else if (targetType === 'service_provider') {
-          // If service provider profile already exists, just update the user role
-          if (existingServiceProvider) {
+          // If vendor profile already exists with service type, just update the user role
+          if (existingVendor && existingVendor.vendorType === 'service') {
             await storage.updateUser(userId, { role: 'service_provider' });
-            return res.json({ success: true, newProfile: existingServiceProvider, message: 'User switched to service provider (existing profile)' });
+            return res.json({ success: true, newProfile: existingVendor, message: 'User switched to service provider (existing profile)' });
           }
 
-          // Create service provider profile from source
-          const newServiceProvider = await storage.createServiceProvider({
+          // If vendor exists but different type, update to service type
+          if (existingVendor) {
+            const updatedVendor = await storage.updateVendor(existingVendor.id, {
+              vendorType: 'service',
+              capabilities: { products: false, services: true, menu: false },
+            });
+            await storage.updateUser(userId, { role: 'service_provider' });
+            return res.json({ success: true, newProfile: updatedVendor, message: 'User switched to service provider' });
+          }
+
+          // Create new service vendor profile
+          const newVendor = await storage.createVendor({
             ownerId: userId,
-            businessName: sourceType === 'restaurant' ? sourceProfile.restaurantName : sourceProfile.businessName,
+            vendorType: 'service',
+            businessName: sourceProfile.businessName,
             contactName: sourceProfile.contactName,
             bio: sourceProfile.bio || '',
             tagline: sourceProfile.tagline || '',
@@ -604,11 +632,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             website: sourceProfile.website || null,
             instagram: sourceProfile.instagram || null,
             facebook: sourceProfile.facebook || null,
-            locationType: sourceProfile.locationType,
+            locationType: sourceProfile.locationType || 'Home-based',
             address: sourceProfile.address || null,
             city: sourceProfile.city,
             state: sourceProfile.state,
             zipCode: sourceProfile.zipCode,
+            serviceOptions: sourceProfile.serviceOptions || ['On-site', 'Pickup'],
+            paymentMethod: sourceProfile.paymentMethod || 'Through Platform',
+            capabilities: { products: false, services: true, menu: false },
             serviceRadius: sourceProfile.serviceRadius || null,
             hours: sourceProfile.hours || null,
             badges: sourceProfile.badges || sourceProfile.values || [],
@@ -619,7 +650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           await storage.updateUser(userId, { role: 'service_provider' });
-          return res.json({ success: true, newProfile: newServiceProvider, message: 'User switched to service provider' });
+          return res.json({ success: true, newProfile: newVendor, message: 'User switched to service provider' });
         }
       } catch (error) {
         console.error("Error creating new profile:", error);
@@ -640,10 +671,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all unique values from both vendors and restaurants
+  // Get all unique values from all vendors
   app.get("/api/values/unique", async (req, res) => {
     try {
-      const values = await storage.getAllUniqueValues();
+      const values = await storage.getAllVendorValues();
       res.json(values);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch unique values" });
@@ -706,9 +737,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         website: data.website || "",
         instagram: data.instagram || "",
         facebook: data.facebook || "",
-        locationType: "Local Business",
+        locationType: "Physical storefront",
         serviceOptions: [],
-        paymentMethod: "",
+        paymentMethod: "Through Platform",
+        capabilities: {
+          products: vendorType === 'shop',
+          services: vendorType === 'service',
+          menu: vendorType === 'dine',
+        },
         profileStatus: "draft",
       };
       
@@ -835,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create shop vendor
         const vendorData = {
           ownerId: userId,
-          vendorType: "shop",
+          vendorType: "shop" as const,
           businessName: data.businessName,
           contactName: data.contactName,
           bio: data.bio,
@@ -846,16 +882,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           categories: data.categories || [],
           localSourcingPercent: data.localSourcingPercent || 0,
           showLocalSourcing: data.showLocalSourcing || false,
-          contact: {
-            email: data.email || email,
-            phone: data.phone || "",
-            website: data.website || "",
-            instagram: data.instagram || "",
-            facebook: data.facebook || "",
-          },
-          locationType: "Local Business",
+          contactEmail: data.email || email,
+          phone: data.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
+          locationType: "Physical storefront",
           serviceOptions,
           paymentMethod,
+          capabilities: { products: true, services: false, menu: false },
           fulfillmentOptions: fulfillment,
         };
         
@@ -864,37 +899,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("[ONBOARD] Created shop vendor profile");
         
       } else if (vendorType === "restaurant") {
-        // Create restaurant vendor
-        const restaurantData = {
+        // Create dine vendor (restaurant)
+        const vendorData = {
           ownerId: userId,
-          restaurantName: data.businessName,
-          contactName: data.contactName,
-          bio: data.bio,
-          tagline: data.tagline || "",
-          city: data.city,
-          state: "FL",
-          zipCode: data.zipCode,
-          categories: data.categories || [],
-          contact: {
-            email: data.email || email,
-            phone: data.phone || "",
-            website: data.website || "",
-            instagram: data.instagram || "",
-            facebook: data.facebook || "",
-          },
-          locationType: "Dine-in",
-          serviceOptions,
-          paymentMethod,
-        };
-        
-        await storage.createRestaurant(restaurantData);
-        await storage.updateUser(userId, { role: "restaurant" });
-        console.log("[ONBOARD] Created restaurant vendor profile");
-        
-      } else if (vendorType === "service") {
-        // Create service provider
-        const serviceData = {
-          ownerId: userId,
+          vendorType: "dine" as const,
           businessName: data.businessName,
           contactName: data.contactName,
           bio: data.bio,
@@ -903,17 +911,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
           state: "FL",
           zipCode: data.zipCode,
           categories: data.categories || [],
-          serviceAreas: [data.city],
           contactEmail: data.email || email,
-          contactPhone: data.phone || "",
-          contact: {
-            website: data.website || "",
-            instagram: data.instagram || "",
-            facebook: data.facebook || "",
+          phone: data.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
+          locationType: "Physical storefront",
+          serviceOptions,
+          paymentMethod,
+          capabilities: { products: false, services: false, menu: true },
+        };
+        
+        await storage.createVendor(vendorData);
+        await storage.updateUser(userId, { role: "restaurant" });
+        console.log("[ONBOARD] Created restaurant vendor profile");
+        
+      } else if (vendorType === "service") {
+        // Create service vendor
+        const vendorData = {
+          ownerId: userId,
+          vendorType: "service" as const,
+          businessName: data.businessName,
+          contactName: data.contactName,
+          bio: data.bio,
+          tagline: data.tagline || "",
+          city: data.city,
+          state: "FL",
+          zipCode: data.zipCode,
+          categories: data.categories || [],
+          contactEmail: data.email || email,
+          phone: data.phone || "",
+          website: data.website || "",
+          instagram: data.instagram || "",
+          facebook: data.facebook || "",
+          locationType: "Home-based",
+          serviceOptions,
+          paymentMethod,
+          capabilities: { products: false, services: true, menu: false },
+          serviceDetails: {
+            serviceAreas: [data.city],
+            certifications: [],
+            yearsInBusiness: null,
           },
         };
         
-        await storage.createServiceProvider(serviceData);
+        await storage.createVendor(vendorData);
         await storage.updateUser(userId, { role: "service_provider" });
         console.log("[ONBOARD] Created service provider profile");
       } else {
@@ -945,15 +987,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // Draft Restaurant Profile Routes (Auto-save Support)
+  // Draft Restaurant Profile Routes (LEGACY - redirects to unified vendor system)
   // ============================================================================
 
   app.get("/api/restaurants/draft", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const existingRestaurant = await storage.getRestaurantByOwnerId(userId);
-      if (existingRestaurant) {
-        return res.json(existingRestaurant);
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (vendor && vendor.vendorType === "dine") {
+        return res.json(vendor);
       }
       res.json(null);
     } catch (error) {
@@ -965,38 +1007,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/restaurants/draft", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { vendorType, ...data } = req.body;
+      const data = req.body;
       
-      console.log("[DRAFT] Creating draft restaurant for userId:", userId);
+      console.log("[DRAFT] Creating draft dine vendor for userId:", userId);
       
       const user = await storage.getUser(userId);
       const email = user?.email || "";
       
-      const restaurantData = {
+      const vendorData = {
         ownerId: userId,
-        restaurantName: data.businessName || "Draft Restaurant",
+        vendorType: "dine" as const,
+        businessName: data.businessName || "Draft Restaurant",
+        displayName: data.displayName || data.businessName,
         contactName: data.contactName || "",
         bio: data.bio || "",
         tagline: data.tagline || "",
         city: data.city || "Fort Myers",
         state: "FL",
         zipCode: data.zipCode || "",
-        categories: data.categories || [],
         contactEmail: data.email || email,
-        contactPhone: data.phone || "",
+        phone: data.phone || "",
         website: data.website || "",
         instagram: data.instagram || "",
         facebook: data.facebook || "",
-        locationType: "Dine-in",
-        serviceOptions: [],
-        paymentMethod: "",
+        locationType: data.locationType || "Physical storefront",
+        serviceOptions: data.serviceOptions || ["On-site dining"],
+        paymentMethod: data.paymentMethod || "Through Platform",
+        capabilities: { products: false, services: false, menu: true },
+        restaurantDetails: {
+          seatingCapacity: data.seatingCapacity || null,
+          acceptsReservations: data.acceptsReservations || false,
+        },
         profileStatus: "draft",
       };
       
-      const restaurant = await storage.createRestaurant(restaurantData);
-      console.log("[DRAFT] Created draft restaurant:", restaurant.id);
+      const vendor = await storage.createVendor(vendorData);
+      console.log("[DRAFT] Created draft dine vendor:", vendor.id);
       
-      res.status(201).json(restaurant);
+      res.status(201).json(vendor);
     } catch (error) {
       console.error("[DRAFT] Error creating draft restaurant:", error);
       res.status(400).json({ 
@@ -1009,17 +1057,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const restaurantId = req.params.id;
+      const vendorId = req.params.id;
       
-      const restaurant = await storage.getRestaurant(restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized" });
       }
       
-      console.log("[DRAFT] Updating restaurant:", restaurantId);
+      console.log("[DRAFT] Updating dine vendor:", vendorId);
       
-      const updatedRestaurant = await storage.updateRestaurant(restaurantId, req.body);
-      res.json(updatedRestaurant);
+      const updatedVendor = await storage.updateVendor(vendorId, req.body);
+      res.json(updatedVendor);
     } catch (error) {
       console.error("[DRAFT] Error updating restaurant:", error);
       res.status(400).json({ 
@@ -1032,22 +1080,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/restaurants/:id/complete", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const restaurantId = req.params.id;
+      const vendorId = req.params.id;
       
-      const restaurant = await storage.getRestaurant(restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized" });
       }
       
-      console.log("[COMPLETE] Marking restaurant as complete:", restaurantId);
+      console.log("[COMPLETE] Marking dine vendor as complete:", vendorId);
       
-      const updatedRestaurant = await storage.updateRestaurant(restaurantId, { 
+      const updatedVendor = await storage.updateVendor(vendorId, { 
         profileStatus: "complete" 
       });
       
-      await storage.updateUser(userId, { role: "restaurant" });
+      await storage.updateUser(userId, { role: "vendor" });
       
-      res.json({ success: true, restaurant: updatedRestaurant });
+      res.json({ success: true, vendor: updatedVendor });
     } catch (error) {
       console.error("[COMPLETE] Error completing restaurant profile:", error);
       res.status(400).json({ 
@@ -1058,15 +1106,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
-  // Draft Service Provider Profile Routes (Auto-save Support)
+  // Draft Service Provider Profile Routes (LEGACY - redirects to unified vendor system)
   // ============================================================================
 
   app.get("/api/service-providers/draft", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const existingProvider = await storage.getServiceProviderByOwnerId(userId);
-      if (existingProvider) {
-        return res.json(existingProvider);
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (vendor && vendor.vendorType === "service") {
+        return res.json(vendor);
       }
       res.json(null);
     } catch (error) {
@@ -1078,36 +1126,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/service-providers/draft", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { vendorType, ...data } = req.body;
+      const data = req.body;
       
-      console.log("[DRAFT] Creating draft service provider for userId:", userId);
+      console.log("[DRAFT] Creating draft service vendor for userId:", userId);
       
       const user = await storage.getUser(userId);
       const email = user?.email || "";
       
-      const providerData = {
+      const vendorData = {
         ownerId: userId,
+        vendorType: "service" as const,
         businessName: data.businessName || "Draft Service Provider",
+        displayName: data.displayName || data.businessName,
         contactName: data.contactName || "",
         bio: data.bio || "",
         tagline: data.tagline || "",
         city: data.city || "Fort Myers",
         state: "FL",
         zipCode: data.zipCode || "",
-        categories: data.categories || [],
-        serviceAreas: [data.city || "Fort Myers"],
         contactEmail: data.email || email,
-        contactPhone: data.phone || "",
+        phone: data.phone || "",
         website: data.website || "",
         instagram: data.instagram || "",
         facebook: data.facebook || "",
+        locationType: data.locationType || "Home-based",
+        serviceOptions: data.serviceOptions || ["On-site", "Pickup"],
+        paymentMethod: data.paymentMethod || "Through Platform",
+        capabilities: { products: false, services: true, menu: false },
+        serviceDetails: {
+          serviceAreas: [data.city || "Fort Myers"],
+          certifications: data.certifications || [],
+          yearsInBusiness: data.yearsInBusiness || null,
+        },
         profileStatus: "draft",
       };
       
-      const provider = await storage.createServiceProvider(providerData);
-      console.log("[DRAFT] Created draft service provider:", provider.id);
+      const vendor = await storage.createVendor(vendorData);
+      console.log("[DRAFT] Created draft service vendor:", vendor.id);
       
-      res.status(201).json(provider);
+      res.status(201).json(vendor);
     } catch (error) {
       console.error("[DRAFT] Error creating draft service provider:", error);
       res.status(400).json({ 
@@ -1120,17 +1177,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/service-providers/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const providerId = req.params.id;
+      const vendorId = req.params.id;
       
-      const provider = await storage.getServiceProvider(providerId);
-      if (!provider || provider.ownerId !== userId) {
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized" });
       }
       
-      console.log("[DRAFT] Updating service provider:", providerId);
+      console.log("[DRAFT] Updating service vendor:", vendorId);
       
-      const updatedProvider = await storage.updateServiceProvider(providerId, req.body);
-      res.json(updatedProvider);
+      const updatedVendor = await storage.updateVendor(vendorId, req.body);
+      res.json(updatedVendor);
     } catch (error) {
       console.error("[DRAFT] Error updating service provider:", error);
       res.status(400).json({ 
@@ -1143,22 +1200,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/service-providers/:id/complete", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const providerId = req.params.id;
+      const vendorId = req.params.id;
       
-      const provider = await storage.getServiceProvider(providerId);
-      if (!provider || provider.ownerId !== userId) {
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized" });
       }
       
-      console.log("[COMPLETE] Marking service provider as complete:", providerId);
+      console.log("[COMPLETE] Marking service vendor as complete:", vendorId);
       
-      const updatedProvider = await storage.updateServiceProvider(providerId, { 
+      const updatedVendor = await storage.updateVendor(vendorId, { 
         profileStatus: "complete" 
       });
       
-      await storage.updateUser(userId, { role: "service_provider" });
+      await storage.updateUser(userId, { role: "vendor" });
       
-      res.json({ success: true, provider: updatedProvider });
+      res.json({ success: true, vendor: updatedVendor });
     } catch (error) {
       console.error("[COMPLETE] Error completing service provider profile:", error);
       res.status(400).json({ 
@@ -1182,25 +1239,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Get vendor profile based on user role
-      let vendorProfile: any = null;
-      let vendorType: 'vendor' | 'restaurant' | 'service_provider' = 'vendor';
+      // Get vendor profile (unified system)
+      const vendorProfile = await storage.getVendorByOwnerId(userId);
       
-      if (user.role === 'vendor') {
-        vendorProfile = await storage.getVendorByOwnerId(userId);
-        vendorType = 'vendor';
-      } else if (user.role === 'restaurant') {
-        vendorProfile = await storage.getRestaurantByOwnerId(userId);
-        vendorType = 'restaurant';
-      } else if (user.role === 'service_provider') {
-        vendorProfile = await storage.getServiceProviderByOwnerId(userId);
-        vendorType = 'service_provider';
-      } else {
-        return res.status(403).json({ error: "Only vendors can create Stripe Connect accounts" });
-      }
-
       if (!vendorProfile) {
-        return res.status(404).json({ error: "Vendor profile not found" });
+        return res.status(404).json({ error: "Vendor profile not found. Please create a vendor profile first." });
       }
 
       // Check if already has a Connect account
@@ -1209,6 +1252,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accountId: vendorProfile.stripeConnectAccountId,
           message: "Account already exists"
         });
+      }
+
+      // Determine product description based on vendor type
+      let productDescription = 'Local products and goods';
+      if (vendorProfile.vendorType === 'dine') {
+        productDescription = 'Restaurant and food services';
+      } else if (vendorProfile.vendorType === 'service') {
+        productDescription = 'Professional services';
       }
 
       // Create Stripe Connect Express account
@@ -1223,29 +1274,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         business_type: 'individual', // Can be updated during onboarding
         business_profile: {
           mcc: '5499', // Misc food stores - retail
-          product_description: vendorType === 'restaurant' 
-            ? 'Restaurant and food services'
-            : vendorType === 'service_provider'
-            ? 'Professional services'
-            : 'Local products and goods',
+          product_description: productDescription,
           url: vendorProfile.website || undefined,
         },
       });
 
       // Store the account ID in the vendor profile
-      if (vendorType === 'vendor') {
-        await storage.updateVendor(vendorProfile.id, {
-          stripeConnectAccountId: account.id,
-        });
-      } else if (vendorType === 'restaurant') {
-        await storage.updateRestaurant(vendorProfile.id, {
-          stripeConnectAccountId: account.id,
-        });
-      } else if (vendorType === 'service_provider') {
-        await storage.updateServiceProvider(vendorProfile.id, {
-          stripeConnectAccountId: account.id,
-        });
-      }
+      await storage.updateVendor(vendorProfile.id, {
+        stripeConnectAccountId: account.id,
+      });
 
       res.json({ accountId: account.id });
     } catch (error) {
@@ -1267,19 +1304,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Get vendor profile and Connect account ID
-      let stripeAccountId: string | null = null;
-      
-      if (user.role === 'vendor') {
-        const vendor = await storage.getVendorByOwnerId(userId);
-        stripeAccountId = vendor?.stripeConnectAccountId || null;
-      } else if (user.role === 'restaurant') {
-        const restaurant = await storage.getRestaurantByOwnerId(userId);
-        stripeAccountId = restaurant?.stripeConnectAccountId || null;
-      } else if (user.role === 'service_provider') {
-        const provider = await storage.getServiceProviderByOwnerId(userId);
-        stripeAccountId = provider?.stripeConnectAccountId || null;
-      }
+      // Get vendor profile and Connect account ID (unified system)
+      const vendor = await storage.getVendorByOwnerId(userId);
+      const stripeAccountId = vendor?.stripeConnectAccountId || null;
 
       if (!stripeAccountId) {
         return res.status(404).json({ error: "No Stripe Connect account found. Create one first." });
@@ -1313,27 +1340,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Get vendor profile and Connect account ID
-      let stripeAccountId: string | null = null;
-      let vendorType: 'vendor' | 'restaurant' | 'service_provider' | null = null;
-      let vendorId: string | null = null;
-      
-      if (user.role === 'vendor') {
-        const vendor = await storage.getVendorByOwnerId(userId);
-        stripeAccountId = vendor?.stripeConnectAccountId || null;
-        vendorType = 'vendor';
-        vendorId = vendor?.id || null;
-      } else if (user.role === 'restaurant') {
-        const restaurant = await storage.getRestaurantByOwnerId(userId);
-        stripeAccountId = restaurant?.stripeConnectAccountId || null;
-        vendorType = 'restaurant';
-        vendorId = restaurant?.id || null;
-      } else if (user.role === 'service_provider') {
-        const provider = await storage.getServiceProviderByOwnerId(userId);
-        stripeAccountId = provider?.stripeConnectAccountId || null;
-        vendorType = 'service_provider';
-        vendorId = provider?.id || null;
-      }
+      // Get vendor profile and Connect account ID (unified system)
+      const vendor = await storage.getVendorByOwnerId(userId);
+      const stripeAccountId = vendor?.stripeConnectAccountId || null;
+      const vendorId = vendor?.id || null;
 
       if (!stripeAccountId) {
         return res.json({ 
@@ -1349,20 +1359,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const onboardingComplete = account.charges_enabled && account.details_submitted;
 
       // Update vendor profile if onboarding status changed
-      if (vendorType && vendorId && onboardingComplete) {
-        if (vendorType === 'vendor') {
-          await storage.updateVendor(vendorId, {
-            stripeOnboardingComplete: true,
-          });
-        } else if (vendorType === 'restaurant') {
-          await storage.updateRestaurant(vendorId, {
-            stripeOnboardingComplete: true,
-          });
-        } else if (vendorType === 'service_provider') {
-          await storage.updateServiceProvider(vendorId, {
-            stripeOnboardingComplete: true,
-          });
-        }
+      if (vendorId && onboardingComplete) {
+        await storage.updateVendor(vendorId, {
+          stripeOnboardingComplete: true,
+        });
       }
 
       res.json({
@@ -1459,7 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const accountId = account.id;
         const onboardingComplete = account.charges_enabled && account.details_submitted;
 
-        // Find vendor with this Stripe account ID and update status
+        // Find vendor with this Stripe account ID and update status (unified system)
         const vendors = await storage.getVendors();
         const vendor = vendors.find((v: any) => v.stripeConnectAccountId === accountId);
         
@@ -1467,26 +1467,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateVendor(vendor.id, {
             stripeOnboardingComplete: onboardingComplete,
           });
+          console.log(`Updated Stripe onboarding status for vendor ${vendor.id}`);
         } else {
-          // Check restaurants
-          const restaurants = await storage.getRestaurants();
-          const restaurant = restaurants.find((r: any) => r.stripeConnectAccountId === accountId);
-          
-          if (restaurant) {
-            await storage.updateRestaurant(restaurant.id, {
-              stripeOnboardingComplete: onboardingComplete,
-            });
-          } else {
-            // Check service providers
-            const providers = await storage.getServiceProviders();
-            const provider = providers.find((p: any) => p.stripeConnectAccountId === accountId);
-            
-            if (provider) {
-              await storage.updateServiceProvider(provider.id, {
-                stripeOnboardingComplete: onboardingComplete,
-              });
-            }
-          }
+          console.warn(`No vendor found with Stripe Connect account ID ${accountId}`);
         }
       }
 
@@ -3047,11 +3030,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== RESTAURANT ROUTES =====
+  // ===== RESTAURANT ROUTES (Legacy - using unified vendor system) =====
 
   app.get("/api/restaurants", async (req, res) => {
     try {
-      const restaurants = await storage.getRestaurants();
+      const allVendors = await storage.getVendors();
+      const restaurants = allVendors.filter((v: any) => v.vendorType === 'dine');
       res.json(restaurants);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch restaurants" });
@@ -3060,7 +3044,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/restaurants/verified", async (req, res) => {
     try {
-      const restaurants = await storage.getVerifiedRestaurants();
+      const allVendors = await storage.getVendors();
+      const restaurants = allVendors.filter((v: any) => v.vendorType === 'dine' && v.isVerified);
       res.json(restaurants);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch verified restaurants" });
@@ -3069,11 +3054,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/restaurants/:id", async (req, res) => {
     try {
-      const restaurant = await storage.getRestaurant(req.params.id);
-      if (!restaurant) {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor || vendor.vendorType !== 'dine') {
         return res.status(404).json({ error: "Restaurant not found" });
       }
-      res.json(restaurant);
+      res.json(vendor);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch restaurant" });
     }
@@ -3081,49 +3066,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/restaurants", async (req, res) => {
     try {
-      const validatedData = insertRestaurantSchema.parse(req.body);
-      const restaurant = await storage.createRestaurant(validatedData);
-      res.status(201).json(restaurant);
+      const validatedData = insertVendorSchema.parse({
+        ...req.body,
+        vendorType: 'dine',
+        capabilities: { products: false, services: false, menu: true },
+      });
+      const vendor = await storage.createVendor(validatedData);
+      res.status(201).json(vendor);
     } catch (error) {
-      res.status(400).json({ error: "Invalid restaurant data" });
+      res.status(400).json({ error: "Invalid restaurant data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
   app.patch("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const restaurant = await storage.getRestaurant(req.params.id);
-      if (!restaurant) {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor || vendor.vendorType !== 'dine') {
         return res.status(404).json({ error: "Restaurant not found" });
       }
       
       // Verify ownership
-      if (restaurant.ownerId !== userId) {
+      if (vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to update this restaurant" });
       }
       
-      const validatedData = insertRestaurantSchema.partial().parse(req.body);
-      await storage.updateRestaurant(req.params.id, validatedData);
+      const validatedData = insertVendorSchema.partial().parse(req.body);
+      await storage.updateVendor(req.params.id, validatedData);
       res.json({ success: true });
     } catch (error) {
-      res.status(400).json({ error: "Invalid restaurant update data" });
+      res.status(400).json({ error: "Invalid restaurant update data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 
   app.delete("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const restaurant = await storage.getRestaurant(req.params.id);
-      if (!restaurant) {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor || vendor.vendorType !== 'dine') {
         return res.status(404).json({ error: "Restaurant not found" });
       }
       
       // Verify ownership
-      if (restaurant.ownerId !== userId) {
+      if (vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to delete this restaurant" });
       }
       
-      await storage.deleteRestaurant(req.params.id);
+      await storage.deleteVendor(req.params.id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete restaurant" });
@@ -3142,7 +3131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const schema = z.object({ isVerified: z.boolean() });
       const { isVerified } = schema.parse(req.body);
-      await storage.updateRestaurantVerification(req.params.id, isVerified);
+      await storage.updateVendorVerification(req.params.id, isVerified);
       res.json({ success: true });
     } catch (error) {
       res.status(400).json({ error: "Invalid verification data" });
@@ -3161,7 +3150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/restaurants/:restaurantId/menu-items", async (req, res) => {
     try {
-      const menuItems = await storage.getMenuItemsByRestaurant(req.params.restaurantId);
+      const menuItems = await storage.getMenuItemsByVendor(req.params.restaurantId);
       res.json(menuItems);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch menu items" });
@@ -3170,10 +3159,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/restaurants/:restaurantId/menu-items/category/:category", async (req, res) => {
     try {
-      const menuItems = await storage.getMenuItemsByCategory(
-        req.params.restaurantId, 
-        req.params.category
-      );
+      const allMenuItems = await storage.getMenuItemsByVendor(req.params.restaurantId);
+      const menuItems = allMenuItems.filter((item: any) => item.category === req.params.category);
       res.json(menuItems);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch menu items by category" });
@@ -3197,15 +3184,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const validatedData = insertMenuItemSchema.parse(req.body);
       
-      // Verify the user owns the restaurant (for legacy support)
+      // Verify the user owns the vendor (restaurant)
       if (validatedData.restaurantId) {
-        const restaurant = await storage.getRestaurant(validatedData.restaurantId);
-        if (!restaurant || restaurant.ownerId !== userId) {
+        const vendor = await storage.getVendor(validatedData.restaurantId);
+        if (!vendor || vendor.ownerId !== userId) {
           return res.status(403).json({ error: "Unauthorized to create menu items for this restaurant" });
         }
         
-        // Verify restaurant profile is complete before allowing menu item creation
-        if (restaurant.profileStatus !== "complete") {
+        // Verify vendor profile is complete before allowing menu item creation
+        if (vendor.profileStatus !== "complete") {
           return res.status(400).json({ error: "Please complete your restaurant profile before creating menu items" });
         }
       }
@@ -3225,10 +3212,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Menu item not found" });
       }
       
-      // Verify ownership through restaurant (for legacy support)
+      // Verify ownership through vendor (restaurant)
       if (menuItem.restaurantId) {
-        const restaurant = await storage.getRestaurant(menuItem.restaurantId);
-        if (!restaurant || restaurant.ownerId !== userId) {
+        const vendor = await storage.getVendor(menuItem.restaurantId);
+        if (!vendor || vendor.ownerId !== userId) {
           return res.status(403).json({ error: "Unauthorized to update this menu item" });
         }
       }
@@ -3249,10 +3236,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Menu item not found" });
       }
       
-      // Verify ownership through restaurant (for legacy support)
+      // Verify ownership through vendor (restaurant)
       if (menuItem.restaurantId) {
-        const restaurant = await storage.getRestaurant(menuItem.restaurantId);
-        if (!restaurant || restaurant.ownerId !== userId) {
+        const vendor = await storage.getVendor(menuItem.restaurantId);
+        if (!vendor || vendor.ownerId !== userId) {
           return res.status(403).json({ error: "Unauthorized to delete this menu item" });
         }
       }
@@ -3264,10 +3251,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Restaurant Review routes
+  // Restaurant Review routes (Legacy - using unified vendor system)
   app.get("/api/restaurants/:restaurantId/reviews", async (req, res) => {
     try {
-      const reviews = await storage.getRestaurantReviews(req.params.restaurantId);
+      const reviews = await storage.getVendorReviews(req.params.restaurantId);
       res.json(reviews);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch reviews" });
@@ -3276,8 +3263,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/restaurant-reviews", async (req, res) => {
     try {
-      const validatedData = insertRestaurantReviewSchema.parse(req.body);
-      const review = await storage.createRestaurantReview(validatedData);
+      const validatedData = insertVendorReviewSchema.parse({
+        ...req.body,
+        vendorId: req.body.restaurantId,
+      });
+      const review = await storage.createVendorReview(validatedData);
       res.status(201).json(review);
     } catch (error) {
       res.status(400).json({ error: "Invalid review data" });
@@ -3286,17 +3276,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/restaurant-reviews/:id", async (req, res) => {
     try {
-      await storage.deleteRestaurantReview(req.params.id);
+      await storage.deleteVendorReview(req.params.id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete review" });
     }
   });
 
-  // Restaurant FAQ routes
+  // Restaurant FAQ routes (Legacy - using unified vendor system)
   app.get("/api/restaurants/:restaurantId/faqs", async (req, res) => {
     try {
-      const faqs = await storage.getRestaurantFAQs(req.params.restaurantId);
+      const faqs = await storage.getVendorFAQs(req.params.restaurantId);
       res.json(faqs);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch FAQs" });
@@ -3306,15 +3296,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/restaurant-faqs", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertRestaurantFAQSchema.parse(req.body);
+      const validatedData = insertVendorFAQSchema.parse({
+        ...req.body,
+        vendorId: req.body.restaurantId,
+      });
       
-      // Verify the user owns the restaurant
-      const restaurant = await storage.getRestaurant(validatedData.restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
+      // Verify the user owns the vendor (restaurant)
+      const vendor = await storage.getVendor(validatedData.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to create FAQs for this restaurant" });
       }
       
-      const faq = await storage.createRestaurantFAQ(validatedData);
+      const faq = await storage.createVendorFAQ(validatedData);
       res.status(201).json(faq);
     } catch (error) {
       res.status(400).json({ error: "Invalid FAQ data" });
@@ -3324,19 +3317,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/restaurant-faqs/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const faq = await storage.getRestaurantFAQ(req.params.id);
+      const faq = await storage.getVendorFAQ(req.params.id);
       if (!faq) {
         return res.status(404).json({ error: "FAQ not found" });
       }
       
-      // Verify ownership through restaurant
-      const restaurant = await storage.getRestaurant(faq.restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
+      // Verify ownership through vendor (restaurant)
+      const vendor = await storage.getVendor(faq.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to update this FAQ" });
       }
       
-      const validatedData = insertRestaurantFAQSchema.partial().parse(req.body);
-      await storage.updateRestaurantFAQ(req.params.id, validatedData);
+      const validatedData = insertVendorFAQSchema.partial().parse(req.body);
+      await storage.updateVendorFAQ(req.params.id, validatedData);
       res.json({ success: true });
     } catch (error) {
       res.status(400).json({ error: "Invalid FAQ update data" });
@@ -3346,45 +3339,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/restaurant-faqs/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const faq = await storage.getRestaurantFAQ(req.params.id);
+      const faq = await storage.getVendorFAQ(req.params.id);
       if (!faq) {
         return res.status(404).json({ error: "FAQ not found" });
       }
       
-      // Verify ownership through restaurant
-      const restaurant = await storage.getRestaurant(faq.restaurantId);
-      if (!restaurant || restaurant.ownerId !== userId) {
+      // Verify ownership through vendor (restaurant)
+      const vendor = await storage.getVendor(faq.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to delete this FAQ" });
       }
       
-      await storage.deleteRestaurantFAQ(req.params.id);
+      await storage.deleteVendorFAQ(req.params.id);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete FAQ" });
     }
   });
 
-  // Extended restaurant routes
+  // Extended restaurant routes (Legacy - using unified vendor system)
   app.get("/api/restaurants/:restaurantId/events", async (req, res) => {
     try {
-      const events = await storage.getEventsByRestaurant(req.params.restaurantId);
+      const events = await storage.getVendorEvents(req.params.restaurantId);
       res.json(events);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch restaurant events" });
     }
   });
 
-  // ===== SERVICE PROVIDER ROUTES =====
+  // ===== SERVICE PROVIDER ROUTES (Legacy - using unified vendor system) =====
   
-  // Get current user's service provider profile
+  // Legacy endpoint - redirects to unified /api/auth/my-vendor
   app.get('/api/auth/my-service-provider', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const provider = await storage.getServiceProviderByOwnerId(userId);
-      res.json(provider || null);
+      const vendor = await storage.getVendorByOwnerId(userId);
+      res.json(vendor || null);
     } catch (error) {
       console.error("Error fetching user's service provider:", error);
-      res.status(500).json({ message: "Failed to fetch service provider profile" });
+      res.status(500).json({ message: "Failed to fetch vendor profile" });
     }
   });
 
@@ -3395,13 +3388,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let providers;
       
       if (category && typeof category === 'string') {
-        // Filter by category (simple string matching)
-        // Note: Client-side uses hierarchical categoriesMatch for better filtering
-        providers = await storage.getServiceProvidersByCategory(category);
+        // Filter by category and vendorType
+        const allVendors = await storage.getVendors();
+        providers = allVendors.filter((v: any) => 
+          v.vendorType === 'service' && 
+          v.categories && 
+          v.categories.some((cat: string) => cat.toLowerCase().includes(category.toLowerCase()))
+        );
       } else {
-        // Return all service providers with complete profiles
-        // This ensures service providers appear consistently in both /services and /vendors tabs
-        providers = await storage.getServiceProviders();
+        // Return all service provider vendors with complete profiles
+        const allVendors = await storage.getVendors();
+        providers = allVendors.filter((v: any) => v.vendorType === 'service');
       }
       
       res.json(providers);
@@ -3412,15 +3409,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/services/:id", async (req, res) => {
     try {
-      const provider = await storage.getServiceProvider(req.params.id);
-      if (!provider) {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor || vendor.vendorType !== 'service') {
         return res.status(404).json({ error: "Service provider not found" });
       }
       
       // Also fetch offerings for this provider
       const offerings = await storage.getServiceOfferings(req.params.id);
       
-      res.json({ ...provider, offerings });
+      res.json({ ...vendor, offerings });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch service provider" });
     }
@@ -3431,18 +3428,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       
       // Check if user already has a service provider profile
-      const existing = await storage.getServiceProviderByOwnerId(userId);
+      const existing = await storage.getVendorByOwnerId(userId);
       if (existing) {
-        return res.status(400).json({ error: "User already has a service provider profile" });
+        return res.status(400).json({ error: "User already has a vendor profile" });
       }
       
-      const validated = insertServiceProviderSchema.parse({
+      const validated = insertVendorSchema.parse({
         ...req.body,
         ownerId: userId,
+        vendorType: 'service',
+        capabilities: { products: false, services: true, menu: false },
       });
       
-      const provider = await storage.createServiceProvider(validated);
-      res.status(201).json(provider);
+      const vendor = await storage.createVendor(validated);
+      res.status(201).json(vendor);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
@@ -3454,20 +3453,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/services/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const provider = await storage.getServiceProvider(req.params.id);
+      const vendor = await storage.getVendor(req.params.id);
       
-      if (!provider) {
+      if (!vendor || vendor.vendorType !== 'service') {
         return res.status(404).json({ error: "Service provider not found" });
       }
       
-      if (provider.ownerId !== userId) {
+      if (vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to update this service provider" });
       }
       
-      const validated = insertServiceProviderSchema.partial().parse(req.body);
-      await storage.updateServiceProvider(req.params.id, validated);
+      const validated = insertVendorSchema.partial().parse(req.body);
+      await storage.updateVendor(req.params.id, validated);
       
-      const updated = await storage.getServiceProvider(req.params.id);
+      const updated = await storage.getVendor(req.params.id);
       res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -3492,14 +3491,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const validated = insertServiceOfferingSchema.parse(req.body);
       
-      // Verify user owns this service provider
-      const provider = await storage.getServiceProvider(validated.serviceProviderId);
-      if (!provider || provider.ownerId !== userId) {
+      // Verify user owns this service provider (vendor)
+      const vendor = await storage.getVendor(validated.serviceProviderId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to create offerings for this provider" });
       }
       
       // Verify service provider profile is complete before allowing offering creation
-      if (provider.profileStatus !== "complete") {
+      if (vendor.profileStatus !== "complete") {
         return res.status(400).json({ error: "Please complete your service provider profile before creating service offerings" });
       }
       
@@ -3522,9 +3521,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Service offering not found" });
       }
       
-      // Verify ownership through provider
-      const provider = await storage.getServiceProvider(offering.serviceProviderId);
-      if (!provider || provider.ownerId !== userId) {
+      // Verify ownership through vendor (service provider)
+      const vendor = await storage.getVendor(offering.serviceProviderId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to update this offering" });
       }
       
