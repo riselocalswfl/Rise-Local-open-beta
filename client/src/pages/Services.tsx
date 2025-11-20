@@ -2,11 +2,31 @@ import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Wrench } from "lucide-react";
-import ServiceProviderCard from "@/components/ServiceProviderCard";
-import type { ServiceProvider } from "@shared/schema";
+import ServiceOfferingCard from "@/components/ServiceOfferingCard";
+
+interface ServiceOfferingWithProvider {
+  id: string;
+  vendorId: string;
+  offeringName: string;
+  description: string;
+  durationMinutes: number | null;
+  pricingModel: string;
+  fixedPriceCents: number | null;
+  hourlyRateCents: number | null;
+  startingAtCents: number | null;
+  tags: string[];
+  isFeatured: boolean;
+  provider: {
+    id: string;
+    businessName: string;
+    logoUrl: string | null;
+    city: string;
+    isVerified: boolean;
+  } | null;
+}
 
 export default function Services() {
-  const { data: providers = [], isLoading } = useQuery<ServiceProvider[]>({
+  const { data: offerings = [], isLoading } = useQuery<ServiceOfferingWithProvider[]>({
     queryKey: ["/api/services"],
   });
 
@@ -25,12 +45,12 @@ export default function Services() {
             </h1>
           </div>
           <p className="text-lg text-text/70 max-w-3xl">
-            Find trusted local service providers in Fort Myers. From home repairs to wellness coaching, connect with verified professionals who serve our community.
+            Browse local services in Fort Myers. From home repairs to wellness coaching, find the perfect service for your needs from verified local professionals.
           </p>
         </div>
       </div>
 
-      {/* Service Provider List */}
+      {/* Service Offerings List */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -38,16 +58,16 @@ export default function Services() {
             <Skeleton className="h-96" />
             <Skeleton className="h-96" />
           </div>
-        ) : providers.length === 0 ? (
+        ) : offerings.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">
-              No service providers currently listed. Check back soon!
+              No services currently listed. Check back soon!
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" data-testid="service-grid">
-            {providers.map((provider) => (
-              <ServiceProviderCard key={provider.id} provider={provider} />
+            {offerings.map((offering) => (
+              <ServiceOfferingCard key={offering.id} offering={offering} />
             ))}
           </div>
         )}

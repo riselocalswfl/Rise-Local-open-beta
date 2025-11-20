@@ -799,6 +799,32 @@ export class DbStorage implements IStorage {
     return await db.select().from(serviceOfferings);
   }
 
+  async getAllServiceOfferingsWithProvider(): Promise<any[]> {
+    // Get all active service offerings
+    const offerings = await db.select().from(serviceOfferings)
+      .where(eq(serviceOfferings.isActive, true))
+      .orderBy(desc(serviceOfferings.isFeatured), serviceOfferings.displayOrder);
+    
+    // Get vendor info for each offering
+    const offeringsWithProvider = await Promise.all(
+      offerings.map(async (offering) => {
+        const vendor = await this.getVendor(offering.vendorId);
+        return {
+          ...offering,
+          provider: vendor ? {
+            id: vendor.id,
+            businessName: vendor.businessName,
+            logoUrl: vendor.logoUrl,
+            city: vendor.city,
+            isVerified: vendor.isVerified,
+          } : null,
+        };
+      })
+    );
+    
+    return offeringsWithProvider;
+  }
+
   // Service Booking operations
   async getServiceBooking(id: string): Promise<ServiceBooking | undefined> {
     const result = await db.select().from(serviceBookings).where(eq(serviceBookings.id, id));

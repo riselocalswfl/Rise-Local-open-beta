@@ -3384,26 +3384,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Service Provider routes
   app.get("/api/services", async (req, res) => {
     try {
-      const { category } = req.query;
-      let providers;
-      
-      if (category && typeof category === 'string') {
-        // Filter by category and vendorType
-        const allVendors = await storage.getVendors();
-        providers = allVendors.filter((v: any) => 
-          v.vendorType === 'service' && 
-          v.categories && 
-          v.categories.some((cat: string) => cat.toLowerCase().includes(category.toLowerCase()))
-        );
-      } else {
-        // Return all service provider vendors with complete profiles
-        const allVendors = await storage.getVendors();
-        providers = allVendors.filter((v: any) => v.vendorType === 'service');
-      }
-      
-      res.json(providers);
+      // Return all active service offerings with provider information
+      const offerings = await storage.getAllServiceOfferingsWithProvider();
+      res.json(offerings);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch service providers" });
+      console.error("[GET /api/services] Error fetching service offerings:", error);
+      res.status(500).json({ error: "Failed to fetch service offerings" });
     }
   });
 
