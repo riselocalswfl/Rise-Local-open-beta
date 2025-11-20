@@ -294,17 +294,17 @@ export class DbStorage implements IStorage {
   }
 
   async getAllVendorListings(): Promise<import("@shared/schema").UnifiedVendorListing[]> {
-    // Fetch from unified vendors table (completed AND draft profiles to show all vendors)
-    const allVendors = await db.select().from(vendors);
+    // Fetch from unified vendors table (only completed profiles)
+    const completedVendors = await db.select().from(vendors).where(eq(vendors.profileStatus, "complete"));
 
     // Map unified vendors to listing format
-    return allVendors.map(v => ({
+    return completedVendors.map(v => ({
       id: v.id,
       vendorType: v.vendorType as "shop" | "dine" | "service",
       businessName: v.businessName,
       bio: v.bio,
       city: v.city,
-      categories: [], // Categories removed from platform
+      categories: [], // Categories removed from platform per replit.md
       values: (v.values as string[]) || [],
       isVerified: v.isVerified,
       followerCount: v.followerCount,
