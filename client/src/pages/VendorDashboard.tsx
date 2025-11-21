@@ -2632,7 +2632,10 @@ function AddServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
+        console.error("❌ Service form validation errors:", errors);
+        console.error("📝 Form values:", form.getValues());
+      })} className="space-y-4">
         <FormField
           control={form.control}
           name="offeringName"
