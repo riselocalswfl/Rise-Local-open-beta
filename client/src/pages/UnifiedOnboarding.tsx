@@ -100,10 +100,23 @@ export default function UnifiedOnboarding() {
   const [selectedVendorType, setSelectedVendorType] = useState<"shop" | "dine" | "service" | null>(null);
 
   // Auto-save state
-  const [draftVendorId, setDraftVendorId] = useState<string | null>(null);
+  const [draftVendorId, setDraftVendorId] = useState<string | null>(() => {
+    // Initialize from sessionStorage if available
+    return sessionStorage.getItem("onboardingDraftId");
+  });
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
+
+  // Helper function to update draftVendorId with sessionStorage persistence
+  const updateDraftVendorId = (id: string | null) => {
+    setDraftVendorId(id);
+    if (id) {
+      sessionStorage.setItem("onboardingDraftId", id);
+    } else {
+      sessionStorage.removeItem("onboardingDraftId");
+    }
+  };
 
   // Step 1 Form
   const form1 = useForm({
@@ -255,7 +268,7 @@ export default function UnifiedOnboarding() {
         
         if (draft && draft.id) {
           console.log("Loaded draft vendor:", draft.id);
-          setDraftVendorId(draft.id);
+          updateDraftVendorId(draft.id);
           setSelectedVendorType(draft.vendorType);
           
           // Populate form 1 fields
@@ -389,7 +402,7 @@ export default function UnifiedOnboarding() {
 
         const newDraft = await createResponse.json();
         console.log("[Auto-save] Draft created successfully:", newDraft.id);
-        setDraftVendorId(newDraft.id);
+        updateDraftVendorId(newDraft.id);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
         return;
@@ -486,7 +499,7 @@ export default function UnifiedOnboarding() {
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
-  }, [draftVendorId, selectedVendorType]);
+  }, [draftVendorId, selectedVendorType, updateDraftVendorId]);
 
   // Debounced auto-save for each form
   const debouncedAutoSave = useCallback((data: any, formType: 'step1' | 'step2' | 'step3') => {
@@ -547,10 +560,24 @@ export default function UnifiedOnboarding() {
 
   // Final submission
   const handleFinalSubmit = async () => {
+    // If no draft ID in state, try to reload from sessionStorage and API
     if (!draftVendorId) {
+      const savedId = sessionStorage.getItem("onboardingDraftId");
+      if (savedId) {
+        console.log("Recovered draft ID from sessionStorage:", savedId);
+        updateDraftVendorId(savedId);
+        // Try again with recovered ID
+        toast({
+          title: "Draft recovered",
+          description: "Retrying submission...",
+        });
+        setTimeout(() => handleFinalSubmit(), 500);
+        return;
+      }
+      
       toast({
         title: "Error",
-        description: "No draft profile found. Please start over.",
+        description: "No draft profile found. Please try refreshing the page or contact support if the issue persists.",
         variant: "destructive",
       });
       return;
@@ -583,6 +610,9 @@ export default function UnifiedOnboarding() {
         title: "Welcome to Rise Local!",
         description: "Your vendor profile has been created successfully.",
       });
+
+      // Clear the draft ID from sessionStorage on success
+      sessionStorage.removeItem("onboardingDraftId");
 
       // Small delay so user can see the success message
       setTimeout(() => {
