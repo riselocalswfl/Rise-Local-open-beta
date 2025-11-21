@@ -26,6 +26,7 @@ import { TagInput } from "@/components/TagInput";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
 import StripeConnectCard from "@/components/StripeConnectCard";
+import Header from "@/components/Header";
 import { z } from "zod";
 
 // Form schemas for validation
@@ -412,12 +413,14 @@ export default function VendorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2" data-testid="heading-dashboard">Vendor Dashboard</h1>
-          <p className="text-muted-foreground">{vendor.businessName}</p>
-        </div>
+    <>
+      <Header />
+      <div className="min-h-screen bg-bg">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2" data-testid="heading-dashboard">Vendor Dashboard</h1>
+            <p className="text-muted-foreground">{vendor.businessName}</p>
+          </div>
 
 
         {/* Stripe Connect Coming Soon Banner */}
@@ -1866,6 +1869,7 @@ export default function VendorDashboard() {
         </Dialog>
       </div>
     </div>
+    </>
   );
 }
 
