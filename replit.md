@@ -3,6 +3,9 @@
 ## Overview
 Rise Local is a full-stack web application connecting local vendors, artisans, and farmers with buyers in Fort Myers, Florida. It aims to foster local commerce, sustainability, and community engagement. The platform offers a marketplace for products and event management with RSVP and attendance tracking. Key ambitions include facilitating local transactions, providing a robust platform for vendors, and enriching community interaction with a counterculture yet polished brand aesthetic.
 
+## Recent Updates
+- **Service Offerings Bug Fix** (November 2025): Fixed backend API routes for service offerings to use the new unified `vendorId` field instead of the legacy `serviceProviderId` field. All three endpoints (POST, PATCH, DELETE) now correctly reference the unified vendors table via `vendorId`. Also fixed related method calls: `getVendorEvents` → `getEventsByVendor`, `getServiceProviderByOwnerId` → `getVendorByOwnerId`, and service booking ownership checks to use `vendorId`.
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
