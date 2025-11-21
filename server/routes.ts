@@ -3477,15 +3477,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const validated = insertServiceOfferingSchema.parse(req.body);
       
-      // Verify user owns this service provider (vendor)
-      const vendor = await storage.getVendor(validated.serviceProviderId);
+      // Verify user owns this vendor
+      const vendor = await storage.getVendor(validated.vendorId);
       if (!vendor || vendor.ownerId !== userId) {
-        return res.status(403).json({ error: "Unauthorized to create offerings for this provider" });
+        return res.status(403).json({ error: "Unauthorized to create offerings for this vendor" });
       }
       
-      // Verify service provider profile is complete before allowing offering creation
+      // Verify vendor profile is complete before allowing offering creation
       if (vendor.profileStatus !== "complete") {
-        return res.status(400).json({ error: "Please complete your service provider profile before creating service offerings" });
+        return res.status(400).json({ error: "Please complete your vendor profile before creating service offerings" });
       }
       
       const offering = await storage.createServiceOffering(validated);
@@ -3507,8 +3507,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Service offering not found" });
       }
       
-      // Verify ownership through vendor (service provider)
-      const vendor = await storage.getVendor(offering.serviceProviderId);
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(offering.vendorId);
       if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to update this offering" });
       }
@@ -3535,9 +3535,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Service offering not found" });
       }
       
-      // Verify ownership through provider
-      const provider = await storage.getServiceProvider(offering.serviceProviderId);
-      if (!provider || provider.ownerId !== userId) {
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(offering.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to delete this offering" });
       }
       
