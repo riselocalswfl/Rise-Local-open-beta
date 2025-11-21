@@ -349,6 +349,14 @@ export default function VendorDashboard() {
       setServiceDialogOpen(false);
       toast({ title: "Service created successfully" });
     },
+    onError: (error: any) => {
+      console.error("Service creation error:", error);
+      toast({ 
+        title: "Failed to create service", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
   });
 
   const updateServiceMutation = useMutation({
@@ -364,6 +372,14 @@ export default function VendorDashboard() {
       });
       toast({ title: "Service updated successfully" });
     },
+    onError: (error: any) => {
+      console.error("Service update error:", error);
+      toast({ 
+        title: "Failed to update service", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
   });
 
   const deleteServiceMutation = useMutation({
@@ -378,6 +394,14 @@ export default function VendorDashboard() {
         }
       });
       toast({ title: "Service deleted successfully" });
+    },
+    onError: (error: any) => {
+      console.error("Service deletion error:", error);
+      toast({ 
+        title: "Failed to delete service", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
     },
   });
 
