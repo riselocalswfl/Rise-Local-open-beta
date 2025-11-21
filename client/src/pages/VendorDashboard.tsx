@@ -74,15 +74,37 @@ const serviceFormSchema = z.object({
   offeringName: z.string().min(1, "Service name is required"),
   description: z.string().min(1, "Description is required"),
   pricingModel: z.enum(["fixed", "hourly", "quote"]),
-  price: z.number().min(0, "Price must be positive").optional(), // In dollars for the form
-  hourlyRate: z.number().min(0, "Hourly rate must be positive").optional(),
+  price: z.number().min(0.01, "Price must be greater than 0").optional(),
+  hourlyRate: z.number().min(0.01, "Hourly rate must be greater than 0").optional(),
   durationMinutes: z.number().int().min(0, "Duration must be positive").optional(),
   tags: z.array(z.string()).default([]),
   requirements: z.string().optional(),
   includes: z.string().optional(),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
-});
+}).refine(
+  (data) => {
+    if (data.pricingModel === "fixed") {
+      return data.price !== undefined && data.price > 0;
+    }
+    return true;
+  },
+  {
+    message: "Price is required for fixed pricing",
+    path: ["price"],
+  }
+).refine(
+  (data) => {
+    if (data.pricingModel === "hourly") {
+      return data.hourlyRate !== undefined && data.hourlyRate > 0;
+    }
+    return true;
+  },
+  {
+    message: "Hourly rate is required for hourly pricing",
+    path: ["hourlyRate"],
+  }
+);
 
 export default function VendorDashboard() {
   const { toast } = useToast();
