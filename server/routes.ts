@@ -3360,7 +3360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extended restaurant routes (Legacy - using unified vendor system)
   app.get("/api/restaurants/:restaurantId/events", async (req, res) => {
     try {
-      const events = await storage.getVendorEvents(req.params.restaurantId);
+      const events = await storage.getEventsByVendor(req.params.restaurantId);
       res.json(events);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch restaurant events" });
@@ -3562,13 +3562,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/service-bookings/provider", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const provider = await storage.getServiceProviderByOwnerId(userId);
+      const vendor = await storage.getVendorByOwnerId(userId);
       
-      if (!provider) {
-        return res.status(404).json({ error: "No service provider profile found" });
+      if (!vendor) {
+        return res.status(404).json({ error: "No vendor profile found" });
       }
       
-      const bookings = await storage.getProviderBookings(provider.id);
+      const bookings = await storage.getProviderBookings(vendor.id);
       res.json(bookings);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch provider bookings" });
@@ -3608,9 +3608,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Booking not found" });
       }
       
-      // Verify ownership through provider
-      const provider = await storage.getServiceProvider(booking.serviceProviderId);
-      if (!provider || provider.ownerId !== userId) {
+      // Verify ownership through vendor
+      const vendor = await storage.getVendor(booking.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "Unauthorized to update this booking" });
       }
       
