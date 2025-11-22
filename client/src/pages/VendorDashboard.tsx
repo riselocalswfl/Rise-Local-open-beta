@@ -74,8 +74,8 @@ const serviceFormSchema = z.object({
   offeringName: z.string().min(1, "Service name is required"),
   description: z.string().min(1, "Description is required"),
   pricingModel: z.enum(["fixed", "hourly", "quote"]),
-  price: z.number().min(0.01, "Price must be greater than 0").optional(),
-  hourlyRate: z.number().min(0.01, "Hourly rate must be greater than 0").optional(),
+  price: z.number().min(0, "Price must be 0 or greater").optional(),
+  hourlyRate: z.number().min(0, "Hourly rate must be 0 or greater").optional(),
   durationMinutes: z.number().int().min(0, "Duration must be positive").optional(),
   tags: z.array(z.string()).default([]),
   requirements: z.string().optional(),
@@ -85,7 +85,7 @@ const serviceFormSchema = z.object({
 }).refine(
   (data) => {
     if (data.pricingModel === "fixed") {
-      return data.price !== undefined && data.price > 0;
+      return data.price !== undefined;
     }
     return true;
   },
@@ -96,7 +96,7 @@ const serviceFormSchema = z.object({
 ).refine(
   (data) => {
     if (data.pricingModel === "hourly") {
-      return data.hourlyRate !== undefined && data.hourlyRate > 0;
+      return data.hourlyRate !== undefined;
     }
     return true;
   },
@@ -2726,8 +2726,11 @@ function AddServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
                     type="number"
                     step="0.01"
                     placeholder="50.00"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === '' ? undefined : parseFloat(val));
+                    }}
                     data-testid="input-service-price"
                   />
                 </FormControl>
@@ -2749,8 +2752,11 @@ function AddServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
                     type="number"
                     step="0.01"
                     placeholder="75.00"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === '' ? undefined : parseFloat(val));
+                    }}
                     data-testid="input-service-hourly-rate"
                   />
                 </FormControl>
@@ -2772,8 +2778,11 @@ function AddServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
                     type="number"
                     step="0.01"
                     placeholder="100.00"
-                    value={field.value || ""}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      field.onChange(val === '' ? undefined : parseFloat(val));
+                    }}
                     data-testid="input-service-starting-price"
                   />
                 </FormControl>
