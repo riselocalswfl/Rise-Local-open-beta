@@ -5,12 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import HomeHero from "@/components/HomeHero";
 import ProductCard from "@/components/ProductCard";
+import VendorCard from "@/components/VendorCard";
 import EventCard from "@/components/EventCard";
 import ServiceProviderCard from "@/components/ServiceProviderCard";
 import HorizontalCarousel from "@/components/HorizontalCarousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
-import type { ServiceProvider } from "@shared/schema";
+import type { Vendor, ServiceProvider } from "@shared/schema";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -28,6 +29,10 @@ export default function Home() {
     queryFn: getProductsWithVendors,
   });
 
+  const { data: vendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
+    queryKey: ["/api/vendors"],
+  });
+
   const { data: serviceProviders, isLoading: servicesLoading } = useQuery<ServiceProvider[]>({
     queryKey: ["/api/services"],
   });
@@ -38,6 +43,7 @@ export default function Home() {
   });
 
   const featuredProducts = products?.slice(0, 8) || [];
+  const featuredVendors = vendors?.slice(0, 6) || [];
   const featuredServices = serviceProviders?.slice(0, 8) || [];
   const upcomingEvents =
     events?.filter((e) => new Date(e.dateTime) > new Date()).slice(0, 6) || [];
@@ -84,6 +90,47 @@ export default function Home() {
                     vendorId={product.vendorId}
                     inventory={product.inventory}
                     isVerifiedVendor={product.isVerifiedVendor}
+                  />
+                </div>
+              ))}
+            </HorizontalCarousel>
+          )}
+        </section>
+
+        <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="font-heading text-3xl text-text">Browse Vendors</h2>
+              <p className="text-text/70 mt-1">
+                Connect with verified vendors in your community
+              </p>
+            </div>
+            <Link href="/vendors" data-testid="link-view-all-vendors">
+              <button className="hidden md:flex text-sm text-primary hover:text-primary/80 items-center gap-1 transition">
+                View All
+                <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
+              </button>
+            </Link>
+          </div>
+          
+          {vendorsLoading ? (
+            <div className="flex gap-6 overflow-hidden">
+              <Skeleton className="h-40 w-96 flex-none" />
+              <Skeleton className="h-40 w-96 flex-none" />
+            </div>
+          ) : (
+            <HorizontalCarousel>
+              {featuredVendors.map((vendor) => (
+                <div key={vendor.id} className="w-96">
+                  <VendorCard
+                    id={vendor.id}
+                    name={vendor.businessName}
+                    bio={vendor.bio || ""}
+                    city={vendor.city}
+                    values={vendor.values as string[] || undefined}
+                    isVerified={vendor.isVerified}
+                    followerCount={vendor.followerCount}
+                    avatarUrl={vendor.logoUrl || undefined}
                   />
                 </div>
               ))}
