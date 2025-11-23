@@ -1,0 +1,85 @@
+I need you to fix my Rise Local database logic so that ALL services and ALL products always appear everywhere they are supposed to.
+
+Here is exactly what I need you to implement — please follow this step-by-step, and do NOT write any code for me to review, just make the changes directly inside the project:
+
+1. Product & Service Ownership
+
+When a vendor creates a product or a service, automatically attach the vendor’s ID to every ownership field the system uses.
+
+Make sure the vendor’s ID is saved into all relevant fields such as:
+
+vendor_id
+
+ownerId
+
+created_by or createdBy
+
+product_owner_id
+
+service_provider_id
+
+userId
+
+Whichever of these fields exist in the codebase, fill them all with the logged-in vendor’s ID.
+
+This ensures products and services never become “orphaned.”
+
+2. Vendor Dashboard & Vendor Profile Filtering
+
+Make all vendor dashboards and vendor profile pages use the SAME ownership field to display a vendor’s products and services.
+
+If needed, unify everything to filter using vendor_id consistently.
+
+This ensures a vendor always sees their own products and services.
+
+3. Public Shop & Service Pages
+
+Ensure the public Shop page and public Services page simply show all items that are is_active = true.
+
+This is already working — do not change it.
+
+Just make sure the vendor-specific views use the same ownership field.
+
+4. Backfill Existing Data
+
+Run a one-time cleanup inside the database:
+
+Any product missing vendor ownership fields → fill them using the existing vendor_id
+
+Any service missing vendor ownership fields → fill them using the existing vendor_id (example in /mnt/data/service_offerings.json: service_provider_id is null)
+
+This will repair all existing products/services so they show up correctly.
+
+5. Auto-Validate on Startup
+
+Add a lightweight check on server startup that scans all products and services and fills ANY missing ownership fields with vendor_id.
+
+This prevents the issue from happening again in the future.
+
+6. Success Criteria
+
+When you are done, the following should be true:
+
+A vendor’s products always appear:
+
+In the Shop section
+
+On their vendor profile
+
+On their vendor dashboard
+
+A vendor’s services always appear:
+
+In the Services section
+
+On their vendor profile
+
+On their vendor dashboard
+
+No product or service has missing or null ownership fields
+
+All future listings attach perfectly to the vendor that created them
+
+The issue can never happen again
+
+Please complete all of this inside my Replit project. Let me know when everything is implemented successfully.
