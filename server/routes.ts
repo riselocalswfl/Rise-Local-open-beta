@@ -3463,6 +3463,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Service Offering routes
+  // Unified vendor-based endpoint for service offerings (matches /api/vendors/:vendorId/services pattern)
+  app.get("/api/vendors/:vendorId/service-offerings", async (req, res) => {
+    try {
+      const offerings = await storage.getServiceOfferings(req.params.vendorId);
+      res.json(offerings);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch service offerings" });
+    }
+  });
+
+  // Legacy endpoint - kept for backward compatibility
   app.get("/api/service-offerings/:providerId", async (req, res) => {
     try {
       const offerings = await storage.getServiceOfferings(req.params.providerId);

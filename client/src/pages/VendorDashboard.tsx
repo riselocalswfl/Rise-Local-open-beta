@@ -170,7 +170,7 @@ export default function VendorDashboard() {
 
   // Fetch service offerings
   const { data: serviceOfferings = [] } = useQuery<ServiceOffering[]>({
-    queryKey: [`/api/service-offerings?providerId=${vendor?.id}`],
+    queryKey: [`/api/vendors/${vendor?.id}/service-offerings`],
     enabled: !!vendor?.id,
   });
 
@@ -365,7 +365,10 @@ export default function VendorDashboard() {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0];
-          return typeof key === 'string' && key.startsWith('/api/service-offerings');
+          return typeof key === 'string' && (
+            key.startsWith('/api/service-offerings') ||
+            key.includes('/service-offerings')
+          );
         }
       });
       setServiceDialogOpen(false);
@@ -389,7 +392,10 @@ export default function VendorDashboard() {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0];
-          return typeof key === 'string' && key.startsWith('/api/service-offerings');
+          return typeof key === 'string' && (
+            key.startsWith('/api/service-offerings') ||
+            key.includes('/service-offerings')
+          );
         }
       });
       toast({ title: "Service updated successfully" });
@@ -412,7 +418,10 @@ export default function VendorDashboard() {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0];
-          return typeof key === 'string' && key.startsWith('/api/service-offerings');
+          return typeof key === 'string' && (
+            key.startsWith('/api/service-offerings') ||
+            key.includes('/service-offerings')
+          );
         }
       });
       toast({ title: "Service deleted successfully" });
