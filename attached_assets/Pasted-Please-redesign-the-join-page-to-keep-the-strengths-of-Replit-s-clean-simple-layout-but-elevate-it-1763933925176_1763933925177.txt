@@ -1,0 +1,65 @@
+Please redesign the /join page to keep the strengths of Replit’s clean, simple layout—but elevate it so it feels more branded, more intentional, and more visually appealing. I do NOT want a flashy redesign, but I also do NOT want a plain, boring, white-card layout. Please upgrade the UI with subtle creativity while keeping it clean and functional.
+
+1. Keep Replit’s strengths
+
+Maintain the clean spacing, modern fonts, and responsive structure.
+
+Keep the two-column layout for Shop vs Sell.
+
+Keep the buttons simple and intuitive.
+
+Do not clutter the interface or add heavy graphics.
+
+2. Add tasteful Rise Local personality (not overdone)
+
+Add a soft, subtle background tone or texture (very light, not distracting).
+
+Add a thin underline or accent bar under the main header using the Rise Local green (#7C9A67).
+
+Use slightly rounded corners and soft shadows on the cards (not heavy, not flat).
+
+Add a very subtle nature-inspired accent (small leaf icon, soft line art, or a faint gradient) to help differentiate the brand visually.
+
+3. Improve visual hierarchy without making it flashy
+
+Increase the headline size and spacing to feel more welcoming.
+
+Make the two cards feel more distinct with spacing, shadow, and heading weight.
+
+Improve bullet point spacing and add small icons to make them feel more lively.
+
+Make the CTAs more visually prominent without being loud.
+
+4. Add micro-interactions
+
+Add a hover lift on cards (2–4px).
+
+Add a small button hover effect (slight color change or shadow).
+
+Make icons scale gently on hover.
+
+5. Keep everything subtle and cohesive
+
+The goal is a polished, unique, brand-aligned look that does NOT feel like a generic template.
+
+Use creative accents sparingly.
+
+Keep the layout clean, inviting, and professional.
+
+6. Functionality stays EXACTLY the same
+
+Do not change:
+
+routing
+
+buttons
+
+structure
+
+user flow
+
+logic
+
+Only adjust HTML and CSS to deliver a higher-quality but still clean and simple design.
+
+Please rewrite the page styling using this balanced approach."**
