@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { validateAndFixServiceOwnership } from "./validate-service-ownership";
+import { validateAndFixOwnership } from "./validate-ownership";
 
 const app = express();
 app.use(cookieParser());
@@ -42,11 +42,12 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // Run service ownership validation and backfill on startup
+  // Run comprehensive ownership validation and backfill on startup
+  // This ensures ALL products and services have proper vendorId ownership
   try {
-    await validateAndFixServiceOwnership();
+    await validateAndFixOwnership();
   } catch (error) {
-    console.error("[Startup] Failed to validate service ownership:", error);
+    console.error("[Startup] Failed to validate ownership:", error);
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
