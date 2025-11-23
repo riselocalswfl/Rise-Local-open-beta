@@ -78,36 +78,38 @@ export default function Join() {
             <div className="grid md:grid-cols-2 gap-8 my-16 max-w-4xl mx-auto">
               {/* Buyer Card */}
               <Card 
-                className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:-translate-y-0.5 border-muted/40 bg-card/80 backdrop-blur-sm" 
+                className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:-translate-y-0.5 border-muted/40 bg-card/80 backdrop-blur-sm flex flex-col" 
                 onClick={handleBuyerSignup} 
                 data-testid="card-buyer-signup"
                 style={{
                   boxShadow: '0 2px 8px rgba(124, 154, 103, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06)'
                 }}
               >
-                <CardContent className="p-10 text-center space-y-5">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-3 transition-transform duration-300 group-hover:scale-105">
-                    <ShoppingBag className="w-9 h-9 text-primary" />
-                  </div>
-                  
-                  <h2 className="text-3xl font-semibold font-playfair">I want to shop</h2>
-                  
-                  <p className="text-muted-foreground text-base leading-relaxed">
-                    Discover and support local Fort Myers businesses, products, and services
-                  </p>
-                  
-                  <div className="space-y-3 text-sm text-muted-foreground text-left pt-2">
-                    <div className="flex items-start gap-3 group/item">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
-                      <span>Browse local shops, restaurants & services</span>
+                <CardContent className="p-10 text-center flex flex-col flex-1">
+                  <div className="space-y-5 flex-1">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-3 transition-transform duration-300 group-hover:scale-105">
+                      <ShoppingBag className="w-9 h-9 text-primary" />
                     </div>
-                    <div className="flex items-start gap-3 group/item">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
-                      <span>Track orders and favorites</span>
-                    </div>
-                    <div className="flex items-start gap-3 group/item">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
-                      <span>Connect with local vendors</span>
+                    
+                    <h2 className="text-3xl font-semibold font-playfair">I want to shop</h2>
+                    
+                    <p className="text-muted-foreground text-base leading-relaxed">
+                      Discover and support local Fort Myers businesses, products, and services
+                    </p>
+                    
+                    <div className="space-y-3 text-sm text-muted-foreground text-left pt-2">
+                      <div className="flex items-start gap-3 group/item">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
+                        <span>Browse local shops, restaurants & services</span>
+                      </div>
+                      <div className="flex items-start gap-3 group/item">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
+                        <span>Track orders and favorites</span>
+                      </div>
+                      <div className="flex items-start gap-3 group/item">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
+                        <span>Connect with local vendors</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -128,36 +130,38 @@ export default function Join() {
 
               {/* Vendor Card */}
               <Card 
-                className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:-translate-y-0.5 border-primary/30 bg-card/80 backdrop-blur-sm" 
+                className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:-translate-y-0.5 border-primary/30 bg-card/80 backdrop-blur-sm flex flex-col" 
                 onClick={handleStartSelling} 
                 data-testid="card-vendor-signup"
                 style={{
                   boxShadow: '0 2px 12px rgba(124, 154, 103, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08)'
                 }}
               >
-                <CardContent className="p-10 text-center space-y-5">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-3 transition-transform duration-300 group-hover:scale-105">
-                    <Store className="w-9 h-9 text-primary" />
-                  </div>
-                  
-                  <h2 className="text-3xl font-semibold font-playfair">I want to sell</h2>
-                  
-                  <p className="text-muted-foreground text-base leading-relaxed">
-                    Join Fort Myers' premier marketplace and grow your local business
-                  </p>
-                  
-                  <div className="space-y-3 text-sm text-muted-foreground text-left pt-2">
-                    <div className="flex items-start gap-3 group/item">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
-                      <span>Simple 5-minute setup</span>
+                <CardContent className="p-10 text-center flex flex-col flex-1">
+                  <div className="space-y-5 flex-1">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-3 transition-transform duration-300 group-hover:scale-105">
+                      <Store className="w-9 h-9 text-primary" />
                     </div>
-                    <div className="flex items-start gap-3 group/item">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
-                      <span>No transaction fees</span>
-                    </div>
-                    <div className="flex items-start gap-3 group/item">
-                      <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
-                      <span>Reach local Fort Myers customers</span>
+                    
+                    <h2 className="text-3xl font-semibold font-playfair">I want to sell</h2>
+                    
+                    <p className="text-muted-foreground text-base leading-relaxed">
+                      Join Fort Myers' premier marketplace and grow your local business
+                    </p>
+                    
+                    <div className="space-y-3 text-sm text-muted-foreground text-left pt-2">
+                      <div className="flex items-start gap-3 group/item">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
+                        <span>Simple 5-minute setup</span>
+                      </div>
+                      <div className="flex items-start gap-3 group/item">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
+                        <span>No transaction fees</span>
+                      </div>
+                      <div className="flex items-start gap-3 group/item">
+                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
+                        <span>Reach local Fort Myers customers</span>
+                      </div>
                     </div>
                   </div>
                   
