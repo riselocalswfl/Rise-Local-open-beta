@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,8 +96,8 @@ const SERVICE_AREA_OPTIONS = [
 export default function UnifiedOnboarding() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedVendorType, setSelectedVendorType] = useState<"shop" | "dine" | "service" | null>(null);
 
   // Auto-save state
@@ -117,6 +118,53 @@ export default function UnifiedOnboarding() {
       sessionStorage.removeItem("onboardingDraftId");
     }
   };
+
+  // Vendor completion mutation with centralized cache invalidation
+  const completeMutation = useMutation({
+    mutationFn: async (vendorId: string) => {
+      const response = await fetch(`/api/vendors/${vendorId}/complete`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || "Failed to complete onboarding");
+      }
+      return response.json();
+    },
+    onSuccess: async () => {
+      // Invalidate all vendor-related caches to ensure immediate visibility across the app
+      // Await all invalidations to complete before navigating
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/vendors"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/my-vendor"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/products-with-vendors"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/services"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/events-with-organizers"] }),
+      ]);
+      
+      toast({
+        title: "Welcome to Rise Local!",
+        description: "Your vendor profile has been created successfully.",
+      });
+
+      // Clear the draft ID from sessionStorage
+      sessionStorage.removeItem("onboardingDraftId");
+
+      // Small delay so user can see the success message, then navigate
+      setTimeout(() => {
+        setLocation("/dashboard");
+      }, 1500);
+    },
+    onError: (error: Error) => {
+      console.error("Onboarding completion error:", error);
+      toast({
+        title: "Submission failed",
+        description: "Please try again or contact support.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Step 1 Form
   const form1 = useForm({
@@ -559,7 +607,7 @@ export default function UnifiedOnboarding() {
   };
 
   // Final submission
-  const handleFinalSubmit = async () => {
+  const handleFinalSubmit = () => {
     // If no draft ID in state, try to reload from sessionStorage and API
     if (!draftVendorId) {
       const savedId = sessionStorage.getItem("onboardingDraftId");
@@ -583,51 +631,8 @@ export default function UnifiedOnboarding() {
       return;
     }
 
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch(`/api/vendors/${draftVendorId}/complete`, {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        // Handle 401 authentication errors
-        if (response.status === 401) {
-          toast({
-            title: "Session expired",
-            description: "Please log in again to complete your profile.",
-            variant: "destructive",
-          });
-          sessionStorage.setItem("returnTo", "/onboarding");
-          setLocation("/join");
-          return;
-        }
-        throw new Error("Failed to complete onboarding");
-      }
-
-      toast({
-        title: "Welcome to Rise Local!",
-        description: "Your vendor profile has been created successfully.",
-      });
-
-      // Clear the draft ID from sessionStorage on success
-      sessionStorage.removeItem("onboardingDraftId");
-
-      // Small delay so user can see the success message
-      setTimeout(() => {
-        setLocation("/dashboard");
-      }, 1500);
-    } catch (error) {
-      console.error("Onboarding completion error:", error);
-      toast({
-        title: "Submission failed",
-        description: "Please try again or contact support.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Use the mutation to complete vendor profile with automatic cache invalidation
+    completeMutation.mutate(draftVendorId);
   };
 
   const progress = (step / 4) * 100;
@@ -1331,10 +1336,10 @@ export default function UnifiedOnboarding() {
                 <Button
                   size="lg"
                   onClick={handleFinalSubmit}
-                  disabled={isSubmitting}
+                  disabled={completeMutation.isPending}
                   data-testid="button-submit-final"
                 >
-                  {isSubmitting ? (
+                  {completeMutation.isPending ? (
                     <>
                       <CloudUpload className="mr-2 w-4 h-4 animate-pulse" />
                       Creating Profile...
