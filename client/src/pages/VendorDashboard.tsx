@@ -1802,11 +1802,11 @@ export default function VendorDashboard() {
                 <CardTitle>Business Features</CardTitle>
                 <CardDescription>Enable or disable features for your business</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="products-capability" className="text-base">Products</Label>
-                    <p className="text-sm text-muted-foreground">
+              <CardContent className="space-y-4 pt-6">
+                <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <Label htmlFor="products-capability" className="text-base font-semibold">Products</Label>
+                    <p className="text-sm text-[#747474]">
                       Sell physical products with inventory, pricing, and variants
                     </p>
                   </div>
@@ -1826,12 +1826,10 @@ export default function VendorDashboard() {
                   />
                 </div>
 
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="services-capability" className="text-base">Services</Label>
-                    <p className="text-sm text-muted-foreground">
+                <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <Label htmlFor="services-capability" className="text-base font-semibold">Services</Label>
+                    <p className="text-sm text-[#747474]">
                       Offer services with booking, pricing models, and scheduling
                     </p>
                   </div>
@@ -1851,12 +1849,10 @@ export default function VendorDashboard() {
                   />
                 </div>
 
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="menu-capability" className="text-base">Menu</Label>
-                    <p className="text-sm text-muted-foreground">
+                <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <Label htmlFor="menu-capability" className="text-base font-semibold">Menu</Label>
+                    <p className="text-sm text-[#747474]">
                       Display menu items with categories, dietary info, and pricing
                     </p>
                   </div>
