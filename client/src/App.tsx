@@ -35,24 +35,108 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 function Router() {
   return (
     <Switch>
-      {/* Public Pages */}
-      <Route path="/" component={Home} />
-      <Route path="/products" component={Products} />
-      <Route path="/vendors" component={Vendors} />
-      <Route path="/vendor/:id" component={VendorProfile} />
-      <Route path="/restaurant/:id" component={RestaurantProfile} />
-      <Route path="/eat-local" component={EatLocal} />
-      <Route path="/live-local" component={LiveLocal} />
-      <Route path="/services" component={Services} />
-      <Route path="/services/:id" component={ServiceProviderProfile} />
-      <Route path="/events" component={EventsLayout} />
-      <Route path="/events/my" component={EventsLayout} />
-      <Route path="/events/:id" component={EventDetail} />
-      <Route path="/spotlight" component={Spotlight} />
-      <Route path="/cart" component={Cart} />
-      
-      {/* Simplified Signup - Single Entry Point */}
+      {/* Public Landing Page - Only page accessible without login */}
       <Route path="/join" component={Join} />
+      
+      {/* Protected Marketplace Pages - Require authentication */}
+      <Route path="/">
+        {() => (
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/products">
+        {() => (
+          <ProtectedRoute>
+            <Products />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/vendors">
+        {() => (
+          <ProtectedRoute>
+            <Vendors />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/vendor/:id">
+        {() => (
+          <ProtectedRoute>
+            <VendorProfile />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/restaurant/:id">
+        {() => (
+          <ProtectedRoute>
+            <RestaurantProfile />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/eat-local">
+        {() => (
+          <ProtectedRoute>
+            <EatLocal />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/live-local">
+        {() => (
+          <ProtectedRoute>
+            <LiveLocal />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/services">
+        {() => (
+          <ProtectedRoute>
+            <Services />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/services/:id">
+        {() => (
+          <ProtectedRoute>
+            <ServiceProviderProfile />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/events">
+        {() => (
+          <ProtectedRoute>
+            <EventsLayout />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/events/my">
+        {() => (
+          <ProtectedRoute>
+            <EventsLayout />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/events/:id">
+        {() => (
+          <ProtectedRoute>
+            <EventDetail />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/spotlight">
+        {() => (
+          <ProtectedRoute>
+            <Spotlight />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/cart">
+        {() => (
+          <ProtectedRoute>
+            <Cart />
+          </ProtectedRoute>
+        )}
+      </Route>
       
       {/* Protected Vendor Routes */}
       <Route path="/onboarding">
