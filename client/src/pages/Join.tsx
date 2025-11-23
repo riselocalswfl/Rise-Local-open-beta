@@ -70,7 +70,7 @@ export default function Join() {
               </div>
               
               <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                Fort Myers' marketplace connecting local vendors with community members who value local goods and services
+                Southwest Florida marketplace connecting local vendors with community members who value local goods and services
               </p>
             </div>
 
@@ -94,7 +94,7 @@ export default function Join() {
                     <h2 className="text-3xl font-semibold font-playfair">I want to shop</h2>
                     
                     <p className="text-muted-foreground text-base leading-relaxed">
-                      Discover and support local Fort Myers businesses, products, and services
+                      Discover and support local Southwest Florida businesses, products, and services
                     </p>
                     
                     <div className="space-y-3 text-sm text-muted-foreground text-left pt-2">
@@ -146,7 +146,7 @@ export default function Join() {
                     <h2 className="text-3xl font-semibold font-playfair">I want to sell</h2>
                     
                     <p className="text-muted-foreground text-base leading-relaxed">
-                      Join Fort Myers' premier marketplace and grow your local business
+                      Join Southwest Florida's premier marketplace and grow your local business
                     </p>
                     
                     <div className="space-y-3 text-sm text-muted-foreground text-left pt-2">
@@ -160,7 +160,7 @@ export default function Join() {
                       </div>
                       <div className="flex items-start gap-3 group/item">
                         <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110" />
-                        <span>Reach local Fort Myers customers</span>
+                        <span>Reach local Southwest Florida customers</span>
                       </div>
                     </div>
                   </div>
@@ -184,7 +184,7 @@ export default function Join() {
             {/* Footer Info */}
             <div className="pt-10 border-t border-muted/30 max-w-2xl mx-auto">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Perfect for Fort Myers shops, restaurants, food vendors, and service providers
+                Perfect for Southwest Florida shops, restaurants, food vendors, and service providers
               </p>
             </div>
           </div>
