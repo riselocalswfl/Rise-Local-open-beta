@@ -778,7 +778,7 @@ export class DbStorage implements IStorage {
 
   async getServiceOfferings(providerId: string): Promise<ServiceOffering[]> {
     return await db.select().from(serviceOfferings)
-      .where(eq(serviceOfferings.serviceProviderId, providerId))
+      .where(eq(serviceOfferings.vendorId, providerId))
       .orderBy(serviceOfferings.displayOrder, desc(serviceOfferings.createdAt));
   }
 
@@ -839,7 +839,7 @@ export class DbStorage implements IStorage {
 
   async getProviderBookings(providerId: string): Promise<ServiceBooking[]> {
     return await db.select().from(serviceBookings)
-      .where(eq(serviceBookings.serviceProviderId, providerId))
+      .where(eq(serviceBookings.vendorId, providerId))
       .orderBy(desc(serviceBookings.createdAt));
   }
 

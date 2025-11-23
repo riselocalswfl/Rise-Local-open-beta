@@ -3488,7 +3488,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Please complete your vendor profile before creating service offerings" });
       }
       
-      const offering = await storage.createServiceOffering(validated);
+      // ENFORCE DUAL OWNERSHIP: Always set both vendorId AND serviceProviderId to ensure bulletproof ownership
+      const offeringData = {
+        ...validated,
+        vendorId: vendor.id,  // Primary ownership field (source of truth)
+        serviceProviderId: vendor.id,  // Legacy field - kept for backward compatibility
+      };
+      
+      const offering = await storage.createServiceOffering(offeringData);
       res.status(201).json(offering);
     } catch (error) {
       if (error instanceof z.ZodError) {
