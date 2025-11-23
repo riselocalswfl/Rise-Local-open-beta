@@ -1625,7 +1625,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Please complete your vendor profile before creating products" });
       }
       
-      const product = await storage.createProduct(validatedData);
+      // ENFORCE OWNERSHIP: Always set vendorId to the verified vendor's ID
+      // This ensures products can never become orphaned or attached to wrong vendor
+      const productData = {
+        ...validatedData,
+        vendorId: vendor.id,  // Override with verified vendor ID as source of truth
+      };
+      
+      const product = await storage.createProduct(productData);
       res.status(201).json(product);
     } catch (error) {
       if (error instanceof z.ZodError) {
