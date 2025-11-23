@@ -239,7 +239,7 @@ export async function setupAuth(app: Express) {
             console.log("[AUTH] Fallback: refetched user role:", userRole);
           }
           
-          // If returnTo is provided, use it; otherwise redirect based on role
+          // If returnTo is provided, use it; otherwise redirect based on onboarding status
           if (returnTo) {
             redirectUrl = returnTo;
             // Clear the returnTo from session and cookie
@@ -250,15 +250,9 @@ export async function setupAuth(app: Express) {
             // New vendor needs onboarding - redirectUrl already set to /onboarding
             console.log("[AUTH] New vendor redirecting to onboarding");
           } else {
-            // Redirect based on role for existing users
-            if (userRole === "buyer") {
-              redirectUrl = "/profile";
-            } else if (userRole === "vendor" || userRole === "restaurant") {
-              redirectUrl = "/dashboard";
-            } else if (userRole === "service_provider") {
-              redirectUrl = "/service-provider-dashboard";
-            }
-            console.log("[AUTH] Redirecting to:", redirectUrl, "for role:", userRole);
+            // All returning users go to homepage
+            redirectUrl = "/";
+            console.log("[AUTH] Returning user redirecting to homepage");
           }
         } catch (error) {
           console.error("Failed to process user role:", error);
