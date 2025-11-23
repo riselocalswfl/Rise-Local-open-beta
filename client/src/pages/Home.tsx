@@ -12,7 +12,6 @@ import HorizontalCarousel from "@/components/HorizontalCarousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
 import type { ServiceProvider, Restaurant } from "@shared/schema";
-import farmersMarketImg from "@assets/IMG_0386_1763937401913.png";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -53,18 +52,6 @@ export default function Home() {
     <div className="min-h-screen bg-bg">
       <Header />
       <main>
-        {/* Full-width banner image */}
-        <section className="w-full">
-          <div className="relative w-full h-[300px] md:h-[400px] lg:h-[500px] overflow-hidden">
-            <img
-              src={farmersMarketImg}
-              alt="Southwest Florida farmers market"
-              className="w-full h-full object-cover"
-              data-testid="img-hero-banner"
-            />
-          </div>
-        </section>
-
         <section className="max-w-7xl mx-auto px-4 md:px-6 py-8">
           <HomeHero />
         </section>
