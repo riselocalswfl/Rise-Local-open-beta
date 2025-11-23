@@ -1,0 +1,87 @@
+I need you to fully correct my service ownership structure so that services always appear on the vendor’s profile and dashboard. Here is exactly what I need:
+
+1. ENFORCE VENDOR OWNERSHIP ON SERVICE CREATION
+
+Wherever a new service is created (service creation form, API endpoint, or server function), automatically assign the logged-in vendor’s ID to ALL ownership fields the system uses or may use:
+
+vendor_id
+service_provider_id
+ownerId
+created_by
+createdBy
+userId
+
+
+Set all of them equal to the authenticated vendor’s ID so no ownership field is ever null.
+
+Example (but use my app’s actual field names):
+
+vendor_id: loggedInVendor.id,
+service_provider_id: loggedInVendor.id,
+ownerId: loggedInVendor.id,
+created_by: loggedInVendor.id,
+userId: loggedInVendor.id
+
+
+This must run on every service creation so the issue never happens again.
+
+2. VALIDATE AND FIX EXISTING SERVICES IN THE DATABASE
+
+Create and run a validation script that:
+
+scans all existing services
+
+finds any service where service_provider_id, ownerId, created_by, createdBy, or userId is missing
+
+fills in those fields using the existing vendor_id (the source of truth)
+
+updates the service record
+
+This ensures all past services are repaired.
+
+Here is the file to read for reference showing missing service_provider_id:
+/mnt/data/service_offerings.json
+
+3. ENSURE DASHBOARD & PROFILE USE THE SAME FIELD
+
+Update the vendor dashboard and vendor profile queries so they consistently filter using:
+
+WHERE service_provider_id = loggedInVendor.id
+
+
+(or whichever field you designate as the “official” ownership field).
+
+Make sure all pages use the same ownership field to avoid mismatches.
+
+4. RUN THE VALIDATION ON STARTUP
+
+Run the ownership validation script automatically every time the server starts.
+That way, if fields are ever missing, they get corrected immediately.
+
+5. QUALITY CHECK
+
+After implementation, verify:
+
+A service appears on:
+
+the public Services page
+
+the vendor’s own profile
+
+the vendor’s dashboard
+
+No ownership-related field is ever saved as null
+
+All past services have full correct ownership metadata
+
+FINAL GOAL
+
+A bulletproof, consistent, permanent fix so:
+
+No service is ever orphaned
+
+All services always display where they should
+
+Vendor accounts always show their correct services
+
+Future bugs cannot create missing vendor links
