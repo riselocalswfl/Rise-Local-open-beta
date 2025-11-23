@@ -39,13 +39,6 @@ function Router() {
       <Route path="/join" component={Join} />
       
       {/* Protected Marketplace Pages - Require authentication */}
-      <Route path="/">
-        {() => (
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        )}
-      </Route>
       <Route path="/products">
         {() => (
           <ProtectedRoute>
@@ -243,6 +236,15 @@ function Router() {
       </Route>
       <Route path="/join/service-provider">
         {() => <Redirect to="/join" />}
+      </Route>
+      
+      {/* Home route at the end to avoid matching all paths */}
+      <Route path="/">
+        {() => (
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        )}
       </Route>
       
       <Route component={NotFound} />
