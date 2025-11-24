@@ -6,6 +6,21 @@ Rise Local is a full-stack web application designed to connect local vendors, ar
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### Service Vendor Cards on Home Page (November 24, 2024)
+- **Service Section Update**: Home page now displays real service vendor cards instead of blank placeholders
+- **New Endpoint**: Created `/api/service-vendors` endpoint to fetch service vendors (vendorType='service') with completed profiles
+- **ServiceVendorCard Component**: New card component displaying vendor photo, business name, tagline, service areas, location, badges, and clickable profile links
+- **Data Flow**: Fetches from unified vendors table, filters for service type vendors  
+- **Mobile Responsive**: Cards use HorizontalCarousel component for smooth mobile scrolling
+- **Routing**: All service cards link to `/vendor/:id` profile pages
+- **Files Modified**: 
+  - `server/storage.ts` - Added `getServiceVendors()` method
+  - `server/routes.ts` - Added `/api/service-vendors` endpoint
+  - `client/src/components/ServiceVendorCard.tsx` - New component created
+  - `client/src/pages/Home.tsx` - Updated to use service vendors instead of service offerings
+
 ## System Architecture
 
 ### UI/UX
