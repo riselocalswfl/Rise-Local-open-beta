@@ -313,6 +313,15 @@ export class DbStorage implements IStorage {
     }));
   }
 
+  async getServiceVendors(): Promise<Vendor[]> {
+    // Fetch service vendors with completed profiles
+    return await db.select().from(vendors)
+      .where(and(
+        eq(vendors.vendorType, "service"),
+        eq(vendors.profileStatus, "complete")
+      ));
+  }
+
   async getVerifiedVendors(): Promise<Vendor[]> {
     return await db.select().from(vendors).where(eq(vendors.isVerified, true));
   }

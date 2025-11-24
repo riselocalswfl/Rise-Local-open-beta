@@ -7,11 +7,11 @@ import HomeHero from "@/components/HomeHero";
 import ProductCard from "@/components/ProductCard";
 import RestaurantCard from "@/components/RestaurantCard";
 import EventCard from "@/components/EventCard";
-import ServiceProviderCard from "@/components/ServiceProviderCard";
+import ServiceVendorCard from "@/components/ServiceVendorCard";
 import HorizontalCarousel from "@/components/HorizontalCarousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProductsWithVendors, getEventsWithOrganizers } from "@/lib/api";
-import type { ServiceProvider, Restaurant } from "@shared/schema";
+import type { Vendor, Restaurant } from "@shared/schema";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -33,8 +33,8 @@ export default function Home() {
     queryKey: ["/api/restaurants"],
   });
 
-  const { data: serviceProviders, isLoading: servicesLoading } = useQuery<ServiceProvider[]>({
-    queryKey: ["/api/services"],
+  const { data: serviceVendors, isLoading: servicesLoading } = useQuery<Vendor[]>({
+    queryKey: ["/api/service-vendors"],
   });
 
   const { data: events, isLoading: eventsLoading } = useQuery({
@@ -44,7 +44,7 @@ export default function Home() {
 
   const featuredProducts = products?.slice(0, 8) || [];
   const featuredRestaurants = restaurants?.slice(0, 6) || [];
-  const featuredServices = serviceProviders?.slice(0, 8) || [];
+  const featuredServiceVendors = serviceVendors?.slice(0, 6) || [];
   const upcomingEvents =
     events?.filter((e) => new Date(e.dateTime) > new Date()).slice(0, 6) || [];
 
@@ -152,15 +152,21 @@ export default function Home() {
           
           {servicesLoading ? (
             <div className="flex gap-6 overflow-hidden">
-              <Skeleton className="h-64 w-80 flex-none" />
-              <Skeleton className="h-64 w-80 flex-none" />
-              <Skeleton className="h-64 w-80 flex-none" />
+              <Skeleton className="h-96 w-80 flex-none" />
+              <Skeleton className="h-96 w-80 flex-none" />
+              <Skeleton className="h-96 w-80 flex-none" />
+            </div>
+          ) : featuredServiceVendors.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                No service providers currently listed. Check back soon!
+              </p>
             </div>
           ) : (
             <HorizontalCarousel>
-              {featuredServices.map((provider) => (
-                <div key={provider.id} className="w-80">
-                  <ServiceProviderCard provider={provider} />
+              {featuredServiceVendors.map((vendor) => (
+                <div key={vendor.id} className="w-80">
+                  <ServiceVendorCard vendor={vendor} />
                 </div>
               ))}
             </HorizontalCarousel>

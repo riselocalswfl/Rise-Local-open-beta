@@ -1,0 +1,61 @@
+Please update the Service section on my Home page.
+
+Right now, the Services section only shows a blank card with a “View Services” button. I want it to display real service vendor cards pulled from my database, similar to how product cards display for Shop items. Scan my project for the files that control:
+
+- The Home page layout
+- The Services list component
+- The Vendor / Service data model
+- Any card components or grid components
+
+and apply these improvements:
+
+–––––––––––––––––––––
+SERVICE CARD REDESIGN
+–––––––––––––––––––––
+Replace the blank placeholder with a scrollable or grid-based list of service cards. Each service card should include:
+
+1. Vendor / Service photo  
+2. Service business name  
+3. Short description or tagline  
+4. Category tag (ex: "Photography", "Fitness", "Home Services", etc.)  
+5. City or service area (if stored)  
+6. A button or clickable card area that goes directly to the vendor’s full profile page
+
+The card styling should:
+- Match the existing Rise Local aesthetic (rounded corners, soft shadows, green accents)
+- Be responsive and look clean on mobile
+- Use consistent spacing and font sizes
+- Load the latest 3–6 service vendors on the Home page
+
+–––––––––––––––––––––
+ROUTING + CONNECTIVITY
+–––––––––––––––––––––
+Ensure that:
+- Clicking a service card routes to the correct vendor profile
+- All service data pulls from the correct service vendor collection or database path
+- Cards dynamically update when new service vendors sign up
+- The “View All” link still opens the full Services page
+
+–––––––––––––––––––––
+MOBILE RESPONSIVENESS
+–––––––––––––––––––––
+On mobile:
+- Display service cards in a single-column layout
+- Ensure images scale properly and do not overflow
+- Keep text centered or left-aligned with clean spacing
+- Buttons should remain thumb-friendly and visible
+
+–––––––––––––––––––––
+CODE CLEANUP
+–––––––––––––––––––––
+1. Reuse any existing card components if possible (ProductCard, VendorCard, etc.)
+2. If creating a new ServiceCard component, place it in the components/ folder
+3. Export the card and import it on the Home page and Services page
+4. Remove old placeholder card code
+5. Show me:
+   - The updated Home page file
+   - The new/updated ServiceCard component
+   - Any changes to routing or data fetching
+   - A list of all files you modified
+
+Make sure the final output is clean, responsive, and production-ready so users can browse Services easily from the home page.

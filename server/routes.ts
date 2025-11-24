@@ -3388,6 +3388,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Service Vendor routes
+  app.get("/api/service-vendors", async (req, res) => {
+    try {
+      // Return all service vendors (completed profiles only)
+      const serviceVendors = await storage.getServiceVendors();
+      res.json(serviceVendors);
+    } catch (error) {
+      console.error("[GET /api/service-vendors] Error fetching service vendors:", error);
+      res.status(500).json({ error: "Failed to fetch service vendors" });
+    }
+  });
+
   // Service Provider routes
   app.get("/api/services", async (req, res) => {
     try {
