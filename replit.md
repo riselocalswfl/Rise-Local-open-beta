@@ -69,3 +69,57 @@ The frontend is built with React 18, TypeScript, and Vite. UI components leverag
 
 ### Fonts
 - Google Fonts CDN
+
+## Authentication & Onboarding System Status
+
+### Development Environment - Verified Working ✓
+As of November 24, 2024, the authentication and onboarding system has been fully verified in the development environment:
+
+**Sign-In Flow (Buyer)**
+- ✓ Users can access `/join` page with buyer and vendor signup options
+- ✓ Clicking "Sign up to Shop" button initiates Replit Auth flow with `intended_role=buyer`
+- ✓ After authentication, buyers are created in the database with `role='buyer'`
+- ✓ Buyers are redirected to the homepage (`/`)
+- ✓ Database confirmed: Multiple buyer users successfully created
+
+**Sign-In Flow (Vendor)**
+- ✓ Clicking "Start Selling" button initiates Replit Auth flow with `intended_role=vendor`
+- ✓ After authentication, vendors are created in the database with `role='vendor'`
+- ✓ New vendors (without existing profile) are redirected to `/onboarding`
+- ✓ Returning vendors (with existing profile) proceed to dashboard
+- ✓ Database confirmed: Multiple vendor users successfully created
+
+**Vendor Onboarding (3-Step Process)**
+- ✓ **Step 1 - Business Basics**: Vendor type selection (shop/dine/service), business name, contact info, location, bio
+- ✓ **Step 2 - Business Details**: Type-specific fields (e.g., shop: local sourcing %, dine: price range/dietary options, service: areas/certifications)
+- ✓ **Step 3 - Payment & Fulfillment**: Payment methods and fulfillment options
+- ✓ Navigation: Forward/backward buttons between all 3 steps working correctly
+- ✓ Auto-save: Draft profiles saved to database automatically
+- ✓ Database confirmed: Vendor profiles with both "draft" and "complete" statuses
+
+**Database Tables Verified**
+- ✓ `sessions` - PostgreSQL session storage for authentication
+- ✓ `users` - User accounts with role-based access (buyer/vendor/admin)
+- ✓ `vendors` - Unified vendor profiles supporting all vendor types
+
+### Production Database Setup Requirements
+
+When deploying to production, ensure the following:
+
+1. **Database Migration**: Run all Drizzle migrations against the production database to create the required schema (23 tables including users, sessions, vendors, products, orders, etc.)
+
+2. **Environment Variables**: Configure production environment with:
+   - `DATABASE_URL` - Production PostgreSQL connection string
+   - `SESSION_SECRET` - Secure random string for session encryption
+   - `REPL_ID` - Production Replit project ID
+   - `REPLIT_DOMAINS` - Production domain(s) for OIDC callbacks
+   - Stripe keys, object storage credentials, etc.
+
+3. **Session Table**: Verify the `sessions` table exists and is accessible for Replit Auth session storage
+
+4. **Post-Deployment Smoke Test**: Test the complete user journey:
+   - Buyer signup → authentication → homepage access
+   - Vendor signup → authentication → onboarding (3 steps) → profile completion → dashboard access
+   - Verify user and vendor records are created in production database
+
+5. **Monitoring**: Track onboarding completion rates and session health in production for ongoing maintenance
