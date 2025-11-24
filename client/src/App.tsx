@@ -31,102 +31,33 @@ import MessageThread from "@/pages/MessageThread";
 import NavMenu from "@/components/NavMenu";
 import { NavMenuProvider } from "@/contexts/NavMenuContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { SignupBanner } from "@/components/SignupBanner";
 
 function Router() {
   return (
     <Switch>
-      {/* Public Landing Page - Only page accessible without login */}
+      {/* Public Pages - Browsable without login */}
       <Route path="/join" component={Join} />
+      <Route path="/products" component={Products} />
+      <Route path="/vendors" component={Vendors} />
+      <Route path="/vendor/:id" component={VendorProfile} />
+      <Route path="/restaurant/:id" component={RestaurantProfile} />
+      <Route path="/eat-local" component={EatLocal} />
+      <Route path="/live-local" component={LiveLocal} />
+      <Route path="/services" component={Services} />
+      <Route path="/services/:id" component={ServiceProviderProfile} />
+      <Route path="/events" component={EventsLayout} />
+      <Route path="/events/:id" component={EventDetail} />
+      <Route path="/spotlight" component={Spotlight} />
       
-      {/* Protected Marketplace Pages - Require authentication */}
-      <Route path="/products">
-        {() => (
-          <ProtectedRoute>
-            <Products />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/vendors">
-        {() => (
-          <ProtectedRoute>
-            <Vendors />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/vendor/:id">
-        {() => (
-          <ProtectedRoute>
-            <VendorProfile />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/restaurant/:id">
-        {() => (
-          <ProtectedRoute>
-            <RestaurantProfile />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/eat-local">
-        {() => (
-          <ProtectedRoute>
-            <EatLocal />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/live-local">
-        {() => (
-          <ProtectedRoute>
-            <LiveLocal />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/services">
-        {() => (
-          <ProtectedRoute>
-            <Services />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/services/:id">
-        {() => (
-          <ProtectedRoute>
-            <ServiceProviderProfile />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/events">
-        {() => (
-          <ProtectedRoute>
-            <EventsLayout />
-          </ProtectedRoute>
-        )}
-      </Route>
+      {/* Cart - browsable without login, checkout requires auth */}
+      <Route path="/cart" component={Cart} />
+      
+      {/* Protected Account Features - Require authentication */}
       <Route path="/events/my">
         {() => (
           <ProtectedRoute>
             <EventsLayout />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/events/:id">
-        {() => (
-          <ProtectedRoute>
-            <EventDetail />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/spotlight">
-        {() => (
-          <ProtectedRoute>
-            <Spotlight />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/cart">
-        {() => (
-          <ProtectedRoute>
-            <Cart />
           </ProtectedRoute>
         )}
       </Route>
@@ -239,13 +170,7 @@ function Router() {
       </Route>
       
       {/* Home route at the end to avoid matching all paths */}
-      <Route path="/">
-        {() => (
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        )}
-      </Route>
+      <Route path="/" component={Home} />
       
       <Route component={NotFound} />
     </Switch>
@@ -261,6 +186,7 @@ function App() {
             <Toaster />
             <Router />
             <NavMenu />
+            <SignupBanner />
           </NavMenuProvider>
         </CartProvider>
       </TooltipProvider>
