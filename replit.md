@@ -15,7 +15,7 @@ The frontend is built with React 18, TypeScript, and Vite. UI components leverag
 - **Frontend State Management**: TanStack Query manages server state, React hooks handle local UI state, and React Context with localStorage persists the shopping cart. Wouter is used for client-side routing.
 - **Backend**: Express.js with TypeScript provides a RESTful API.
 - **Data Storage**: PostgreSQL, accessed via Neon's serverless driver, uses Drizzle ORM for type-safe queries and schema management.
-- **Authentication**: Replit Auth via OIDC manages authentication, with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, and `admin`. **All marketplace pages require authentication** - users must create an account (buyer or vendor) to browse products, services, vendors, and events. The `/join` page is the only public page and serves as the landing page for new users.
+- **Authentication**: Replit Auth via OIDC manages authentication, with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, and `admin`. **Public Browsing Model**: The marketplace is fully browsable without authentication. Users can view all products, services, vendors, and events without creating an account. A non-intrusive signup banner (SignupBanner component) encourages account creation. Authentication is only required for account-specific actions like checkout, viewing orders, sending messages, and vendor operations. The `/join` page provides dual signup options (buyer/vendor).
 - **Unified Vendor Architecture**: All vendor types (shop, dine, service) use a single `vendors` table with polymorphic capabilities via a `vendorType` field and a `capabilities` JSON field that determines enabled features (products, services, menu). Products, menu items, and service offerings link to this unified `vendors` table via `vendorId`.
 - **Simplified Authentication & Onboarding**: A streamlined signup process routes users based on `intended_role` query parameter. A single universal onboarding flow at `/onboarding` guides all vendor types through business profile creation, including self-selection of `vendorType` and auto-setting of initial capabilities. An auto-save system with debounced triggers creates draft profiles.
 - **Unified Vendor Dashboard**: A single capability-aware dashboard (`/dashboard`) serves all vendor types. Tabs are dynamically shown/hidden based on vendor capabilities, which can be toggled via settings.
@@ -32,7 +32,11 @@ The frontend is built with React 18, TypeScript, and Vite. UI components leverag
 - **Geographic Focus**: Exclusively serves local Fort Myers vendors.
 - **Fulfillment**: Supports pickup, local delivery, and shipping options configurable by vendors.
 - **Fort Myers Spotlight**: A dedicated feature for highlighting local content or businesses.
-- **Application Routes**: All marketplace routes now require authentication. Public landing page at `/join` with dual signup options (buyer/vendor). Protected marketplace routes include homepage, products, services, vendors, vendor profiles, events, cart. Protected buyer routes include checkout, order confirmation, orders, profile, messages. Protected vendor routes include onboarding and dashboard. Legacy authentication routes redirect to `/join`.
+- **Application Routes**: 
+  - **Public Routes** (no authentication required): `/` (homepage), `/join`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/cart`
+  - **Protected Routes** (authentication required): `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/onboarding`, `/events/my`, `/admin`
+  - **Signup Encouragement**: A dismissible SignupBanner component (bottom banner) displays on public pages for unauthenticated users, with localStorage-based dismissal persistence and SSR-safe browser guards
+  - **Authentication Flow**: Clicking "Sign Up Free" on the banner or attempting protected actions redirects to `/join` with dual signup options (buyer/vendor). Legacy authentication routes redirect to `/join`.
 
 ## External Dependencies
 
