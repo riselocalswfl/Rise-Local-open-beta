@@ -28,8 +28,6 @@ import UnifiedOnboarding from "@/pages/UnifiedOnboarding";
 import CustomerProfile from "@/pages/CustomerProfile";
 import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
-import NavMenu from "@/components/NavMenu";
-import { NavMenuProvider } from "@/contexts/NavMenuContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignupBanner } from "@/components/SignupBanner";
 
@@ -182,12 +180,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <CartProvider>
-          <NavMenuProvider>
-            <Toaster />
-            <Router />
-            <NavMenu />
-            <SignupBanner />
-          </NavMenuProvider>
+          <Toaster />
+          <Router />
+          <SignupBanner />
         </CartProvider>
       </TooltipProvider>
     </QueryClientProvider>

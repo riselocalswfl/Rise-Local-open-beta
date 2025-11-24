@@ -51,21 +51,23 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg">
       <Header />
-      <main>
-        <section className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+      <main className="pb-8">
+        {/* Hero Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
           <HomeHero />
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-          <div className="flex items-center justify-between mb-6">
+        {/* Shop Goods Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <h2 className="font-heading text-3xl text-text">Shop Goods</h2>
-              <p className="text-text/70 mt-1">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl text-text font-bold">Shop Goods</h2>
+              <p className="text-text/70 mt-1 text-sm sm:text-base">
                 Discover products from local artisans and makers
               </p>
             </div>
             <Link href="/products" data-testid="link-view-all-products">
-              <button className="hidden md:flex text-sm text-primary hover:text-primary/80 items-center gap-1 transition">
+              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition font-medium">
                 View All
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </button>
@@ -97,16 +99,17 @@ export default function Home() {
           )}
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-          <div className="flex items-center justify-between mb-6">
+        {/* Dine Local Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <h2 className="font-heading text-3xl text-text">Dine Local</h2>
-              <p className="text-text/70 mt-1">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl text-text font-bold">Dine Local</h2>
+              <p className="text-text/70 mt-1 text-sm sm:text-base">
                 Explore Fort Myers restaurants with locally-sourced ingredients
               </p>
             </div>
             <Link href="/eat-local" data-testid="link-view-all-restaurants">
-              <button className="hidden md:flex text-sm text-primary hover:text-primary/80 items-center gap-1 transition">
+              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition font-medium">
                 View All
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </button>
@@ -130,16 +133,17 @@ export default function Home() {
           )}
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-          <div className="flex items-center justify-between mb-6">
+        {/* Local Services Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <h2 className="font-heading text-3xl text-text">Local Services</h2>
-              <p className="text-text/70 mt-1">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl text-text font-bold">Local Services</h2>
+              <p className="text-text/70 mt-1 text-sm sm:text-base">
                 Find trusted professionals for your needs
               </p>
             </div>
             <Link href="/services" data-testid="link-view-all-services">
-              <button className="hidden md:flex text-sm text-primary hover:text-primary/80 items-center gap-1 transition">
+              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition font-medium">
                 View All
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </button>
@@ -163,16 +167,17 @@ export default function Home() {
           )}
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 md:px-6 py-12 pb-16">
-          <div className="flex items-center justify-between mb-6">
+        {/* Upcoming Events Section */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <h2 className="font-heading text-3xl text-text">Upcoming Events</h2>
-              <p className="text-text/70 mt-1">
+              <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl text-text font-bold">Upcoming Events</h2>
+              <p className="text-text/70 mt-1 text-sm sm:text-base">
                 Join workshops, markets, and community gatherings
               </p>
             </div>
             <Link href="/events" data-testid="link-view-all-events">
-              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition">
+              <button className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition font-medium">
                 View All
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </button>

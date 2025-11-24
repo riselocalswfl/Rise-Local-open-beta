@@ -1,0 +1,60 @@
+I need you to update my Rise Local app by improving the home page layout and completely refining the navigation system. Please scan all my components that control the Home page and Navigation (Home.jsx, App.jsx, Navigation.jsx, Navbar.jsx, Sidebar.jsx, MobileNav.jsx — or whatever versions exist in my project) and apply the following upgrades across the entire app:
+
+–––––––––––––––––––––
+MOBILE + DESKTOP RESPONSIVENESS
+–––––––––––––––––––––
+1. Make the entire home page fully mobile-friendly:
+   - Ensure the hero section stacks vertically on small screens.
+   - Remove any overlapping elements.
+   - Make all images fluid and responsive with max-width: 100% and proper aspect ratios.
+   - Center all text and CTA buttons on mobile.
+   - Add proper padding/margins so elements are not touching screen edges.
+   - Ensure Shop, Dine, Services, Vendors sections display cleanly on mobile.
+
+2. Add consistent spacing between sections and ensure the layout looks clean at all screen sizes (desktop, tablet, phone).
+
+–––––––––––––––––––––
+NAVIGATION REDESIGN + UX UPGRADE
+–––––––––––––––––––––
+Update the navigation to be cleaner, more intuitive, and consistent across pages. Apply the following changes:
+
+1. For desktop:
+   - Keep a clean top navbar with icons + labels.
+   - Ensure the Sign In button and Cart icon remain aligned and visually consistent.
+   - Ensure all nav links route correctly.
+
+2. For mobile:
+   - Replace the current sidebar with a smoother slide-in mobile menu.
+   - Add a dimmed background overlay behind the menu when open.
+   - Make the menu buttons full-width, with better padding, spacing, and clean alignment.
+   - Add clear icons to each navigation item.
+   - Ensure the mobile menu auto-closes when navigating to a new page.
+
+3. Make the navigation bar and mobile sidebar share consistent styles:
+   - Same fonts
+   - Same spacings
+   - Same icon style
+   - Same hover/touch behaviors
+
+4. Make sure the “Create an Account / Sign In” button is prominently placed and consistent across both desktop and mobile.
+
+–––––––––––––––––––––
+GENERAL IMPROVEMENTS
+–––––––––––––––––––––
+1. Refactor any duplicated navigation code so that the app uses a single, global navigation component.
+2. Ensure navigation works on every page (Shop, Dine, Services, Events, All Vendors, Cart).
+3. Make sure the home page hero section is balanced between text and image on large screens and stacks gracefully on mobile.
+4. Ensure no components break when resizing the window.
+5. Fix any warnings or layout issues found during the update.
+6. Apply best practices for clean JSX structure and modern responsive CSS.
+
+–––––––––––––––––––––
+FINAL STEP
+–––––––––––––––––––––
+After making these changes, show me:
+- The updated navigation component(s)
+- The updated home page component
+- Any added CSS or updated styling
+- A list of all files you modified
+
+Make sure all code is clean, readable, and production-ready.

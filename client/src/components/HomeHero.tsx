@@ -7,32 +7,46 @@ export default function HomeHero() {
   return (
     <BrandCard className="overflow-hidden">
       <div className="grid md:grid-cols-2 gap-0">
-        <BrandCardBody className="relative flex flex-col justify-center py-12 md:py-16">
-          <img src={logoImg} alt="Rise Local" className="absolute top-4 right-2 h-28 w-auto" />
-          <h2 className="font-heading text-2xl md:text-4xl text-text mb-6 font-bold">What's Rise Local?</h2>
-          <p className="text-base md:text-lg text-text/80 leading-relaxed mb-6 font-medium">
+        {/* Text Content */}
+        <BrandCardBody className="relative flex flex-col justify-center py-8 px-6 md:py-16 md:px-8">
+          {/* Logo - responsive positioning */}
+          <img 
+            src={logoImg} 
+            alt="Rise Local" 
+            className="absolute top-4 right-4 h-20 w-auto md:h-28 md:top-4 md:right-4 opacity-90" 
+          />
+          
+          {/* Heading */}
+          <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl text-text mb-4 md:mb-6 font-bold leading-tight">
+            What's Rise Local?
+          </h2>
+          
+          {/* Description */}
+          <p className="text-base sm:text-lg lg:text-xl text-text/80 leading-relaxed mb-6 md:mb-8 font-medium max-w-xl">
             Rise Local is your one-stop-shop for all things local in SWFL. This app is here to connect you to events, restaurants, goods, and services, which makes supporting local the easiest choice.
           </p>
-          <div className="flex justify-center mb-6">
+          
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
             <Link 
               href="/join" 
               data-testid="start-selling-cta"
-              className="bg-secondary hover:bg-secondary/90 text-white px-8 py-3 rounded-md font-medium transition no-underline"
+              className="w-full sm:w-auto bg-secondary hover:bg-secondary/90 text-white px-6 py-3 rounded-md font-medium transition no-underline text-center"
             >
               Start Selling on Rise Local
             </Link>
-          </div>
-          <div className="w-full max-w-md mx-auto">
             <Link 
               href="/vendors"
-              className="w-full min-h-[56px] inline-flex items-center justify-center rounded-2xl transition-transform duration-brand shadow-soft hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 bg-primary text-white hover:bg-primary/90 py-4 px-8 no-underline" 
+              className="w-full sm:w-auto inline-flex items-center justify-center rounded-md transition bg-primary text-white hover:bg-primary/90 py-3 px-6 no-underline font-medium shadow-sm" 
               data-testid="link-discover-businesses"
             >
-              <span className="text-lg font-semibold">Discover our local businesses</span>
+              Discover Local Businesses
             </Link>
           </div>
         </BrandCardBody>
-        <div className="relative h-[300px] md:h-auto">
+        
+        {/* Hero Image */}
+        <div className="relative h-[250px] sm:h-[300px] md:h-auto md:min-h-[400px] order-first md:order-last">
           <img
             src={fortMyersImg}
             alt="Fort Myers local market"
