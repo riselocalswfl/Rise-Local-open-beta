@@ -24,6 +24,7 @@ import {
   insertServiceBookingSchema,
   insertServiceSchema,
   insertMessageSchema,
+  insertDealSchema,
   fulfillmentOptionsSchema,
   type FulfillmentOptions
 } from "@shared/schema";
@@ -3723,6 +3724,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching unread count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  // ============ DEALS ROUTES ============
+
+  // GET /api/deals - List all deals with optional filters
+  app.get("/api/deals", async (req, res) => {
+    try {
+      const { category, city, tier, isActive, vendorId } = req.query;
+      const filters: any = {};
+      
+      if (category) filters.category = category as string;
+      if (city) filters.city = city as string;
+      if (tier) filters.tier = tier as string;
+      if (isActive !== undefined) filters.isActive = isActive === 'true';
+      if (vendorId) filters.vendorId = vendorId as string;
+      
+      const deals = await storage.listDeals(filters);
+      res.json(deals);
+    } catch (error) {
+      console.error("Error fetching deals:", error);
+      res.status(500).json({ error: "Failed to fetch deals" });
+    }
+  });
+
+  // GET /api/deals/:id - Get single deal by ID
+  app.get("/api/deals/:id", async (req, res) => {
+    try {
+      const deal = await storage.getDealById(req.params.id);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+      res.json(deal);
+    } catch (error) {
+      console.error("Error fetching deal:", error);
+      res.status(500).json({ error: "Failed to fetch deal" });
+    }
+  });
+
+  // POST /api/deals - Create a new deal (vendor only)
+  app.post("/api/deals", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Verify user is a vendor
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(403).json({ error: "Only vendors can create deals" });
+      }
+
+      // Validate request body
+      const dealData = insertDealSchema.parse({
+        ...req.body,
+        vendorId: vendor.id, // Always use the authenticated vendor's ID
+      });
+
+      const deal = await storage.createDeal(dealData);
+      console.log("[DEALS] Deal created:", deal.id, "by vendor:", vendor.id);
+      res.status(201).json(deal);
+    } catch (error) {
+      console.error("Error creating deal:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid deal data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create deal" });
+    }
+  });
+
+  // PUT /api/deals/:id - Update a deal (vendor only, own deals)
+  app.put("/api/deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.id;
+
+      // Get the deal
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== existingDeal.vendorId) {
+        return res.status(403).json({ error: "You can only update your own deals" });
+      }
+
+      // Update the deal (don't allow changing vendorId)
+      const { vendorId, ...updateData } = req.body;
+      const updatedDeal = await storage.updateDeal(dealId, updateData);
+      
+      console.log("[DEALS] Deal updated:", dealId, "by vendor:", vendor.id);
+      res.json(updatedDeal);
+    } catch (error) {
+      console.error("Error updating deal:", error);
+      res.status(500).json({ error: "Failed to update deal" });
+    }
+  });
+
+  // POST /api/deals/:id/redeem - Redeem a deal with vendor PIN verification
+  app.post("/api/deals/:id/redeem", async (req: any, res) => {
+    try {
+      const dealId = req.params.id;
+      const { vendorPin } = req.body;
+
+      if (!vendorPin) {
+        return res.status(400).json({ error: "Vendor PIN is required" });
+      }
+
+      // Get optional user ID if authenticated
+      const userId = req.user?.claims?.sub;
+
+      const result = await storage.redeemDeal(dealId, vendorPin, userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+
+      console.log("[DEALS] Deal redeemed:", dealId, "user:", userId || "anonymous");
+      res.json(result);
+    } catch (error) {
+      console.error("Error redeeming deal:", error);
+      res.status(500).json({ error: "Failed to redeem deal" });
+    }
+  });
+
+  // GET /api/deals/:id/redemptions - Get redemption history for a deal (vendor only)
+  app.get("/api/deals/:id/redemptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.id;
+
+      // Get the deal
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== deal.vendorId) {
+        return res.status(403).json({ error: "You can only view redemptions for your own deals" });
+      }
+
+      const redemptions = await storage.getDealRedemptions(dealId);
+      res.json(redemptions);
+    } catch (error) {
+      console.error("Error fetching redemptions:", error);
+      res.status(500).json({ error: "Failed to fetch redemptions" });
     }
   });
 
