@@ -17,9 +17,11 @@ import {
   type ServiceBooking, type InsertServiceBooking,
   type Service, type InsertService,
   type Message, type InsertMessage,
+  type Deal, type InsertDeal,
+  type DealRedemption, type InsertDealRedemption,
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
-  menuItems, serviceOfferings, serviceBookings, services, messages,
+  menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders,
   fulfillmentDetailsSchema
 } from "@shared/schema";
@@ -199,6 +201,15 @@ export interface IStorage {
   getMessages(userId: string, otherUserId: string): Promise<Message[]>;
   markMessagesAsRead(userId: string, senderId: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
+
+  // Deal operations
+  listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]>;
+  getDealById(id: string): Promise<Deal | undefined>;
+  createDeal(deal: InsertDeal): Promise<Deal>;
+  updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal>;
+  redeemDeal(dealId: string, vendorPinEntered: string, userId?: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }>;
+  getDealRedemptions(dealId: string): Promise<DealRedemption[]>;
+  getVendorDealRedemptions(vendorId: string): Promise<DealRedemption[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -969,6 +980,109 @@ export class DbStorage implements IStorage {
         )
       );
     return result[0]?.count || 0;
+  }
+
+  // Deal operations
+  async listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]> {
+    let conditions = [];
+    
+    if (filters?.category) {
+      conditions.push(eq(deals.category, filters.category));
+    }
+    if (filters?.city) {
+      conditions.push(eq(deals.city, filters.city));
+    }
+    if (filters?.tier) {
+      conditions.push(eq(deals.tier, filters.tier));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(deals.isActive, filters.isActive));
+    }
+    if (filters?.vendorId) {
+      conditions.push(eq(deals.vendorId, filters.vendorId));
+    }
+
+    if (conditions.length === 0) {
+      return await db.select().from(deals).orderBy(desc(deals.createdAt));
+    }
+
+    return await db
+      .select()
+      .from(deals)
+      .where(and(...conditions))
+      .orderBy(desc(deals.createdAt));
+  }
+
+  async getDealById(id: string): Promise<Deal | undefined> {
+    const result = await db.select().from(deals).where(eq(deals.id, id));
+    return result[0];
+  }
+
+  async createDeal(deal: InsertDeal): Promise<Deal> {
+    const result = await db.insert(deals).values(deal).returning();
+    return result[0];
+  }
+
+  async updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal> {
+    const result = await db
+      .update(deals)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(deals.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async redeemDeal(dealId: string, vendorPinEntered: string, userId?: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }> {
+    // Get the deal first
+    const deal = await this.getDealById(dealId);
+    if (!deal) {
+      return { success: false, message: "Deal not found" };
+    }
+
+    if (!deal.isActive) {
+      return { success: false, message: "Deal is no longer active" };
+    }
+
+    // Get the vendor to verify PIN
+    const vendor = await this.getVendor(deal.vendorId);
+    if (!vendor) {
+      return { success: false, message: "Vendor not found" };
+    }
+
+    // Verify the PIN
+    if (!vendor.vendorPin || vendor.vendorPin !== vendorPinEntered) {
+      return { success: false, message: "Invalid vendor PIN" };
+    }
+
+    // Create the redemption record
+    const redemption = await db.insert(dealRedemptions).values({
+      dealId,
+      vendorId: deal.vendorId,
+      userId: userId || null,
+      verifiedByPin: true,
+    }).returning();
+
+    return { 
+      success: true, 
+      message: "Deal redeemed successfully",
+      redemption: redemption[0]
+    };
+  }
+
+  async getDealRedemptions(dealId: string): Promise<DealRedemption[]> {
+    return await db
+      .select()
+      .from(dealRedemptions)
+      .where(eq(dealRedemptions.dealId, dealId))
+      .orderBy(desc(dealRedemptions.redeemedAt));
+  }
+
+  async getVendorDealRedemptions(vendorId: string): Promise<DealRedemption[]> {
+    return await db
+      .select()
+      .from(dealRedemptions)
+      .where(eq(dealRedemptions.vendorId, vendorId))
+      .orderBy(desc(dealRedemptions.redeemedAt));
   }
 }
 

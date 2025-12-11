@@ -259,6 +259,9 @@ export const vendors = pgTable("vendors", {
   averageRating: integer("average_rating"), // 0-500 (5.00 stars = 500) for service providers
   isFeatured: boolean("is_featured").default(false), // migrated from restaurants/serviceProviders
   
+  // Deal Redemption PIN
+  vendorPin: text("vendor_pin"), // 4-digit PIN for deal redemption verification
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -978,3 +981,58 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+
+// Deals - Special offers and promotions from vendors
+export const deals = pgTable("deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  
+  // Deal Content
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category"), // e.g., "Food & Drink", "Services", "Retail"
+  city: text("city").default("Fort Myers"),
+  
+  // Deal Classification
+  tier: text("tier").notNull().default("free"), // "free" | "premium"
+  dealType: text("deal_type").notNull(), // "bogo" | "percent" | "addon"
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertDealSchema = createInsertSchema(deals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type Deal = typeof deals.$inferSelect;
+
+// Deal Redemptions - Log of redeemed deals
+export const dealRedemptions = pgTable("deal_redemptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  dealId: varchar("deal_id").notNull().references(() => deals.id),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  userId: varchar("user_id").references(() => users.id), // Optional: may be anonymous redemptions
+  
+  // Redemption Details
+  redeemedAt: timestamp("redeemed_at").defaultNow(),
+  verifiedByPin: boolean("verified_by_pin").notNull().default(true),
+  
+  // Optional metadata
+  notes: text("notes"),
+});
+
+export const insertDealRedemptionSchema = createInsertSchema(dealRedemptions).omit({
+  id: true,
+  redeemedAt: true,
+});
+
+export type InsertDealRedemption = z.infer<typeof insertDealRedemptionSchema>;
+export type DealRedemption = typeof dealRedemptions.$inferSelect;
