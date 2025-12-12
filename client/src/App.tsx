@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
+import DealsPage from "@/pages/DealsPage";
+import DealDetailPage from "@/pages/DealDetailPage";
 import Products from "@/pages/Products";
 import Vendors from "@/pages/Vendors";
 import EatLocal from "@/pages/EatLocal";
@@ -34,6 +36,16 @@ import { SignupBanner } from "@/components/SignupBanner";
 function Router() {
   return (
     <Switch>
+      {/* Deals Hub - New Home Experience */}
+      <Route path="/">
+        {() => <Redirect to="/deals" />}
+      </Route>
+      <Route path="/deals" component={DealsPage} />
+      <Route path="/deals/:id" component={DealDetailPage} />
+      
+      {/* Legacy Home (accessible but hidden from nav) */}
+      <Route path="/home" component={Home} />
+      
       {/* Public Pages - Browsable without login */}
       <Route path="/join" component={Join} />
       <Route path="/products" component={Products} />
