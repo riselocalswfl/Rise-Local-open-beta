@@ -2,9 +2,8 @@ import { Link, useLocation } from "wouter";
 import BrandLogo from "@/components/BrandLogo";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, LogOut, User, ShoppingBag, Store, Utensils, Wrench, Heart, Menu, X, Home, UtensilsCrossed, Calendar, MessageSquare, LayoutDashboard } from "lucide-react";
+import { LogIn, LogOut, User, ShoppingBag, Store, Heart, Menu, X, LayoutDashboard, Tag, Briefcase } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,39 +20,27 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import MiniCart from "@/components/MiniCart";
 
 // Navigation items configuration
 const publicNavigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/products", icon: ShoppingBag },
-  { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
-  { name: "Services", href: "/services", icon: Wrench },
-  { name: "Events", href: "/events", icon: Calendar },
-  { name: "All Vendors", href: "/vendors", icon: Store },
+  { name: "Deals", href: "/deals", icon: Tag },
+  { name: "Businesses", href: "/vendors", icon: Store },
+  { name: "For Businesses", href: "/onboarding", icon: Briefcase },
 ];
 
 const buyerNavigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/products", icon: ShoppingBag },
-  { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
-  { name: "Services", href: "/services", icon: Wrench },
-  { name: "Events", href: "/events", icon: Calendar },
-  { name: "All Vendors", href: "/vendors", icon: Store },
-  { name: "Messages", href: "/messages", icon: MessageSquare },
+  { name: "Deals", href: "/deals", icon: Tag },
+  { name: "Businesses", href: "/vendors", icon: Store },
   { name: "My Account", href: "/profile", icon: User },
+  { name: "For Businesses", href: "/onboarding", icon: Briefcase },
 ];
 
 const vendorNavigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/products", icon: ShoppingBag },
-  { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
-  { name: "Services", href: "/services", icon: Wrench },
-  { name: "Events", href: "/events", icon: Calendar },
-  { name: "All Vendors", href: "/vendors", icon: Store },
-  { name: "Messages", href: "/messages", icon: MessageSquare },
-  { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Deals", href: "/deals", icon: Tag },
+  { name: "Businesses", href: "/vendors", icon: Store },
+  { name: "My Account", href: "/profile", icon: User },
+  { name: "For Businesses", href: "/dashboard", icon: LayoutDashboard },
 ];
 
 export default function Header() {
@@ -61,19 +48,6 @@ export default function Header() {
   const { user, isAuthenticated } = useAuth();
   const [signInDialogOpen, setSignInDialogOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Fetch unread message count
-  const { data: unreadCount = 0 } = useQuery<number>({
-    queryKey: ["/api/messages/unread/count"],
-    queryFn: async () => {
-      const res = await fetch("/api/messages/unread/count");
-      if (!res.ok) throw new Error("Failed to fetch unread count");
-      const data = await res.json();
-      return typeof data === 'number' ? data : data.count || 0;
-    },
-    enabled: isAuthenticated,
-    refetchInterval: 10000,
-  });
 
   // Determine navigation items based on user role
   let navigationItems = publicNavigationItems;
@@ -115,11 +89,6 @@ export default function Header() {
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.name}</span>
-                    {item.name === "Messages" && unreadCount > 0 && (
-                      <Badge variant="destructive" className="ml-1 px-1.5 min-w-5 h-5">
-                        {unreadCount}
-                      </Badge>
-                    )}
                   </Button>
                 </Link>
               );
@@ -150,7 +119,7 @@ export default function Header() {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md bg-white" data-testid="dialog-sign-in">
                     <DialogHeader>
-                      <DialogTitle className="text-2xl">Welcome to Rise Local</DialogTitle>
+                      <DialogTitle className="text-2xl">Shop Local. Support Community. Save Money.</DialogTitle>
                       <DialogDescription>
                         Choose how you'd like to sign in
                       </DialogDescription>
@@ -247,11 +216,6 @@ export default function Header() {
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     <span className="flex-1 text-base text-left">{item.name}</span>
-                    {item.name === "Messages" && unreadCount > 0 && (
-                      <Badge variant="destructive" className="px-2 min-w-6 h-6">
-                        {unreadCount}
-                      </Badge>
-                    )}
                   </button>
                 );
               })}
