@@ -18,10 +18,10 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart, CreditCard, UtensilsCrossed, Briefcase } from "lucide-react";
+import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart, CreditCard, UtensilsCrossed, Briefcase, Tag } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions, MenuItem, ServiceOffering } from "@shared/schema";
-import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema } from "@shared/schema";
+import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions, MenuItem, ServiceOffering, Deal } from "@shared/schema";
+import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -106,6 +106,19 @@ const serviceFormSchema = z.object({
   }
 );
 
+const dealFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  category: z.string().optional(),
+  city: z.string().default("Fort Myers"),
+  tier: z.enum(["free", "premium"]).default("free"),
+  dealType: z.enum(["bogo", "percent", "addon"]),
+  isActive: z.boolean().default(true),
+});
+
+const DEAL_CATEGORIES = ["Food & Drink", "Retail", "Beauty", "Fitness", "Services", "Experiences"];
+const DEAL_CITIES = ["Fort Myers", "Cape Coral", "Bonita Springs", "Estero", "Naples"];
+
 export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
@@ -122,6 +135,8 @@ export default function VendorDashboard() {
   const [faqDialogOpen, setFaqDialogOpen] = useState(false);
   const [menuItemDialogOpen, setMenuItemDialogOpen] = useState(false);
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
+  const [dealDialogOpen, setDealDialogOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
 
   // Fetch the authenticated user's vendor
   const { data: vendor, isLoading: vendorLoading, isError } = useQuery<Vendor>({
@@ -171,6 +186,12 @@ export default function VendorDashboard() {
   // Fetch service offerings
   const { data: serviceOfferings = [] } = useQuery<ServiceOffering[]>({
     queryKey: [`/api/vendors/${vendor?.id}/service-offerings`],
+    enabled: !!vendor?.id,
+  });
+
+  // Fetch deals
+  const { data: deals = [] } = useQuery<Deal[]>({
+    queryKey: [`/api/deals?vendorId=${vendor?.id}`],
     enabled: !!vendor?.id,
   });
 
@@ -436,6 +457,80 @@ export default function VendorDashboard() {
     },
   });
 
+  // Deal Mutations
+  const createDealMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof dealFormSchema>) => {
+      if (!vendor?.id) throw new Error("No vendor ID");
+      return await apiRequest("POST", "/api/deals", { ...data, vendorId: vendor.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/deals');
+        }
+      });
+      setDealDialogOpen(false);
+      setEditingDeal(null);
+      toast({ title: "Deal created successfully" });
+    },
+    onError: (error: any) => {
+      console.error("Deal creation error:", error);
+      toast({ 
+        title: "Failed to create deal", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const updateDealMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<z.infer<typeof dealFormSchema>> }) => {
+      return await apiRequest("PUT", `/api/deals/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/deals');
+        }
+      });
+      setDealDialogOpen(false);
+      setEditingDeal(null);
+      toast({ title: "Deal updated successfully" });
+    },
+    onError: (error: any) => {
+      console.error("Deal update error:", error);
+      toast({ 
+        title: "Failed to update deal", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const toggleDealMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      return await apiRequest("PUT", `/api/deals/${id}`, { isActive });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.startsWith('/api/deals');
+        }
+      });
+      toast({ title: "Deal status updated" });
+    },
+    onError: (error: any) => {
+      console.error("Deal toggle error:", error);
+      toast({ 
+        title: "Failed to update deal status", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   if (vendorLoading) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
@@ -551,6 +646,12 @@ export default function VendorDashboard() {
                     <span>Orders ({vendorOrders.length})</span>
                   </div>
                 </SelectItem>
+                <SelectItem value="deals" data-testid="select-option-deals">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4" />
+                    <span>Deals ({deals.length})</span>
+                  </div>
+                </SelectItem>
                 <SelectItem value="events" data-testid="select-option-events">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
@@ -600,6 +701,10 @@ export default function VendorDashboard() {
             <TabsTrigger value="orders" className="gap-2" data-testid="tab-orders">
               <ShoppingCart className="w-4 h-4" />
               Orders ({vendorOrders.length})
+            </TabsTrigger>
+            <TabsTrigger value="deals" className="gap-2" data-testid="tab-deals">
+              <Tag className="w-4 h-4" />
+              Deals ({deals.length})
             </TabsTrigger>
             <TabsTrigger value="events" className="gap-2" data-testid="tab-events">
               <Calendar className="w-4 h-4" />
@@ -1664,6 +1769,102 @@ export default function VendorDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Deals Tab */}
+          <TabsContent value="deals">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle>Manage Deals</CardTitle>
+                  <CardDescription>Create and manage special offers for your customers</CardDescription>
+                </div>
+                <Dialog open={dealDialogOpen} onOpenChange={(open) => {
+                  setDealDialogOpen(open);
+                  if (!open) setEditingDeal(null);
+                }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-deal">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Deal
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
+                    <DialogHeader>
+                      <DialogTitle className="text-[#222]">
+                        {editingDeal ? "Edit Deal" : "Add New Deal"}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <DealForm 
+                      onSubmit={(data) => {
+                        if (editingDeal) {
+                          updateDealMutation.mutate({ id: editingDeal.id, data });
+                        } else {
+                          createDealMutation.mutate(data);
+                        }
+                      }}
+                      isPending={createDealMutation.isPending || updateDealMutation.isPending}
+                      defaultValues={editingDeal || undefined}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {deals.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No deals yet. Create your first deal to attract more customers!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {deals.map((deal) => (
+                      <div key={deal.id} className="flex items-center justify-between border rounded-md p-4" data-testid={`deal-${deal.id}`}>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold">{deal.title}</h3>
+                            <Badge variant={deal.isActive ? "default" : "secondary"}>
+                              {deal.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                            <Badge variant="outline">{deal.tier === "premium" ? "Premium" : "Free"}</Badge>
+                            <Badge variant="outline">
+                              {deal.dealType === "bogo" ? "BOGO" : deal.dealType === "percent" ? "% Off" : "Add-on"}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{deal.description}</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                            {deal.category && <span>{deal.category}</span>}
+                            {deal.city && <span>{deal.city}</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setEditingDeal(deal);
+                              setDealDialogOpen(true);
+                            }}
+                            data-testid={`button-edit-deal-${deal.id}`}
+                          >
+                            <Edit className="w-3 h-3 mr-1" />
+                            Edit
+                          </Button>
+                          <Button 
+                            variant={deal.isActive ? "secondary" : "default"}
+                            size="sm"
+                            onClick={() => toggleDealMutation.mutate({ id: deal.id, isActive: !deal.isActive })}
+                            disabled={toggleDealMutation.isPending}
+                            data-testid={`button-toggle-deal-${deal.id}`}
+                          >
+                            {deal.isActive ? "Deactivate" : "Activate"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* FAQs Tab */}
           <TabsContent value="faqs">
             <Card>
@@ -1784,6 +1985,32 @@ export default function VendorDashboard() {
                     onBlur={(e) => {
                       if (e.target.value !== vendor.instagram) {
                         updateVendorMutation.mutate({ instagram: e.target.value });
+                      }
+                    }}
+                  />
+                </div>
+
+                <Separator className="my-6" />
+
+                <div className="space-y-2">
+                  <Label htmlFor="vendorPin">Deal Redemption PIN</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    A 4-6 digit PIN used by staff to verify deal redemptions in-store
+                  </p>
+                  <Input
+                    id="vendorPin"
+                    type="password"
+                    defaultValue={vendor.vendorPin || ""}
+                    placeholder="Enter 4-6 digit PIN"
+                    maxLength={6}
+                    data-testid="input-vendor-pin"
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (value && (value.length < 4 || value.length > 6 || !/^\d+$/.test(value))) {
+                        return;
+                      }
+                      if (value !== vendor.vendorPin) {
+                        updateVendorMutation.mutate({ vendorPin: value || null });
                       }
                     }}
                   />
@@ -2383,6 +2610,195 @@ function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; is
         <div className="flex justify-end gap-2 pt-4">
           <Button type="submit" disabled={isPending} data-testid="button-submit-faq">
             {isPending ? "Creating..." : "Create FAQ"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+function DealForm({ 
+  onSubmit, 
+  isPending,
+  defaultValues 
+}: { 
+  onSubmit: (data: z.infer<typeof dealFormSchema>) => void; 
+  isPending: boolean;
+  defaultValues?: Partial<z.infer<typeof dealFormSchema>>;
+}) {
+  const form = useForm<z.infer<typeof dealFormSchema>>({
+    resolver: zodResolver(dealFormSchema),
+    defaultValues: {
+      title: defaultValues?.title || "",
+      description: defaultValues?.description || "",
+      category: defaultValues?.category || "",
+      city: defaultValues?.city || "Fort Myers",
+      tier: defaultValues?.tier || "free",
+      dealType: defaultValues?.dealType || "bogo",
+      isActive: defaultValues?.isActive ?? true,
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof dealFormSchema>) => {
+    onSubmit(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Deal Title *</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g., Buy One Get One Free" {...field} data-testid="input-deal-title" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description *</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Describe your deal..."
+                  rows={3}
+                  {...field}
+                  data-testid="input-deal-description"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="dealType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Deal Type *</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-deal-type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="bogo">Buy One Get One</SelectItem>
+                    <SelectItem value="percent">Percentage Off</SelectItem>
+                    <SelectItem value="addon">Free Add-on</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="tier"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tier</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-deal-tier">
+                      <SelectValue placeholder="Select tier" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-deal-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {DEAL_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="city"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>City</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-deal-city">
+                      <SelectValue placeholder="Select city" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {DEAL_CITIES.map((city) => (
+                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="isActive"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <FormLabel>Active</FormLabel>
+                <FormDescription>
+                  Make this deal visible to customers
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  data-testid="switch-deal-active"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="submit" disabled={isPending} data-testid="button-submit-deal">
+            {isPending ? "Saving..." : defaultValues ? "Update Deal" : "Create Deal"}
           </Button>
         </div>
       </form>
