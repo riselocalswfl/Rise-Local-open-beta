@@ -32,6 +32,7 @@ import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignupBanner } from "@/components/SignupBanner";
+import AppShell from "@/components/layout/AppShell";
 
 function Router() {
   return (
@@ -40,39 +41,125 @@ function Router() {
       <Route path="/">
         {() => <Redirect to="/deals" />}
       </Route>
-      <Route path="/deals" component={DealsPage} />
-      <Route path="/deals/:id" component={DealDetailPage} />
+      <Route path="/deals">
+        {() => (
+          <AppShell>
+            <DealsPage />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/deals/:id">
+        {(params) => (
+          <AppShell hideTabs>
+            <DealDetailPage />
+          </AppShell>
+        )}
+      </Route>
       
       {/* Legacy Home (accessible but hidden from nav) */}
-      <Route path="/home" component={Home} />
+      <Route path="/home">
+        {() => (
+          <AppShell>
+            <Home />
+          </AppShell>
+        )}
+      </Route>
       
       {/* Public Pages - Browsable without login */}
       <Route path="/join" component={Join} />
-      <Route path="/products" component={Products} />
-      <Route path="/vendors" component={Vendors} />
-      <Route path="/vendor/:id" component={VendorProfile} />
-      <Route path="/restaurant/:id" component={RestaurantProfile} />
-      <Route path="/eat-local" component={EatLocal} />
-      <Route path="/live-local" component={LiveLocal} />
-      <Route path="/services" component={Services} />
-      <Route path="/services/:id" component={ServiceProviderProfile} />
-      <Route path="/events" component={EventsLayout} />
-      <Route path="/events/:id" component={EventDetail} />
-      <Route path="/spotlight" component={Spotlight} />
+      <Route path="/products">
+        {() => (
+          <AppShell>
+            <Products />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/vendors">
+        {() => (
+          <AppShell>
+            <Vendors />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/vendor/:id">
+        {(params) => (
+          <AppShell hideTabs>
+            <VendorProfile />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/restaurant/:id">
+        {(params) => (
+          <AppShell hideTabs>
+            <RestaurantProfile />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/eat-local">
+        {() => (
+          <AppShell>
+            <EatLocal />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/live-local">
+        {() => (
+          <AppShell>
+            <LiveLocal />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/services">
+        {() => (
+          <AppShell>
+            <Services />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/services/:id">
+        {(params) => (
+          <AppShell hideTabs>
+            <ServiceProviderProfile />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/events">
+        {() => (
+          <AppShell>
+            <EventsLayout />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/events/:id">
+        {(params) => (
+          <AppShell hideTabs>
+            <EventDetail />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/spotlight">
+        {() => (
+          <AppShell>
+            <Spotlight />
+          </AppShell>
+        )}
+      </Route>
       
-      {/* Cart - browsable without login, checkout requires auth */}
+      {/* Cart - no tabs */}
       <Route path="/cart" component={Cart} />
       
       {/* Protected Account Features - Require authentication */}
       <Route path="/events/my">
         {() => (
           <ProtectedRoute>
-            <EventsLayout />
+            <AppShell>
+              <EventsLayout />
+            </AppShell>
           </ProtectedRoute>
         )}
       </Route>
       
-      {/* Protected Vendor Routes */}
+      {/* Protected Vendor Routes - no tabs */}
       <Route path="/onboarding">
         {() => (
           <ProtectedRoute>
@@ -113,7 +200,9 @@ function Router() {
       <Route path="/profile">
         {() => (
           <ProtectedRoute>
-            <CustomerProfile />
+            <AppShell>
+              <CustomerProfile />
+            </AppShell>
           </ProtectedRoute>
         )}
       </Route>
@@ -132,7 +221,7 @@ function Router() {
         )}
       </Route>
       
-      {/* Admin */}
+      {/* Admin - no tabs */}
       <Route path="/admin">
         {() => (
           <ProtectedRoute>
@@ -180,7 +269,13 @@ function Router() {
       </Route>
       
       {/* Home route at the end to avoid matching all paths */}
-      <Route path="/" component={Home} />
+      <Route path="/">
+        {() => (
+          <AppShell>
+            <Home />
+          </AppShell>
+        )}
+      </Route>
       
       <Route component={NotFound} />
     </Switch>
