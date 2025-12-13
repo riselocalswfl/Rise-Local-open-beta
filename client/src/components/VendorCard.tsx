@@ -31,7 +31,7 @@ export default function VendorCard({
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="w-16 h-16">
-              <AvatarImage src={avatarUrl} alt={name || "Vendor"} className="film dark:film-dark" />
+              <AvatarImage src={avatarUrl} alt={name || "Vendor"} />
               <AvatarFallback className="text-xl" style={{ background: 'var(--le-green)', color: 'white' }}>
                 {name?.[0] || "V"}
               </AvatarFallback>

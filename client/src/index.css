@@ -4,23 +4,83 @@
 
 :root {
   color-scheme: light;
+  
+  /* Light-only theme - shadcn semantic colors */
+  --background: 40 33% 98%;
+  --foreground: 0 0% 18%;
+  
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 18%;
+  --card-border: 0 0% 90%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 18%;
+  
+  --primary: 93 22% 50%;
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 40 68% 70%;
+  --secondary-foreground: 0 0% 18%;
+  
+  --muted: 40 20% 94%;
+  --muted-foreground: 0 0% 45%;
+  
+  --accent: 20 74% 56%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 93 22% 50%;
+  
+  --radius: 0.5rem;
+  
+  /* Sidebar colors - light theme */
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 0 0% 18%;
+  --sidebar-primary: 93 22% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 40 20% 94%;
+  --sidebar-accent-foreground: 0 0% 18%;
+  --sidebar-border: 0 0% 90%;
+  --sidebar-ring: 93 22% 50%;
 }
 
 html,
 body,
 #root {
   height: 100%;
-  background: #FDFBF7;
+  background: hsl(var(--background));
 }
 
 @layer base {
+  * {
+    @apply border-border;
+  }
+  
   body {
-    @apply font-body text-text antialiased;
+    @apply bg-background text-foreground font-body antialiased;
     background-image: radial-gradient(rgba(0, 0, 0, .02) 1px, transparent 1px);
     background-size: 12px 12px;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .hover-elevate {
+    @apply transition-colors;
+  }
+  
+  .hover-elevate:hover {
+    @apply bg-muted/80;
+  }
+  
+  .active-elevate-2:active {
+    @apply bg-muted;
   }
 }

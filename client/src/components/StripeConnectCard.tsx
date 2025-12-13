@@ -153,7 +153,7 @@ export default function StripeConnectCard() {
                 </Badge>
               )}
               {!status?.connected && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
                   Coming Next Week
                 </Badge>
               )}
@@ -180,9 +180,9 @@ export default function StripeConnectCard() {
         )}
 
         {isFullyConnected && (
-          <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertDescription className="text-green-800 dark:text-green-300">
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
               Your Stripe account is fully set up. You can now accept payments and receive funds directly to your bank account.
             </AlertDescription>
           </Alert>

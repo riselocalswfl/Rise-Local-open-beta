@@ -121,14 +121,14 @@ export default function Checkout() {
         <h1 className="text-3xl font-semibold mb-6" data-testid="heading-checkout">Checkout</h1>
 
         {/* Credit Card Payments Coming Soon Banner */}
-        <Alert className="mb-6 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950" data-testid="alert-stripe-coming-soon">
-          <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        <Alert className="mb-6 border-yellow-200 bg-yellow-50" data-testid="alert-stripe-coming-soon">
+          <Info className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="ml-2">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
                 <span className="font-semibold">Credit Card Payments Launching Next Week</span>
-                <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
                   Coming Soon
                 </Badge>
               </div>
