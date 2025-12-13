@@ -1,0 +1,96 @@
+You are editing my Rise Local app (React 18 + TypeScript + Vite + Tailwind + shadcn/ui + wouter).
+Routing is in client/src/App.tsx using Switch / Route / Redirect. Navigation uses Link + useLocation() from wouter.
+Goal: Make the app mobile-first by implementing a persistent bottom tab bar (primary navigation) while keeping my existing routes and protected routes intact. Do NOT change backend logic.
+
+⸻
+
+1) Create an AppShell layout
+
+Create client/src/components/layout/AppShell.tsx:
+	•	Renders a page wrapper with a scrollable main area and bottom padding so content never hides under the tab bar.
+	•	Includes <BottomTabs /> fixed to the bottom.
+	•	Accepts children and a hideTabs?: boolean prop.
+	•	Uses iPhone safe area: padding bottom includes env(safe-area-inset-bottom).
+
+⸻
+
+2) Create BottomTabs (mobile primary nav)
+
+Create client/src/components/nav/BottomTabs.tsx:
+	•	Uses useLocation() to highlight the active tab.
+	•	Uses Link for navigation.
+	•	Fixed bottom, thumb-friendly height, clean Tailwind styling.
+	•	5 tabs MAX using existing routes only:
+	1.	Deals → /deals (this is the home)
+	2.	Businesses → /vendors
+	3.	Eat Local → /eat-local
+	4.	Events → /events
+	5.	Profile → /profile
+	•	Use lucide-react icons if installed (optional). Labels must remain visible.
+	•	Accessibility: each tab has aria-label, active state is obvious.
+
+⸻
+
+3) Decide where tabs should NOT show
+
+Tabs should NOT show on these routes (public/utility/admin flows):
+	•	/join
+	•	/onboarding
+	•	/dashboard
+	•	/checkout
+	•	/order-confirmation
+	•	/admin
+	•	/messages and /messages/:userId
+	•	/cart
+	•	/orders
+	•	/deals/:id (detail view should be full-screen; optional but recommended)
+
+Everything else (including /deals, /vendors, /eat-local, /services, /events, /profile) should use tabs.
+
+Implement this using path checks from useLocation() inside AppShell OR by passing hideTabs from App.tsx.
+
+⸻
+
+4) Wrap routes in AppShell without changing routes
+
+In client/src/App.tsx, keep the current Switch/Route structure and paths exactly as-is:
+	•	/ redirects to /deals
+	•	/deals and /deals/:id
+	•	/home
+	•	/join, /products, /vendors, /vendor/:id, /restaurant/:id
+	•	/eat-local, /live-local
+	•	/services, /services/:id
+	•	/events, /events/:id, /events/my
+	•	/onboarding, /dashboard, /checkout, /order-confirmation, /orders, /profile, /messages, /messages/:userId, /admin
+	•	all legacy redirects
+
+Update route rendering so that:
+	•	Main browsing routes render inside <AppShell> (tabs visible)
+	•	The excluded routes render either without AppShell or with <AppShell hideTabs>
+
+Examples:
+	•	/deals → <AppShell><DealsPage /></AppShell>
+	•	/vendors → <AppShell><Vendors /></AppShell>
+	•	/join → <Join /> (no AppShell)
+	•	/dashboard → <Dashboard /> (no AppShell)
+	•	/deals/:id → <DealDetailPage /> OR <AppShell hideTabs>...
+
+Ensure there are no TypeScript errors and content isn’t covered by the fixed tab bar.
+
+⸻
+
+5) Refactor Header.tsx to stop being primary nav on mobile
+
+In Header.tsx:
+	•	Keep the header as a top bar (logo/title, optional search button).
+	•	Remove/hide the current nav link row on small screens (sm: breakpoints).
+	•	Desktop can keep the existing role-based links.
+	•	Do not remove role logic; just adjust layout so bottom tabs are primary on mobile.
+
+⸻
+
+Deliverables
+	•	New components: AppShell.tsx + BottomTabs.tsx
+	•	Updated App.tsx to wrap routes properly
+	•	Updated Header.tsx for mobile
+	•	Build passes
