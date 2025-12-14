@@ -19,10 +19,12 @@ import {
   type Message, type InsertMessage,
   type Deal, type InsertDeal,
   type DealRedemption, type InsertDealRedemption,
+  type Reservation, type InsertReservation,
+  type Restaurant,
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
-  restaurants, serviceProviders,
+  restaurants, serviceProviders, reservations,
   fulfillmentDetailsSchema
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -210,6 +212,20 @@ export interface IStorage {
   redeemDeal(dealId: string, vendorPinEntered: string, userId?: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }>;
   getDealRedemptions(dealId: string): Promise<DealRedemption[]>;
   getVendorDealRedemptions(vendorId: string): Promise<DealRedemption[]>;
+
+  // Reservation operations
+  createReservation(reservation: InsertReservation): Promise<Reservation>;
+  getReservation(id: string): Promise<Reservation | undefined>;
+  getReservationsByUser(userId: string): Promise<Reservation[]>;
+  updateReservationStatus(id: string, status: string, externalRef?: string): Promise<void>;
+  
+  // Restaurant reservation info
+  getRestaurantReservationInfo(restaurantId: string): Promise<{ 
+    reservationMethod: string | null; 
+    reservationUrl: string | null; 
+    reservationsPhone: string | null;
+    restaurantName: string;
+  } | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -1083,6 +1099,51 @@ export class DbStorage implements IStorage {
       .from(dealRedemptions)
       .where(eq(dealRedemptions.vendorId, vendorId))
       .orderBy(desc(dealRedemptions.redeemedAt));
+  }
+
+  // Reservation operations
+  async createReservation(reservation: InsertReservation): Promise<Reservation> {
+    const result = await db.insert(reservations).values(reservation).returning();
+    return result[0];
+  }
+
+  async getReservation(id: string): Promise<Reservation | undefined> {
+    const result = await db.select().from(reservations).where(eq(reservations.id, id));
+    return result[0];
+  }
+
+  async getReservationsByUser(userId: string): Promise<Reservation[]> {
+    return await db
+      .select()
+      .from(reservations)
+      .where(eq(reservations.userId, userId))
+      .orderBy(desc(reservations.createdAt));
+  }
+
+  async updateReservationStatus(id: string, status: string, externalRef?: string): Promise<void> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (externalRef) {
+      updateData.externalReference = externalRef;
+    }
+    await db.update(reservations).set(updateData).where(eq(reservations.id, id));
+  }
+
+  async getRestaurantReservationInfo(restaurantId: string): Promise<{ 
+    reservationMethod: string | null; 
+    reservationUrl: string | null; 
+    reservationsPhone: string | null;
+    restaurantName: string;
+  } | undefined> {
+    const result = await db
+      .select({
+        reservationMethod: restaurants.reservationMethod,
+        reservationUrl: restaurants.reservationsUrl,
+        reservationsPhone: restaurants.reservationsPhone,
+        restaurantName: restaurants.restaurantName,
+      })
+      .from(restaurants)
+      .where(eq(restaurants.id, restaurantId));
+    return result[0];
   }
 }
 

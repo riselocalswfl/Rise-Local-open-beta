@@ -3875,6 +3875,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== RESERVATION ENDPOINTS =====
+
+  // POST /api/reservations/initiate - Create reservation record and return redirect info
+  app.post('/api/reservations/initiate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { restaurantId, partySize, requestedTime, dealClaimId, specialRequests } = req.body;
+      
+      // Validate input
+      if (!restaurantId || !partySize || !requestedTime) {
+        return res.status(400).json({ error: "Missing required fields: restaurantId, partySize, requestedTime" });
+      }
+      
+      // Get restaurant reservation info
+      const restaurantInfo = await storage.getRestaurantReservationInfo(restaurantId);
+      if (!restaurantInfo) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+      
+      // Create reservation record with INITIATED status
+      const reservation = await storage.createReservation({
+        userId,
+        restaurantId,
+        partySize,
+        requestedTime: new Date(requestedTime),
+        dealClaimId: dealClaimId || null,
+        specialRequests: specialRequests || null,
+        status: "INITIATED",
+        externalProvider: restaurantInfo.reservationMethod,
+      });
+      
+      // Build redirect info
+      let redirectInfo: any = {
+        reservationMethod: restaurantInfo.reservationMethod,
+        restaurantName: restaurantInfo.restaurantName,
+      };
+      
+      if (restaurantInfo.reservationUrl) {
+        redirectInfo.redirectUrl = restaurantInfo.reservationUrl;
+        redirectInfo.message = `Please complete your reservation at ${restaurantInfo.restaurantName} using their booking system.`;
+      } else if (restaurantInfo.reservationsPhone) {
+        redirectInfo.phone = restaurantInfo.reservationsPhone;
+        redirectInfo.message = `Please call ${restaurantInfo.restaurantName} at ${restaurantInfo.reservationsPhone} to complete your reservation.`;
+      } else {
+        redirectInfo.message = `Please contact ${restaurantInfo.restaurantName} directly to complete your reservation.`;
+      }
+      
+      res.json({
+        reservationId: reservation.id,
+        status: reservation.status,
+        ...redirectInfo,
+      });
+    } catch (error) {
+      console.error("Error initiating reservation:", error);
+      res.status(500).json({ error: "Failed to initiate reservation" });
+    }
+  });
+
+  // GET /api/restaurants/:id/reservation-info - Get reservation method and URL for a restaurant
+  app.get('/api/restaurants/:id/reservation-info', async (req, res) => {
+    try {
+      const restaurantId = req.params.id;
+      const info = await storage.getRestaurantReservationInfo(restaurantId);
+      
+      if (!info) {
+        return res.status(404).json({ error: "Restaurant not found" });
+      }
+      
+      let response: any = {
+        reservationMethod: info.reservationMethod,
+        reservationUrl: info.reservationUrl,
+        restaurantName: info.restaurantName,
+      };
+      
+      if (info.reservationUrl) {
+        response.message = `Make a reservation online at ${info.restaurantName}`;
+        response.actionType = "redirect";
+      } else if (info.reservationsPhone) {
+        response.phone = info.reservationsPhone;
+        response.message = `Call ${info.restaurantName} to make a reservation`;
+        response.actionType = "phone";
+      } else {
+        response.message = `Contact ${info.restaurantName} directly for reservations`;
+        response.actionType = "none";
+      }
+      
+      res.json(response);
+    } catch (error) {
+      console.error("Error fetching reservation info:", error);
+      res.status(500).json({ error: "Failed to fetch reservation info" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
