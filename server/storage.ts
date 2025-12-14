@@ -233,6 +233,7 @@ export interface IStorage {
   getDealClaim(id: string): Promise<DealClaim | undefined>;
   getDealClaimByToken(token: string): Promise<DealClaim | undefined>;
   getUserDealClaims(userId: string): Promise<DealClaim[]>;
+  getActiveClaimForUserDeal(userId: string, dealId: string): Promise<DealClaim | undefined>;
   redeemDealClaimByToken(token: string): Promise<{ success: boolean; message: string; claim?: DealClaim }>;
 }
 
@@ -1174,6 +1175,16 @@ export class DbStorage implements IStorage {
     return await db.select().from(dealClaims)
       .where(eq(dealClaims.userId, userId))
       .orderBy(desc(dealClaims.claimedAt));
+  }
+
+  async getActiveClaimForUserDeal(userId: string, dealId: string): Promise<DealClaim | undefined> {
+    const result = await db.select().from(dealClaims)
+      .where(and(
+        eq(dealClaims.userId, userId),
+        eq(dealClaims.dealId, dealId),
+        eq(dealClaims.status, "CLAIMED")
+      ));
+    return result[0];
   }
 
   async redeemDealClaimByToken(token: string): Promise<{ success: boolean; message: string; claim?: DealClaim }> {

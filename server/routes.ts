@@ -3987,6 +3987,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "This deal is no longer active" });
       }
 
+      // Check if user already has an active claim for this deal
+      const existingClaim = await storage.getActiveClaimForUserDeal(userId, dealId);
+      if (existingClaim) {
+        // Return the existing claim instead of creating a new one
+        return res.json({
+          id: existingClaim.id,
+          dealId: existingClaim.dealId,
+          qrCodeToken: existingClaim.qrCodeToken,
+          status: existingClaim.status,
+          claimedAt: existingClaim.claimedAt,
+          expiresAt: existingClaim.expiresAt,
+          message: "You already have an active claim for this deal",
+        });
+      }
+
       // Generate unique QR code token
       const qrCodeToken = `RL-${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
