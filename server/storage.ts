@@ -19,11 +19,12 @@ import {
   type Message, type InsertMessage,
   type Deal, type InsertDeal,
   type DealRedemption, type InsertDealRedemption,
+  type DealClaim, type InsertDealClaim,
   type Reservation, type InsertReservation,
   type Restaurant,
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
-  menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
+  menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions, dealClaims,
   restaurants, serviceProviders, reservations,
   fulfillmentDetailsSchema
 } from "@shared/schema";
@@ -226,6 +227,13 @@ export interface IStorage {
     reservationsPhone: string | null;
     restaurantName: string;
   } | undefined>;
+
+  // Deal Claim operations (QR code-based)
+  createDealClaim(claim: InsertDealClaim): Promise<DealClaim>;
+  getDealClaim(id: string): Promise<DealClaim | undefined>;
+  getDealClaimByToken(token: string): Promise<DealClaim | undefined>;
+  getUserDealClaims(userId: string): Promise<DealClaim[]>;
+  redeemDealClaimByToken(token: string): Promise<{ success: boolean; message: string; claim?: DealClaim }>;
 }
 
 export class DbStorage implements IStorage {
@@ -1144,6 +1152,48 @@ export class DbStorage implements IStorage {
       .from(restaurants)
       .where(eq(restaurants.id, restaurantId));
     return result[0];
+  }
+
+  // Deal Claim operations (QR code-based)
+  async createDealClaim(claim: InsertDealClaim): Promise<DealClaim> {
+    const result = await db.insert(dealClaims).values(claim).returning();
+    return result[0];
+  }
+
+  async getDealClaim(id: string): Promise<DealClaim | undefined> {
+    const result = await db.select().from(dealClaims).where(eq(dealClaims.id, id));
+    return result[0];
+  }
+
+  async getDealClaimByToken(token: string): Promise<DealClaim | undefined> {
+    const result = await db.select().from(dealClaims).where(eq(dealClaims.qrCodeToken, token));
+    return result[0];
+  }
+
+  async getUserDealClaims(userId: string): Promise<DealClaim[]> {
+    return await db.select().from(dealClaims)
+      .where(eq(dealClaims.userId, userId))
+      .orderBy(desc(dealClaims.claimedAt));
+  }
+
+  async redeemDealClaimByToken(token: string): Promise<{ success: boolean; message: string; claim?: DealClaim }> {
+    const claim = await this.getDealClaimByToken(token);
+    if (!claim) {
+      return { success: false, message: "Invalid QR code" };
+    }
+    if (claim.status === "REDEEMED") {
+      return { success: false, message: "This deal has already been redeemed" };
+    }
+    if (claim.status === "EXPIRED" || (claim.expiresAt && new Date(claim.expiresAt) < new Date())) {
+      return { success: false, message: "This deal has expired" };
+    }
+    
+    const [updated] = await db.update(dealClaims)
+      .set({ status: "REDEEMED", redeemedAt: new Date() })
+      .where(eq(dealClaims.qrCodeToken, token))
+      .returning();
+    
+    return { success: true, message: "Deal redeemed successfully", claim: updated };
   }
 }
 

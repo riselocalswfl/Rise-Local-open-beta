@@ -3968,6 +3968,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== DEAL CLAIM ENDPOINTS (QR Code-based) =====
+
+  // POST /api/deals/:id/claim - Claim a deal and generate QR code token
+  app.post('/api/deals/:id/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const dealId = req.params.id;
+      const userId = req.user.claims.sub;
+
+      // Check if deal exists
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Check if deal is active
+      if (!deal.isActive) {
+        return res.status(400).json({ error: "This deal is no longer active" });
+      }
+
+      // Generate unique QR code token
+      const qrCodeToken = `RL-${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      // Calculate expiration (24 hours from now by default, or deal end date if sooner)
+      let expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      if (deal.endDate && new Date(deal.endDate) < expiresAt) {
+        expiresAt = new Date(deal.endDate);
+      }
+
+      // Create the claim
+      const claim = await storage.createDealClaim({
+        dealId,
+        userId,
+        qrCodeToken,
+        status: "CLAIMED",
+        expiresAt,
+      });
+
+      res.json({
+        id: claim.id,
+        dealId: claim.dealId,
+        qrCodeToken: claim.qrCodeToken,
+        status: claim.status,
+        claimedAt: claim.claimedAt,
+        expiresAt: claim.expiresAt,
+      });
+    } catch (error) {
+      console.error("Error claiming deal:", error);
+      res.status(500).json({ error: "Failed to claim deal" });
+    }
+  });
+
+  // GET /api/deal-claims/my - Get current user's claimed deals with deal info
+  app.get('/api/deal-claims/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const claims = await storage.getUserDealClaims(userId);
+
+      // Enrich with deal information
+      const enrichedClaims = await Promise.all(
+        claims.map(async (claim) => {
+          const deal = await storage.getDealById(claim.dealId);
+          let vendorName = null;
+          if (deal?.vendorId) {
+            const vendor = await storage.getVendor(deal.vendorId);
+            vendorName = vendor?.businessName || null;
+          }
+          return {
+            ...claim,
+            deal: deal ? {
+              id: deal.id,
+              title: deal.title,
+              description: deal.description,
+              tier: deal.tier,
+              vendorId: deal.vendorId,
+              vendorName,
+              endDate: deal.endDate,
+            } : null,
+          };
+        })
+      );
+
+      res.json(enrichedClaims);
+    } catch (error) {
+      console.error("Error fetching user deal claims:", error);
+      res.status(500).json({ error: "Failed to fetch deal claims" });
+    }
+  });
+
+  // GET /api/deal-claims/token/:token - Look up a claim by QR token (for vendor verification)
+  app.get('/api/deal-claims/token/:token', async (req, res) => {
+    try {
+      const token = req.params.token;
+      const claim = await storage.getDealClaimByToken(token);
+
+      if (!claim) {
+        return res.status(404).json({ error: "Invalid QR code" });
+      }
+
+      // Get deal info
+      const deal = await storage.getDealById(claim.dealId);
+      let vendorName = null;
+      if (deal?.vendorId) {
+        const vendor = await storage.getVendor(deal.vendorId);
+        vendorName = vendor?.businessName || null;
+      }
+
+      // Check if expired
+      const isExpired = claim.status === "EXPIRED" || 
+        (claim.expiresAt && new Date(claim.expiresAt) < new Date());
+
+      res.json({
+        ...claim,
+        isExpired,
+        deal: deal ? {
+          id: deal.id,
+          title: deal.title,
+          description: deal.description,
+          tier: deal.tier,
+          vendorId: deal.vendorId,
+          vendorName,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error fetching deal claim by token:", error);
+      res.status(500).json({ error: "Failed to fetch deal claim" });
+    }
+  });
+
+  // POST /api/deal-claims/token/:token/redeem - Redeem a claim (vendor scans QR)
+  app.post('/api/deal-claims/token/:token/redeem', async (req, res) => {
+    try {
+      const token = req.params.token;
+      const result = await storage.redeemDealClaimByToken(token);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+
+      // Get deal info for response
+      let dealInfo = null;
+      if (result.claim) {
+        const deal = await storage.getDealById(result.claim.dealId);
+        if (deal) {
+          let vendorName = null;
+          if (deal.vendorId) {
+            const vendor = await storage.getVendor(deal.vendorId);
+            vendorName = vendor?.businessName || null;
+          }
+          dealInfo = {
+            title: deal.title,
+            description: deal.description,
+            vendorName,
+          };
+        }
+      }
+
+      res.json({
+        success: true,
+        message: result.message,
+        claim: result.claim,
+        deal: dealInfo,
+      });
+    } catch (error) {
+      console.error("Error redeeming deal claim:", error);
+      res.status(500).json({ error: "Failed to redeem deal" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
