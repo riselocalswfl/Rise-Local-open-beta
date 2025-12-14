@@ -282,6 +282,11 @@ export const restaurantDetailsSchema = z.object({
   reservationsRequired: z.boolean().optional(),
   reservationsUrl: z.string().optional(),
   reservationsPhone: z.string().optional(),
+  // Rise Local reservation settings
+  acceptReservations: z.boolean().optional(), // Whether to show reservation option on profile
+  reservationSystem: z.string().optional(), // OpenTable, SevenRooms, Resy, Website, Phone
+  reservationLink: z.string().optional(), // URL for reservation system
+  offerDeals: z.boolean().optional(), // Whether restaurant participates in Rise Local deals
 }).optional();
 
 // Service provider-specific details schema

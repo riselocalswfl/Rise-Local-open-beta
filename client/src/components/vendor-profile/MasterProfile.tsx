@@ -4,10 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   MapPin, Clock, Phone, Mail, Globe, Instagram,
-  Star, Package, Award, HelpCircle, Image as ImageIcon, MessageSquare
+  Star, Package, Award, HelpCircle, Image as ImageIcon, MessageSquare, CalendarCheck
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { Vendor, VendorReview, VendorFAQ, FulfillmentOptions } from "@shared/schema";
+import type { Vendor, VendorReview, VendorFAQ, FulfillmentOptions, RestaurantDetails } from "@shared/schema";
 
 interface MasterProfileProps {
   vendor: Vendor;
@@ -22,6 +22,15 @@ export function MasterProfile({ vendor, reviews, faqs, children }: MasterProfile
   const fulfillmentOptions = (vendor.fulfillmentOptions as FulfillmentOptions) || {};
   const contact = (vendor.contact as any) || {};
   const hours = (vendor.hours as any) || {};
+  const restaurantDetails = (vendor.restaurantDetails as RestaurantDetails) || {};
+  
+  // Reservation button logic for dine vendors
+  const isDineVendor = vendor.vendorType === "dine";
+  const acceptsReservations = restaurantDetails?.acceptReservations === true;
+  const reservationLink = restaurantDetails?.reservationLink;
+  const reservationSystem = restaurantDetails?.reservationSystem;
+  const hasReservationLink = reservationLink && reservationLink.trim() !== "";
+  const isPhoneOnly = reservationSystem === "Phone";
 
   return (
     <>
@@ -81,6 +90,24 @@ export function MasterProfile({ vendor, reviews, faqs, children }: MasterProfile
                     Message
                   </Button>
                 </Link>
+              )}
+              {/* Reserve Table button for dine vendors with reservations enabled */}
+              {isDineVendor && acceptsReservations && (
+                <>
+                  {isPhoneOnly || !hasReservationLink ? (
+                    <Button variant="outline" data-testid="button-reserve-phone">
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call to Reserve
+                    </Button>
+                  ) : (
+                    <a href={reservationLink} target="_blank" rel="noopener noreferrer">
+                      <Button variant="default" data-testid="button-reserve-table">
+                        <CalendarCheck className="w-4 h-4 mr-2" />
+                        Reserve Table
+                      </Button>
+                    </a>
+                  )}
+                </>
               )}
             </div>
           </div>

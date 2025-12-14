@@ -2122,6 +2122,130 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
+            {/* Restaurant Settings - only show for dine vendors */}
+            {vendor.vendorType === "dine" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Restaurant Settings</CardTitle>
+                  <CardDescription>Configure reservations and deals for your restaurant</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Accept Reservations Toggle */}
+                  <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
+                    <div className="space-y-1 flex-1">
+                      <Label htmlFor="accept-reservations" className="text-base font-semibold">Accept Reservations through Rise Local</Label>
+                      <p className="text-sm text-[#747474]">
+                        When enabled, customers can see reservation options on your profile
+                      </p>
+                    </div>
+                    <Switch
+                      id="accept-reservations"
+                      checked={(vendor.restaurantDetails as any)?.acceptReservations === true}
+                      onCheckedChange={(checked) => {
+                        const currentDetails = (vendor.restaurantDetails || {}) as any;
+                        updateVendorMutation.mutate({ 
+                          restaurantDetails: { 
+                            ...currentDetails, 
+                            acceptReservations: checked 
+                          } 
+                        });
+                      }}
+                      disabled={updateVendorMutation.isPending}
+                      data-testid="switch-accept-reservations"
+                    />
+                  </div>
+
+                  {/* Reservation System Dropdown - only show if reservations are enabled */}
+                  {(vendor.restaurantDetails as any)?.acceptReservations && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="reservation-system">Reservation System</Label>
+                        <Select
+                          value={(vendor.restaurantDetails as any)?.reservationSystem || ""}
+                          onValueChange={(value) => {
+                            const currentDetails = (vendor.restaurantDetails || {}) as any;
+                            updateVendorMutation.mutate({ 
+                              restaurantDetails: { 
+                                ...currentDetails, 
+                                reservationSystem: value 
+                              } 
+                            });
+                          }}
+                        >
+                          <SelectTrigger data-testid="select-reservation-system">
+                            <SelectValue placeholder="Select reservation system" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="OpenTable">OpenTable</SelectItem>
+                            <SelectItem value="SevenRooms">SevenRooms</SelectItem>
+                            <SelectItem value="Resy">Resy</SelectItem>
+                            <SelectItem value="Website">Website</SelectItem>
+                            <SelectItem value="Phone">Phone Only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Reservation Link - show for all systems except Phone */}
+                      {(vendor.restaurantDetails as any)?.reservationSystem && 
+                       (vendor.restaurantDetails as any)?.reservationSystem !== "Phone" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="reservation-link">Reservation Link</Label>
+                          <p className="text-xs text-muted-foreground">
+                            The URL where customers will book reservations
+                          </p>
+                          <Input
+                            id="reservation-link"
+                            defaultValue={(vendor.restaurantDetails as any)?.reservationLink || ""}
+                            placeholder="https://opentable.com/your-restaurant"
+                            data-testid="input-reservation-link"
+                            onBlur={(e) => {
+                              const value = e.target.value.trim();
+                              const currentDetails = (vendor.restaurantDetails || {}) as any;
+                              if (value !== currentDetails.reservationLink) {
+                                updateVendorMutation.mutate({ 
+                                  restaurantDetails: { 
+                                    ...currentDetails, 
+                                    reservationLink: value 
+                                  } 
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <Separator />
+
+                  {/* Offer Deals Toggle */}
+                  <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
+                    <div className="space-y-1 flex-1">
+                      <Label htmlFor="offer-deals" className="text-base font-semibold">Offer Rise Local Deals</Label>
+                      <p className="text-sm text-[#747474]">
+                        Participate in Rise Local deals to attract more customers
+                      </p>
+                    </div>
+                    <Switch
+                      id="offer-deals"
+                      checked={(vendor.restaurantDetails as any)?.offerDeals === true}
+                      onCheckedChange={(checked) => {
+                        const currentDetails = (vendor.restaurantDetails || {}) as any;
+                        updateVendorMutation.mutate({ 
+                          restaurantDetails: { 
+                            ...currentDetails, 
+                            offerDeals: checked 
+                          } 
+                        });
+                      }}
+                      disabled={updateVendorMutation.isPending}
+                      data-testid="switch-offer-deals"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Payment Processing</CardTitle>
