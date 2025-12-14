@@ -30,6 +30,7 @@ import UnifiedOnboarding from "@/pages/UnifiedOnboarding";
 import CustomerProfile from "@/pages/CustomerProfile";
 import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
+import MyDeals from "@/pages/MyDeals";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignupBanner } from "@/components/SignupBanner";
 import AppShell from "@/components/layout/AppShell";
@@ -219,6 +220,13 @@ function Router() {
         {() => (
           <ProtectedRoute>
             <MessageThread />
+          </ProtectedRoute>
+        )}
+      </Route>
+      <Route path="/my-deals">
+        {() => (
+          <ProtectedRoute>
+            <MyDeals />
           </ProtectedRoute>
         )}
       </Route>
