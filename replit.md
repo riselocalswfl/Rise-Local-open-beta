@@ -8,6 +8,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Navigation Improvements (December 14, 2024)
+- **Home Tab in Bottom Navigation**: Added Home as first tab in BottomTabs.tsx with House icon routing to /
+- **DetailHeader Component**: Created new `client/src/components/layout/DetailHeader.tsx` with Back button + Home icon for detail pages
+- **Detail Pages Updated**: VendorProfile, DealDetailPage, Cart, Checkout, EventDetail, OrderConfirmation now use DetailHeader
+- **Empty States**: Added "Back to Home" buttons to empty cart, checkout empty, vendor not found, event/deal not found pages
+- **Files Modified**: BottomTabs.tsx, DetailHeader.tsx (new), VendorProfile.tsx, DealDetailPage.tsx, Cart.tsx, Checkout.tsx, EventDetail.tsx, OrderConfirmation.tsx
+
 ### Light-Only Theme Implementation (December 13, 2024)
 - **Theme Simplification**: Removed all dark mode styling from the application
 - **CSS Variables**: Added proper shadcn semantic color variables in index.css (--background, --foreground, --card, --popover, etc.)
