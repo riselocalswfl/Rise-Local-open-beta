@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, MapPin, Tag, CheckCircle, XCircle, Lock, Store } from "lucide-react";
-import Header from "@/components/Header";
+import { MapPin, Tag, CheckCircle, XCircle, Lock, Store } from "lucide-react";
+import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +93,7 @@ export default function DealDetailPage() {
   if (dealLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        <DetailHeader title="Loading..." />
         <div className="max-w-3xl mx-auto px-4 py-8">
           <Skeleton className="h-8 w-32 mb-6" />
           <Skeleton className="h-64 rounded-lg" />
@@ -105,15 +105,20 @@ export default function DealDetailPage() {
   if (!deal) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        <DetailHeader title="Deal Not Found" />
         <div className="max-w-3xl mx-auto px-4 py-16 text-center">
           <h2 className="text-2xl font-bold mb-4">Deal Not Found</h2>
           <p className="text-muted-foreground mb-6">
             This deal may have expired or been removed.
           </p>
-          <Button onClick={() => setLocation("/deals")} data-testid="button-back-to-deals">
-            Back to Deals
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-back-to-home">
+              Back to Home
+            </Button>
+            <Button onClick={() => setLocation("/deals")} data-testid="button-back-to-deals">
+              Back to Deals
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -121,18 +126,9 @@ export default function DealDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <DetailHeader title={deal.title} backHref="/deals" />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <Button
-          variant="ghost"
-          className="mb-6"
-          onClick={() => setLocation("/deals")}
-          data-testid="button-back"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Deals
-        </Button>
 
         <Card>
           <CardHeader className="pb-4">

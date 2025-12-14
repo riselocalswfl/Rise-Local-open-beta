@@ -1,8 +1,8 @@
 import { Link, useLocation } from "wouter";
-import { Tag, Store, UtensilsCrossed, Calendar, User } from "lucide-react";
+import { Home, Store, UtensilsCrossed, Calendar, User } from "lucide-react";
 
 const tabs = [
-  { name: "Deals", href: "/deals", icon: Tag },
+  { name: "Home", href: "/", icon: Home },
   { name: "Businesses", href: "/vendors", icon: Store },
   { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Events", href: "/events", icon: Calendar },
@@ -21,8 +21,7 @@ export default function BottomTabs() {
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = location === tab.href || 
-            (tab.href === "/deals" && location === "/");
+          const isActive = location === tab.href;
           
           return (
             <Link key={tab.href} href={tab.href}>

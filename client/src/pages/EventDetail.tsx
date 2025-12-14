@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { Calendar, MapPin, Users, Ticket, ArrowLeft } from "lucide-react";
-import Header from "@/components/Header";
+import { Calendar, MapPin, Users, Ticket } from "lucide-react";
+import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,7 @@ export default function EventDetail() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        <DetailHeader title="Loading..." />
         <main className="max-w-4xl mx-auto px-4 py-8">
           <Skeleton className="h-8 w-32 mb-6" />
           <Skeleton className="h-12 w-3/4 mb-4" />
@@ -50,13 +50,18 @@ export default function EventDetail() {
   if (!event) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        <DetailHeader title="Event Not Found" />
         <main className="max-w-4xl mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Event Not Found</h1>
-            <Link href="/events">
-              <Button variant="default">Back to Events</Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/">
+                <Button variant="outline" data-testid="button-back-to-home">Back to Home</Button>
+              </Link>
+              <Link href="/events">
+                <Button variant="default" data-testid="button-back-to-events">Back to Events</Button>
+              </Link>
+            </div>
           </div>
         </main>
       </div>
@@ -72,12 +77,8 @@ export default function EventDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <DetailHeader title={event.title} backHref="/events" />
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <Link href="/events" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6" data-testid="link-back-to-events">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Events
-        </Link>
 
         <div className="space-y-6">
           <div>

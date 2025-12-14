@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Package, ExternalLink, ShoppingBag, MapPin, Phone, Mail } from "lucide-react";
+import { CheckCircle2, Package, ExternalLink, ShoppingBag, MapPin, Phone, Mail, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import DetailHeader from "@/components/layout/DetailHeader";
 
 interface VendorOrder {
   id: string;
@@ -87,15 +88,18 @@ export default function OrderConfirmation() {
 
   if (!lastOrder) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold mb-2">No Order Found</h1>
-        <p className="text-muted-foreground mb-6">
-          We couldn't find your order. Please check your email for confirmation.
-        </p>
-        <Button asChild data-testid="button-home">
-          <Link href="/">Return Home</Link>
-        </Button>
+      <div className="min-h-screen bg-background">
+        <DetailHeader title="Order Not Found" />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-semibold mb-2">No Order Found</h1>
+          <p className="text-muted-foreground mb-6">
+            We couldn't find your order. Please check your email for confirmation.
+          </p>
+          <Button asChild data-testid="button-home">
+            <Link href="/">Return Home</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -172,9 +176,11 @@ export default function OrderConfirmation() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="text-center mb-8">
-        <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-primary" data-testid="icon-success" />
+    <div className="min-h-screen bg-background">
+      <DetailHeader title="Order Confirmation" showBack={false} />
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="text-center mb-8">
+          <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-primary" data-testid="icon-success" />
         <h1 className="text-3xl font-bold mb-2" data-testid="heading-confirmation">Order Confirmed!</h1>
         <p className="text-muted-foreground" data-testid="text-confirmation-message">
           Thank you for supporting local Fort Myers vendors
@@ -329,15 +335,16 @@ export default function OrderConfirmation() {
       </div>
 
       <div className="mt-8 flex gap-4 justify-center">
-        <Button asChild variant="outline" data-testid="button-view-orders">
-          <Link href="/orders">View My Orders</Link>
-        </Button>
-        <Button asChild data-testid="button-continue-shopping">
-          <Link href="/products">
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            Continue Shopping
-          </Link>
-        </Button>
+          <Button asChild variant="outline" data-testid="button-view-orders">
+            <Link href="/orders">View My Orders</Link>
+          </Button>
+          <Button asChild data-testid="button-continue-shopping">
+            <Link href="/products">
+              <ShoppingBag className="w-4 h-4 mr-2" />
+              Continue Shopping
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

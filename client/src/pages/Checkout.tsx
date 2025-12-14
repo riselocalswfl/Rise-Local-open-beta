@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import Header from "@/components/Header";
+import DetailHeader from "@/components/layout/DetailHeader";
 import OrderSummary from "@/components/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +86,7 @@ export default function Checkout() {
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        <DetailHeader title="Checkout" />
         <main className="max-w-4xl mx-auto px-4 py-8">
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-primary" data-testid="loader-auth-check" />
@@ -99,14 +99,19 @@ export default function Checkout() {
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        <DetailHeader title="Checkout" />
         <main className="max-w-4xl mx-auto px-4 py-8">
           <h1 className="text-3xl font-semibold mb-8" data-testid="heading-checkout">Checkout</h1>
           <div className="text-center py-16">
             <p className="text-muted-foreground mb-6">Your cart is empty. Add some products first!</p>
-            <Button asChild>
-              <a href="/products">Browse Products</a>
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button variant="outline" asChild data-testid="button-back-to-home">
+                <a href="/">Back to Home</a>
+              </Button>
+              <Button asChild data-testid="button-browse-products">
+                <a href="/products">Browse Products</a>
+              </Button>
+            </div>
           </div>
         </main>
       </div>
@@ -115,8 +120,7 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-      <div className="h-16" aria-hidden="true" />
+      <DetailHeader title="Checkout" backHref="/cart" />
       <main className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-semibold mb-6" data-testid="heading-checkout">Checkout</h1>
 

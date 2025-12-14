@@ -1,6 +1,6 @@
 import { Link } from "wouter";
-import { ShoppingCart, Minus, Plus, X } from "lucide-react";
-import Header from "@/components/Header";
+import { ShoppingCart, Minus, Plus, X, Home } from "lucide-react";
+import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { BrandCard, BrandCardBody } from "@/components/ui/BrandCard";
 import { useCart } from "@/contexts/CartContext";
@@ -29,7 +29,7 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-bg relative">
-      <Header />
+      <DetailHeader title="Shopping Cart" />
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 relative z-10">
         <div className="flex items-center justify-between mb-8">
           <h1 className="font-heading text-3xl md:text-4xl text-text flex items-center gap-3" data-testid="heading-shopping-cart">
@@ -53,11 +53,19 @@ export default function Cart() {
             <ShoppingCart className="w-16 h-16 mx-auto text-text/20 mb-4" strokeWidth={1.5} />
             <h2 className="font-heading text-2xl text-text mb-2">Your cart is empty</h2>
             <p className="text-text/60 mb-6">Start shopping local to support your community!</p>
-            <Link href="/products">
-              <Button data-testid="button-browse-products">
-                Browse Products
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/">
+                <Button variant="outline" data-testid="button-back-to-home">
+                  <Home className="w-4 h-4 mr-2" />
+                  Back to Home
+                </Button>
+              </Link>
+              <Link href="/products">
+                <Button data-testid="button-browse-products">
+                  Browse Products
+                </Button>
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

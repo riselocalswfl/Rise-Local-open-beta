@@ -6,6 +6,7 @@ import { MasterProfile } from "@/components/vendor-profile/MasterProfile";
 import { ShopProfileSection } from "@/components/vendor-profile/ShopProfileSection";
 import { DineProfileSection } from "@/components/vendor-profile/DineProfileSection";
 import { ServiceProfileSection } from "@/components/vendor-profile/ServiceProfileSection";
+import DetailHeader from "@/components/layout/DetailHeader";
 
 export default function VendorProfile() {
   const [, params] = useRoute("/vendor/:id");
@@ -51,10 +52,13 @@ export default function VendorProfile() {
 
   if (vendorLoading) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading vendor profile...</p>
+      <div className="min-h-screen bg-bg">
+        <DetailHeader title="Loading..." />
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading vendor profile...</p>
+          </div>
         </div>
       </div>
     );
@@ -62,12 +66,18 @@ export default function VendorProfile() {
 
   if (!vendor) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground">Vendor not found</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-bg">
+        <DetailHeader title="Vendor Not Found" />
+        <div className="flex items-center justify-center py-16">
+          <Card className="max-w-md">
+            <CardContent className="pt-6 text-center">
+              <p className="text-muted-foreground mb-4">Vendor not found</p>
+              <a href="/" className="inline-flex items-center gap-2 text-primary hover:underline" data-testid="link-back-to-home">
+                Back to Home
+              </a>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -117,6 +127,7 @@ export default function VendorProfile() {
 
   return (
     <div className="min-h-screen bg-bg">
+      <DetailHeader title={vendor.businessName} backHref="/vendors" />
       <MasterProfile vendor={vendor} reviews={reviews} faqs={faqs}>
         {renderCategorySections()}
       </MasterProfile>
