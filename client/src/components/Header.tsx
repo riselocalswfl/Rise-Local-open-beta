@@ -13,7 +13,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useState } from "react";
-import MiniCart from "@/components/MiniCart";
 
 // Navigation items configuration
 const publicNavigationItems = [
@@ -84,9 +83,6 @@ export default function Header() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-2">
-            {/* Cart - visible on all sizes */}
-            <MiniCart />
-
             {/* Desktop Auth Actions */}
             <div className="hidden md:flex items-center gap-2">
               {isAuthenticated ? (

@@ -145,8 +145,10 @@ function Router() {
         )}
       </Route>
       
-      {/* Cart - no tabs */}
-      <Route path="/cart" component={Cart} />
+      {/* Cart - hidden, redirect to deals */}
+      <Route path="/cart">
+        {() => <Redirect to="/deals" />}
+      </Route>
       
       {/* Protected Account Features - Require authentication */}
       <Route path="/events/my">
