@@ -190,6 +190,13 @@ export default function RestaurantProfile() {
                 <Button variant="outline" data-testid="button-view-menu">View Menu</Button>
               )}
             </div>
+            
+            {/* Reservation disclaimer */}
+            {restaurantDetails.reservationsUrl && (
+              <p className="text-xs text-muted-foreground mt-3 max-w-md" data-testid="text-reservation-disclaimer">
+                Reservations are completed through the restaurant's official booking system. Rise Local helps you discover deals and reserve easily, but table availability is managed by the restaurant.
+              </p>
+            )}
           </div>
         </div>
 

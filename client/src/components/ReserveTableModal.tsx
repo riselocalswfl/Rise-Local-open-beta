@@ -243,6 +243,11 @@ export default function ReserveTableModal({
           data-testid="input-special-requests"
         />
       </div>
+
+      {/* Reservation disclaimer */}
+      <p className="text-xs text-muted-foreground pt-2" data-testid="text-reservation-disclaimer">
+        Reservations are completed through the restaurant's official booking system. Rise Local helps you discover deals and reserve easily, but table availability is managed by the restaurant.
+      </p>
     </div>
   );
 
