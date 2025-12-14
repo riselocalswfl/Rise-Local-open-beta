@@ -605,6 +605,10 @@ export type VendorFAQ = typeof vendorFAQs.$inferSelect;
 
 // ===== RESTAURANT TABLES =====
 
+// Reservation method enum values
+export const RESERVATION_METHODS = ["OPENTABLE", "SEVENROOMS", "RESY", "WEBSITE", "PHONE", "NONE"] as const;
+export type ReservationMethod = typeof RESERVATION_METHODS[number];
+
 export const restaurants = pgTable("restaurants", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => users.id),
@@ -644,6 +648,10 @@ export const restaurants = pgTable("restaurants", {
   reservationsRequired: boolean("reservations_required").default(false),
   reservationsUrl: text("reservations_url"),
   reservationsPhone: text("reservations_phone"),
+  
+  // Reservation Integration (NEW - for Rise Local reservation experience)
+  reservationMethod: text("reservation_method").default("NONE"), // OPENTABLE, SEVENROOMS, RESY, WEBSITE, PHONE, NONE
+  supportsDeals: boolean("supports_deals").default(false), // Whether restaurant participates in Rise Local deals
   
   // Values & Trust Signals
   badges: text("badges").array().default(sql`'{}'::text[]`), // custom value tags defined by restaurant
@@ -982,10 +990,23 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 
+// Deal claim status enum values
+export const DEAL_CLAIM_STATUSES = ["CLAIMED", "REDEEMED", "EXPIRED"] as const;
+export type DealClaimStatus = typeof DEAL_CLAIM_STATUSES[number];
+
+// Reservation status enum values
+export const RESERVATION_STATUSES = ["INITIATED", "BOOKED_EXTERNALLY", "CANCELLED"] as const;
+export type ReservationStatus = typeof RESERVATION_STATUSES[number];
+
+// Redemption type enum values
+export const REDEMPTION_TYPES = ["IN_PERSON"] as const;
+export type RedemptionType = typeof REDEMPTION_TYPES[number];
+
 // Deals - Special offers and promotions from vendors
 export const deals = pgTable("deals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  restaurantId: varchar("restaurant_id").references(() => restaurants.id), // NEW: For restaurant-specific deals
   
   // Deal Content
   title: text("title").notNull(),
@@ -996,6 +1017,7 @@ export const deals = pgTable("deals", {
   // Deal Classification
   tier: text("tier").notNull().default("free"), // "free" | "premium"
   dealType: text("deal_type").notNull(), // "bogo" | "percent" | "addon"
+  redemptionType: text("redemption_type").default("IN_PERSON"), // NEW: How deal is redeemed
   
   // Status
   isActive: boolean("is_active").notNull().default(true),
@@ -1036,3 +1058,63 @@ export const insertDealRedemptionSchema = createInsertSchema(dealRedemptions).om
 
 export type InsertDealRedemption = z.infer<typeof insertDealRedemptionSchema>;
 export type DealRedemption = typeof dealRedemptions.$inferSelect;
+
+// ===== RESTAURANT RESERVATION SYSTEM =====
+
+// Deal Claims - QR code-based deal tracking with claim status
+export const dealClaims = pgTable("deal_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  dealId: varchar("deal_id").notNull().references(() => deals.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  
+  // Claim Details
+  claimedAt: timestamp("claimed_at").defaultNow(),
+  status: text("status").notNull().default("CLAIMED"), // CLAIMED, REDEEMED, EXPIRED
+  qrCodeToken: varchar("qr_code_token").notNull().unique(), // Unique token for QR code generation
+  
+  // Redemption tracking
+  redeemedAt: timestamp("redeemed_at"),
+  expiresAt: timestamp("expires_at"),
+});
+
+export const insertDealClaimSchema = createInsertSchema(dealClaims).omit({
+  id: true,
+  claimedAt: true,
+  redeemedAt: true,
+});
+
+export type InsertDealClaim = z.infer<typeof insertDealClaimSchema>;
+export type DealClaim = typeof dealClaims.$inferSelect;
+
+// Reservations - Rise Local tracking only (not inventory control)
+export const reservations = pgTable("reservations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
+  dealClaimId: varchar("deal_claim_id").references(() => dealClaims.id), // Optional: linked deal
+  
+  // Reservation Details
+  partySize: integer("party_size").notNull(),
+  requestedTime: timestamp("requested_time").notNull(),
+  status: text("status").notNull().default("INITIATED"), // INITIATED, BOOKED_EXTERNALLY, CANCELLED
+  
+  // External Provider Tracking
+  externalProvider: text("external_provider"), // OPENTABLE, SEVENROOMS, RESY, WEBSITE, PHONE
+  externalReference: text("external_reference"), // Confirmation number or reference from external system
+  
+  // Notes
+  specialRequests: text("special_requests"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReservationSchema = createInsertSchema(reservations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReservation = z.infer<typeof insertReservationSchema>;
+export type Reservation = typeof reservations.$inferSelect;
