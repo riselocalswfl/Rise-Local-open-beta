@@ -55,7 +55,7 @@ export default function Header() {
       <header className="sticky top-0 z-40 backdrop-blur bg-bg/95 border-b border-border/50 shadow-sm">
         <nav className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" data-testid="link-home">
+          <Link href="/deals" data-testid="link-home">
             <BrandLogo className="mt-5" />
           </Link>
 
