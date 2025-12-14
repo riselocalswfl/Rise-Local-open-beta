@@ -8,6 +8,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Restaurant Admin Settings Panel (December 14, 2024)
+- **Restaurant Settings Card**: Added new settings section in VendorDashboard for dine vendors (vendorType="dine")
+- **Reservation Settings**: Toggle for "Accept reservations through Rise Local", dropdown for reservation system (OpenTable, SevenRooms, Resy, Website, Phone), and reservation link input
+- **Deals Toggle**: Toggle for "Offer Rise Local Deals" participation
+- **Customer-Facing Reserve Button**: MasterProfile now shows "Reserve Table" button (links to reservation URL) or "Call to Reserve" button (for phone-only) when reservations are enabled
+- **Schema Updated**: Added acceptReservations, reservationSystem, reservationLink, offerDeals to restaurantDetailsSchema
+- **Files Modified**: shared/schema.ts, client/src/pages/VendorDashboard.tsx, client/src/components/vendor-profile/MasterProfile.tsx
+
 ### Navigation Improvements (December 14, 2024)
 - **Home Tab in Bottom Navigation**: Added Home as first tab in BottomTabs.tsx with House icon routing to /
 - **DetailHeader Component**: Created new `client/src/components/layout/DetailHeader.tsx` with Back button + Home icon for detail pages
