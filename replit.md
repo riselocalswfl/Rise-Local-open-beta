@@ -8,6 +8,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### Reservation Provider Architecture (December 14, 2024)
+- **Provider Interface**: Created `IReservationProvider` interface with `getAvailability()`, `createReservation()`, `cancelReservation()` methods
+- **Provider Implementations**: Empty/stub implementations for OpenTable, SevenRooms, Resy providers (prepared for future integration)
+- **Deep Link Provider**: Current flow preserved - redirects users to external booking URLs
+- **Factory Pattern**: `getReservationProvider()` returns appropriate provider based on vendor's `reservationSystem` setting
+- **Files Created**: 
+  - `server/reservations/types.ts` - Reservation types and schemas
+  - `server/reservations/provider.ts` - Base provider interface/class
+  - `server/reservations/factory.ts` - Provider factory
+  - `server/reservations/providers/` - Individual provider implementations
+
 ### Restaurant Admin Settings Panel (December 14, 2024)
 - **Restaurant Settings Card**: Added new settings section in VendorDashboard for dine vendors (vendorType="dine")
 - **Reservation Settings**: Toggle for "Accept reservations through Rise Local", dropdown for reservation system (OpenTable, SevenRooms, Resy, Website, Phone), and reservation link input
