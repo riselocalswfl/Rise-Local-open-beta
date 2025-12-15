@@ -1,11 +1,9 @@
 import { Link, useLocation } from "wouter";
-import { Home, Store, UtensilsCrossed, Calendar, User } from "lucide-react";
+import { Home, Store, User } from "lucide-react";
 
 const tabs = [
   { name: "Home", href: "/", icon: Home },
   { name: "Businesses", href: "/vendors", icon: Store },
-  { name: "Eat Local", href: "/eat-local", icon: UtensilsCrossed },
-  { name: "Events", href: "/events", icon: Calendar },
   { name: "Profile", href: "/profile", icon: User },
 ];
 
