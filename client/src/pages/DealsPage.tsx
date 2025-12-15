@@ -184,11 +184,11 @@ export default function DealsPage() {
           <div className="flex justify-center mb-4">
             <Sparkles className="w-12 h-12 text-white/90" />
           </div>
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold text-white mb-4">
-            Shop Local. Support Community. Save Money.
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold text-white mb-4 [text-wrap:balance]">
+            Shop Local. Save Money. Strengthen Your Community.
           </h1>
           <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-8">
-            Exclusive deals from Southwest Florida small businesses.
+            Exclusive deals and perks from trusted Southwest Florida small businesses — all in one place.
           </p>
           
           {/* CTA Button */}
