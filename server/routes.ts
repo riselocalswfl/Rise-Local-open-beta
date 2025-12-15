@@ -5,6 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import Stripe from "stripe";
+import { geocodeAddress, buildFullAddress } from "./geocoding";
 import { 
   insertUserSchema, 
   insertVendorSchema, 
@@ -1518,6 +1519,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             error: "Invalid fulfillment options", 
             details: error instanceof Error ? error.message : String(error) 
           });
+        }
+      }
+      
+      // Geocode address if address fields changed
+      const addressChanged = validatedData.address !== undefined || 
+                             validatedData.city !== undefined || 
+                             validatedData.state !== undefined || 
+                             validatedData.zipCode !== undefined;
+      
+      if (addressChanged) {
+        // Build full address using new values or existing vendor values
+        const fullAddress = buildFullAddress(
+          validatedData.address ?? vendor.address,
+          validatedData.city ?? vendor.city,
+          validatedData.state ?? vendor.state,
+          validatedData.zipCode ?? vendor.zipCode
+        );
+        
+        console.log("[PATCH /api/vendors/:id] Geocoding address:", fullAddress);
+        const coordinates = await geocodeAddress(fullAddress);
+        
+        if (coordinates) {
+          validatedData.latitude = coordinates.latitude;
+          validatedData.longitude = coordinates.longitude;
+          console.log("[PATCH /api/vendors/:id] Geocoded coordinates:", coordinates);
+        } else {
+          console.log("[PATCH /api/vendors/:id] Geocoding failed, keeping null coordinates");
         }
       }
       
@@ -3732,7 +3760,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/deals - List all deals with optional filters
   app.get("/api/deals", async (req, res) => {
     try {
-      const { category, city, tier, isActive, vendorId } = req.query;
+      const { category, city, tier, isActive, vendorId, lat, lng, radiusMiles } = req.query;
+      
+      // If location params are provided, use location-based filtering
+      if (lat && lng) {
+        const filters = {
+          lat: parseFloat(lat as string),
+          lng: parseFloat(lng as string),
+          radiusMiles: radiusMiles ? parseFloat(radiusMiles as string) : 10,
+          category: category as string | undefined,
+          city: city as string | undefined,
+          tier: tier as string | undefined,
+          isActive: isActive !== undefined ? isActive === 'true' : undefined,
+          vendorId: vendorId as string | undefined
+        };
+        
+        const deals = await storage.listDealsWithLocation(filters);
+        res.json(deals);
+        return;
+      }
+      
+      // Standard filtering without location
       const filters: any = {};
       
       if (category) filters.category = category as string;
