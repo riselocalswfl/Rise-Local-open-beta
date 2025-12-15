@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, Sparkles } from "lucide-react";
+import { Search, Filter, Sparkles, MapPin, Navigation } from "lucide-react";
 import Header from "@/components/Header";
 import DealCard from "@/components/DealCard";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import type { Deal, Vendor } from "@shared/schema";
+
+interface DealWithDistance extends Deal {
+  distanceMiles?: number;
+}
 
 const CATEGORIES = [
   { value: "all", label: "All Categories" },
@@ -34,20 +39,77 @@ const CITIES = [
   { value: "Naples", label: "Naples" },
 ];
 
+const RADIUS_OPTIONS = [
+  { value: "5", label: "5 miles" },
+  { value: "10", label: "10 miles" },
+  { value: "25", label: "25 miles" },
+  { value: "50", label: "50 miles" },
+];
+
+type LocationState = {
+  status: "idle" | "requesting" | "granted" | "denied" | "unavailable";
+  coords: { lat: number; lng: number } | null;
+};
+
 export default function DealsPage() {
   const [category, setCategory] = useState("all");
   const [city, setCity] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [nearMeEnabled, setNearMeEnabled] = useState(false);
+  const [radiusMiles, setRadiusMiles] = useState("10");
+  const [location, setLocation] = useState<LocationState>({
+    status: "idle",
+    coords: null,
+  });
 
+  // Request location on first load
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocation({ status: "unavailable", coords: null });
+      return;
+    }
+
+    // Auto-request location permission
+    setLocation((prev) => ({ ...prev, status: "requesting" }));
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          status: "granted",
+          coords: {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          },
+        });
+      },
+      (error) => {
+        console.log("Geolocation error:", error.message);
+        setLocation({
+          status: error.code === 1 ? "denied" : "unavailable",
+          coords: null,
+        });
+      },
+      { timeout: 10000, maximumAge: 300000 } // Cache for 5 minutes
+    );
+  }, []);
+
+  // Build query params
   const queryParams = new URLSearchParams();
+  
+  if (nearMeEnabled && location.coords) {
+    queryParams.set("lat", location.coords.lat.toString());
+    queryParams.set("lng", location.coords.lng.toString());
+    queryParams.set("radiusMiles", radiusMiles);
+  } else if (city !== "all") {
+    queryParams.set("city", city);
+  }
+  
   if (category !== "all") queryParams.set("category", category);
-  if (city !== "all") queryParams.set("city", city);
   queryParams.set("isActive", "true");
 
   const queryString = queryParams.toString();
 
-  const { data: deals, isLoading: dealsLoading } = useQuery<Deal[]>({
-    queryKey: ["/api/deals", { category, city }],
+  const { data: deals, isLoading: dealsLoading } = useQuery<DealWithDistance[]>({
+    queryKey: ["/api/deals", { category, city, nearMeEnabled, radiusMiles, lat: location.coords?.lat, lng: location.coords?.lng }],
     queryFn: async () => {
       const res = await fetch(`/api/deals?${queryString}`);
       if (!res.ok) throw new Error("Failed to fetch deals");
@@ -75,6 +137,44 @@ export default function DealsPage() {
     );
   });
 
+  const handleNearMeToggle = () => {
+    if (!nearMeEnabled && location.status === "granted") {
+      setNearMeEnabled(true);
+      setCity("all"); // Clear city filter when using Near Me
+    } else if (nearMeEnabled) {
+      setNearMeEnabled(false);
+    } else if (location.status === "denied") {
+      // Try requesting again
+      setLocation((prev) => ({ ...prev, status: "requesting" }));
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocation({
+            status: "granted",
+            coords: {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            },
+          });
+          setNearMeEnabled(true);
+          setCity("all");
+        },
+        () => {
+          setLocation((prev) => ({ ...prev, status: "denied" }));
+        }
+      );
+    }
+  };
+
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setCategory("all");
+    setCity("all");
+    setNearMeEnabled(false);
+    setRadiusMiles("10");
+  };
+
+  const hasActiveFilters = searchTerm || category !== "all" || city !== "all" || nearMeEnabled;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -98,42 +198,91 @@ export default function DealsPage() {
       {/* Filters Section */}
       <section className="border-b bg-card sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search deals..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-                data-testid="input-search-deals"
-              />
+          <div className="flex flex-col gap-3">
+            {/* Top row: Search and filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search deals..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-deals"
+                />
+              </div>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-category">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Show City dropdown when Near Me is not active */}
+              {!nearMeEnabled && (
+                <Select value={city} onValueChange={setCity}>
+                  <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-city">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="City" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CITIES.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-category">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={city} onValueChange={setCity}>
-              <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-city">
-                <SelectValue placeholder="City" />
-              </SelectTrigger>
-              <SelectContent>
-                {CITIES.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {/* Bottom row: Near Me toggle and radius */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant={nearMeEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={handleNearMeToggle}
+                disabled={location.status === "requesting" || location.status === "unavailable"}
+                data-testid="button-near-me"
+              >
+                <Navigation className="w-4 h-4 mr-2" />
+                {location.status === "requesting" ? "Getting location..." : "Near Me"}
+              </Button>
+
+              {nearMeEnabled && location.status === "granted" && (
+                <Select value={radiusMiles} onValueChange={setRadiusMiles}>
+                  <SelectTrigger className="w-[120px]" data-testid="select-radius">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RADIUS_OPTIONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {location.status === "denied" && (
+                <span className="text-sm text-muted-foreground">
+                  Location access denied. Click "Near Me" to try again.
+                </span>
+              )}
+
+              {nearMeEnabled && (
+                <Badge variant="secondary" className="text-xs">
+                  Showing deals within {radiusMiles} miles
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -154,6 +303,7 @@ export default function DealsPage() {
                 deal={deal}
                 vendor={vendorMap[deal.vendorId]}
                 isPremiumUser={false}
+                distanceMiles={deal.distanceMiles}
               />
             ))}
           </div>
@@ -162,18 +312,16 @@ export default function DealsPage() {
             <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold mb-2">No deals found</h3>
             <p className="text-muted-foreground mb-4">
-              {searchTerm || category !== "all" || city !== "all"
+              {nearMeEnabled
+                ? `No deals found within ${radiusMiles} miles. Try increasing the radius or switching to city-based search.`
+                : hasActiveFilters
                 ? "Try adjusting your filters to find more deals."
                 : "Check back soon for new deals from local businesses!"}
             </p>
-            {(searchTerm || category !== "all" || city !== "all") && (
+            {hasActiveFilters && (
               <Button
                 variant="outline"
-                onClick={() => {
-                  setSearchTerm("");
-                  setCategory("all");
-                  setCity("all");
-                }}
+                onClick={clearAllFilters}
                 data-testid="button-clear-filters"
               >
                 Clear Filters

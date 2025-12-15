@@ -18,9 +18,10 @@ interface DealCardProps {
   deal: Deal;
   vendor?: Vendor;
   isPremiumUser?: boolean;
+  distanceMiles?: number;
 }
 
-export default function DealCard({ deal, vendor, isPremiumUser = false }: DealCardProps) {
+export default function DealCard({ deal, vendor, isPremiumUser = false, distanceMiles }: DealCardProps) {
   const isPremiumDeal = deal.tier === "premium";
   const isLocked = isPremiumDeal && !isPremiumUser;
 
@@ -76,7 +77,12 @@ export default function DealCard({ deal, vendor, isPremiumUser = false }: DealCa
               {deal.category}
             </Badge>
           )}
-          {deal.city && (
+          {distanceMiles !== undefined ? (
+            <Badge variant="outline" className="text-xs">
+              <MapPin className="w-3 h-3 mr-1" />
+              {distanceMiles} mi away
+            </Badge>
+          ) : deal.city && (
             <Badge variant="outline" className="text-xs">
               <MapPin className="w-3 h-3 mr-1" />
               {deal.city}
