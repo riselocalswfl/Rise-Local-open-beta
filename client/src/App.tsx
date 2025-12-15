@@ -51,7 +51,7 @@ function Router() {
       </Route>
       <Route path="/deals/:id">
         {(params) => (
-          <AppShell hideTabs>
+          <AppShell>
             <DealDetailPage />
           </AppShell>
         )}
@@ -84,14 +84,14 @@ function Router() {
       </Route>
       <Route path="/vendor/:id">
         {(params) => (
-          <AppShell hideTabs>
+          <AppShell>
             <VendorProfile />
           </AppShell>
         )}
       </Route>
       <Route path="/restaurant/:id">
         {(params) => (
-          <AppShell hideTabs>
+          <AppShell>
             <RestaurantProfile />
           </AppShell>
         )}
@@ -119,7 +119,7 @@ function Router() {
       </Route>
       <Route path="/services/:id">
         {(params) => (
-          <AppShell hideTabs>
+          <AppShell>
             <ServiceProviderProfile />
           </AppShell>
         )}
@@ -133,7 +133,7 @@ function Router() {
       </Route>
       <Route path="/events/:id">
         {(params) => (
-          <AppShell hideTabs>
+          <AppShell>
             <EventDetail />
           </AppShell>
         )}
