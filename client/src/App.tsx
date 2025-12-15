@@ -21,7 +21,7 @@ import Checkout from "@/pages/Checkout";
 import OrderConfirmation from "@/pages/OrderConfirmation";
 import Orders from "@/pages/Orders";
 import Spotlight from "@/pages/Spotlight";
-import Join from "@/pages/Join";
+import Auth from "@/pages/Auth";
 import Admin from "@/pages/Admin";
 import VendorProfile from "@/pages/VendorProfile";
 import RestaurantProfile from "@/pages/RestaurantProfile";

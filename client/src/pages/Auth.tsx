@@ -1,11 +1,9 @@
-import { Link } from "wouter";
-import { Store, ArrowRight, CheckCircle2, ShoppingBag, Users, Leaf } from "lucide-react";
+import { Store, ArrowRight, CheckCircle2, ShoppingBag, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import BrandLogo from "@/components/BrandLogo";
-import { useEffect } from "react";
 
-export default function Join() {
+export default function Auth() {
   // Get returnTo URL from sessionStorage if user was redirected here
   const returnTo = typeof window !== 'undefined' ? sessionStorage.getItem("returnTo") : null;
   
