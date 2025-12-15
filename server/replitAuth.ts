@@ -256,9 +256,9 @@ export async function setupAuth(app: Express) {
               redirectUrl = "/welcome";
               console.log("[AUTH] User needs welcome onboarding, redirecting to /welcome");
             } else {
-              // Returning users who completed onboarding go to deals
-              redirectUrl = "/deals";
-              console.log("[AUTH] Returning user redirecting to deals");
+              // Returning users who completed onboarding go to discover
+              redirectUrl = "/discover";
+              console.log("[AUTH] Returning user redirecting to discover");
             }
           }
         } catch (error) {

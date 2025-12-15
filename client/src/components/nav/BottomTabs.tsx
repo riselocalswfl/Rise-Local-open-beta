@@ -1,9 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { Home, Store, User } from "lucide-react";
+import { Compass, Grid3X3, Heart, User } from "lucide-react";
 
 const tabs = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Businesses", href: "/vendors", icon: Store },
+  { name: "Discover", href: "/discover", icon: Compass },
+  { name: "Browse", href: "/browse", icon: Grid3X3 },
+  { name: "Favorites", href: "/favorites", icon: Heart },
   { name: "Profile", href: "/profile", icon: User },
 ];
 
@@ -19,7 +20,8 @@ export default function BottomTabs() {
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = location === tab.href;
+          const isActive = location === tab.href || 
+            (tab.href === "/discover" && (location === "/" || location === "/deals"));
           
           return (
             <Link key={tab.href} href={tab.href}>
@@ -31,7 +33,7 @@ export default function BottomTabs() {
                 }`}
                 aria-label={tab.name}
                 aria-current={isActive ? "page" : undefined}
-                data-testid={`tab-${tab.name.toLowerCase().replace(/ /g, "-")}`}
+                data-testid={`tab-${tab.name.toLowerCase()}`}
               >
                 <Icon className={`h-5 w-5 ${isActive ? "stroke-[2.5]" : ""}`} />
                 <span className={`text-xs ${isActive ? "font-medium" : ""}`}>

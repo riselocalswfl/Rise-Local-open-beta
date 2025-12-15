@@ -32,6 +32,9 @@ import CustomerProfile from "@/pages/CustomerProfile";
 import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
 import MyDeals from "@/pages/MyDeals";
+import Discover from "@/pages/Discover";
+import Browse from "@/pages/Browse";
+import Favorites from "@/pages/Favorites";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignupBanner } from "@/components/SignupBanner";
 import AppShell from "@/components/layout/AppShell";
@@ -39,10 +42,33 @@ import AppShell from "@/components/layout/AppShell";
 function Router() {
   return (
     <Switch>
-      {/* Deals Hub - New Home Experience */}
+      {/* Discover - New Mobile-First Home Experience */}
       <Route path="/">
-        {() => <Redirect to="/deals" />}
+        {() => <Redirect to="/discover" />}
       </Route>
+      <Route path="/discover">
+        {() => (
+          <AppShell>
+            <Discover />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/browse">
+        {() => (
+          <AppShell>
+            <Browse />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/favorites">
+        {() => (
+          <AppShell>
+            <Favorites />
+          </AppShell>
+        )}
+      </Route>
+      
+      {/* Legacy Deals Hub */}
       <Route path="/deals">
         {() => (
           <AppShell>

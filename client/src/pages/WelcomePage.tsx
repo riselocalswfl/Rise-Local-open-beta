@@ -16,7 +16,7 @@ export default function WelcomePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      setLocation("/deals");
+      setLocation("/discover");
     },
   });
 
