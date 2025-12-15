@@ -1,0 +1,69 @@
+Update Rise Local’s Home/Discover page to use a similar layout structure to the reference screenshot (top location bar, horizontal filter chips, 2–4 curated sections with horizontal scrolling cards, bottom tab bar), BUT make all copy, labels, and components clearly Rise Local and focused on exclusive monthly membership deals.
+
+Key product requirements (Rise Local)
+	•	Rise Local is a membership (ex: $4.99/month or “Rise Local Pass”).
+	•	Home should clearly show:
+	1.	which deals are Member-only
+	2.	what users get by subscribing
+	3.	a clear CTA to Join / Upgrade
+	•	Non-members can browse, but member-only deals are visible and locked with a “Unlock with membership” state.
+
+Layout (similar setup, different content)
+	1.	Top bar
+
+	•	“Current location” dropdown (Fort Myers placeholder)
+	•	optional “Change” link
+	•	right side: small Rise Local badge / profile icon
+
+	2.	Filter chips row (horizontal scroll)
+Use Rise Local-relevant chips (NOT meals/bread):
+
+	•	All Deals
+	•	Member-Only 🔒
+	•	Free Deals
+	•	BOGO
+	•	$5+ Value
+	•	New this week
+	•	Near me
+
+	3.	Curated sections (at least 3)
+Each section has header + “See all”
+
+	•	“Member Exclusives Near You” (locked deals appear if not subscribed)
+	•	“Best Value Right Now ($5+ savings)”
+	•	“New Local Spots Added”
+(Optional 4th) “Trending in SWFL”
+
+	4.	Deal cards (horizontal scroll rows)
+Cards should display Rise Local deal info:
+
+	•	Business name + category tag
+	•	Deal title (ex: “BOGO Iced Latte”)
+	•	“Estimated savings” pill (ex: “Save $8”)
+	•	Distance (mi) + redemption window (ex: “Redeem today”)
+	•	Badge: “Member Only” or “Free”
+	•	If Member Only and user is not subscribed: show a locked overlay with CTA “Unlock with Rise Local Pass”
+
+	5.	Membership module
+Add a compact banner between sections:
+
+	•	“Rise Local Pass — exclusive local deals for one low monthly price”
+	•	CTA button: “Join for $4.99/mo” (or “Upgrade”)
+	•	Secondary: “See what’s included”
+
+Behavior
+	•	Add a mock userMembershipStatus boolean (default false) and build UI states around it.
+	•	Filter chips should filter deals by type (memberOnly/free/bogo/value/new/near).
+	•	“See all” routes to /browse?filter=...
+	•	Keep the design clean and modern, white background, readable typography.
+
+Implementation notes
+	•	Use existing stack: React + TS + Tailwind + shadcn/ui
+	•	Create reusable components:
+	•	DealCard.tsx
+	•	MembershipBanner.tsx
+	•	SectionRow.tsx
+	•	Use mock deal data for now but structure types so we can connect to backend later.
+	•	Do NOT clone the exact styling or wording of the reference app; only match the general layout pattern.
+
+Return: list of files changed and how to preview.
