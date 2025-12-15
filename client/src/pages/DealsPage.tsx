@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Search, Filter, Sparkles, MapPin, Navigation } from "lucide-react";
 import Header from "@/components/Header";
 import DealCard from "@/components/DealCard";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -52,6 +54,7 @@ type LocationState = {
 };
 
 export default function DealsPage() {
+  const { isAuthenticated } = useAuth();
   const [category, setCategory] = useState("all");
   const [city, setCity] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -184,14 +187,43 @@ export default function DealsPage() {
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold text-white mb-4">
             Shop Local. Support Community. Save Money.
           </h1>
-          <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-8">
             Exclusive deals from Southwest Florida small businesses.
+          </p>
+          
+          {/* CTA Button */}
+          {isAuthenticated ? (
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => {
+                document.getElementById("deals-filters")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              data-testid="button-unlock-deals"
+            >
+              Unlock Local Deals
+            </Button>
+          ) : (
+            <Link href="/join">
+              <Button
+                size="lg"
+                variant="secondary"
+                data-testid="button-unlock-deals"
+              >
+                Unlock Local Deals
+              </Button>
+            </Link>
+          )}
+          
+          {/* Trust Line */}
+          <p className="text-sm text-white/70 mt-4">
+            Free for locals • Cancel anytime
           </p>
         </div>
       </section>
 
       {/* Filters Section */}
-      <section className="border-b bg-card sticky top-0 z-40">
+      <section id="deals-filters" className="border-b bg-card sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col gap-3">
             {/* Top row: Search and filters */}
