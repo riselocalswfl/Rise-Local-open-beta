@@ -201,6 +201,10 @@ export const vendors = pgTable("vendors", {
   serviceRadius: integer("service_radius"), // miles
   hours: jsonb("hours"), // operating hours as JSON object
   
+  // GPS Coordinates (for "Near Me" filtering)
+  latitude: text("latitude"), // stored as text for precision
+  longitude: text("longitude"), // stored as text for precision
+  
   // Business Values & Trust Signals
   values: text("values").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
   badges: text("badges").array().default(sql`'{}'::text[]`), // e.g., ["Family-Owned", "Women-Led", "Regenerative"]
