@@ -35,6 +35,7 @@ import MyDeals from "@/pages/MyDeals";
 import Discover from "@/pages/Discover";
 import Browse from "@/pages/Browse";
 import Favorites from "@/pages/Favorites";
+import Membership from "@/pages/Membership";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignupBanner } from "@/components/SignupBanner";
 import AppShell from "@/components/layout/AppShell";
@@ -67,6 +68,7 @@ function Router() {
           </AppShell>
         )}
       </Route>
+      <Route path="/membership" component={Membership} />
       
       {/* Legacy Deals Hub */}
       <Route path="/deals">
