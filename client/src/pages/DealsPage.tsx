@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Search, Filter, Sparkles, MapPin, Navigation } from "lucide-react";
+import { Search, Filter, Sparkles, MapPin, Navigation, UserPlus, Ticket, Heart } from "lucide-react";
 import Header from "@/components/Header";
 import DealCard from "@/components/DealCard";
 import { Button } from "@/components/ui/button";
@@ -219,6 +219,49 @@ export default function DealsPage() {
           <p className="text-sm text-white/70 mt-4">
             Free for locals • Cancel anytime
           </p>
+        </div>
+      </section>
+
+      {/* How it Works Section */}
+      <section className="py-10 md:py-12 bg-muted/30 border-b">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl md:text-2xl font-heading font-semibold text-center mb-8 text-foreground">
+            How it Works
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Step 1 */}
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <UserPlus className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1">Join Rise Local</h3>
+              <p className="text-sm text-muted-foreground">
+                Get instant access to SWFL local deals
+              </p>
+            </div>
+            
+            {/* Step 2 */}
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Ticket className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1">Show the Deal</h3>
+              <p className="text-sm text-muted-foreground">
+                Redeem in-store or directly with the business
+              </p>
+            </div>
+            
+            {/* Step 3 */}
+            <div className="flex flex-col items-center text-center p-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Heart className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1">Feel Good Spending Local</h3>
+              <p className="text-sm text-muted-foreground">
+                Save money while supporting your community
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
