@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Search, Filter, Sparkles, MapPin, Navigation, UserPlus, Ticket, Heart } from "lucide-react";
@@ -64,13 +64,19 @@ export default function DealsPage() {
     status: "idle",
     coords: null,
   });
+  const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if geolocation is available on mount (but don't request yet)
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocation({ status: "unavailable", coords: null });
     }
-    // Don't auto-request location - wait for user to click "Near Me"
+    // Cleanup timeout on unmount
+    return () => {
+      if (locationTimeoutRef.current) {
+        clearTimeout(locationTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Request location when user enables Near Me
@@ -80,9 +86,31 @@ export default function DealsPage() {
       return;
     }
 
+    // Clear any existing timeout
+    if (locationTimeoutRef.current) {
+      clearTimeout(locationTimeoutRef.current);
+    }
+
     setLocation((prev) => ({ ...prev, status: "requesting" }));
+
+    // Fallback timeout - if browser doesn't respond in 15 seconds, reset to idle
+    locationTimeoutRef.current = setTimeout(() => {
+      setLocation((prev) => {
+        if (prev.status === "requesting") {
+          console.log("Geolocation request timed out (fallback)");
+          return { status: "idle", coords: null };
+        }
+        return prev;
+      });
+    }, 15000);
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        // Clear fallback timeout on success
+        if (locationTimeoutRef.current) {
+          clearTimeout(locationTimeoutRef.current);
+          locationTimeoutRef.current = null;
+        }
         setLocation({
           status: "granted",
           coords: {
@@ -94,6 +122,11 @@ export default function DealsPage() {
         setCity("all");
       },
       (error) => {
+        // Clear fallback timeout on error
+        if (locationTimeoutRef.current) {
+          clearTimeout(locationTimeoutRef.current);
+          locationTimeoutRef.current = null;
+        }
         console.log("Geolocation error:", error.message);
         setLocation({
           status: error.code === 1 ? "denied" : "unavailable",
