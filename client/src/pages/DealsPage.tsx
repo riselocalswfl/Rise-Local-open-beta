@@ -62,14 +62,21 @@ export default function DealsPage() {
     coords: null,
   });
 
-  // Request location on first load
+  // Check if geolocation is available on mount (but don't request yet)
   useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocation({ status: "unavailable", coords: null });
+    }
+    // Don't auto-request location - wait for user to click "Near Me"
+  }, []);
+
+  // Request location when user enables Near Me
+  const requestLocation = () => {
     if (!navigator.geolocation) {
       setLocation({ status: "unavailable", coords: null });
       return;
     }
 
-    // Auto-request location permission
     setLocation((prev) => ({ ...prev, status: "requesting" }));
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -80,6 +87,8 @@ export default function DealsPage() {
             lng: position.coords.longitude,
           },
         });
+        setNearMeEnabled(true);
+        setCity("all");
       },
       (error) => {
         console.log("Geolocation error:", error.message);
@@ -90,7 +99,7 @@ export default function DealsPage() {
       },
       { timeout: 10000, maximumAge: 300000 } // Cache for 5 minutes
     );
-  }, []);
+  };
 
   // Build query params
   const queryParams = new URLSearchParams();
@@ -138,30 +147,16 @@ export default function DealsPage() {
   });
 
   const handleNearMeToggle = () => {
-    if (!nearMeEnabled && location.status === "granted") {
-      setNearMeEnabled(true);
-      setCity("all"); // Clear city filter when using Near Me
-    } else if (nearMeEnabled) {
+    if (nearMeEnabled) {
+      // Turn off Near Me
       setNearMeEnabled(false);
-    } else if (location.status === "denied") {
-      // Try requesting again
-      setLocation((prev) => ({ ...prev, status: "requesting" }));
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            status: "granted",
-            coords: {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            },
-          });
-          setNearMeEnabled(true);
-          setCity("all");
-        },
-        () => {
-          setLocation((prev) => ({ ...prev, status: "denied" }));
-        }
-      );
+    } else if (location.status === "granted" && location.coords) {
+      // Already have location, just enable
+      setNearMeEnabled(true);
+      setCity("all");
+    } else {
+      // Request location (handles idle, denied, or unavailable states)
+      requestLocation();
     }
   };
 
