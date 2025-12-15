@@ -18,6 +18,7 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Authentication**: Replit Auth via OIDC with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, and `admin`. The marketplace is fully browsable without authentication; a non-intrusive `SignupBanner` encourages account creation for account-specific actions.
 - **Unified Vendor Architecture**: All vendor types (shop, dine, service) use a single `vendors` table with a `vendorType` field and a `capabilities` JSON field, enabling polymorphic behavior. Products, menu items, and service offerings link to this unified `vendors` table.
 - **Simplified Authentication & Onboarding**: Streamlined signup routes users based on `intended_role` query parameter to a universal `/onboarding` flow, guiding all vendor types through business profile creation with self-selection of `vendorType` and auto-setting of initial capabilities. An auto-save system creates draft profiles.
+- **3-Step User Onboarding Flow**: New users follow a minimal 3-screen onboarding: (1) `/auth` - minimal auth page with no footer, (2) `/welcome` - welcome message with Continue button (has footer), (3) `/deals` - main app home (has footer). Onboarding completion is tracked via `onboardingComplete` field in users table. Returning users skip `/welcome` and go directly to `/deals`.
 - **Unified Vendor Dashboard**: A single capability-aware `/dashboard` serves all vendor types, dynamically showing/hiding tabs based on vendor capabilities.
 - **Category System Removal**: Categories have been removed from the database schema and all user interfaces to simplify browsing.
 - **Customer-Facing Vendor Pages**: Profiles (`/vendor/:id`) use a unified endpoint and implement capability-based rendering.
@@ -40,7 +41,7 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Fort Myers Spotlight**: Dedicated feature for highlighting local content or businesses.
 - **Application Routes**:
   - **Public Routes**: `/`, `/auth`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/cart`.
-  - **Protected Routes**: `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/onboarding`, `/events/my`, `/admin`.
+  - **Protected Routes**: `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/onboarding`, `/events/my`, `/admin`, `/welcome`.
   - **Auth Route Consolidation**: Single unified auth page at `/auth` handles both login and signup. Legacy routes (`/join`, `/login`, `/signup`, `/sign-in`, `/sign-up`, `/register`) redirect to `/auth`.
   - **Signup Encouragement**: Dismissible `SignupBanner` on public pages for unauthenticated users, with localStorage-based dismissal persistence and SSR-safe browser guards. Authentication flow for "Sign Up Free" and protected actions redirects to `/auth`.
 
