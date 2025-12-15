@@ -265,6 +265,26 @@ export default function DealsPage() {
         </div>
       </section>
 
+      {/* Social Proof Section */}
+      <section className="py-6 bg-background border-b">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm text-muted-foreground mb-3">
+            Supporting 50+ local businesses across Southwest Florida
+          </p>
+          <div className="flex flex-wrap justify-center items-center gap-2 text-xs text-muted-foreground/80">
+            <span className="px-3 py-1 rounded-full bg-muted">Food</span>
+            <span className="text-muted-foreground/50">•</span>
+            <span className="px-3 py-1 rounded-full bg-muted">Shopping</span>
+            <span className="text-muted-foreground/50">•</span>
+            <span className="px-3 py-1 rounded-full bg-muted">Wellness</span>
+            <span className="text-muted-foreground/50">•</span>
+            <span className="px-3 py-1 rounded-full bg-muted">Services</span>
+            <span className="text-muted-foreground/50">•</span>
+            <span className="px-3 py-1 rounded-full bg-muted">Events</span>
+          </div>
+        </div>
+      </section>
+
       {/* Filters Section */}
       <section id="deals-filters" className="border-b bg-card sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
