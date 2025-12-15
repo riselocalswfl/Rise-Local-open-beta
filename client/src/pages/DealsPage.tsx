@@ -23,7 +23,7 @@ interface DealWithDistance extends Deal {
 }
 
 const CATEGORIES = [
-  { value: "all", label: "All Categories" },
+  { value: "all", label: "What are you looking for?" },
   { value: "Food", label: "Food" },
   { value: "Retail", label: "Retail" },
   { value: "Beauty", label: "Beauty" },
@@ -33,7 +33,7 @@ const CATEGORIES = [
 ];
 
 const CITIES = [
-  { value: "all", label: "All Cities" },
+  { value: "all", label: "Near you" },
   { value: "Fort Myers", label: "Fort Myers" },
   { value: "Cape Coral", label: "Cape Coral" },
   { value: "Bonita Springs", label: "Bonita Springs" },
@@ -274,7 +274,7 @@ export default function DealsPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search deals..."
+                  placeholder="Search deals, businesses, or keywords..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
