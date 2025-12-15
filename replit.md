@@ -39,9 +39,10 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Fulfillment**: Supports pickup, local delivery, and shipping options configurable by vendors.
 - **Fort Myers Spotlight**: Dedicated feature for highlighting local content or businesses.
 - **Application Routes**:
-  - **Public Routes**: `/`, `/join`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/cart`.
+  - **Public Routes**: `/`, `/auth`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/cart`.
   - **Protected Routes**: `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/onboarding`, `/events/my`, `/admin`.
-  - **Signup Encouragement**: Dismissible `SignupBanner` on public pages for unauthenticated users, with localStorage-based dismissal persistence and SSR-safe browser guards. Authentication flow for "Sign Up Free" and protected actions redirects to `/join`.
+  - **Auth Route Consolidation**: Single unified auth page at `/auth` handles both login and signup. Legacy routes (`/join`, `/login`, `/signup`, `/sign-in`, `/sign-up`, `/register`) redirect to `/auth`.
+  - **Signup Encouragement**: Dismissible `SignupBanner` on public pages for unauthenticated users, with localStorage-based dismissal persistence and SSR-safe browser guards. Authentication flow for "Sign Up Free" and protected actions redirects to `/auth`.
 
 ## External Dependencies
 
