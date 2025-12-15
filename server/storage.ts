@@ -29,6 +29,14 @@ import {
   fulfillmentDetailsSchema
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { calculateDistanceMiles } from "./geocoding";
+
+// Type for deals with distance information
+export interface DealWithDistance extends Deal {
+  distanceMiles?: number;
+  vendorLatitude?: string | null;
+  vendorLongitude?: string | null;
+}
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcrypt";
@@ -207,6 +215,16 @@ export interface IStorage {
 
   // Deal operations
   listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]>;
+  listDealsWithLocation(filters: { 
+    lat?: number; 
+    lng?: number; 
+    radiusMiles?: number; 
+    category?: string; 
+    city?: string; 
+    tier?: string; 
+    isActive?: boolean; 
+    vendorId?: string 
+  }): Promise<DealWithDistance[]>;
   getDealById(id: string): Promise<Deal | undefined>;
   createDeal(deal: InsertDeal): Promise<Deal>;
   updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal>;
@@ -1036,6 +1054,102 @@ export class DbStorage implements IStorage {
       .from(deals)
       .where(and(...conditions))
       .orderBy(desc(deals.createdAt));
+  }
+
+  async listDealsWithLocation(filters: { 
+    lat?: number; 
+    lng?: number; 
+    radiusMiles?: number; 
+    category?: string; 
+    city?: string; 
+    tier?: string; 
+    isActive?: boolean; 
+    vendorId?: string 
+  }): Promise<DealWithDistance[]> {
+    // Build base conditions for deals
+    let conditions = [];
+    
+    if (filters.category) {
+      conditions.push(eq(deals.category, filters.category));
+    }
+    if (filters.tier) {
+      conditions.push(eq(deals.tier, filters.tier));
+    }
+    if (filters.isActive !== undefined) {
+      conditions.push(eq(deals.isActive, filters.isActive));
+    }
+    if (filters.vendorId) {
+      conditions.push(eq(deals.vendorId, filters.vendorId));
+    }
+
+    // If no location provided, fall back to city-based filtering
+    if (!filters.lat || !filters.lng) {
+      if (filters.city) {
+        conditions.push(eq(deals.city, filters.city));
+      }
+      
+      const dealsResult = conditions.length === 0
+        ? await db.select().from(deals).orderBy(desc(deals.createdAt))
+        : await db.select().from(deals).where(and(...conditions)).orderBy(desc(deals.createdAt));
+      
+      return dealsResult as DealWithDistance[];
+    }
+
+    // Location-based filtering: join with vendors to get coordinates
+    const query = conditions.length === 0
+      ? db.select({
+          deal: deals,
+          vendorLatitude: vendors.latitude,
+          vendorLongitude: vendors.longitude
+        })
+        .from(deals)
+        .innerJoin(vendors, eq(deals.vendorId, vendors.id))
+      : db.select({
+          deal: deals,
+          vendorLatitude: vendors.latitude,
+          vendorLongitude: vendors.longitude
+        })
+        .from(deals)
+        .innerJoin(vendors, eq(deals.vendorId, vendors.id))
+        .where(and(...conditions));
+
+    const results = await query;
+
+    // Calculate distance for each deal and filter by radius
+    const radiusMiles = filters.radiusMiles || 10;
+    const dealsWithDistance: DealWithDistance[] = [];
+
+    for (const row of results) {
+      const vendorLat = row.vendorLatitude ? parseFloat(row.vendorLatitude) : null;
+      const vendorLng = row.vendorLongitude ? parseFloat(row.vendorLongitude) : null;
+
+      // Skip vendors without coordinates in "Near Me" mode
+      if (vendorLat === null || vendorLng === null) {
+        continue;
+      }
+
+      const distance = calculateDistanceMiles(
+        filters.lat,
+        filters.lng,
+        vendorLat,
+        vendorLng
+      );
+
+      // Only include deals within the radius
+      if (distance <= radiusMiles) {
+        dealsWithDistance.push({
+          ...row.deal,
+          distanceMiles: Math.round(distance * 10) / 10, // Round to 1 decimal
+          vendorLatitude: row.vendorLatitude,
+          vendorLongitude: row.vendorLongitude
+        });
+      }
+    }
+
+    // Sort by distance (closest first)
+    dealsWithDistance.sort((a, b) => (a.distanceMiles || 0) - (b.distanceMiles || 0));
+
+    return dealsWithDistance;
   }
 
   async getDealById(id: string): Promise<Deal | undefined> {
