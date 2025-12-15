@@ -22,6 +22,7 @@ import OrderConfirmation from "@/pages/OrderConfirmation";
 import Orders from "@/pages/Orders";
 import Spotlight from "@/pages/Spotlight";
 import Auth from "@/pages/Auth";
+import WelcomePage from "@/pages/WelcomePage";
 import Admin from "@/pages/Admin";
 import VendorProfile from "@/pages/VendorProfile";
 import RestaurantProfile from "@/pages/RestaurantProfile";
@@ -66,8 +67,17 @@ function Router() {
         )}
       </Route>
       
-      {/* Auth - Single unified authentication page */}
+      {/* Auth - Single unified authentication page (no footer) */}
       <Route path="/auth" component={Auth} />
+      
+      {/* Welcome - Post-auth onboarding screen */}
+      <Route path="/welcome">
+        {() => (
+          <ProtectedRoute requireOnboarding={false}>
+            <WelcomePage />
+          </ProtectedRoute>
+        )}
+      </Route>
       <Route path="/products">
         {() => (
           <AppShell>

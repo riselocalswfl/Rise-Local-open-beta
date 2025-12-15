@@ -81,6 +81,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete onboarding - mark user as having completed the welcome flow
+  app.post('/api/auth/complete-onboarding', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.updateUser(userId, { onboardingComplete: true });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
+    }
+  });
+
   // Public route to fetch basic user info by ID (for vendor profile role determination)
   app.get('/api/users/:id', async (req, res) => {
     try {

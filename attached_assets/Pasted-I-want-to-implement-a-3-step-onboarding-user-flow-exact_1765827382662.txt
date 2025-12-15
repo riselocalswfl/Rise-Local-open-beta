@@ -1,0 +1,59 @@
+I want to implement a 3-step onboarding user flow exactly like this:
+
+Goal flow (Simple → Simple → Simple)
+	1.	Screen 1: Minimal Auth
+
+	•	Route: /auth
+	•	Purpose: signup/login
+	•	Layout: super minimal (logo + 2 buttons + optional email/password form)
+	•	NO footer on this screen.
+	•	After successful login/signup, send user to Screen 2.
+
+	2.	Screen 2: Welcome Message
+
+	•	Route: /welcome
+	•	Shows a short welcome message + one clear CTA button: “Continue”
+	•	Footer IS shown on this screen.
+	•	Pressing Continue goes to Screen 3.
+
+	3.	Screen 3: Main Features (App Home)
+
+	•	Route: /deals (or /home if you prefer, but pick ONE and make it the true home)
+	•	This is the main feature hub.
+	•	Footer IS shown on this screen and throughout the app.
+
+⸻
+
+Required behavior (IMPORTANT)
+	•	If the user is NOT logged in and tries to visit any protected route (ex: /deals, /vendors, etc.), redirect them to /auth.
+	•	If the user IS logged in:
+	•	If they have not completed onboarding, send them to /welcome
+	•	If they have completed onboarding, send them directly to /deals (skip welcome)
+	•	Store onboarding completion as onboardingComplete=true on the user (DB field) or persistent local storage tied to user id (DB preferred).
+
+⸻
+
+UI rules
+	•	Footer component appears on every page except /auth
+	•	Keep screens visually clean: big readable text, one main button per screen.
+	•	Make sure there is always a way to get “home” from anywhere (tap logo or footer home button).
+
+⸻
+
+Implementation details
+	•	I’m using React + TypeScript + client-side routing (wouter or react-router—use what the app already has).
+	•	Create these components if missing:
+	•	AuthPage
+	•	WelcomePage
+	•	DealsPage (or my existing main page)
+	•	AppFooter
+	•	Add a ProtectedRoute (or equivalent) that handles auth + onboarding logic cleanly.
+	•	Do NOT break existing backend data. Keep current DB + auth system intact.
+
+⸻
+
+Deliverables
+	1.	Update routing so the app follows the exact 3-screen flow above.
+	2.	Implement conditional footer display (hidden only on /auth).
+	3.	Persist onboardingComplete and skip welcome for returning users.
+	4.	Show me the exact files you changed and what code you added.

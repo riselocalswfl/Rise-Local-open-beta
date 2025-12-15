@@ -2,32 +2,47 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
 
+interface User {
+  id: string;
+  role: string;
+  onboardingComplete?: boolean;
+  [key: string]: unknown;
+}
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
+  requireOnboarding?: boolean;
 }
 
-export function ProtectedRoute({ children, redirectTo = "/auth" }: ProtectedRouteProps) {
-  const [, setLocation] = useLocation();
+export function ProtectedRoute({ 
+  children, 
+  redirectTo = "/auth",
+  requireOnboarding = true 
+}: ProtectedRouteProps) {
+  const [location, setLocation] = useLocation();
   
-  const { data: user, isLoading, error } = useQuery({
+  const { data: user, isLoading, error } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
   });
 
   useEffect(() => {
-    // If not loading and no user, redirect to login
-    if (!isLoading && (error || !user)) {
+    if (isLoading) return;
+
+    if (error || !user) {
       console.log("[ProtectedRoute] Not authenticated, redirecting to", redirectTo);
-      
-      // Save the current path to return to after login
       const currentPath = window.location.pathname;
       sessionStorage.setItem("returnTo", currentPath);
-      
       setLocation(redirectTo);
+      return;
     }
-  }, [isLoading, user, error, redirectTo, setLocation]);
 
-  // Show loading state while checking authentication
+    if (requireOnboarding && !user.onboardingComplete && location !== "/welcome") {
+      console.log("[ProtectedRoute] Onboarding not complete, redirecting to /welcome");
+      setLocation("/welcome");
+    }
+  }, [isLoading, user, error, redirectTo, setLocation, requireOnboarding, location]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
@@ -39,11 +54,13 @@ export function ProtectedRoute({ children, redirectTo = "/auth" }: ProtectedRout
     );
   }
 
-  // If not authenticated, don't render children (redirect will happen via useEffect)
   if (error || !user) {
     return null;
   }
 
-  // User is authenticated, render the protected content
+  if (requireOnboarding && !user.onboardingComplete && location !== "/welcome") {
+    return null;
+  }
+
   return <>{children}</>;
 }

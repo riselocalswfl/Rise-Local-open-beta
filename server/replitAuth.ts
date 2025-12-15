@@ -250,9 +250,16 @@ export async function setupAuth(app: Express) {
             // New vendor needs onboarding - redirectUrl already set to /onboarding
             console.log("[AUTH] New vendor redirecting to onboarding");
           } else {
-            // All returning users go to homepage
-            redirectUrl = "/";
-            console.log("[AUTH] Returning user redirecting to homepage");
+            // Check if user completed welcome onboarding - if not, send to /welcome
+            const currentUser = await storage.getUser(userId);
+            if (currentUser && !currentUser.onboardingComplete) {
+              redirectUrl = "/welcome";
+              console.log("[AUTH] User needs welcome onboarding, redirecting to /welcome");
+            } else {
+              // Returning users who completed onboarding go to deals
+              redirectUrl = "/deals";
+              console.log("[AUTH] Returning user redirecting to deals");
+            }
           }
         } catch (error) {
           console.error("Failed to process user role:", error);
