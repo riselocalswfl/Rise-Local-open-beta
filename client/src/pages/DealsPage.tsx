@@ -237,7 +237,7 @@ export default function DealsPage() {
               Unlock Local Deals
             </Button>
           ) : (
-            <Link href="/join">
+            <Link href="/auth">
               <Button
                 size="lg"
                 variant="secondary"

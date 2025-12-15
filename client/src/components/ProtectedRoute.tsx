@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-export function ProtectedRoute({ children, redirectTo = "/join" }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, redirectTo = "/auth" }: ProtectedRouteProps) {
   const [, setLocation] = useLocation();
   
   const { data: user, isLoading, error } = useQuery({

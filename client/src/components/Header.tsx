@@ -139,7 +139,7 @@ export default function Header() {
                         </Button>
                       </a>
                       <div className="pt-3 border-t">
-                        <Link href="/join">
+                        <Link href="/auth">
                           <BrandButton 
                             className="w-full"
                             onClick={() => setSignInDialogOpen(false)}
@@ -202,7 +202,7 @@ export default function Header() {
                         </Button>
                       </a>
                       <div className="pt-3 border-t">
-                        <Link href="/join">
+                        <Link href="/auth">
                           <BrandButton 
                             className="w-full"
                             onClick={() => setSignInDialogOpen(false)}

@@ -307,7 +307,7 @@ export default function UnifiedOnboarding() {
               variant: "destructive",
             });
             sessionStorage.setItem("returnTo", "/onboarding");
-            setLocation("/join");
+            setLocation("/auth");
           }
           return;
         }
@@ -441,7 +441,7 @@ export default function UnifiedOnboarding() {
               variant: "destructive",
             });
             sessionStorage.setItem("returnTo", "/onboarding");
-            setLocation("/join");
+            setLocation("/auth");
             return;
           }
           
@@ -522,7 +522,7 @@ export default function UnifiedOnboarding() {
               variant: "destructive",
             });
             sessionStorage.setItem("returnTo", "/onboarding");
-            setLocation("/join");
+            setLocation("/auth");
             return;
           }
           

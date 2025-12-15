@@ -32,7 +32,7 @@ export function SignupBanner() {
   };
 
   const handleSignup = () => {
-    setLocation("/join");
+    setLocation("/auth");
   };
 
   // Don't show if user is authenticated or banner is dismissed

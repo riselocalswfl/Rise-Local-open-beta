@@ -39,9 +39,9 @@ export default function BusinessDashboard() {
           </p>
           <div className="space-y-2">
             <button
-              onClick={() => setLocation("/join")}
+              onClick={() => setLocation("/auth")}
               className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover-elevate active-elevate-2"
-              data-testid="button-join"
+              data-testid="button-auth"
             >
               Create Business Profile
             </button>

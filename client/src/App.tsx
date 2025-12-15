@@ -66,8 +66,8 @@ function Router() {
         )}
       </Route>
       
-      {/* Public Pages - Browsable without login */}
-      <Route path="/join" component={Join} />
+      {/* Auth - Single unified authentication page */}
+      <Route path="/auth" component={Auth} />
       <Route path="/products">
         {() => (
           <AppShell>
@@ -259,23 +259,37 @@ function Router() {
       <Route path="/onboarding/services">
         {() => <Redirect to="/onboarding" />}
       </Route>
+      
+      {/* Auth Redirects - All old auth routes redirect to /auth */}
+      <Route path="/join">
+        {() => <Redirect to="/auth" />}
+      </Route>
       <Route path="/login">
-        {() => <Redirect to="/join" />}
+        {() => <Redirect to="/auth" />}
       </Route>
       <Route path="/signup">
-        {() => <Redirect to="/join" />}
+        {() => <Redirect to="/auth" />}
+      </Route>
+      <Route path="/sign-in">
+        {() => <Redirect to="/auth" />}
+      </Route>
+      <Route path="/sign-up">
+        {() => <Redirect to="/auth" />}
+      </Route>
+      <Route path="/register">
+        {() => <Redirect to="/auth" />}
       </Route>
       <Route path="/join/buyer">
-        {() => <Redirect to="/join" />}
+        {() => <Redirect to="/auth" />}
       </Route>
       <Route path="/join/vendor">
-        {() => <Redirect to="/join" />}
+        {() => <Redirect to="/auth" />}
       </Route>
       <Route path="/join/restaurant">
-        {() => <Redirect to="/join" />}
+        {() => <Redirect to="/auth" />}
       </Route>
       <Route path="/join/service-provider">
-        {() => <Redirect to="/join" />}
+        {() => <Redirect to="/auth" />}
       </Route>
       
       {/* Home route at the end to avoid matching all paths */}

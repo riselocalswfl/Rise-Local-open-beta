@@ -29,7 +29,7 @@ export default function HomeHero() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
             <Link 
-              href="/join" 
+              href="/auth" 
               data-testid="start-selling-cta"
               className="w-full sm:w-auto bg-secondary hover:bg-secondary/90 text-white px-6 py-3 rounded-md font-medium transition no-underline text-center"
             >
