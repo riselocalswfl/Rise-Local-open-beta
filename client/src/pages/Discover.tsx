@@ -1,139 +1,211 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Compass, ChevronDown, ChevronRight } from "lucide-react";
-import DiscoverDealCard, { DiscoverDeal } from "@/components/DiscoverDealCard";
+import { Compass, ChevronDown, ChevronRight, Lock } from "lucide-react";
+import RiseLocalDealCard, { RiseLocalDeal, DealType } from "@/components/RiseLocalDealCard";
+import MembershipBanner from "@/components/MembershipBanner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-const CATEGORIES = [
-  { id: "all", label: "All" },
-  { id: "meals", label: "Meals" },
-  { id: "bread", label: "Bread & pastries" },
-  { id: "groceries", label: "Groceries" },
-  { id: "drinks", label: "Drinks" },
-  { id: "treats", label: "Treats" },
+const FILTER_CHIPS = [
+  { id: "all", label: "All Deals" },
+  { id: "memberOnly", label: "Member-Only", icon: Lock },
+  { id: "free", label: "Free Deals" },
+  { id: "bogo", label: "BOGO" },
+  { id: "value", label: "$5+ Value" },
+  { id: "new", label: "New this week" },
+  { id: "near", label: "Near me" },
 ];
 
-const MOCK_TOP_PICKS: DiscoverDeal[] = [
+const MOCK_MEMBER_EXCLUSIVES: RiseLocalDeal[] = [
   {
     id: 1,
-    title: "Fresh Baked Croissants",
-    vendorName: "Fort Myers Bakery",
-    imageUrl: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=400&fit=crop",
-    originalPrice: 12.99,
-    discountedPrice: 4.99,
+    title: "BOGO Iced Latte",
+    vendorName: "Downtown Coffee Co",
+    vendorCategory: "Cafe",
+    imageUrl: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&h=300&fit=crop",
+    savings: 8,
     distance: "0.3 mi",
-    category: "bread",
+    redemptionWindow: "Redeem today",
+    dealType: "bogo",
+    memberOnly: true,
   },
   {
     id: 2,
-    title: "Surprise Bag - Cafe",
-    vendorName: "Downtown Coffee Co",
-    imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=400&fit=crop",
-    originalPrice: 15.00,
-    discountedPrice: 5.99,
+    title: "50% Off Any Entree",
+    vendorName: "Bella Naples Pizzeria",
+    vendorCategory: "Italian",
+    imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop",
+    savings: 12,
     distance: "0.5 mi",
-    category: "meals",
+    redemptionWindow: "Redeem today",
+    dealType: "value",
+    memberOnly: true,
   },
   {
     id: 3,
-    title: "Artisan Sourdough Loaf",
-    vendorName: "River District Breads",
-    imageUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=400&fit=crop",
-    originalPrice: 8.99,
-    discountedPrice: 3.49,
+    title: "Free Dessert with Meal",
+    vendorName: "River District Bistro",
+    vendorCategory: "American",
+    imageUrl: "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop",
+    savings: 9,
     distance: "0.8 mi",
-    category: "bread",
+    redemptionWindow: "Valid all week",
+    dealType: "memberOnly",
+    memberOnly: true,
   },
   {
     id: 4,
-    title: "Farm Fresh Produce Box",
-    vendorName: "SWFL Farmers Market",
-    imageUrl: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&h=400&fit=crop",
-    originalPrice: 25.00,
-    discountedPrice: 12.99,
+    title: "BOGO Craft Beer",
+    vendorName: "Fort Myers Brewing",
+    vendorCategory: "Brewery",
+    imageUrl: "https://images.unsplash.com/photo-1535958636474-b021ee887b13?w=400&h=300&fit=crop",
+    savings: 7,
     distance: "1.2 mi",
-    category: "groceries",
+    redemptionWindow: "Happy hour only",
+    dealType: "bogo",
+    memberOnly: true,
   },
   {
     id: 5,
-    title: "Gourmet Pizza Slice Combo",
-    vendorName: "Bella Naples Pizzeria",
-    imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop",
-    originalPrice: 14.99,
-    discountedPrice: 6.99,
+    title: "20% Off Haircut",
+    vendorName: "Style Studio SWFL",
+    vendorCategory: "Salon",
+    imageUrl: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop",
+    savings: 15,
     distance: "0.4 mi",
-    category: "meals",
+    redemptionWindow: "Book today",
+    dealType: "value",
+    memberOnly: true,
   },
 ];
 
-const MOCK_PICKUP_NOW: DiscoverDeal[] = [
+const MOCK_BEST_VALUE: RiseLocalDeal[] = [
   {
     id: 6,
-    title: "Lunch Special Box",
-    vendorName: "Garden Fresh Deli",
-    imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop",
-    originalPrice: 16.99,
-    discountedPrice: 6.99,
-    distance: "0.2 mi",
-    pickupTime: "11am-2pm",
-    category: "meals",
+    title: "Family Pizza Night Bundle",
+    vendorName: "Joe's NY Pizza",
+    vendorCategory: "Pizza",
+    imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop",
+    savings: 18,
+    distance: "0.6 mi",
+    redemptionWindow: "Redeem today",
+    dealType: "value",
+    memberOnly: false,
   },
   {
     id: 7,
-    title: "End of Day Pastries",
-    vendorName: "Sweet Sunrise Bakery",
-    imageUrl: "https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=400&h=400&fit=crop",
-    originalPrice: 18.00,
-    discountedPrice: 5.99,
-    distance: "0.6 mi",
-    pickupTime: "4pm-6pm",
-    category: "bread",
+    title: "Oil Change Special",
+    vendorName: "SWFL Auto Care",
+    vendorCategory: "Auto",
+    imageUrl: "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?w=400&h=300&fit=crop",
+    savings: 25,
+    distance: "1.5 mi",
+    redemptionWindow: "Valid this month",
+    dealType: "value",
+    memberOnly: true,
   },
   {
     id: 8,
-    title: "Smoothie & Snack Pack",
-    vendorName: "Juice Junction",
-    imageUrl: "https://images.unsplash.com/photo-1502741224143-90386d7f8c82?w=400&h=400&fit=crop",
-    originalPrice: 12.00,
-    discountedPrice: 4.99,
-    distance: "0.3 mi",
-    pickupTime: "2pm-5pm",
-    category: "drinks",
+    title: "Sunset Kayak Tour",
+    vendorName: "Gulf Coast Adventures",
+    vendorCategory: "Tours",
+    imageUrl: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop",
+    savings: 20,
+    distance: "2.1 mi",
+    redemptionWindow: "Book ahead",
+    dealType: "value",
+    memberOnly: false,
   },
   {
     id: 9,
-    title: "Sushi Platter Surprise",
-    vendorName: "Ocean Roll Sushi",
-    imageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=400&fit=crop",
-    originalPrice: 28.00,
-    discountedPrice: 11.99,
+    title: "Spa Day Package",
+    vendorName: "Zen Wellness Spa",
+    vendorCategory: "Spa",
+    imageUrl: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400&h=300&fit=crop",
+    savings: 35,
     distance: "0.9 mi",
-    pickupTime: "8pm-9pm",
-    category: "meals",
-  },
-  {
-    id: 10,
-    title: "Cookie Assortment Box",
-    vendorName: "Cookie Corner",
-    imageUrl: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400&h=400&fit=crop",
-    originalPrice: 15.00,
-    discountedPrice: 5.99,
-    distance: "0.4 mi",
-    pickupTime: "3pm-6pm",
-    category: "treats",
+    redemptionWindow: "Limited availability",
+    dealType: "value",
+    memberOnly: true,
   },
 ];
 
-export default function Discover() {
-  const [selectedCategory, setSelectedCategory] = useState("all");
+const MOCK_NEW_SPOTS: RiseLocalDeal[] = [
+  {
+    id: 10,
+    title: "Grand Opening Special",
+    vendorName: "Sunrise Smoothie Bar",
+    vendorCategory: "Juice",
+    imageUrl: "https://images.unsplash.com/photo-1502741224143-90386d7f8c82?w=400&h=300&fit=crop",
+    savings: 6,
+    distance: "0.2 mi",
+    redemptionWindow: "This week only",
+    dealType: "new",
+    memberOnly: false,
+    isNew: true,
+  },
+  {
+    id: 11,
+    title: "Free Appetizer",
+    vendorName: "Taco Loco",
+    vendorCategory: "Mexican",
+    imageUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&h=300&fit=crop",
+    savings: 8,
+    distance: "0.7 mi",
+    redemptionWindow: "Redeem today",
+    dealType: "new",
+    memberOnly: true,
+    isNew: true,
+  },
+  {
+    id: 12,
+    title: "BOGO Yoga Class",
+    vendorName: "Flow Yoga Studio",
+    vendorCategory: "Fitness",
+    imageUrl: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop",
+    savings: 15,
+    distance: "0.4 mi",
+    redemptionWindow: "New member offer",
+    dealType: "new",
+    memberOnly: false,
+    isNew: true,
+  },
+  {
+    id: 13,
+    title: "25% Off First Visit",
+    vendorName: "The Barber Shop",
+    vendorCategory: "Grooming",
+    imageUrl: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=400&h=300&fit=crop",
+    savings: 10,
+    distance: "0.5 mi",
+    redemptionWindow: "First timers",
+    dealType: "new",
+    memberOnly: true,
+    isNew: true,
+  },
+];
 
-  const filterDeals = (deals: DiscoverDeal[]) => {
-    if (selectedCategory === "all") return deals;
-    return deals.filter((deal) => deal.category === selectedCategory);
+const ALL_DEALS = [...MOCK_MEMBER_EXCLUSIVES, ...MOCK_BEST_VALUE, ...MOCK_NEW_SPOTS];
+
+export default function Discover() {
+  const [selectedFilter, setSelectedFilter] = useState("all");
+  const [userMembershipStatus] = useState(false);
+
+  const filterDeals = (deals: RiseLocalDeal[], filter: string): RiseLocalDeal[] => {
+    if (filter === "all") return deals;
+    if (filter === "memberOnly") return deals.filter((d) => d.memberOnly);
+    if (filter === "free") return deals.filter((d) => !d.memberOnly);
+    if (filter === "bogo") return deals.filter((d) => d.dealType === "bogo");
+    if (filter === "value") return deals.filter((d) => d.savings >= 5);
+    if (filter === "new") return deals.filter((d) => d.isNew);
+    if (filter === "near") return deals.filter((d) => parseFloat(d.distance) <= 0.5);
+    return deals;
   };
 
-  const topPicks = filterDeals(MOCK_TOP_PICKS);
-  const pickupNow = filterDeals(MOCK_PICKUP_NOW);
+  const memberExclusives = filterDeals(MOCK_MEMBER_EXCLUSIVES, selectedFilter);
+  const bestValue = filterDeals(MOCK_BEST_VALUE, selectedFilter);
+  const newSpots = filterDeals(MOCK_NEW_SPOTS, selectedFilter);
+
+  const getFilterUrl = (filter: string) => `/browse?filter=${filter}`;
 
   return (
     <div className="min-h-screen bg-background pb-4">
@@ -149,6 +221,9 @@ export default function Discover() {
               <span className="text-foreground">Fort Myers</span>
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </button>
+            <button className="text-xs text-primary ml-1" data-testid="link-change-location">
+              Change
+            </button>
           </div>
           <div
             className="w-8 h-8 rounded-full bg-primary flex items-center justify-center"
@@ -159,39 +234,43 @@ export default function Discover() {
         </div>
       </header>
 
-      {/* Category Pills */}
+      {/* Filter Chips */}
       <div className="border-b border-border bg-background">
         <ScrollArea className="w-full">
           <div className="flex gap-2 px-4 py-3">
-            {CATEGORIES.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  selectedCategory === category.id
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-foreground border border-border hover:bg-muted/80"
-                }`}
-                data-testid={`pill-category-${category.id}`}
-              >
-                {category.label}
-              </button>
-            ))}
+            {FILTER_CHIPS.map((chip) => {
+              const Icon = chip.icon;
+              return (
+                <button
+                  key={chip.id}
+                  onClick={() => setSelectedFilter(chip.id)}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    selectedFilter === chip.id
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-foreground border border-border hover:bg-muted/80"
+                  }`}
+                  data-testid={`pill-filter-${chip.id}`}
+                >
+                  {Icon && <Icon className="w-3 h-3" />}
+                  {chip.label}
+                </button>
+              );
+            })}
           </div>
           <ScrollBar orientation="horizontal" className="invisible" />
         </ScrollArea>
       </div>
 
-      {/* Top Picks Section */}
+      {/* Member Exclusives Section */}
       <section className="pt-6">
         <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-top-picks">
-            Top picks near you
+          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-member-exclusives">
+            Member Exclusives Near You
           </h2>
-          <Link href="/browse?section=top-picks">
+          <Link href={getFilterUrl("memberOnly")}>
             <button
               className="flex items-center gap-1 text-sm text-primary font-medium"
-              data-testid="link-see-all-top-picks"
+              data-testid="link-see-all-member-exclusives"
             >
               See all
               <ChevronRight className="w-4 h-4" />
@@ -199,32 +278,35 @@ export default function Discover() {
           </Link>
         </div>
         
-        {topPicks.length > 0 ? (
+        {memberExclusives.length > 0 ? (
           <ScrollArea className="w-full">
             <div className="flex gap-4 px-4 pb-4">
-              {topPicks.map((deal) => (
-                <DiscoverDealCard key={deal.id} deal={deal} />
+              {memberExclusives.map((deal) => (
+                <RiseLocalDealCard key={deal.id} deal={deal} isMember={userMembershipStatus} />
               ))}
             </div>
             <ScrollBar orientation="horizontal" className="invisible" />
           </ScrollArea>
         ) : (
           <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-            No deals in this category. Try selecting "All".
+            No deals match this filter. Try "All Deals".
           </div>
         )}
       </section>
 
-      {/* Pick Up Now Section */}
-      <section className="pt-6">
+      {/* Membership Banner */}
+      <MembershipBanner isMember={userMembershipStatus} />
+
+      {/* Best Value Section */}
+      <section className="pt-2">
         <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-pickup-now">
-            Pick up now
+          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-best-value">
+            Best Value Right Now ($5+ savings)
           </h2>
-          <Link href="/browse?section=pickup-now">
+          <Link href={getFilterUrl("value")}>
             <button
               className="flex items-center gap-1 text-sm text-primary font-medium"
-              data-testid="link-see-all-pickup-now"
+              data-testid="link-see-all-best-value"
             >
               See all
               <ChevronRight className="w-4 h-4" />
@@ -232,18 +314,51 @@ export default function Discover() {
           </Link>
         </div>
 
-        {pickupNow.length > 0 ? (
+        {bestValue.length > 0 ? (
           <ScrollArea className="w-full">
             <div className="flex gap-4 px-4 pb-4">
-              {pickupNow.map((deal) => (
-                <DiscoverDealCard key={deal.id} deal={deal} />
+              {bestValue.map((deal) => (
+                <RiseLocalDealCard key={deal.id} deal={deal} isMember={userMembershipStatus} />
               ))}
             </div>
             <ScrollBar orientation="horizontal" className="invisible" />
           </ScrollArea>
         ) : (
           <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-            No deals in this category. Try selecting "All".
+            No deals match this filter. Try "All Deals".
+          </div>
+        )}
+      </section>
+
+      {/* New Local Spots Section */}
+      <section className="pt-6">
+        <div className="flex items-center justify-between px-4 mb-4">
+          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-new-spots">
+            New Local Spots Added
+          </h2>
+          <Link href={getFilterUrl("new")}>
+            <button
+              className="flex items-center gap-1 text-sm text-primary font-medium"
+              data-testid="link-see-all-new-spots"
+            >
+              See all
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </Link>
+        </div>
+
+        {newSpots.length > 0 ? (
+          <ScrollArea className="w-full">
+            <div className="flex gap-4 px-4 pb-4">
+              {newSpots.map((deal) => (
+                <RiseLocalDealCard key={deal.id} deal={deal} isMember={userMembershipStatus} />
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" className="invisible" />
+          </ScrollArea>
+        ) : (
+          <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+            No deals match this filter. Try "All Deals".
           </div>
         )}
       </section>
