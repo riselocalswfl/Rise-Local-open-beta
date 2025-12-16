@@ -1,0 +1,48 @@
+Update Local Spotlight on the Discover page to feature one business at a time, rotating between businesses that pay for a $20/day placement.
+
+Backend (Express + Drizzle + Postgres):
+	1.	Database schema:
+	•	In the preferred_placements table, include:
+	•	id (auto-increment)
+	•	vendorId (FK to vendors)
+	•	placement (string, e.g., "discover_spotlight")
+	•	startDate (timestamp)
+	•	endDate (timestamp)
+	•	status (enum: "active", "scheduled", "expired", "paused")
+	•	pricePerDay (default 20)
+	•	priority (int, default 0, helps decide which business is shown first when multiple are active)
+	•	createdAt (timestamp)
+	2.	Endpoint /api/placements/discover-spotlight:
+	•	Query active placements with placement="discover_spotlight" and status="active", where startDate<=today<=endDate.
+	•	Order results by priority DESC, createdAt DESC.
+	•	Return 1 active placement (LIMIT 1) with the vendor’s profile and up to 2 active deals.
+	•	If no active placements, return null or empty response.
+	3.	Analytics (optional):
+	•	Create endpoints for tracking impressions and clicks:
+	•	POST /api/placements/:placementId/impression
+	•	POST /api/placements/:placementId/click
+	4.	Admin Workflow:
+	•	When a new discover spotlight placement is activated, automatically pause/expire the previous active placement.
+	•	This ensures only 1 business can appear in the Local Spotlight at any time.
+
+Frontend (React + TanStack Query):
+	1.	Discover Page (UI):
+	•	Add a new “Local Spotlight” section at the top of the Discover page.
+	•	If the API returns a placement, show exactly 1 sponsored vendor card with:
+	•	Vendor logo + banner + name
+	•	Deal highlights (up to 2 active deals)
+	•	A small label “Sponsored”
+	•	CTA button: View Business (routes to the vendor profile)
+	2.	Impression Tracking:
+	•	Fire an impression event once per session when the sponsored vendor card is visible.
+	3.	Click Tracking:
+	•	When the user clicks the card, fire a click event.
+	•	Clicking the card should route the consumer to the public vendor profile route (/app/businesses/:vendorId).
+
+Acceptance Criteria:
+	•	Only one vendor appears in the Local Spotlight at a time.
+	•	Local Spotlight is dynamically hidden if no active placement exists.
+	•	Vendor card shows “Sponsored” label.
+	•	Clicking the card navigates to the vendor’s public profile page.
+	•	Impressions and clicks are tracked correctly.
+	•	Admin toggles ensure only one active spotlight at a time
