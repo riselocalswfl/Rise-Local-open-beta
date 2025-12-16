@@ -34,7 +34,7 @@ export default function Auth() {
               Shop local. Sell local.
             </h1>
             <p className="text-base text-muted-foreground" data-testid="text-auth-subheadline">
-              Find local deals. Support local businesses.
+              Marketplace for local deals
             </p>
           </div>
 
