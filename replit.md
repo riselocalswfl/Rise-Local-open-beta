@@ -15,10 +15,17 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Frontend State Management**: TanStack Query manages server state, React hooks handle local UI state, and React Context with localStorage persists the shopping cart. Wouter is used for client-side routing.
 - **Backend**: Express.js with TypeScript provides a RESTful API.
 - **Data Storage**: PostgreSQL, accessed via Neon's serverless driver, uses Drizzle ORM for type-safe queries and schema management.
-- **Authentication**: Replit Auth via OIDC with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, and `admin`. All pages require authentication except `/auth`. The `AuthBoundary` component wraps the entire router to enforce login, redirecting unauthenticated users to `/auth`. Return URLs are stored in sessionStorage for post-login redirect.
+- **Authentication**: Replit Auth via OIDC with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, `restaurant`, `service_provider`, and `admin`. All pages require authentication except `/auth`. The `AuthBoundary` component wraps the entire router to enforce login, redirecting unauthenticated users to `/auth`. Return URLs are stored in sessionStorage for post-login redirect.
 - **Unified Vendor Architecture**: All vendor types (shop, dine, service) use a single `vendors` table with a `vendorType` field and a `capabilities` JSON field, enabling polymorphic behavior. Products, menu items, and service offerings link to this unified `vendors` table.
-- **Simplified Authentication & Onboarding**: Streamlined signup routes users based on `intended_role` query parameter to a universal `/onboarding` flow, guiding all vendor types through business profile creation with self-selection of `vendorType` and auto-setting of initial capabilities. An auto-save system creates draft profiles.
-- **3-Step User Onboarding Flow**: New users follow a minimal 3-screen onboarding: (1) `/auth` - minimal auth page with no footer, (2) `/welcome` - welcome message with Continue button (has footer), (3) `/discover` - main app home (has footer). Onboarding completion is tracked via `onboardingComplete` field in users table. Returning users skip `/welcome` and go directly to `/discover`.
+- **Simplified Authentication & Onboarding**: Streamlined signup routes users based on `intended_role` query parameter. After auth, all users go to `/start` gate which routes based on role and onboarding status.
+- **Universal `/start` Gate**: Central routing page that redirects users based on their role and `onboardingComplete` status:
+  - Unauthenticated → `/auth`
+  - Authenticated + incomplete onboarding + vendor/restaurant/service_provider → `/onboarding`
+  - Authenticated + incomplete onboarding + buyer → `/discover`
+  - Authenticated + complete onboarding + admin → `/admin`
+  - Authenticated + complete onboarding + vendor/restaurant/service_provider → `/dashboard`
+  - Authenticated + complete onboarding + buyer → `/discover` (or returnTo if stored)
+  - Also handles `returnTo` from sessionStorage for deep link preservation.
 - **Mobile-First Discover Page**: The `/discover` page is the new consumer home featuring a location bar, horizontally-scrollable filter chips (All Deals, Member-Only, Free Deals, BOGO, $5+ Value, New this week, Near me), and three curated deal sections ("Member Exclusives Near You", "Best Value Right Now", "New Local Spots Added") with horizontal card scrolling. Deal cards display savings pills, member-only badges, and locked overlays for non-members. A membership banner promotes the Rise Local Pass ($4.99/mo). Currently uses mock data. Bottom tab navigation includes Discover, Browse, Favorites, and Profile tabs.
 - **Rise Local Pass Membership**: The `/membership` page presents the Rise Local Pass subscription ($4.99/month) with pricing card, benefits list, and subscribe CTA. Non-members see locked deal overlays with "Unlock with Rise Local Pass" prompts directing them to join.
 - **Unified Vendor Dashboard**: A single capability-aware `/dashboard` serves all vendor types, dynamically showing/hiding tabs based on vendor capabilities.
@@ -43,9 +50,10 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Fort Myers Spotlight**: Dedicated feature for highlighting local content or businesses.
 - **Application Routes**:
   - **Public Route**: `/auth` - the only route accessible without authentication.
-  - **Protected Routes**: All other routes require authentication including `/discover`, `/browse`, `/favorites`, `/membership`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/onboarding`, `/events/my`, `/admin`, `/welcome`.
-  - **Auth Route Consolidation**: Single unified auth page at `/auth` handles both login and signup. Legacy routes (`/join`, `/login`, `/signup`, `/sign-in`, `/sign-up`, `/register`) redirect to `/auth`.
-  - **Global Auth Enforcement**: `AuthBoundary` component wraps the router to check authentication on every page load. Unauthenticated users are redirected to `/auth` with return URL preserved.
+  - **Gate Routes**: `/start` and `/onboarding` - allowed for authenticated users regardless of onboarding status; `/start` handles role-based routing.
+  - **Protected Routes**: All other routes require authentication and completed onboarding including `/discover`, `/browse`, `/favorites`, `/membership`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/events/my`, `/admin`.
+  - **Auth Route Consolidation**: Single unified auth page at `/auth` handles both login and signup. Legacy routes (`/join`, `/login`, `/signup`, `/sign-in`, `/sign-up`, `/register`, `/welcome`) redirect to `/auth` or `/start`.
+  - **Global Auth Enforcement**: `AuthBoundary` component wraps the router to check authentication on every page load. Unauthenticated users are redirected to `/auth` with return URL preserved. Authenticated users with incomplete onboarding are redirected to `/start`.
 
 ## External Dependencies
 
