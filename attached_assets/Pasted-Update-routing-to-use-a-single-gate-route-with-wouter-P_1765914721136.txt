@@ -1,0 +1,27 @@
+Update routing to use a single gate route with wouter.
+Project uses AuthBoundary wrapping the router in client/src/App.tsx, and useAuth() provides { user, isLoading, isAuthenticated } with user.role and user.onboardingComplete.
+
+Requirements:
+	1.	Create a new route /start (new page) that redirects users based on user.role and user.onboardingComplete:
+	•	If not authenticated → redirect to /auth
+	•	If authenticated and onboardingComplete=false:
+	•	role in (vendor,restaurant,service_provider) → /vendor/onboarding
+	•	role buyer → /app/home (or keep buyer onboarding if it exists)
+	•	If authenticated and onboardingComplete=true:
+	•	buyer → /app/home
+	•	(vendor,restaurant,service_provider) → /vendor/dashboard
+	•	admin → /admin (if route exists)
+	•	If sessionStorage.returnTo exists, only redirect to it if user is authorized + onboardingComplete, otherwise ignore it. Clear returnTo after use.
+	2.	Modify AuthBoundary (client/src/components/AuthBoundary.tsx) so authenticated users who would previously be redirected to /welcome are redirected to /start instead. Keep unauthenticated redirect to /auth.
+	3.	Remove/disable any page-level redirect logic that competes with this (ex: Home.tsx redirecting from returnTo). /start should be the only redirect gate.
+	4.	Add a new bottom tab “Businesses” in client/src/components/nav/BottomTabs.tsx that routes to /app/businesses. Create /app/businesses and /app/businesses/:vendorId routes under the existing AppShell consumer layout.
+	5.	Update hardcoded legacy redirects to /login to use /auth in:
+	•	client/src/pages/Orders.tsx
+	•	client/src/pages/OrderConfirmation.tsx
+	•	client/src/components/EventCard.tsx
+	•	client/src/pages/Checkout.tsx (update login link to /api/login?returnTo=/checkout and ensure post-login goes through /start)
+
+Acceptance checks:
+	•	Login always lands on /start and then routes correctly for buyer vs vendor roles and onboarding state.
+	•	Deep link returnTo works only when allowed.
+	•	Businesses tab appears only inside the AppShell bottom tabs and routes correctly.
