@@ -1,7 +1,8 @@
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { MapPin, Clock, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCallback } from "react";
 
 export type DealType = "memberOnly" | "free" | "bogo" | "value" | "new";
 
@@ -25,14 +26,29 @@ interface RiseLocalDealCardProps {
 }
 
 export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalDealCardProps) {
+  const [, setLocation] = useLocation();
   const isLocked = deal.memberOnly && !isMember;
+
+  const handleCardClick = useCallback(() => {
+    if (!isLocked) {
+      setLocation(`/deals/${deal.id}`);
+    }
+  }, [isLocked, deal.id, setLocation]);
+
+  const handleUnlockClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLocation("/membership");
+  }, [setLocation]);
 
   return (
     <div
       className="flex-shrink-0 w-[180px] cursor-pointer group relative"
       data-testid={`card-deal-${deal.id}`}
+      onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(); }}
     >
-      <Link href={isLocked ? "#" : `/deals/${deal.id}`}>
         <div className="relative rounded-xl overflow-hidden bg-muted aspect-[4/3] mb-2">
           {deal.imageUrl ? (
             <img
@@ -90,11 +106,14 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
               <p className="text-xs text-center text-foreground font-medium mb-2">
                 Unlock with Rise Local Pass
               </p>
-              <Link href="/membership">
-                <Button size="sm" className="text-xs h-7" data-testid={`button-unlock-${deal.id}`}>
-                  Join Now
-                </Button>
-              </Link>
+              <Button 
+                size="sm" 
+                className="text-xs h-7" 
+                onClick={handleUnlockClick}
+                data-testid={`button-unlock-${deal.id}`}
+              >
+                Join Now
+              </Button>
             </div>
           )}
         </div>
@@ -127,7 +146,6 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
             )}
           </div>
         </div>
-      </Link>
     </div>
   );
 }
