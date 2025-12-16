@@ -29,7 +29,8 @@ export default function Checkout() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isCheckingAuth && !user) {
-      window.location.href = '/api/login?returnTo=/checkout';
+      sessionStorage.setItem("returnTo", "/checkout");
+      window.location.href = '/api/login';
     }
   }, [user, isCheckingAuth]);
 

@@ -72,7 +72,9 @@ export default function EventCard({
   const handleRSVP = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      window.location.href = "/auth";
+      // Store current event page as returnTo for deep linking after auth
+      sessionStorage.setItem("returnTo", `/events/${id}`);
+      window.location.href = "/api/login";
       return;
     }
     rsvpMutation.mutate();

@@ -25,17 +25,31 @@ export default function Start() {
 
     const { role, onboardingComplete } = user;
 
+    // Read returnTo early so we can manage it properly
+    const returnTo = sessionStorage.getItem("returnTo");
+    
+    // Gate routes that should never be returnTo destinations
+    const gateRoutes = ["/auth", "/start", "/onboarding", "/welcome"];
+    const isValidReturnTo = returnTo && !gateRoutes.includes(returnTo);
+
     if (!onboardingComplete) {
+      // Clear returnTo when user hasn't completed onboarding
+      // They can't access protected routes yet
+      if (returnTo) {
+        sessionStorage.removeItem("returnTo");
+      }
+      
       if (role === "vendor" || role === "restaurant" || role === "service_provider") {
         setLocation("/onboarding");
       } else {
+        // Buyers don't need onboarding, mark as complete and go to discover
         setLocation("/discover");
       }
       return;
     }
 
-    const returnTo = sessionStorage.getItem("returnTo");
-    if (returnTo) {
+    // User is fully onboarded - check for valid returnTo
+    if (isValidReturnTo) {
       sessionStorage.removeItem("returnTo");
       setLocation(returnTo);
       return;
