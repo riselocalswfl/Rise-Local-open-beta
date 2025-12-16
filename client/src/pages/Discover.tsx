@@ -4,6 +4,8 @@ import { Compass, ChevronDown, ChevronRight, Lock } from "lucide-react";
 import RiseLocalDealCard, { RiseLocalDeal, DealType } from "@/components/RiseLocalDealCard";
 import MembershipBanner from "@/components/MembershipBanner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
 
 const FILTER_CHIPS = [
   { id: "all", label: "All Deals" },
@@ -189,6 +191,17 @@ const ALL_DEALS = [...MOCK_MEMBER_EXCLUSIVES, ...MOCK_BEST_VALUE, ...MOCK_NEW_SP
 export default function Discover() {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [userMembershipStatus] = useState(false);
+  const { user } = useAuth();
+
+  // Generate user initials from first and last name
+  const getUserInitials = () => {
+    if (!user) return "?";
+    const first = user.firstName?.charAt(0)?.toUpperCase() || "";
+    const last = user.lastName?.charAt(0)?.toUpperCase() || "";
+    if (first || last) return `${first}${last}`;
+    // Fallback to email initial if no name
+    return user.email?.charAt(0)?.toUpperCase() || "?";
+  };
 
   const filterDeals = (deals: RiseLocalDeal[], filter: string): RiseLocalDeal[] => {
     if (filter === "all") return deals;
@@ -225,12 +238,14 @@ export default function Discover() {
               Change
             </button>
           </div>
-          <div
-            className="w-8 h-8 rounded-full bg-primary flex items-center justify-center"
-            data-testid="brand-badge"
-          >
-            <span className="text-primary-foreground text-xs font-bold">RL</span>
-          </div>
+          <Link href="/profile" data-testid="link-user-profile">
+            <Avatar className="w-8 h-8 cursor-pointer hover-elevate">
+              <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                {getUserInitials()}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
         </div>
       </header>
 
