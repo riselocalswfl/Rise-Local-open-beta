@@ -72,7 +72,7 @@ export default function OrderConfirmation() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      setLocation("/login");
+      setLocation("/auth");
     }
   }, [user, isLoading, setLocation]);
 

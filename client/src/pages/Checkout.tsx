@@ -26,10 +26,11 @@ export default function Checkout() {
   const { items: cartItems, cartTotals } = useCart();
   const { user, isLoading: isCheckingAuth } = useAuth();
 
-  // Redirect to login if not authenticated
+  // Redirect to auth if not authenticated
   useEffect(() => {
     if (!isCheckingAuth && !user) {
-      window.location.href = '/api/login?returnTo=/checkout';
+      sessionStorage.setItem("returnTo", "/checkout");
+      window.location.href = '/auth';
     }
   }, [user, isCheckingAuth]);
 

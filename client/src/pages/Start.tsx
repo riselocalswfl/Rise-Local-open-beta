@@ -34,6 +34,13 @@ export default function Start() {
       return;
     }
 
+    const returnTo = sessionStorage.getItem("returnTo");
+    if (returnTo) {
+      sessionStorage.removeItem("returnTo");
+      setLocation(returnTo);
+      return;
+    }
+
     if (role === "admin") {
       setLocation("/admin");
     } else if (role === "vendor" || role === "restaurant" || role === "service_provider") {

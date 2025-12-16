@@ -72,8 +72,7 @@ export default function EventCard({
   const handleRSVP = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      // Redirect to login
-      window.location.href = "/login";
+      window.location.href = "/auth";
       return;
     }
     rsvpMutation.mutate();
