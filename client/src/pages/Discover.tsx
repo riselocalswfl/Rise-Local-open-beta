@@ -6,6 +6,7 @@ import MembershipBanner from "@/components/MembershipBanner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import LocalSpotlight from "@/components/LocalSpotlight";
 
 const FILTER_CHIPS = [
   { id: "all", label: "All Deals" },
@@ -275,6 +276,9 @@ export default function Discover() {
           <ScrollBar orientation="horizontal" className="invisible" />
         </ScrollArea>
       </div>
+
+      {/* Local Spotlight - Sponsored Business */}
+      <LocalSpotlight />
 
       {/* Member Exclusives Section */}
       <section className="pt-6">
