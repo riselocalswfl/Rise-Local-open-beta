@@ -36,8 +36,7 @@ import Discover from "@/pages/Discover";
 import Browse from "@/pages/Browse";
 import Favorites from "@/pages/Favorites";
 import Membership from "@/pages/Membership";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { SignupBanner } from "@/components/SignupBanner";
+import { AuthBoundary } from "@/components/AuthBoundary";
 import AppShell from "@/components/layout/AppShell";
 
 function Router() {
@@ -99,13 +98,7 @@ function Router() {
       <Route path="/auth" component={Auth} />
       
       {/* Welcome - Post-auth onboarding screen */}
-      <Route path="/welcome">
-        {() => (
-          <ProtectedRoute requireOnboarding={false}>
-            <WelcomePage />
-          </ProtectedRoute>
-        )}
-      </Route>
+      <Route path="/welcome" component={WelcomePage} />
       <Route path="/products">
         {() => (
           <AppShell>
@@ -192,91 +185,33 @@ function Router() {
       {/* Protected Account Features - Require authentication */}
       <Route path="/events/my">
         {() => (
-          <ProtectedRoute>
-            <AppShell>
-              <EventsLayout />
-            </AppShell>
-          </ProtectedRoute>
+          <AppShell>
+            <EventsLayout />
+          </AppShell>
         )}
       </Route>
       
-      {/* Protected Vendor Routes - no tabs */}
-      <Route path="/onboarding">
-        {() => (
-          <ProtectedRoute>
-            <UnifiedOnboarding />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/dashboard">
-        {() => (
-          <ProtectedRoute>
-            <BusinessDashboard />
-          </ProtectedRoute>
-        )}
-      </Route>
+      {/* Vendor Routes - no tabs */}
+      <Route path="/onboarding" component={UnifiedOnboarding} />
+      <Route path="/dashboard" component={BusinessDashboard} />
       
-      {/* Protected Customer Routes */}
-      <Route path="/checkout">
-        {() => (
-          <ProtectedRoute>
-            <Checkout />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/order-confirmation">
-        {() => (
-          <ProtectedRoute>
-            <OrderConfirmation />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/orders">
-        {() => (
-          <ProtectedRoute>
-            <Orders />
-          </ProtectedRoute>
-        )}
-      </Route>
+      {/* Customer Routes */}
+      <Route path="/checkout" component={Checkout} />
+      <Route path="/order-confirmation" component={OrderConfirmation} />
+      <Route path="/orders" component={Orders} />
       <Route path="/profile">
         {() => (
-          <ProtectedRoute>
-            <AppShell>
-              <CustomerProfile />
-            </AppShell>
-          </ProtectedRoute>
+          <AppShell>
+            <CustomerProfile />
+          </AppShell>
         )}
       </Route>
-      <Route path="/messages">
-        {() => (
-          <ProtectedRoute>
-            <Messages />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/messages/:userId">
-        {() => (
-          <ProtectedRoute>
-            <MessageThread />
-          </ProtectedRoute>
-        )}
-      </Route>
-      <Route path="/my-deals">
-        {() => (
-          <ProtectedRoute>
-            <MyDeals />
-          </ProtectedRoute>
-        )}
-      </Route>
+      <Route path="/messages" component={Messages} />
+      <Route path="/messages/:userId" component={MessageThread} />
+      <Route path="/my-deals" component={MyDeals} />
       
       {/* Admin - no tabs */}
-      <Route path="/admin">
-        {() => (
-          <ProtectedRoute>
-            <Admin />
-          </ProtectedRoute>
-        )}
-      </Route>
+      <Route path="/admin" component={Admin} />
       
       {/* Legacy Redirects */}
       <Route path="/restaurant-dashboard">
@@ -350,8 +285,9 @@ function App() {
       <TooltipProvider>
         <CartProvider>
           <Toaster />
-          <Router />
-          <SignupBanner />
+          <AuthBoundary>
+            <Router />
+          </AuthBoundary>
         </CartProvider>
       </TooltipProvider>
     </QueryClientProvider>
