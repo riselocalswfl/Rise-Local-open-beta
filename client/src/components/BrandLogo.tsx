@@ -1,13 +1,27 @@
+import { Link } from "wouter";
 import logoImg from "@assets/Support Local Business Emblem (1)_1760548313502.png";
 
-export default function BrandLogo({ className = "" }: { className?: string }) {
+interface BrandLogoProps {
+  className?: string;
+  size?: "sm" | "md" | "lg";
+}
+
+export default function BrandLogo({ className = "", size = "md" }: BrandLogoProps) {
+  const sizeClasses = {
+    sm: "h-12",
+    md: "h-16",
+    lg: "h-24"
+  };
+
   return (
-    <div className={`inline-flex items-center ${className}`}>
-      <img 
-        src={logoImg} 
-        alt="Rise Local" 
-        className="h-24 w-auto"
-      />
-    </div>
+    <Link href="/discover" data-testid="link-home">
+      <div className={`inline-flex items-center cursor-pointer ${className}`}>
+        <img 
+          src={logoImg} 
+          alt="Rise Local" 
+          className={`${sizeClasses[size]} w-auto`}
+        />
+      </div>
+    </Link>
   );
 }
