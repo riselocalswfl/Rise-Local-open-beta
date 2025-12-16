@@ -10,6 +10,7 @@ interface User {
 }
 
 const PUBLIC_ROUTES = ["/auth"];
+const GATE_ROUTES = ["/start", "/onboarding"];
 
 interface AuthBoundaryProps {
   children: React.ReactNode;
@@ -23,11 +24,12 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
   });
 
   const isPublicRoute = PUBLIC_ROUTES.some(route => location === route || location.startsWith(route + "/"));
+  const isGateRoute = GATE_ROUTES.some(route => location === route || location.startsWith(route + "/"));
 
   useEffect(() => {
     if (isLoading) return;
 
-    if (!isPublicRoute && (error || !user)) {
+    if (!isPublicRoute && !isGateRoute && (error || !user)) {
       console.log("[AuthBoundary] Not authenticated, redirecting to /auth");
       const currentPath = window.location.pathname;
       sessionStorage.setItem("returnTo", currentPath);
@@ -35,11 +37,11 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
       return;
     }
 
-    if (user && !user.onboardingComplete && location !== "/welcome" && location !== "/auth" && location !== "/onboarding") {
-      console.log("[AuthBoundary] Onboarding not complete, redirecting to /welcome");
-      setLocation("/welcome");
+    if (user && !isGateRoute && !isPublicRoute && !user.onboardingComplete) {
+      console.log("[AuthBoundary] Authenticated but onboarding incomplete, redirecting to /start");
+      setLocation("/start");
     }
-  }, [isLoading, user, error, setLocation, isPublicRoute, location]);
+  }, [isLoading, user, error, setLocation, isPublicRoute, isGateRoute, location]);
 
   if (isLoading) {
     return (
@@ -52,7 +54,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
     );
   }
 
-  if (isPublicRoute) {
+  if (isPublicRoute || isGateRoute) {
     return <>{children}</>;
   }
 
@@ -60,7 +62,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
     return null;
   }
 
-  if (!user.onboardingComplete && location !== "/welcome" && location !== "/onboarding") {
+  if (!user.onboardingComplete) {
     return null;
   }
 

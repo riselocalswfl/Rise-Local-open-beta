@@ -36,6 +36,7 @@ import Discover from "@/pages/Discover";
 import Browse from "@/pages/Browse";
 import Favorites from "@/pages/Favorites";
 import Membership from "@/pages/Membership";
+import Start from "@/pages/Start";
 import { AuthBoundary } from "@/components/AuthBoundary";
 import AppShell from "@/components/layout/AppShell";
 
@@ -97,8 +98,13 @@ function Router() {
       {/* Auth - Single unified authentication page (no footer) */}
       <Route path="/auth" component={Auth} />
       
-      {/* Welcome - Post-auth onboarding screen */}
-      <Route path="/welcome" component={WelcomePage} />
+      {/* Start - Universal gate for role-based routing */}
+      <Route path="/start" component={Start} />
+      
+      {/* Welcome - Legacy post-auth screen (redirects to /start) */}
+      <Route path="/welcome">
+        {() => <Redirect to="/start" />}
+      </Route>
       <Route path="/products">
         {() => (
           <AppShell>
