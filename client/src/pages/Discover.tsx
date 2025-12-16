@@ -262,9 +262,9 @@ export default function Discover() {
       </div>
 
       {/* Member Exclusives Section */}
-      <section className="pt-4">
-        <div className="flex items-center justify-between px-4 mb-3">
-          <h2 className="text-base font-semibold text-foreground" data-testid="heading-member-exclusives">
+      <section className="pt-6">
+        <div className="flex items-center justify-between px-4 mb-4">
+          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-member-exclusives">
             Member Exclusives Near You
           </h2>
           <Link href={getFilterUrl("memberOnly")}>
@@ -298,9 +298,9 @@ export default function Discover() {
       <MembershipBanner isMember={userMembershipStatus} />
 
       {/* Best Value Section */}
-      <section className="pt-3">
-        <div className="flex items-center justify-between px-4 mb-3">
-          <h2 className="text-base font-semibold text-foreground" data-testid="heading-best-value">
+      <section className="pt-2">
+        <div className="flex items-center justify-between px-4 mb-4">
+          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-best-value">
             Best Value Right Now ($5+ savings)
           </h2>
           <Link href={getFilterUrl("value")}>
@@ -331,9 +331,9 @@ export default function Discover() {
       </section>
 
       {/* New Local Spots Section */}
-      <section className="pt-4">
-        <div className="flex items-center justify-between px-4 mb-3">
-          <h2 className="text-base font-semibold text-foreground" data-testid="heading-new-spots">
+      <section className="pt-6">
+        <div className="flex items-center justify-between px-4 mb-4">
+          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-new-spots">
             New Local Spots Added
           </h2>
           <Link href={getFilterUrl("new")}>
