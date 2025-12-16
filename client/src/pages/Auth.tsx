@@ -21,7 +21,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <header className="px-4 py-3 border-b border-border/50">
-        <BrandLogo size="sm" linkDisabled />
+        <BrandLogo size="sm" />
       </header>
 
       <main className="flex-1 flex flex-col justify-center px-6 py-8">
