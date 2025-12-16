@@ -1128,3 +1128,84 @@ export const insertReservationSchema = createInsertSchema(reservations).omit({
 
 export type InsertReservation = z.infer<typeof insertReservationSchema>;
 export type Reservation = typeof reservations.$inferSelect;
+
+// ===== PREFERRED PLACEMENTS (PAID ADVERTISING) =====
+
+// Placement status enum values
+export const PLACEMENT_STATUSES = ["active", "scheduled", "expired", "paused"] as const;
+export type PlacementStatus = typeof PLACEMENT_STATUSES[number];
+
+// Preferred Placements - Paid advertising spots for vendors
+export const preferredPlacements = pgTable("preferred_placements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  
+  // Placement Details
+  placement: text("placement").notNull(), // e.g., "discover_spotlight"
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  status: text("status").notNull().default("scheduled"), // active, scheduled, expired, paused
+  
+  // Pricing
+  pricePerDay: integer("price_per_day").notNull().default(20), // In dollars
+  
+  // Priority (higher = shown first when multiple active)
+  priority: integer("priority").notNull().default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPreferredPlacementSchema = createInsertSchema(preferredPlacements).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  startDate: z.union([
+    z.date(),
+    z.string().refine((str) => !isNaN(Date.parse(str)), {
+      message: "Invalid date format"
+    }).transform((str) => new Date(str))
+  ]),
+  endDate: z.union([
+    z.date(),
+    z.string().refine((str) => !isNaN(Date.parse(str)), {
+      message: "Invalid date format"
+    }).transform((str) => new Date(str))
+  ]),
+});
+
+export type InsertPreferredPlacement = z.infer<typeof insertPreferredPlacementSchema>;
+export type PreferredPlacement = typeof preferredPlacements.$inferSelect;
+
+// Placement Impressions - Track views of placements
+export const placementImpressions = pgTable("placement_impressions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  placementId: varchar("placement_id").notNull().references(() => preferredPlacements.id),
+  userId: varchar("user_id").references(() => users.id), // Optional: may be anonymous
+  sessionId: text("session_id"), // For deduplication
+  viewedAt: timestamp("viewed_at").defaultNow(),
+});
+
+export const insertPlacementImpressionSchema = createInsertSchema(placementImpressions).omit({
+  id: true,
+  viewedAt: true,
+});
+
+export type InsertPlacementImpression = z.infer<typeof insertPlacementImpressionSchema>;
+export type PlacementImpression = typeof placementImpressions.$inferSelect;
+
+// Placement Clicks - Track clicks on placements
+export const placementClicks = pgTable("placement_clicks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  placementId: varchar("placement_id").notNull().references(() => preferredPlacements.id),
+  userId: varchar("user_id").references(() => users.id), // Optional: may be anonymous
+  clickedAt: timestamp("clicked_at").defaultNow(),
+});
+
+export const insertPlacementClickSchema = createInsertSchema(placementClicks).omit({
+  id: true,
+  clickedAt: true,
+});
+
+export type InsertPlacementClick = z.infer<typeof insertPlacementClickSchema>;
+export type PlacementClick = typeof placementClicks.$inferSelect;

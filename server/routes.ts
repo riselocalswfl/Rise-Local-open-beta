@@ -26,6 +26,9 @@ import {
   insertServiceSchema,
   insertMessageSchema,
   insertDealSchema,
+  insertPreferredPlacementSchema,
+  insertPlacementImpressionSchema,
+  insertPlacementClickSchema,
   fulfillmentOptionsSchema,
   type FulfillmentOptions
 } from "@shared/schema";
@@ -4209,6 +4212,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error redeeming deal claim:", error);
       res.status(500).json({ error: "Failed to redeem deal" });
+    }
+  });
+
+  // ===== PREFERRED PLACEMENTS (ADVERTISING) =====
+  
+  // GET /api/placements/discover-spotlight - Get the current active spotlight placement
+  app.get('/api/placements/discover-spotlight', async (req, res) => {
+    try {
+      const spotlight = await storage.getActiveDiscoverSpotlight();
+      
+      if (!spotlight) {
+        return res.json(null);
+      }
+
+      res.json({
+        placementId: spotlight.placement.id,
+        vendor: {
+          id: spotlight.vendor.id,
+          businessName: spotlight.vendor.businessName,
+          displayName: spotlight.vendor.displayName,
+          tagline: spotlight.vendor.tagline,
+          logoUrl: spotlight.vendor.logoUrl,
+          bannerUrl: spotlight.vendor.bannerUrl,
+          heroImageUrl: spotlight.vendor.heroImageUrl,
+          city: spotlight.vendor.city,
+          vendorType: spotlight.vendor.vendorType,
+        },
+        deals: spotlight.deals.map(deal => ({
+          id: deal.id,
+          title: deal.title,
+          description: deal.description,
+          dealType: deal.dealType,
+          tier: deal.tier,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching discover spotlight:", error);
+      res.status(500).json({ error: "Failed to fetch spotlight" });
+    }
+  });
+
+  // POST /api/placements/:placementId/impression - Record an impression
+  app.post('/api/placements/:placementId/impression', async (req: any, res) => {
+    try {
+      const placementId = req.params.placementId;
+      const userId = req.user?.claims?.sub || null;
+      const sessionId = req.body.sessionId || null;
+
+      await storage.recordPlacementImpression(placementId, userId, sessionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording impression:", error);
+      res.status(500).json({ error: "Failed to record impression" });
+    }
+  });
+
+  // POST /api/placements/:placementId/click - Record a click
+  app.post('/api/placements/:placementId/click', async (req: any, res) => {
+    try {
+      const placementId = req.params.placementId;
+      const userId = req.user?.claims?.sub || null;
+
+      await storage.recordPlacementClick(placementId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording click:", error);
+      res.status(500).json({ error: "Failed to record click" });
+    }
+  });
+
+  // POST /api/placements - Create a new placement (admin only)
+  app.post('/api/placements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const parsed = insertPreferredPlacementSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.message });
+      }
+
+      const placement = await storage.createPreferredPlacement(parsed.data);
+
+      // If this placement is being activated, pause other active spotlights
+      if (parsed.data.status === "active" && parsed.data.placement === "discover_spotlight") {
+        await storage.pauseOtherSpotlights(placement.id);
+      }
+
+      res.json(placement);
+    } catch (error) {
+      console.error("Error creating placement:", error);
+      res.status(500).json({ error: "Failed to create placement" });
+    }
+  });
+
+  // PATCH /api/placements/:id/status - Update placement status (admin only)
+  app.patch('/api/placements/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { status } = req.body;
+      if (!["active", "scheduled", "expired", "paused"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      await storage.updatePlacementStatus(req.params.id, status);
+
+      // If activating, pause other active spotlights
+      if (status === "active") {
+        await storage.pauseOtherSpotlights(req.params.id);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating placement status:", error);
+      res.status(500).json({ error: "Failed to update placement status" });
     }
   });
 

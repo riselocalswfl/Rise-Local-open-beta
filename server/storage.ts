@@ -25,10 +25,11 @@ import {
   type FulfillmentDetails,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions, dealClaims,
-  restaurants, serviceProviders, reservations,
-  fulfillmentDetailsSchema
+  restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
+  fulfillmentDetailsSchema,
+  type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, gte, lte } from "drizzle-orm";
 import { calculateDistanceMiles } from "./geocoding";
 
 // Type for deals with distance information
@@ -253,6 +254,14 @@ export interface IStorage {
   getUserDealClaims(userId: string): Promise<DealClaim[]>;
   getActiveClaimForUserDeal(userId: string, dealId: string): Promise<DealClaim | undefined>;
   redeemDealClaimByToken(token: string): Promise<{ success: boolean; message: string; claim?: DealClaim }>;
+
+  // Preferred Placement operations
+  getActiveDiscoverSpotlight(): Promise<{ placement: PreferredPlacement; vendor: Vendor; deals: Deal[] } | null>;
+  createPreferredPlacement(placement: InsertPreferredPlacement): Promise<PreferredPlacement>;
+  updatePlacementStatus(id: string, status: string): Promise<void>;
+  recordPlacementImpression(placementId: string, userId?: string, sessionId?: string): Promise<PlacementImpression>;
+  recordPlacementClick(placementId: string, userId?: string): Promise<PlacementClick>;
+  pauseOtherSpotlights(excludePlacementId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -1319,6 +1328,88 @@ export class DbStorage implements IStorage {
       .returning();
     
     return { success: true, message: "Deal redeemed successfully", claim: updated };
+  }
+
+  // Preferred Placement operations
+  async getActiveDiscoverSpotlight(): Promise<{ placement: PreferredPlacement; vendor: Vendor; deals: Deal[] } | null> {
+    const now = new Date();
+    
+    // Get active discover_spotlight placement
+    const placements = await db
+      .select()
+      .from(preferredPlacements)
+      .where(and(
+        eq(preferredPlacements.placement, "discover_spotlight"),
+        eq(preferredPlacements.status, "active"),
+        lte(preferredPlacements.startDate, now),
+        gte(preferredPlacements.endDate, now)
+      ))
+      .orderBy(desc(preferredPlacements.priority), desc(preferredPlacements.createdAt))
+      .limit(1);
+
+    if (placements.length === 0) return null;
+
+    const placement = placements[0];
+
+    // Get vendor info
+    const vendorResult = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.id, placement.vendorId));
+
+    if (vendorResult.length === 0) return null;
+
+    const vendor = vendorResult[0];
+
+    // Get up to 2 active deals for this vendor
+    const vendorDeals = await db
+      .select()
+      .from(deals)
+      .where(and(
+        eq(deals.vendorId, placement.vendorId),
+        eq(deals.isActive, true)
+      ))
+      .limit(2);
+
+    return { placement, vendor, deals: vendorDeals };
+  }
+
+  async createPreferredPlacement(placement: InsertPreferredPlacement): Promise<PreferredPlacement> {
+    const result = await db.insert(preferredPlacements).values(placement).returning();
+    return result[0];
+  }
+
+  async updatePlacementStatus(id: string, status: string): Promise<void> {
+    await db.update(preferredPlacements)
+      .set({ status })
+      .where(eq(preferredPlacements.id, id));
+  }
+
+  async recordPlacementImpression(placementId: string, userId?: string, sessionId?: string): Promise<PlacementImpression> {
+    const result = await db.insert(placementImpressions).values({
+      placementId,
+      userId: userId || null,
+      sessionId: sessionId || null,
+    }).returning();
+    return result[0];
+  }
+
+  async recordPlacementClick(placementId: string, userId?: string): Promise<PlacementClick> {
+    const result = await db.insert(placementClicks).values({
+      placementId,
+      userId: userId || null,
+    }).returning();
+    return result[0];
+  }
+
+  async pauseOtherSpotlights(excludePlacementId: string): Promise<void> {
+    await db.update(preferredPlacements)
+      .set({ status: "paused" })
+      .where(and(
+        eq(preferredPlacements.placement, "discover_spotlight"),
+        eq(preferredPlacements.status, "active"),
+        sql`${preferredPlacements.id} != ${excludePlacementId}`
+      ));
   }
 }
 
