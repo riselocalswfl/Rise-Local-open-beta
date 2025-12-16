@@ -37,6 +37,8 @@ import Browse from "@/pages/Browse";
 import Favorites from "@/pages/Favorites";
 import Membership from "@/pages/Membership";
 import Start from "@/pages/Start";
+import Businesses from "@/pages/Businesses";
+import BusinessProfile from "@/pages/BusinessProfile";
 import { AuthBoundary } from "@/components/AuthBoundary";
 import AppShell from "@/components/layout/AppShell";
 
@@ -68,6 +70,23 @@ function Router() {
           </AppShell>
         )}
       </Route>
+      
+      {/* Businesses - Public view of local businesses */}
+      <Route path="/app/businesses">
+        {() => (
+          <AppShell>
+            <Businesses />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/app/businesses/:vendorId">
+        {() => (
+          <AppShell>
+            <BusinessProfile />
+          </AppShell>
+        )}
+      </Route>
+      
       <Route path="/membership" component={Membership} />
       
       {/* Legacy Deals Hub */}

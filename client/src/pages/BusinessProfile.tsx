@@ -1,0 +1,216 @@
+import { useQuery } from "@tanstack/react-query";
+import { useRoute } from "wouter";
+import { Link } from "wouter";
+import DetailHeader from "@/components/layout/DetailHeader";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { BadgeCheck, MapPin, Phone, Mail, Globe, Clock, MessageSquare } from "lucide-react";
+import type { Vendor, Product } from "@shared/schema";
+
+interface VendorWithDetails extends Omit<Vendor, 'contactEmail' | 'contactPhone'> {
+  products?: Product[];
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+}
+
+export default function BusinessProfile() {
+  const [, params] = useRoute("/app/businesses/:vendorId");
+  const vendorId = params?.vendorId;
+
+  const { data: vendor, isLoading } = useQuery<VendorWithDetails>({
+    queryKey: ["/api/vendors", vendorId],
+    enabled: !!vendorId,
+  });
+
+  const { data: products } = useQuery<Product[]>({
+    queryKey: ["/api/products", { vendorId }],
+    enabled: !!vendorId,
+  });
+
+  const getVendorTypeBadge = (type: string) => {
+    const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+      shop: { label: "Shop", variant: "default" },
+      dine: { label: "Restaurant", variant: "secondary" },
+      service: { label: "Service Provider", variant: "outline" },
+    };
+    return badges[type] || badges.shop;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DetailHeader title="Loading..." />
+        <div className="px-4 py-4 space-y-4">
+          <Skeleton className="h-32 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-48 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DetailHeader title="Not Found" />
+        <div className="px-4 py-8 text-center">
+          <p className="text-muted-foreground mb-4">This business could not be found.</p>
+          <Link href="/app/businesses">
+            <Button data-testid="button-back-to-businesses">Back to Businesses</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const typeBadge = getVendorTypeBadge(vendor.vendorType || "shop");
+
+  return (
+    <div className="min-h-screen bg-background">
+      <DetailHeader title={vendor.businessName} />
+      
+      <main className="px-4 py-4 space-y-4">
+        <Card data-testid="card-business-header">
+          <CardContent className="p-4">
+            <div className="flex gap-4">
+              <Avatar className="h-20 w-20 flex-shrink-0">
+                <AvatarImage src={vendor.logoUrl || undefined} alt={vendor.businessName} />
+                <AvatarFallback className="text-lg">
+                  {vendor.businessName.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h1 className="text-xl font-semibold" data-testid="text-business-name">
+                        {vendor.businessName}
+                      </h1>
+                      {vendor.isVerified && (
+                        <BadgeCheck className="h-5 w-5 text-primary" data-testid="icon-verified" />
+                      )}
+                    </div>
+                    <Badge variant={typeBadge.variant} data-testid="badge-vendor-type">
+                      {typeBadge.label}
+                    </Badge>
+                  </div>
+                </div>
+                {vendor.tagline && (
+                  <p className="text-sm text-muted-foreground italic" data-testid="text-tagline">
+                    {vendor.tagline}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {vendor.bio && (
+          <Card data-testid="card-about">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">About</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground" data-testid="text-bio">
+                {vendor.bio}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card data-testid="card-contact">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Contact & Location</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {vendor.city && (
+              <div className="flex items-center gap-3 text-sm">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span data-testid="text-location">{vendor.city}, FL</span>
+              </div>
+            )}
+            {vendor.contactPhone && (
+              <div className="flex items-center gap-3 text-sm">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <a 
+                  href={`tel:${vendor.contactPhone}`} 
+                  className="text-primary hover:underline"
+                  data-testid="link-phone"
+                >
+                  {vendor.contactPhone}
+                </a>
+              </div>
+            )}
+            {vendor.contactEmail && (
+              <div className="flex items-center gap-3 text-sm">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                <a 
+                  href={`mailto:${vendor.contactEmail}`} 
+                  className="text-primary hover:underline"
+                  data-testid="link-email"
+                >
+                  {vendor.contactEmail}
+                </a>
+              </div>
+            )}
+            {vendor.website && (
+              <div className="flex items-center gap-3 text-sm">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <a 
+                  href={vendor.website} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                  data-testid="link-website"
+                >
+                  {vendor.website.replace(/^https?:\/\//, "")}
+                </a>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-3">
+          <Link href={`/messages/${vendor.ownerId}`} className="flex-1">
+            <Button variant="outline" className="w-full" data-testid="button-message">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Message
+            </Button>
+          </Link>
+        </div>
+
+        {products && products.length > 0 && (
+          <Card data-testid="card-products">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Products & Services</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                {products.slice(0, 4).map((product) => (
+                  <div 
+                    key={product.id} 
+                    className="p-3 bg-muted/50 rounded-lg"
+                    data-testid={`product-${product.id}`}
+                  >
+                    <p className="font-medium text-sm truncate">{product.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      ${(product.priceCents / 100).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              {products.length > 4 && (
+                <p className="text-sm text-muted-foreground text-center mt-3">
+                  +{products.length - 4} more items
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </main>
+    </div>
+  );
+}
