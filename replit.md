@@ -15,7 +15,7 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Frontend State Management**: TanStack Query manages server state, React hooks handle local UI state, and React Context with localStorage persists the shopping cart. Wouter is used for client-side routing.
 - **Backend**: Express.js with TypeScript provides a RESTful API.
 - **Data Storage**: PostgreSQL, accessed via Neon's serverless driver, uses Drizzle ORM for type-safe queries and schema management.
-- **Authentication**: Replit Auth via OIDC with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, and `admin`. The marketplace is fully browsable without authentication; a non-intrusive `SignupBanner` encourages account creation for account-specific actions.
+- **Authentication**: Replit Auth via OIDC with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, and `admin`. All pages require authentication except `/auth`. The `AuthBoundary` component wraps the entire router to enforce login, redirecting unauthenticated users to `/auth`. Return URLs are stored in sessionStorage for post-login redirect.
 - **Unified Vendor Architecture**: All vendor types (shop, dine, service) use a single `vendors` table with a `vendorType` field and a `capabilities` JSON field, enabling polymorphic behavior. Products, menu items, and service offerings link to this unified `vendors` table.
 - **Simplified Authentication & Onboarding**: Streamlined signup routes users based on `intended_role` query parameter to a universal `/onboarding` flow, guiding all vendor types through business profile creation with self-selection of `vendorType` and auto-setting of initial capabilities. An auto-save system creates draft profiles.
 - **3-Step User Onboarding Flow**: New users follow a minimal 3-screen onboarding: (1) `/auth` - minimal auth page with no footer, (2) `/welcome` - welcome message with Continue button (has footer), (3) `/discover` - main app home (has footer). Onboarding completion is tracked via `onboardingComplete` field in users table. Returning users skip `/welcome` and go directly to `/discover`.
@@ -42,10 +42,10 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Fulfillment**: Supports pickup, local delivery, and shipping options configurable by vendors.
 - **Fort Myers Spotlight**: Dedicated feature for highlighting local content or businesses.
 - **Application Routes**:
-  - **Public Routes**: `/`, `/discover`, `/browse`, `/favorites`, `/membership`, `/auth`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/cart`.
-  - **Protected Routes**: `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/onboarding`, `/events/my`, `/admin`, `/welcome`.
+  - **Public Route**: `/auth` - the only route accessible without authentication.
+  - **Protected Routes**: All other routes require authentication including `/discover`, `/browse`, `/favorites`, `/membership`, `/products`, `/vendors`, `/vendor/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/onboarding`, `/events/my`, `/admin`, `/welcome`.
   - **Auth Route Consolidation**: Single unified auth page at `/auth` handles both login and signup. Legacy routes (`/join`, `/login`, `/signup`, `/sign-in`, `/sign-up`, `/register`) redirect to `/auth`.
-  - **Signup Encouragement**: Dismissible `SignupBanner` on public pages for unauthenticated users, with localStorage-based dismissal persistence and SSR-safe browser guards. Authentication flow for "Sign Up Free" and protected actions redirects to `/auth`.
+  - **Global Auth Enforcement**: `AuthBoundary` component wraps the router to check authentication on every page load. Unauthenticated users are redirected to `/auth` with return URL preserved.
 
 ## External Dependencies
 
