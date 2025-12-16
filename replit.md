@@ -9,7 +9,9 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX
-The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI and shadcn/ui (new-york preset) for components, styled with Tailwind CSS. The design features a forest green primary color, brand-specific colors (Wheat, Clay, Ink, Paper), and distinct fonts (Playfair Display, Work Sans, JetBrains Mono). The homepage hero section emphasizes the mission: "Rise Local is your one-stop-shop for all things local in SWFL. This app is here to connect you to events, restaurants, goods, and services, which makes supporting local the easiest choice."
+The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI and shadcn/ui (new-york preset) for components, styled with Tailwind CSS. The design features a forest green primary color, brand-specific colors (Wheat, Clay, Ink, Paper), and distinct fonts (Playfair Display, Work Sans, JetBrains Mono).
+
+**Mobile-First Landing Page**: The `/auth` page features a mobile-optimized hero with a local farmers market background image, dark overlay for readability, concise headline ("Where Fort Myers Shops Local"), subheadline, and two prominent CTAs above the fold: "Shop Local" (primary button, initiates login) and "Sell With Us" (outline button, vendor signup). Designed for 5-second comprehension on mobile devices.
 
 ### Technical Implementations
 - **Frontend State Management**: TanStack Query manages server state, React hooks handle local UI state, and React Context with localStorage persists the shopping cart. Wouter is used for client-side routing.
