@@ -10,7 +10,7 @@ export default function MembershipBanner({ isMember = false }: MembershipBannerP
   if (isMember) return null;
 
   return (
-    <div className="mx-4 my-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+    <div className="mx-4 my-4 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
           <Sparkles className="w-5 h-5 text-primary" />
