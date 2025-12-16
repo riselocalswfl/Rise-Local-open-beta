@@ -1,7 +1,7 @@
-# Rise Local - Fort Myers Marketplace & Community
+# Rise Local - Fort Myers Deals & Local Business Discovery
 
 ## Overview
-Rise Local is a full-stack web application connecting local vendors, artisans, and farmers with buyers in Fort Myers, Florida. Its core purpose is to stimulate local commerce, promote sustainability, and enhance community engagement. The platform offers a marketplace for local products, services, and event management with RSVP and attendance tracking capabilities. It aims to provide a robust platform for vendors and enrich community interaction while maintaining a counterculture yet polished brand aesthetic. The business vision is to be the one-stop-shop for all things local in SWFL, making supporting local businesses easy.
+Rise Local is a mobile-first app connecting local businesses with shoppers in Fort Myers, Florida. Local businesses offer exclusive deals, and shoppers discover new places to save money while supporting their community. The platform features deal discovery, membership perks (Rise Local Pass), and business profiles. The vision is to make it easy for locals to find great deals and support neighborhood businesses in SWFL.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

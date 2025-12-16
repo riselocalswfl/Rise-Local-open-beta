@@ -10,7 +10,7 @@ export default function Spotlight() {
   // todo: remove mock functionality
   const spotlightData = {
     title: "Discover Fort Myers Local Treasures",
-    body: "Fort Myers is home to a thriving community of artisans, farmers, and local makers who bring passion and craftsmanship to everything they create. Our spotlight celebrates the diverse voices and talents that make our local marketplace unique. From organic bakeries to sustainable plant nurseries, each featured vendor represents the heart and soul of our community. Join us in supporting local businesses and discover products that tell a story, nourish your body, and connect you to your neighbors.",
+    body: "Fort Myers is home to a thriving community of artisans, farmers, and local makers who bring passion and craftsmanship to everything they create. Our spotlight celebrates the diverse voices and talents that make our local community unique. From organic bakeries to sustainable plant nurseries, each featured business represents the heart and soul of our neighborhood. Join us in supporting local and discover deals that save you money while connecting you to your neighbors.",
     city: "Fort Myers",
   };
 
