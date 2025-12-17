@@ -12,7 +12,7 @@ Preferred communication style: Simple, everyday language.
 The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI and shadcn/ui (new-york preset) for components, styled with Tailwind CSS. The design is **mobile-first** (iPhone/Android primary, desktop secondary), featuring a forest green primary color, brand-specific colors (Wheat, Clay, Ink, Paper), and distinct fonts (Playfair Display, Work Sans, JetBrains Mono). The BrandLogo component always links to the home page (/discover) from every screen. The Auth page hero section is optimized for mobile with a compact layout, 6-word headline ("Shop local. Sell local."), single-line subheadline, and two large CTAs (Shop Local, Sell With Us) above the fold with 56px touch targets on a clean white background.
 
 ### Technical Implementations
-- **Frontend State Management**: TanStack Query manages server state, React hooks handle local UI state, and React Context with localStorage persists the shopping cart. Wouter is used for client-side routing.
+- **Frontend State Management**: TanStack Query manages server state, React hooks handle local UI state. Wouter is used for client-side routing.
 - **Backend**: Express.js with TypeScript provides a RESTful API.
 - **Data Storage**: PostgreSQL, accessed via Neon's serverless driver, uses Drizzle ORM for type-safe queries and schema management.
 - **Authentication**: Replit Auth via OIDC with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, `restaurant`, `service_provider`, and `admin`. All pages require authentication except `/auth`. The `AuthBoundary` component wraps the entire router to enforce login, redirecting unauthenticated users to `/auth`. Return URLs are stored in sessionStorage for post-login redirect.
@@ -32,7 +32,7 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Unified Vendor Dashboard**: A single capability-aware `/dashboard` serves all vendor types, dynamically showing/hiding tabs based on vendor capabilities.
 - **Category System Removal**: Categories have been removed from the database schema and all user interfaces to simplify browsing.
 - **Customer-Facing Business Pages**: Profiles (`/businesses/:id`) use a unified endpoint (`/api/vendors/:id`) and implement capability-based rendering. Legacy routes (`/vendor/:id`, `/vendors`, `/restaurant/:id`) redirect to the unified `/businesses` routes.
-- **Shopping Cart**: React Context-based system with localStorage persistence, supporting product variants and 7% FL sales tax calculation.
+- **Deals-Only Focus**: The app focuses exclusively on deal discovery - cart, checkout, and order functionality have been removed. Vendors can list products/menu items for display purposes, but transactions happen directly with the business.
 - **Direct Messaging**: Supports real-time user-to-vendor messaging with read status.
 - **Stripe Connect Integration**: Facilitates vendor payouts, with the platform collecting payments (product price + 7% FL sales tax) and transferring the full amount to the vendor. Revenue is from an $89/month vendor membership fee, with no transaction fees.
 - **Customer Profile Management**: Users manage their profile (`/profile`) with editable fields for first name, last name, and phone number, enforced by secure API endpoint whitelisting.
@@ -52,7 +52,8 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Application Routes**:
   - **Public Route**: `/auth` - the only route accessible without authentication.
   - **Gate Routes**: `/start` and `/onboarding` - allowed for authenticated users regardless of onboarding status; `/start` handles role-based routing.
-  - **Protected Routes**: All other routes require authentication and completed onboarding including `/discover`, `/browse`, `/favorites`, `/membership`, `/products`, `/businesses`, `/businesses/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/checkout`, `/orders`, `/order-confirmation`, `/profile`, `/messages`, `/dashboard`, `/events/my`, `/admin`.
+  - **Protected Routes**: All other routes require authentication and completed onboarding including `/discover`, `/browse`, `/favorites`, `/membership`, `/products`, `/businesses`, `/businesses/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/profile`, `/messages`, `/dashboard`, `/events/my`, `/admin`.
+  - **Vendor Dashboard Access**: Vendors access their dashboard via the "Business Tools" section in the My Account page (`/profile`), which links to `/dashboard`.
   - **Legacy Route Redirects**: Old routes (`/vendors`, `/vendor/:id`, `/restaurant/:id`, `/app/businesses`) redirect to the unified `/businesses` routes for backwards compatibility.
   - **Auth Route Consolidation**: Single unified auth page at `/auth` handles both login and signup. Legacy routes (`/join`, `/login`, `/signup`, `/sign-in`, `/sign-up`, `/register`, `/welcome`) redirect to `/auth` or `/start`.
   - **Global Auth Enforcement**: `AuthBoundary` component wraps the router to check authentication on every page load. Unauthenticated users are redirected to `/auth` with return URL preserved. Authenticated users with incomplete onboarding are redirected to `/start`.
