@@ -1,0 +1,100 @@
+Ensure Rise Local has one unified, authoritative vendor profile data source that is created during vendor onboarding and reused everywhere in the app.
+
+Requirements:
+
+Single Source of Truth
+
+Create or confirm a vendors table (or equivalent) that stores all vendor profile data collected during onboarding.
+
+This record must be the only source for:
+
+Business pages
+
+Vendor profile pages
+
+Deals listings
+
+Search results
+
+Discover / category views
+
+Onboarding → Vendor Profile Link
+
+When a vendor completes onboarding, automatically:
+
+Create a vendor profile record
+
+Associate it with the authenticated user via vendor.userId
+
+Set onboardingComplete = true
+
+Do NOT create duplicate or temporary vendor objects.
+
+Consistent Navigation Flow
+
+When a user clicks a business anywhere in the app (business card, deal, search result, spotlight, etc.):
+
+Route to /vendor/:vendorId
+
+Fetch vendor data only by vendorId
+
+Never pass vendor info through props or hardcoded data
+
+Profile Data Reuse
+
+The vendor profile page must display the exact same data entered during onboarding:
+
+Business name
+
+Profile image
+
+Banner image
+
+Description
+
+Category
+
+Address / location
+
+Contact info
+
+Website & social links
+
+Hours
+
+Menus (if applicable)
+
+Deals associated with that vendor
+
+Editing Rules
+
+Vendors can only edit their own profile
+
+Any edits update the same vendor record (no new records created)
+
+Changes must immediately reflect everywhere the vendor appears
+
+Data Integrity Safeguards
+
+Prevent multiple vendor profiles per user
+
+If a vendor is missing a profile, redirect them to onboarding
+
+If a user is not a vendor, block access to vendor edit routes
+
+Developer Constraints
+
+No duplicated vendor schemas
+
+No mock vendor data in production routes
+
+All business page links must resolve to a real vendor profile
+
+Goal:
+Create a clean, reliable backend flow where:
+
+Onboarding creates the vendor profile
+
+Every business click leads to the correct, legitimate vendor profile
+
+Vendor data stays consistent across the entire Rise Local app
