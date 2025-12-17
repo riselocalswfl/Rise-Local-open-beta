@@ -867,36 +867,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update draft vendor profile (auto-save during onboarding)
-  app.patch("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const vendorId = req.params.id;
-      
-      console.log("[DRAFT-PATCH] Updating vendor:", vendorId, "for userId:", userId);
-      
-      // Verify vendor belongs to user
-      const vendor = await storage.getVendor(vendorId);
-      if (!vendor || vendor.ownerId !== userId) {
-        console.log("[DRAFT-PATCH] Unauthorized - vendor not found or wrong owner");
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-      
-      console.log("[DRAFT-PATCH] Updating vendor with fields:", Object.keys(req.body));
-      
-      // Update vendor with provided fields
-      const updatedVendor = await storage.updateVendor(vendorId, req.body);
-      
-      res.json(updatedVendor);
-    } catch (error) {
-      console.error("[DRAFT-PATCH ERROR]", error);
-      res.status(400).json({ 
-        error: "Failed to update vendor",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
   // Mark vendor profile as complete
   app.post("/api/vendors/:id/complete", isAuthenticated, async (req: any, res) => {
     try {

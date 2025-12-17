@@ -826,6 +826,21 @@ export default function VendorDashboard() {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="addressLine2">Address Line 2 (optional)</Label>
+                  <Input
+                    id="addressLine2"
+                    defaultValue={(vendor as any).addressLine2 || ""}
+                    placeholder="Suite, Apt, Floor"
+                    data-testid="input-address-line-2"
+                    onBlur={(e) => {
+                      if (e.target.value !== (vendor as any).addressLine2) {
+                        updateVendorMutation.mutate({ addressLine2: e.target.value });
+                      }
+                    }}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
@@ -945,8 +960,88 @@ export default function VendorDashboard() {
                     />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tiktok">TikTok (optional)</Label>
+                    <Input
+                      id="tiktok"
+                      defaultValue={vendor.tiktok || ""}
+                      placeholder="@yourbusiness"
+                      data-testid="input-tiktok"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.tiktok) {
+                          updateVendorMutation.mutate({ tiktok: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="youtube">YouTube (optional)</Label>
+                    <Input
+                      id="youtube"
+                      defaultValue={vendor.youtube || ""}
+                      placeholder="@yourchannel"
+                      data-testid="input-youtube"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.youtube) {
+                          updateVendorMutation.mutate({ youtube: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="twitter">Twitter/X (optional)</Label>
+                    <Input
+                      id="twitter"
+                      defaultValue={vendor.twitter || ""}
+                      placeholder="@yourbusiness"
+                      data-testid="input-twitter"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.twitter) {
+                          updateVendorMutation.mutate({ twitter: e.target.value });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
+
+            {/* Menu Options Section - Only for dine vendors */}
+            {vendor.vendorType === "dine" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Menu Options</CardTitle>
+                  <CardDescription>Share your menu with customers</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="menuUrl">Menu Link (optional)</Label>
+                    <Input
+                      id="menuUrl"
+                      type="url"
+                      defaultValue={vendor.menuUrl || ""}
+                      placeholder="https://yourmenu.com or ToastTab link"
+                      data-testid="input-menu-url"
+                      onBlur={(e) => {
+                        if (e.target.value !== vendor.menuUrl) {
+                          updateVendorMutation.mutate({ 
+                            menuUrl: e.target.value,
+                            menuType: e.target.value ? "link" : null
+                          });
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Link to your online menu (ToastTab, Square, PDF, or your website)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Business Hours Section */}
             <Card>
