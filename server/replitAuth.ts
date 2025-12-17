@@ -218,7 +218,7 @@ export async function setupAuth(app: Express) {
                 console.log("[AUTH] Redirecting to:", redirectUrl);
               }
             } else if (intendedRole === "buyer") {
-              await storage.updateUser(userId, { role: intendedRole });
+              await storage.updateUser(userId, { role: intendedRole, onboardingComplete: true });
               userRole = intendedRole;
             }
             
@@ -250,11 +250,19 @@ export async function setupAuth(app: Express) {
             // New vendor needs onboarding - redirectUrl already set to /onboarding
             console.log("[AUTH] New vendor redirecting to onboarding");
           } else {
-            // Check if user completed welcome onboarding - if not, send to /welcome
+            // Check if user completed welcome onboarding - if not, auto-complete for buyers
             const currentUser = await storage.getUser(userId);
             if (currentUser && !currentUser.onboardingComplete) {
-              redirectUrl = "/welcome";
-              console.log("[AUTH] User needs welcome onboarding, redirecting to /welcome");
+              // Buyers don't need onboarding, auto-complete for them
+              if (currentUser.role === "buyer" || !currentUser.role) {
+                await storage.updateUser(userId, { onboardingComplete: true });
+                redirectUrl = "/discover";
+                console.log("[AUTH] Buyer auto-completed onboarding, redirecting to discover");
+              } else {
+                // Vendors need onboarding
+                redirectUrl = "/welcome";
+                console.log("[AUTH] Vendor needs welcome onboarding, redirecting to /welcome");
+              }
             } else {
               // Returning users who completed onboarding go to discover
               redirectUrl = "/discover";
