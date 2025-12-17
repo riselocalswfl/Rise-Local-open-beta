@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import DealCard from "@/components/DealCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -17,6 +18,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import type { Deal, Vendor } from "@shared/schema";
+
+const FORT_MYERS_DEFAULT = { lat: 26.6406, lng: -81.8723 };
 
 interface DealWithDistance extends Deal {
   distanceMiles?: number;
@@ -55,6 +58,7 @@ type LocationState = {
 
 export default function DealsPage() {
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [category, setCategory] = useState("all");
   const [city, setCity] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,9 +72,6 @@ export default function DealsPage() {
 
   // Check if geolocation is available on mount (but don't request yet)
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocation({ status: "unavailable", coords: null });
-    }
     // Cleanup timeout on unmount
     return () => {
       if (locationTimeoutRef.current) {
@@ -79,10 +80,25 @@ export default function DealsPage() {
     };
   }, []);
 
+  // Use default Fort Myers location as fallback
+  const useDefaultLocation = () => {
+    setLocation({
+      status: "granted",
+      coords: FORT_MYERS_DEFAULT,
+    });
+    setNearMeEnabled(true);
+    setCity("all");
+    toast({
+      title: "Using Fort Myers area",
+      description: "Showing deals near downtown Fort Myers",
+    });
+  };
+
   // Request location when user enables Near Me
   const requestLocation = () => {
+    // If geolocation not available, use default
     if (!navigator.geolocation) {
-      setLocation({ status: "unavailable", coords: null });
+      useDefaultLocation();
       return;
     }
 
@@ -93,16 +109,25 @@ export default function DealsPage() {
 
     setLocation((prev) => ({ ...prev, status: "requesting" }));
 
-    // Fallback timeout - if browser doesn't respond in 15 seconds, reset to idle
+    // Fallback timeout - if browser doesn't respond in 5 seconds, use default location
     locationTimeoutRef.current = setTimeout(() => {
       setLocation((prev) => {
         if (prev.status === "requesting") {
-          console.log("Geolocation request timed out (fallback)");
-          return { status: "idle", coords: null };
+          // Use Fort Myers default when geolocation times out
+          toast({
+            title: "Using Fort Myers area",
+            description: "Couldn't get your exact location. Showing deals near Fort Myers.",
+          });
+          return {
+            status: "granted",
+            coords: FORT_MYERS_DEFAULT,
+          };
         }
         return prev;
       });
-    }, 15000);
+      setNearMeEnabled(true);
+      setCity("all");
+    }, 5000);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -120,6 +145,10 @@ export default function DealsPage() {
         });
         setNearMeEnabled(true);
         setCity("all");
+        toast({
+          title: "Location found",
+          description: "Showing deals near you",
+        });
       },
       (error) => {
         // Clear fallback timeout on error
@@ -128,12 +157,21 @@ export default function DealsPage() {
           locationTimeoutRef.current = null;
         }
         console.log("Geolocation error:", error.message);
+        // Use default location on any error
         setLocation({
-          status: error.code === 1 ? "denied" : "unavailable",
-          coords: null,
+          status: "granted",
+          coords: FORT_MYERS_DEFAULT,
+        });
+        setNearMeEnabled(true);
+        setCity("all");
+        toast({
+          title: "Using Fort Myers area",
+          description: error.code === 1 
+            ? "Location access denied. Showing deals near Fort Myers." 
+            : "Couldn't get your location. Showing deals near Fort Myers.",
         });
       },
-      { timeout: 10000, maximumAge: 300000 } // Cache for 5 minutes
+      { timeout: 5000, maximumAge: 300000 } // 5 second timeout, cache for 5 minutes
     );
   };
 
@@ -329,7 +367,7 @@ export default function DealsPage() {
                 variant={nearMeEnabled ? "default" : "outline"}
                 size="sm"
                 onClick={handleNearMeToggle}
-                disabled={location.status === "requesting" || location.status === "unavailable"}
+                disabled={location.status === "requesting"}
                 data-testid="button-near-me"
               >
                 <Navigation className="w-4 h-4 mr-2" />
@@ -351,11 +389,6 @@ export default function DealsPage() {
                 </Select>
               )}
 
-              {location.status === "denied" && (
-                <span className="text-sm text-muted-foreground">
-                  Location access denied. Click "Near Me" to try again.
-                </span>
-              )}
 
               {nearMeEnabled && (
                 <Badge variant="secondary" className="text-xs">
