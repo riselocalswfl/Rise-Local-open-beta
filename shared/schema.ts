@@ -196,7 +196,8 @@ export const vendors = pgTable("vendors", {
   
   // Location & Service
   locationType: text("location_type").notNull(), // Physical storefront, Home-based, Pop-up/Market only
-  address: text("address"),
+  address: text("address"), // addressLine1
+  addressLine2: text("address_line_2"), // apt, suite, floor, etc.
   city: text("city").notNull().default("Fort Myers"),
   state: text("state").notNull().default("FL"),
   zipCode: text("zip_code").notNull(),
@@ -1313,6 +1314,7 @@ export const updateVendorProfileSchema = z.object({
   
   // Address
   address: z.string().nullable().optional(),
+  addressLine2: z.string().nullable().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zipCode: z.string().optional(),
