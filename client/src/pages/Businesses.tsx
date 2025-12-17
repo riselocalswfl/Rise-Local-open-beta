@@ -12,7 +12,7 @@ import type { UnifiedVendorListing } from "@shared/schema";
 export default function Businesses() {
   const [searchQuery, setSearchQuery] = useState("");
   
-  const { data: vendors, isLoading } = useQuery<UnifiedVendorListing[]>({
+  const { data: vendors, isLoading, error } = useQuery<UnifiedVendorListing[]>({
     queryKey: ["/api/vendors"],
   });
 
@@ -51,7 +51,12 @@ export default function Businesses() {
       
       <main className="px-4 py-4">
         <div className="space-y-3">
-          {isLoading ? (
+          {error ? (
+            <div className="text-center py-12">
+              <p className="text-destructive mb-2">Failed to load businesses</p>
+              <p className="text-sm text-muted-foreground">{(error as Error).message}</p>
+            </div>
+          ) : isLoading ? (
             <>
               <Skeleton className="h-24 rounded-lg" />
               <Skeleton className="h-24 rounded-lg" />
