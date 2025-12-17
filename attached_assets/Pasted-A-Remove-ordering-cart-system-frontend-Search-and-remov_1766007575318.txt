@@ -1,0 +1,73 @@
+A) Remove ordering/cart system (frontend)
+
+Search and remove/disable all UI related to:
+
+“Add to Cart”, “Cart”, “Checkout”, “Order”, “Order Summary”, “Order Details”
+
+cart icons/badges in header or product cards
+
+Remove routes/pages/components used only for cart/checkout/orders.
+
+Remove any React Query hooks calling cart/order endpoints.
+
+Make sure Deals browsing still works as the main consumer action (view deal, redeem, call/text, website link, directions, etc. — whatever we have).
+
+B) Remove ordering/cart system (backend)
+
+Find and remove/disable Express routes like:
+
+/api/cart/*, /api/checkout/*, /api/orders/*, /api/order-items/* (or similar)
+
+Remove related services/controllers and DB calls used exclusively for orders/cart.
+
+If Drizzle tables exist for orders/cart, do not drop tables in a migration right now (to avoid breaking existing DB). Instead:
+
+Leave schema as-is, but ensure nothing references these tables and no endpoints expose them.
+
+Remove any seed/test data usage for orders/cart.
+
+C) Vendor dashboard: remove Orders, Services, Events
+
+In the vendor dashboard UI (tabs shown currently: Profile, Services, Orders, Deals, Events, FAQs, Settings):
+
+Delete Services, Orders, Events tabs and any subpages/components/state.
+
+Ensure tab counts update (no “(1)” etc).
+
+Confirm the vendor dashboard still loads and edits:
+
+Business Info (name, contact)
+
+Deal management/listing (create/edit/delete deals)
+
+Settings
+
+FAQs can stay only if it’s actually used; otherwise remove it too.
+
+D) Put Vendor Dashboard inside “My Account”
+
+Update the top navigation:
+
+Remove the “For Businesses” button entirely.
+
+Keep Deals / Businesses / My Account.
+
+In My Account route/page:
+
+Add a “Business Tools” or “Vendor Dashboard” section visible only when user.role indicates vendor.
+
+Render the vendor dashboard inside My Account (either as a sub-tab, accordion, or nested route).
+
+Routing:
+
+New canonical path should be something like /my-account/vendor (or nested under /account depending on current route naming).
+
+Keep the existing /dashboard route but make it redirect to /my-account/vendor.
+
+Access control:
+
+If a non-vendor hits /my-account/vendor, show a friendly message and link to upgrade/apply (or redirect to /my-account).
+
+E) Clean up copy + navigation consistency
+
+Any references to “Orders”, “Services”, “Events”, “Checkout” must be removed from labels, menus, empty states, and helper text.
