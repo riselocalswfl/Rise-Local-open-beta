@@ -959,6 +959,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fulfillment = fulfillmentOptionsSchema.parse(fulfillmentMethods);
       const serviceOptions = deriveServiceOptions(fulfillment);
       
+      // Geocode location based on city/zipCode
+      let latitude: string | null = null;
+      let longitude: string | null = null;
+      const locationString = buildFullAddress(data.address || null, data.city || "", "FL", data.zipCode || "");
+      if (locationString) {
+        const coordinates = await geocodeAddress(locationString);
+        if (coordinates) {
+          latitude = coordinates.latitude;
+          longitude = coordinates.longitude;
+          console.log("[ONBOARD] Geocoded location:", locationString, "->", coordinates);
+        } else {
+          console.log("[ONBOARD] Geocoding failed for:", locationString);
+        }
+      }
+      
       // Convert payment methods array to string
       const paymentMethod = paymentMethods.join(", ");
       
@@ -975,6 +990,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           city: data.city,
           state: "FL",
           zipCode: data.zipCode,
+          latitude,
+          longitude,
           categories: data.categories || [],
           localSourcingPercent: data.localSourcingPercent || 0,
           showLocalSourcing: data.showLocalSourcing || false,
@@ -1006,6 +1023,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           city: data.city,
           state: "FL",
           zipCode: data.zipCode,
+          latitude,
+          longitude,
           categories: data.categories || [],
           contactEmail: data.email || email,
           phone: data.phone || "",
@@ -1034,6 +1053,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           city: data.city,
           state: "FL",
           zipCode: data.zipCode,
+          latitude,
+          longitude,
           categories: data.categories || [],
           contactEmail: data.email || email,
           phone: data.phone || "",
