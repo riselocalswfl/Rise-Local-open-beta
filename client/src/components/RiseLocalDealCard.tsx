@@ -18,6 +18,7 @@ export interface RiseLocalDeal {
   dealType: DealType;
   memberOnly: boolean;
   isNew?: boolean;
+  isFictitious?: boolean;
 }
 
 interface RiseLocalDealCardProps {
@@ -87,6 +88,19 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
               </Badge>
             )}
           </div>
+
+          {/* Sample Deal badge for fictitious deals */}
+          {deal.isFictitious && (
+            <div className="absolute top-2 right-2">
+              <Badge 
+                variant="outline" 
+                className="text-[9px] px-1.5 py-0.5 bg-amber-100 border-amber-300 text-amber-700"
+                data-testid={`badge-sample-${deal.id}`}
+              >
+                Sample
+              </Badge>
+            </div>
+          )}
 
           {/* Savings pill */}
           <div className="absolute bottom-2 left-2">
