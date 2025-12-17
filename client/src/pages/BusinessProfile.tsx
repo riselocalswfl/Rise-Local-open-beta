@@ -21,12 +21,12 @@ export default function BusinessProfile() {
   const vendorId = params?.id;
 
   const { data: vendor, isLoading } = useQuery<VendorWithDetails>({
-    queryKey: ["/api/vendors", vendorId],
+    queryKey: [`/api/vendors/${vendorId}`],
     enabled: !!vendorId,
   });
 
   const { data: products } = useQuery<Product[]>({
-    queryKey: ["/api/products", { vendorId }],
+    queryKey: [`/api/vendors/${vendorId}/products`],
     enabled: !!vendorId,
   });
 
@@ -70,16 +70,16 @@ export default function BusinessProfile() {
 
   return (
     <div className="min-h-screen bg-background">
-      <DetailHeader title={vendor.businessName} />
+      <DetailHeader title={vendor.businessName || "Business Profile"} />
       
       <main className="px-4 py-4 space-y-4">
         <Card data-testid="card-business-header">
           <CardContent className="p-4">
             <div className="flex gap-4">
               <Avatar className="h-20 w-20 flex-shrink-0">
-                <AvatarImage src={vendor.logoUrl || undefined} alt={vendor.businessName} />
+                <AvatarImage src={vendor.logoUrl || undefined} alt={vendor.businessName || "Business"} />
                 <AvatarFallback className="text-lg">
-                  {vendor.businessName.substring(0, 2).toUpperCase()}
+                  {vendor.businessName?.substring(0, 2).toUpperCase() || "BZ"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
@@ -87,7 +87,7 @@ export default function BusinessProfile() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <h1 className="text-xl font-semibold" data-testid="text-business-name">
-                        {vendor.businessName}
+                        {vendor.businessName || "Business"}
                       </h1>
                       {vendor.isVerified && (
                         <BadgeCheck className="h-5 w-5 text-primary" data-testid="icon-verified" />

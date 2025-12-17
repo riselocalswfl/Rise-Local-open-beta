@@ -73,7 +73,7 @@ export default function Businesses() {
               const typeBadge = getVendorTypeBadge(vendor.vendorType);
               
               return (
-                <Link key={vendor.id} href={`/app/businesses/${vendor.id}`}>
+                <Link key={vendor.id} href={`/businesses/${vendor.id}`}>
                   <Card className="hover-elevate active-elevate-2" data-testid={`card-business-${vendor.id}`}>
                     <CardContent className="p-4">
                       <div className="flex gap-3">

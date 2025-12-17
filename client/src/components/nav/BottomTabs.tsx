@@ -4,7 +4,7 @@ import { Compass, Grid3X3, Heart, User, Store } from "lucide-react";
 const tabs = [
   { name: "Discover", href: "/discover", icon: Compass },
   { name: "Browse", href: "/browse", icon: Grid3X3 },
-  { name: "Businesses", href: "/app/businesses", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "Favorites", href: "/favorites", icon: Heart },
   { name: "Profile", href: "/profile", icon: User },
 ];
@@ -23,7 +23,7 @@ export default function BottomTabs() {
           const Icon = tab.icon;
           const isActive = location === tab.href || 
             (tab.href === "/discover" && (location === "/" || location === "/deals")) ||
-            (tab.href === "/app/businesses" && location.startsWith("/app/businesses"));
+            (tab.href === "/businesses" && location.startsWith("/businesses"));
           
           return (
             <Link key={tab.href} href={tab.href}>

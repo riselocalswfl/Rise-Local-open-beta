@@ -71,7 +71,7 @@ export default function LocalSpotlight() {
   const handleCardClick = () => {
     if (spotlight) {
       clickMutation.mutate(spotlight.placementId);
-      navigate(`/app/businesses/${spotlight.vendor.id}`);
+      navigate(`/businesses/${spotlight.vendor.id}`);
     }
   };
 
