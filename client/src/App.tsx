@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { CartProvider } from "@/contexts/CartContext";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import DealsPage from "@/pages/DealsPage";
@@ -16,10 +15,6 @@ import Services from "@/pages/Services";
 import ServiceProviderProfile from "@/pages/ServiceProviderProfile";
 import EventsLayout from "@/pages/EventsLayout";
 import EventDetail from "@/pages/EventDetail";
-import Cart from "@/pages/Cart";
-import Checkout from "@/pages/Checkout";
-import OrderConfirmation from "@/pages/OrderConfirmation";
-import Orders from "@/pages/Orders";
 import Spotlight from "@/pages/Spotlight";
 import Auth from "@/pages/Auth";
 import WelcomePage from "@/pages/WelcomePage";
@@ -198,11 +193,6 @@ function Router() {
         )}
       </Route>
       
-      {/* Cart - hidden, redirect to deals */}
-      <Route path="/cart">
-        {() => <Redirect to="/deals" />}
-      </Route>
-      
       {/* Protected Account Features - Require authentication */}
       <Route path="/events/my">
         {() => (
@@ -217,9 +207,6 @@ function Router() {
       <Route path="/dashboard" component={BusinessDashboard} />
       
       {/* Customer Routes */}
-      <Route path="/checkout" component={Checkout} />
-      <Route path="/order-confirmation" component={OrderConfirmation} />
-      <Route path="/orders" component={Orders} />
       <Route path="/profile">
         {() => (
           <AppShell>
@@ -304,12 +291,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CartProvider>
-          <Toaster />
-          <AuthBoundary>
-            <Router />
-          </AuthBoundary>
-        </CartProvider>
+        <Toaster />
+        <AuthBoundary>
+          <Router />
+        </AuthBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );

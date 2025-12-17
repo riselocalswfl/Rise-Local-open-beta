@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, Calendar, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, ShoppingCart, CreditCard, UtensilsCrossed, Briefcase, Tag } from "lucide-react";
+import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, CreditCard, UtensilsCrossed, Tag } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions, MenuItem, ServiceOffering, Deal } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
@@ -192,12 +192,6 @@ export default function VendorDashboard() {
   // Fetch deals
   const { data: deals = [] } = useQuery<Deal[]>({
     queryKey: [`/api/deals?vendorId=${vendor?.id}`],
-    enabled: !!vendor?.id,
-  });
-
-  // Fetch vendor orders
-  const { data: vendorOrders = [] } = useQuery<any[]>({
-    queryKey: ["/api/vendor-orders/my"],
     enabled: !!vendor?.id,
   });
 
@@ -624,14 +618,6 @@ export default function VendorDashboard() {
                     </div>
                   </SelectItem>
                 )}
-                {(vendor.capabilities as any)?.services && (
-                  <SelectItem value="services" data-testid="select-option-services">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="w-4 h-4" />
-                      <span>Services ({serviceOfferings.length})</span>
-                    </div>
-                  </SelectItem>
-                )}
                 {(vendor.capabilities as any)?.menu && (
                   <SelectItem value="menu" data-testid="select-option-menu">
                     <div className="flex items-center gap-2">
@@ -640,22 +626,10 @@ export default function VendorDashboard() {
                     </div>
                   </SelectItem>
                 )}
-                <SelectItem value="orders" data-testid="select-option-orders">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>Orders ({vendorOrders.length})</span>
-                  </div>
-                </SelectItem>
                 <SelectItem value="deals" data-testid="select-option-deals">
                   <div className="flex items-center gap-2">
                     <Tag className="w-4 h-4" />
                     <span>Deals ({deals.length})</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="events" data-testid="select-option-events">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    <span>Events ({events.length})</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="faqs" data-testid="select-option-faqs">
@@ -686,29 +660,15 @@ export default function VendorDashboard() {
                 Products ({products.length})
               </TabsTrigger>
             )}
-            {(vendor.capabilities as any)?.services && (
-              <TabsTrigger value="services" className="gap-2" data-testid="tab-services">
-                <Briefcase className="w-4 h-4" />
-                Services ({serviceOfferings.length})
-              </TabsTrigger>
-            )}
             {(vendor.capabilities as any)?.menu && (
               <TabsTrigger value="menu" className="gap-2" data-testid="tab-menu">
                 <UtensilsCrossed className="w-4 h-4" />
                 Menu ({menuItems.length})
               </TabsTrigger>
             )}
-            <TabsTrigger value="orders" className="gap-2" data-testid="tab-orders">
-              <ShoppingCart className="w-4 h-4" />
-              Orders ({vendorOrders.length})
-            </TabsTrigger>
             <TabsTrigger value="deals" className="gap-2" data-testid="tab-deals">
               <Tag className="w-4 h-4" />
               Deals ({deals.length})
-            </TabsTrigger>
-            <TabsTrigger value="events" className="gap-2" data-testid="tab-events">
-              <Calendar className="w-4 h-4" />
-              Events ({events.length})
             </TabsTrigger>
             <TabsTrigger value="faqs" className="gap-2" data-testid="tab-faqs">
               <HelpCircle className="w-4 h-4" />
@@ -1430,123 +1390,6 @@ export default function VendorDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Services Tab */}
-          <TabsContent value="services">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Service Offerings</CardTitle>
-                  <CardDescription>Manage your service offerings and pricing</CardDescription>
-                </div>
-                <Dialog open={serviceDialogOpen} onOpenChange={setServiceDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-service">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Service
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
-                    <DialogHeader>
-                      <DialogTitle className="text-[#222]">Add New Service</DialogTitle>
-                    </DialogHeader>
-                    <AddServiceForm 
-                      onSubmit={createServiceMutation.mutate}
-                      isPending={createServiceMutation.isPending}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {serviceOfferings.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No services yet. Add your first service offering to attract customers!</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {serviceOfferings.map((service) => (
-                      <Card key={service.id} className="border-muted" data-testid={`service-${service.id}`}>
-                        <CardContent className="p-4 space-y-3">
-                          <div className="space-y-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <h3 className="font-semibold line-clamp-1">{service.offeringName}</h3>
-                              {service.isFeatured && (
-                                <Badge variant="default" className="shrink-0">Featured</Badge>
-                              )}
-                            </div>
-                            {service.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">{service.description}</p>
-                            )}
-                          </div>
-                          
-                          <div className="space-y-1">
-                            {service.pricingModel === "fixed" && service.fixedPriceCents && (
-                              <span className="text-lg font-bold" data-testid={`service-price-${service.id}`}>
-                                ${(service.fixedPriceCents / 100).toFixed(2)}
-                              </span>
-                            )}
-                            {service.pricingModel === "hourly" && service.hourlyRateCents && (
-                              <span className="text-lg font-bold" data-testid={`service-price-${service.id}`}>
-                                ${(service.hourlyRateCents / 100).toFixed(2)}/hr
-                              </span>
-                            )}
-                            {service.pricingModel === "quote" && service.startingAtCents && (
-                              <span className="text-lg font-bold" data-testid={`service-price-${service.id}`}>
-                                Starting at ${(service.startingAtCents / 100).toFixed(2)}
-                              </span>
-                            )}
-                            {service.durationMinutes && (
-                              <p className="text-sm text-muted-foreground">
-                                Duration: {service.durationMinutes} min
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">Status:</span>
-                              <Switch
-                                checked={service.isActive === true}
-                                onCheckedChange={(checked) => {
-                                  updateServiceMutation.mutate({
-                                    id: service.id,
-                                    data: { isActive: checked }
-                                  });
-                                }}
-                                data-testid={`switch-service-status-${service.id}`}
-                              />
-                              <span className="text-xs">{service.isActive ? "Active" : "Inactive"}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              data-testid={`button-edit-service-${service.id}`}
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => deleteServiceMutation.mutate(service.id)}
-                              data-testid={`button-delete-service-${service.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Menu Tab */}
           <TabsContent value="menu">
             <Card>
@@ -1651,212 +1494,6 @@ export default function VendorDashboard() {
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Orders Tab */}
-          <TabsContent value="orders">
-            <Card>
-              <CardHeader>
-                <CardTitle>Incoming Orders</CardTitle>
-                <CardDescription>Manage customer orders and fulfillment</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {vendorOrders.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <ShoppingCart className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No orders yet. Orders will appear here when customers purchase your products.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {vendorOrders.map((order: any) => (
-                      <Card key={order.id} className="border-muted" data-testid={`card-order-${order.id}`}>
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-base">Order #{order.id.substring(0, 8).toUpperCase()}</CardTitle>
-                              <CardDescription className="mt-1">
-                                {order.buyerName} • {order.buyerEmail}
-                              </CardDescription>
-                            </div>
-                            <div className="flex flex-col gap-2 items-end">
-                              <Badge variant="secondary" data-testid={`badge-status-${order.id}`}>
-                                {order.status}
-                              </Badge>
-                              <Badge 
-                                variant={order.paymentStatus === 'paid' ? 'default' : 'outline'}
-                                data-testid={`badge-payment-${order.id}`}
-                              >
-                                {order.paymentStatus}
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="space-y-2">
-                            <h4 className="font-medium text-sm">Items</h4>
-                            {order.itemsJson?.map((item: any, idx: number) => (
-                              <div key={idx} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                  {item.image && (
-                                    <img src={item.image} alt={item.productName} className="w-8 h-8 object-cover rounded" />
-                                  )}
-                                  <span>{item.productName} (x{item.quantity})</span>
-                                </div>
-                                <span className="font-medium">${(item.priceCents * item.quantity / 100).toFixed(2)}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          <Separator />
-
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="text-muted-foreground">Subtotal</p>
-                              <p className="font-medium">${(order.subtotalCents / 100).toFixed(2)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Tax</p>
-                              <p className="font-medium">${(order.taxCents / 100).toFixed(2)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Fees</p>
-                              <p className="font-medium">${(order.feesCents / 100).toFixed(2)}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Total</p>
-                              <p className="font-semibold text-lg">${(order.totalCents / 100).toFixed(2)}</p>
-                            </div>
-                          </div>
-
-                          <Separator />
-
-                          <div className="space-y-3">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Fulfillment</p>
-                              <p className="font-medium capitalize">{order.fulfillmentType}</p>
-                            </div>
-                            
-                            <div>
-                              <p className="text-sm text-muted-foreground">Contact</p>
-                              <p className="text-sm">{order.buyerPhone}</p>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Select
-                                value={order.status}
-                                onValueChange={async (value) => {
-                                  try {
-                                    await apiRequest("PATCH", `/api/vendor-orders/${order.id}/status`, { status: value });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/vendor-orders/my"] });
-                                    toast({ title: "Order status updated" });
-                                  } catch (error) {
-                                    toast({ title: "Failed to update status", variant: "destructive" });
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="flex-1" data-testid={`select-status-${order.id}`}>
-                                  <SelectValue placeholder="Update status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="processing">Processing</SelectItem>
-                                  <SelectItem value="ready">Ready for Pickup</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-
-                              <Select
-                                value={order.paymentStatus}
-                                onValueChange={async (value) => {
-                                  try {
-                                    await apiRequest("PATCH", `/api/vendor-orders/${order.id}/payment`, { paymentStatus: value });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/vendor-orders/my"] });
-                                    toast({ title: "Payment status updated" });
-                                  } catch (error) {
-                                    toast({ title: "Failed to update payment status", variant: "destructive" });
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="flex-1" data-testid={`select-payment-${order.id}`}>
-                                  <SelectValue placeholder="Payment status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Payment Pending</SelectItem>
-                                  <SelectItem value="paid">Paid</SelectItem>
-                                  <SelectItem value="failed">Failed</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Events Tab */}
-          <TabsContent value="events">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Manage Events</CardTitle>
-                <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-event">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Event
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
-                    <DialogHeader>
-                      <DialogTitle className="text-[#222]">Add New Event</DialogTitle>
-                    </DialogHeader>
-                    <AddEventForm 
-                      onSubmit={createEventMutation.mutate}
-                      isPending={createEventMutation.isPending}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {events.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No events yet. Create your first event to engage with customers!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {events.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between border rounded-md p-4" data-testid={`event-${event.id}`}>
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{event.title}</h3>
-                          <p className="text-sm text-muted-foreground">{event.description}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                            <span>{new Date(event.dateTime).toLocaleDateString()}</span>
-                            <span>{event.location}</span>
-                            <span>{event.rsvpCount} RSVPs</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" data-testid={`button-edit-event-${event.id}`}>Edit</Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => deleteEventMutation.mutate(event.id)}
-                            data-testid={`button-delete-event-${event.id}`}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
                     ))}
                   </div>
                 )}

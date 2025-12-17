@@ -2167,6 +2167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DISABLED: Cart/checkout functionality removed
+  /*
   // Order routes
   app.get("/api/orders/:id", async (req, res) => {
     try {
@@ -2392,6 +2394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch orders" });
     }
   });
+  */
 
   // ===== STRIPE CONNECT ROUTES =====
   
@@ -2534,6 +2537,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DISABLED: Cart/checkout functionality removed
+  /*
   // ===== MULTI-VENDOR CHECKOUT =====
   
   // Multi-Vendor Checkout Route
@@ -2686,6 +2691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: "Checkout failed" });
     }
   });
+  */
 
   // Spotlight routes
   app.get("/api/spotlight/active", async (req, res) => {

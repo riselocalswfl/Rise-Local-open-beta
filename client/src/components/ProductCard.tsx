@@ -1,10 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { ShoppingCart, CheckCircle, Plus, Minus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { CheckCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useCart } from "@/contexts/CartContext";
-import { useState } from "react";
 
 interface ProductCardProps {
   id: string;
@@ -32,8 +29,6 @@ export default function ProductCard({
   valueTags = [],
 }: ProductCardProps) {
   const [, setLocation] = useLocation();
-  const { addItem, openMiniCart } = useCart();
-  const [quantity, setQuantity] = useState(1);
 
   const getStockStatus = () => {
     if (inventory === 0) return { color: "destructive", text: "Out of Stock" };
@@ -43,40 +38,6 @@ export default function ProductCard({
 
   const stockStatus = getStockStatus();
 
-  const handleIncrement = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (quantity < inventory) {
-      setQuantity(quantity + 1);
-    }
-  };
-
-  const handleDecrement = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (quantity > 1) {
-      setQuantity(quantity - 1);
-    }
-  };
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    addItem({
-      id,
-      name,
-      price,
-      vendorName,
-      vendorId,
-      image,
-    }, quantity);
-    
-    // Reset quantity and open the MiniCart drawer
-    setQuantity(1);
-    openMiniCart();
-  };
-
   const handleVendorClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -85,7 +46,7 @@ export default function ProductCard({
 
   return (
     <Card className="le-card overflow-hidden group">
-      <Link href={`/products/${id}`} data-testid={`link-product-${id}`}>
+      <Link href={`/businesses/${vendorId}`} data-testid={`link-product-${id}`}>
         <div className="aspect-video overflow-hidden bg-muted rounded-t-lg">
           {image ? (
             <img
@@ -130,49 +91,13 @@ export default function ProductCard({
                 {stockStatus.text}
               </Badge>
             </div>
+            <div className="pt-2">
+              <span className="text-lg font-semibold font-mono" data-testid={`text-price-${id}`}>
+                ${(price ?? 0).toFixed(2)}
+              </span>
+            </div>
           </div>
         </CardContent>
-        <CardFooter className="p-3 pt-0 flex flex-col gap-2">
-          <div className="flex items-center justify-between w-full">
-            <span className="text-lg font-semibold font-mono" data-testid={`text-price-${id}`}>
-              ${(price ?? 0).toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 w-full">
-            <div className="flex items-center border border-border rounded-pill overflow-hidden">
-              <button
-                onClick={handleDecrement}
-                disabled={quantity <= 1 || inventory === 0}
-                className="px-2 py-1 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                data-testid={`button-decrease-qty-${id}`}
-              >
-                <Minus className="w-3 h-3" strokeWidth={1.75} />
-              </button>
-              <span className="px-3 py-1 text-sm font-medium min-w-[2rem] text-center" data-testid={`text-quantity-${id}`}>
-                {quantity}
-              </span>
-              <button
-                onClick={handleIncrement}
-                disabled={quantity >= inventory || inventory === 0}
-                className="px-2 py-1 hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-                data-testid={`button-increase-qty-${id}`}
-              >
-                <Plus className="w-3 h-3" strokeWidth={1.75} />
-              </button>
-            </div>
-            <Button
-              size="sm"
-              onClick={handleAddToCart}
-              disabled={inventory === 0}
-              className="rounded-pill flex-1"
-              style={{ background: 'var(--le-clay)' }}
-              data-testid={`button-add-to-cart-${id}`}
-            >
-              <ShoppingCart className="w-3 h-3 mr-1" strokeWidth={1.75} />
-              Add
-            </Button>
-          </div>
-        </CardFooter>
       </Link>
     </Card>
   );

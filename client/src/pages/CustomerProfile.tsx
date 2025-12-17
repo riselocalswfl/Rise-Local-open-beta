@@ -1,18 +1,16 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { Link } from "wouter";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { User, Package, Clock, MapPin, LogOut, Edit2, Save, X } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { User, LogOut, Edit2, Save, X, Store, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Order } from "@shared/schema";
 
 export default function CustomerProfile() {
   const { user, isLoading: userLoading } = useAuth();
@@ -22,10 +20,7 @@ export default function CustomerProfile() {
   const [editedLastName, setEditedLastName] = useState("");
   const [editedPhone, setEditedPhone] = useState("");
   
-  const { data: orders, isLoading: ordersLoading } = useQuery<Order[]>({
-    queryKey: ["/api/orders/me"],
-    enabled: !!user,
-  });
+  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: { firstName?: string; lastName?: string; phone?: string }) => {
@@ -101,21 +96,6 @@ export default function CustomerProfile() {
     );
   }
 
-  const userOrders = orders || [];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-500";
-      case "pending":
-        return "bg-yellow-500";
-      case "cancelled":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -125,24 +105,40 @@ export default function CustomerProfile() {
             My Account
           </h1>
           <p className="text-muted-foreground">
-            Manage your account and view orders
+            Manage your account settings
           </p>
         </div>
 
-        <Tabs defaultValue="account" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2" data-testid="tabs-profile">
-            <TabsTrigger value="account" data-testid="tab-account">
-              <User className="h-4 w-4 mr-2" />
-              Account
-            </TabsTrigger>
-            <TabsTrigger value="orders" data-testid="tab-orders">
-              <Package className="h-4 w-4 mr-2" />
-              Orders
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          {/* Business Tools Section - Only visible for vendors */}
+          {isVendor && (
+            <Card data-testid="card-business-tools" className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Store className="h-5 w-5" />
+                      Business Tools
+                    </CardTitle>
+                    <CardDescription>Manage your business profile, deals, and settings</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Link href="/dashboard">
+                  <Button variant="default" className="w-full justify-between" data-testid="button-open-dashboard">
+                    <span className="flex items-center gap-2">
+                      <Store className="h-4 w-4" />
+                      Open Vendor Dashboard
+                    </span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
 
-          <TabsContent value="account" className="space-y-6">
-            <Card data-testid="card-account-info">
+          <Card data-testid="card-account-info">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -287,69 +283,7 @@ export default function CustomerProfile() {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="orders" className="space-y-6">
-            <Card data-testid="card-order-history">
-              <CardHeader>
-                <CardTitle>Order History</CardTitle>
-                <CardDescription>View your past orders and their status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {ordersLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-24 bg-muted animate-pulse rounded" />
-                    ))}
-                  </div>
-                ) : userOrders.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No orders yet. Start shopping to see your orders here!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {userOrders.map((order) => (
-                      <div
-                        key={order.id}
-                        className="flex items-start justify-between p-4 rounded-md border hover-elevate"
-                        data-testid={`order-${order.id}`}
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <p className="font-medium" data-testid="text-order-id">
-                              Order #{order.id.substring(0, 8)}
-                            </p>
-                            <Badge className={getStatusColor(order.status)} data-testid="badge-order-status">
-                              {order.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {order.createdAt && formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}
-                            </span>
-                            {order.fulfillmentType && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3" />
-                                {order.fulfillmentType}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold font-mono" data-testid="text-order-total">
-                            ${(order.totalCents / 100).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        </div>
       </main>
     </div>
   );

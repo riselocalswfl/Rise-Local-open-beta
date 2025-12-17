@@ -3,7 +3,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, LogOut, User, ShoppingBag, Store, Heart, LayoutDashboard, Tag, Briefcase } from "lucide-react";
+import { LogIn, LogOut, User, ShoppingBag, Store, Heart, Tag } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,21 +18,12 @@ import { useState } from "react";
 const publicNavigationItems = [
   { name: "Deals", href: "/deals", icon: Tag },
   { name: "Businesses", href: "/businesses", icon: Store },
-  { name: "For Businesses", href: "/onboarding", icon: Briefcase },
 ];
 
-const buyerNavigationItems = [
+const authenticatedNavigationItems = [
   { name: "Deals", href: "/deals", icon: Tag },
   { name: "Businesses", href: "/businesses", icon: Store },
   { name: "My Account", href: "/profile", icon: User },
-  { name: "For Businesses", href: "/onboarding", icon: Briefcase },
-];
-
-const vendorNavigationItems = [
-  { name: "Deals", href: "/deals", icon: Tag },
-  { name: "Businesses", href: "/businesses", icon: Store },
-  { name: "My Account", href: "/profile", icon: User },
-  { name: "For Businesses", href: "/dashboard", icon: LayoutDashboard },
 ];
 
 export default function Header() {
@@ -40,15 +31,8 @@ export default function Header() {
   const { user, isAuthenticated } = useAuth();
   const [signInDialogOpen, setSignInDialogOpen] = useState(false);
 
-  // Determine navigation items based on user role
-  let navigationItems = publicNavigationItems;
-  if (user) {
-    if (user.role === "buyer") {
-      navigationItems = buyerNavigationItems;
-    } else if (user.role === "vendor" || user.role === "restaurant" || user.role === "service_provider") {
-      navigationItems = vendorNavigationItems;
-    }
-  }
+  // Determine navigation items based on authentication
+  const navigationItems = user ? authenticatedNavigationItems : publicNavigationItems;
 
   return (
     <>

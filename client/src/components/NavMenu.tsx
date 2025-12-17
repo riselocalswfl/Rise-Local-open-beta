@@ -1,4 +1,4 @@
-import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Wrench, Calendar, ShoppingCart, Heart, LayoutDashboard, UserCircle, MessageSquare, LogOut } from "lucide-react";
+import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Wrench, Calendar, Heart, LayoutDashboard, UserCircle, MessageSquare, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,6 @@ const publicNavigationItems = [
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Businesses", href: "/businesses", icon: Store },
-  { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "Create a Rise Local account", href: "/auth", icon: Heart },
 ];
 
@@ -32,7 +31,6 @@ const buyerNavigationItems = [
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Businesses", href: "/businesses", icon: Store },
-  { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "My Account", href: "/profile", icon: UserCircle },
 ];
