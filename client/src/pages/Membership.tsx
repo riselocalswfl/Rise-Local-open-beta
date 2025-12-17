@@ -5,12 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import AppShell from "@/components/layout/AppShell";
 
 const BENEFITS = [
-  "Unlimited access to member-only deals",
-  "BOGO offers at local restaurants",
-  "Exclusive discounts at SWFL businesses",
-  "Early access to new vendor deals",
-  "Save an average of $50+/month",
-  "Support local Fort Myers businesses",
+  "Save at local restaurants, shops & services",
+  "Exclusive members-only deals",
+  "Pays for itself with one deal",
+  "Discover great businesses near you",
 ];
 
 export default function Membership() {
@@ -44,7 +42,7 @@ export default function Membership() {
           </div>
 
           {/* Pricing Card */}
-          <Card className="mb-6">
+          <Card className="mb-8">
             <CardHeader className="text-center pb-2">
               <CardTitle className="text-lg">Rise Local Pass</CardTitle>
             </CardHeader>
@@ -53,33 +51,35 @@ export default function Membership() {
                 <span className="text-4xl font-bold text-foreground" data-testid="text-price">$4.99</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
-              <Button className="w-full mb-3" size="lg" data-testid="button-subscribe">
+              <Button className="w-full" size="lg" data-testid="button-subscribe">
                 Start Saving Today
               </Button>
-              <p className="text-xs text-muted-foreground">
-                Cancel anytime. No commitment.
-              </p>
             </CardContent>
           </Card>
 
           {/* Benefits */}
-          <div className="mb-8" id="benefits">
-            <h3 className="font-semibold text-foreground mb-4" data-testid="heading-benefits">
-              What's Included
+          <div className="mb-6" id="benefits">
+            <h3 className="font-semibold text-foreground mb-4 text-lg" data-testid="heading-benefits">
+              Why You'll Love Rise Local
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {BENEFITS.map((benefit, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 text-primary" />
+                <li key={index} className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-4 h-4 text-primary" />
                   </div>
-                  <span className="text-sm text-foreground" data-testid={`text-benefit-${index}`}>
+                  <span className="text-foreground" data-testid={`text-benefit-${index}`}>
                     {benefit}
                   </span>
                 </li>
               ))}
             </ul>
           </div>
+
+          {/* Reassurance */}
+          <p className="text-center text-sm text-muted-foreground mb-8">
+            Cancel anytime &bull; No commitment
+          </p>
 
           {/* FAQ teaser */}
           <Card className="bg-muted/50">
