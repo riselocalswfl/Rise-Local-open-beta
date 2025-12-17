@@ -10,7 +10,7 @@ interface User {
 }
 
 const PUBLIC_ROUTES = ["/auth"];
-const GATE_ROUTES = ["/start", "/onboarding"];
+const GATE_ROUTES = ["/start", "/onboarding", "/welcome"];
 
 interface AuthBoundaryProps {
   children: React.ReactNode;
