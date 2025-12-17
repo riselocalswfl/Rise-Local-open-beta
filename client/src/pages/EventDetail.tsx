@@ -93,7 +93,7 @@ export default function EventDetail() {
 
             {vendor && (
               <p className="text-sm text-muted-foreground mb-6" data-testid="text-organizer">
-                Organized by <Link href={`/vendors/${vendor.id}`} className="text-primary hover:underline">{vendor.businessName}</Link>
+                Organized by <Link href={`/businesses/${vendor.id}`} className="text-primary hover:underline">{vendor.businessName}</Link>
               </p>
             )}
           </div>

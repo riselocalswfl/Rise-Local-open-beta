@@ -27,18 +27,18 @@ export default function VendorCard({
 }: VendorCardProps) {
   return (
     <Card className="le-card transition-all duration-200">
-      <Link href={`/vendor/${id}`} data-testid={`link-vendor-${id}`}>
+      <Link href={`/businesses/${id}`} data-testid={`link-business-${id}`}>
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="w-16 h-16">
-              <AvatarImage src={avatarUrl} alt={name || "Vendor"} />
+              <AvatarImage src={avatarUrl} alt={name || "Business"} />
               <AvatarFallback className="text-xl" style={{ background: 'var(--le-green)', color: 'white' }}>
-                {name?.[0] || "V"}
+                {name?.[0] || "B"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-lg truncate" data-testid={`text-vendor-name-${id}`}>
+                <h3 className="font-semibold text-lg truncate" data-testid={`text-business-name-${id}`}>
                   {name}
                 </h3>
                 {isVerified && (
@@ -58,7 +58,7 @@ export default function VendorCard({
                   </div>
                 )}
                 {values && values.length > 0 && (
-                  <div className="flex flex-wrap gap-1" data-testid={`vendor-values-${id}`}>
+                  <div className="flex flex-wrap gap-1" data-testid={`business-values-${id}`}>
                     {values.slice(0, 4).map((value, idx) => (
                       <Badge 
                         key={idx} 

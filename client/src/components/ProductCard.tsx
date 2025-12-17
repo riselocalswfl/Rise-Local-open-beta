@@ -80,7 +80,7 @@ export default function ProductCard({
   const handleVendorClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setLocation(`/vendors/${vendorId}`);
+    setLocation(`/businesses/${vendorId}`);
   };
 
   return (

@@ -23,9 +23,8 @@ export default function Vendors() {
   };
 
   const getVendorLink = (vendor: UnifiedVendorListing) => {
-    if (vendor.vendorType === "shop") return `/vendor/${vendor.id}`;
-    if (vendor.vendorType === "dine") return `/restaurant/${vendor.id}`;
-    return `/services/${vendor.id}`;
+    // All vendor types now use unified /businesses route
+    return `/businesses/${vendor.id}`;
   };
 
   return (

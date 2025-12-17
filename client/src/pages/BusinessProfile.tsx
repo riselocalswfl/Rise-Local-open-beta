@@ -17,8 +17,8 @@ interface VendorWithDetails extends Omit<Vendor, 'contactEmail' | 'contactPhone'
 }
 
 export default function BusinessProfile() {
-  const [, params] = useRoute("/app/businesses/:vendorId");
-  const vendorId = params?.vendorId;
+  const [, params] = useRoute("/businesses/:id");
+  const vendorId = params?.id;
 
   const { data: vendor, isLoading } = useQuery<VendorWithDetails>({
     queryKey: ["/api/vendors", vendorId],
@@ -58,7 +58,7 @@ export default function BusinessProfile() {
         <DetailHeader title="Not Found" />
         <div className="px-4 py-8 text-center">
           <p className="text-muted-foreground mb-4">This business could not be found.</p>
-          <Link href="/app/businesses">
+          <Link href="/businesses">
             <Button data-testid="button-back-to-businesses">Back to Businesses</Button>
           </Link>
         </div>

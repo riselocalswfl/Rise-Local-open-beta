@@ -20,7 +20,7 @@ const publicNavigationItems = [
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "All Vendors", href: "/vendors", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "Create a Rise Local account", href: "/auth", icon: Heart },
 ];
@@ -31,7 +31,7 @@ const buyerNavigationItems = [
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "All Vendors", href: "/vendors", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "Cart", href: "/cart", icon: ShoppingCart },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "My Account", href: "/profile", icon: UserCircle },
@@ -43,7 +43,7 @@ const vendorNavigationItems = [
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "All Vendors", href: "/vendors", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
 ];
@@ -54,7 +54,7 @@ const restaurantNavigationItems = [
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
-  { name: "All Vendors", href: "/vendors", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },
   { name: "Manage Business", href: "/dashboard", icon: LayoutDashboard },
 ];

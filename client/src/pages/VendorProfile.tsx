@@ -127,7 +127,7 @@ export default function VendorProfile() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <DetailHeader title={vendor.businessName} backHref="/vendors" />
+      <DetailHeader title={vendor.businessName} backHref="/businesses" />
       <MasterProfile vendor={vendor} reviews={reviews} faqs={faqs}>
         {renderCategorySections()}
       </MasterProfile>

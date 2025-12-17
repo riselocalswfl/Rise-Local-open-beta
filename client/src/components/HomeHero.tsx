@@ -36,7 +36,7 @@ export default function HomeHero() {
               Start Selling on Rise Local
             </Link>
             <Link 
-              href="/vendors"
+              href="/businesses"
               className="w-full sm:w-auto inline-flex items-center justify-center rounded-md transition bg-primary text-white hover:bg-primary/90 py-3 px-6 no-underline font-medium shadow-sm" 
               data-testid="link-discover-businesses"
             >

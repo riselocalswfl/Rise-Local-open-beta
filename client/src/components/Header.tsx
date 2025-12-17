@@ -17,20 +17,20 @@ import { useState } from "react";
 // Navigation items configuration
 const publicNavigationItems = [
   { name: "Deals", href: "/deals", icon: Tag },
-  { name: "Businesses", href: "/vendors", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "For Businesses", href: "/onboarding", icon: Briefcase },
 ];
 
 const buyerNavigationItems = [
   { name: "Deals", href: "/deals", icon: Tag },
-  { name: "Businesses", href: "/vendors", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "My Account", href: "/profile", icon: User },
   { name: "For Businesses", href: "/onboarding", icon: Briefcase },
 ];
 
 const vendorNavigationItems = [
   { name: "Deals", href: "/deals", icon: Tag },
-  { name: "Businesses", href: "/vendors", icon: Store },
+  { name: "Businesses", href: "/businesses", icon: Store },
   { name: "My Account", href: "/profile", icon: User },
   { name: "For Businesses", href: "/dashboard", icon: LayoutDashboard },
 ];

@@ -72,19 +72,26 @@ function Router() {
       </Route>
       
       {/* Businesses - Public view of local businesses */}
-      <Route path="/app/businesses">
+      <Route path="/businesses">
         {() => (
           <AppShell>
             <Businesses />
           </AppShell>
         )}
       </Route>
-      <Route path="/app/businesses/:vendorId">
+      <Route path="/businesses/:id">
         {() => (
           <AppShell>
             <BusinessProfile />
           </AppShell>
         )}
+      </Route>
+      {/* Legacy route redirects */}
+      <Route path="/app/businesses">
+        {() => <Redirect to="/businesses" />}
+      </Route>
+      <Route path="/app/businesses/:vendorId">
+        {(params) => <Redirect to={`/businesses/${params.vendorId}`} />}
       </Route>
       
       <Route path="/membership" component={Membership} />
@@ -131,26 +138,15 @@ function Router() {
           </AppShell>
         )}
       </Route>
+      {/* Legacy vendor routes - redirect to businesses */}
       <Route path="/vendors">
-        {() => (
-          <AppShell>
-            <Vendors />
-          </AppShell>
-        )}
+        {() => <Redirect to="/businesses" />}
       </Route>
       <Route path="/vendor/:id">
-        {(params) => (
-          <AppShell>
-            <VendorProfile />
-          </AppShell>
-        )}
+        {(params) => <Redirect to={`/businesses/${params.id}`} />}
       </Route>
       <Route path="/restaurant/:id">
-        {(params) => (
-          <AppShell>
-            <RestaurantProfile />
-          </AppShell>
-        )}
+        {(params) => <Redirect to={`/businesses/${params.id}`} />}
       </Route>
       <Route path="/eat-local">
         {() => (

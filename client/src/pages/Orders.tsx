@@ -208,8 +208,8 @@ export default function Orders() {
                         <CardContent className="p-4 space-y-3">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <Link href={`/vendor/${vendorOrder.vendorId}`}>
-                                <h4 className="font-semibold hover:text-primary transition-colors" data-testid={`link-vendor-${vendorOrder.vendorId}`}>
+                              <Link href={`/businesses/${vendorOrder.vendorId}`}>
+                                <h4 className="font-semibold hover:text-primary transition-colors" data-testid={`link-business-${vendorOrder.vendorId}`}>
                                   {vendor?.businessName || 'Vendor'}
                                 </h4>
                               </Link>

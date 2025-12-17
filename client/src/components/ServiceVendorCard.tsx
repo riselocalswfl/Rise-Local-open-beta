@@ -15,7 +15,7 @@ export default function ServiceVendorCard({ vendor }: ServiceVendorCardProps) {
   const serviceAreas = serviceDetails?.serviceAreas || [];
   
   return (
-    <Link href={`/vendor/${vendor.id}`}>
+    <Link href={`/businesses/${vendor.id}`}>
       <Card 
         className="overflow-hidden hover-elevate cursor-pointer h-full flex flex-col" 
         data-testid={`service-vendor-card-${vendor.id}`}
