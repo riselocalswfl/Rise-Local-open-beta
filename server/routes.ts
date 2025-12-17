@@ -887,10 +887,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileStatus: "complete" 
       });
       
-      // Update user role
-      await storage.updateUser(userId, { role: "vendor" });
+      // Update user role AND set onboardingComplete to true
+      await storage.updateUser(userId, { 
+        role: "vendor",
+        onboardingComplete: true 
+      });
       
-      console.log("[COMPLETE] Vendor profile completed successfully");
+      console.log("[COMPLETE] Vendor profile completed successfully, onboardingComplete set to true");
       res.json({ success: true, vendor: updatedVendor });
     } catch (error) {
       console.error("[COMPLETE ERROR]", error);

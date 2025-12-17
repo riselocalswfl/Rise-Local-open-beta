@@ -133,9 +133,10 @@ export default function UnifiedOnboarding() {
       return response.json();
     },
     onSuccess: async () => {
-      // Invalidate all vendor-related caches to ensure immediate visibility across the app
+      // Invalidate all vendor-related caches AND user auth cache to ensure routing sees updated onboardingComplete
       // Await all invalidations to complete before navigating
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/vendors"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/auth/my-vendor"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/products-with-vendors"] }),
