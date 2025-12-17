@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "wouter";
 import { Compass, ChevronDown, ChevronRight, Lock, MapPin, Navigation, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import RiseLocalDealCard, { RiseLocalDeal, DealType } from "@/components/RiseLocalDealCard";
 import MembershipBanner from "@/components/MembershipBanner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import LocalSpotlight from "@/components/LocalSpotlight";
@@ -14,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { Deal, Vendor } from "@shared/schema";
 
 const FORT_MYERS_DEFAULT = { lat: 26.6406, lng: -81.8723 };
 
@@ -49,69 +52,63 @@ const FILTER_CHIPS = [
   { id: "near", label: "Near me" },
 ];
 
-const MOCK_MEMBER_EXCLUSIVES: RiseLocalDeal[] = [
-  {
-    id: 1,
-    title: "BOGO Iced Latte",
-    vendorName: "Downtown Coffee Co",
-    vendorCategory: "Cafe",
-    imageUrl: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&h=300&fit=crop",
-    savings: 8,
-    distance: "0.3 mi",
-    redemptionWindow: "Redeem today",
-    dealType: "bogo",
-    memberOnly: true,
-    isFictitious: true,
-  },
-  {
-    id: 2,
-    title: "50% Off Any Entree",
-    vendorName: "Bella Naples Pizzeria",
-    vendorCategory: "Italian",
-    imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop",
-    savings: 12,
-    distance: "0.5 mi",
-    redemptionWindow: "Redeem today",
-    dealType: "value",
-    memberOnly: true,
-    isFictitious: true,
-  },
-];
+// Helper to calculate distance in miles using Haversine formula
+function calculateDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3958.8; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
-const MOCK_BEST_VALUE: RiseLocalDeal[] = [
-  {
-    id: 6,
-    title: "Family Pizza Night Bundle",
-    vendorName: "Joe's NY Pizza",
-    vendorCategory: "Pizza",
-    imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop",
-    savings: 18,
-    distance: "0.6 mi",
-    redemptionWindow: "Redeem today",
-    dealType: "value",
-    memberOnly: false,
-    isFictitious: true,
-  },
-];
-
-const MOCK_NEW_SPOTS: RiseLocalDeal[] = [
-  {
-    id: 10,
-    title: "Grand Opening Special",
-    vendorName: "Sunrise Smoothie Bar",
-    vendorCategory: "Juice",
-    imageUrl: "https://images.unsplash.com/photo-1502741224143-90386d7f8c82?w=400&h=300&fit=crop",
-    savings: 6,
-    distance: "0.2 mi",
-    redemptionWindow: "This week only",
-    dealType: "new",
-    memberOnly: false,
-    isNew: true,
-    isFictitious: true,
-  },
-];
-
-const ALL_DEALS = [...MOCK_MEMBER_EXCLUSIVES, ...MOCK_BEST_VALUE, ...MOCK_NEW_SPOTS];
+// Transform API deal to RiseLocalDeal format
+function transformDealToRiseLocal(
+  deal: Deal & { vendor?: Vendor },
+  userLat: number,
+  userLng: number
+): RiseLocalDeal {
+  const vendorLat = deal.vendor?.latitude ? parseFloat(deal.vendor.latitude) : null;
+  const vendorLng = deal.vendor?.longitude ? parseFloat(deal.vendor.longitude) : null;
+  
+  let distanceStr = "Fort Myers";
+  if (vendorLat && vendorLng) {
+    const distMiles = calculateDistanceMiles(userLat, userLng, vendorLat, vendorLng);
+    distanceStr = `${distMiles.toFixed(1)} mi`;
+  }
+  
+  // Map deal type
+  let dealType: DealType = "value";
+  if (deal.dealType === "bogo") dealType = "bogo";
+  else if (deal.tier === "premium") dealType = "memberOnly";
+  
+  // Check if deal is new (created within last 7 days)
+  const isNew = deal.createdAt ? 
+    (Date.now() - new Date(deal.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000 : false;
+  
+  // Estimate savings based on deal type
+  let savings = 5;
+  if (deal.dealType === "bogo") savings = 10;
+  else if (deal.tier === "premium") savings = 15;
+  
+  return {
+    id: parseInt(deal.id.replace(/\D/g, '').slice(0, 8)) || Math.random() * 1000000,
+    title: deal.title,
+    vendorId: deal.vendorId,
+    vendorName: deal.vendor?.businessName || "Local Business",
+    vendorCategory: deal.category || undefined,
+    imageUrl: deal.vendor?.logoUrl || undefined,
+    savings,
+    distance: distanceStr,
+    redemptionWindow: "Redeem anytime",
+    dealType,
+    memberOnly: deal.tier === "premium",
+    isNew,
+    isFictitious: false,
+  };
+}
 
 export default function Discover() {
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -242,6 +239,39 @@ export default function Discover() {
     return user.email?.charAt(0)?.toUpperCase() || "?";
   };
 
+  // Fetch real deals from API with vendor info
+  const userCoords = location.coords || FORT_MYERS_DEFAULT;
+  const { data: dealsData, isLoading: dealsLoading } = useQuery<(Deal & { vendor?: Vendor })[]>({
+    queryKey: ["/api/deals", "with-vendors", userCoords.lat, userCoords.lng],
+    queryFn: async () => {
+      const res = await fetch(`/api/deals?lat=${userCoords.lat}&lng=${userCoords.lng}&radiusMiles=25`);
+      if (!res.ok) throw new Error("Failed to fetch deals");
+      const deals: Deal[] = await res.json();
+      
+      // Fetch vendor info for each deal
+      const dealsWithVendors = await Promise.all(
+        deals.map(async (deal) => {
+          try {
+            const vendorRes = await fetch(`/api/vendors/${deal.vendorId}`);
+            if (vendorRes.ok) {
+              const data = await vendorRes.json();
+              // API returns { vendor, deals } so extract vendor
+              return { ...deal, vendor: data.vendor };
+            }
+          } catch {}
+          return deal;
+        })
+      );
+      return dealsWithVendors;
+    },
+  });
+
+  // Transform API deals to RiseLocalDeal format
+  const allDeals = useMemo(() => {
+    if (!dealsData) return [];
+    return dealsData.map(deal => transformDealToRiseLocal(deal, userCoords.lat, userCoords.lng));
+  }, [dealsData, userCoords.lat, userCoords.lng]);
+
   const filterDeals = (deals: RiseLocalDeal[], filter: string): RiseLocalDeal[] => {
     if (filter === "all") return deals;
     if (filter === "memberOnly") return deals.filter((d) => d.memberOnly);
@@ -253,9 +283,21 @@ export default function Discover() {
     return deals;
   };
 
-  const memberExclusives = filterDeals(MOCK_MEMBER_EXCLUSIVES, selectedFilter);
-  const bestValue = filterDeals(MOCK_BEST_VALUE, selectedFilter);
-  const newSpots = filterDeals(MOCK_NEW_SPOTS, selectedFilter);
+  // Categorize deals into sections
+  const memberExclusives = useMemo(() => {
+    const filtered = allDeals.filter(d => d.memberOnly);
+    return filterDeals(filtered, selectedFilter === "memberOnly" ? "all" : selectedFilter).slice(0, 6);
+  }, [allDeals, selectedFilter]);
+
+  const bestValue = useMemo(() => {
+    const filtered = allDeals.filter(d => d.savings >= 5 && !d.memberOnly);
+    return filterDeals(filtered, selectedFilter === "value" ? "all" : selectedFilter).slice(0, 6);
+  }, [allDeals, selectedFilter]);
+
+  const newSpots = useMemo(() => {
+    const filtered = allDeals.filter(d => d.isNew);
+    return filterDeals(filtered, selectedFilter === "new" ? "all" : selectedFilter).slice(0, 6);
+  }, [allDeals, selectedFilter]);
 
   const getFilterUrl = (filter: string) => `/browse?filter=${filter}`;
 

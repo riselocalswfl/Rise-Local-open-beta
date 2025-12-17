@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, CheckCircle, XCircle, Lock, Store } from "lucide-react";
+import { MapPin, Tag, CheckCircle, XCircle, Lock, Store, ChevronRight } from "lucide-react";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ export default function DealDetailPage() {
     enabled: !!id,
   });
 
-  const { data: vendor } = useQuery<Vendor>({
+  const { data: vendorData } = useQuery<{ vendor: Vendor; deals: any[] }>({
     queryKey: ["/api/vendors", deal?.vendorId],
     queryFn: async () => {
       const res = await fetch(`/api/vendors/${deal?.vendorId}`);
@@ -52,6 +52,8 @@ export default function DealDetailPage() {
     },
     enabled: !!deal?.vendorId,
   });
+  
+  const vendor = vendorData?.vendor;
 
   const redeemMutation = useMutation({
     mutationFn: async (pin: string) => {
@@ -177,18 +179,26 @@ export default function DealDetailPage() {
             </div>
 
             {vendor && (
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">About {vendor.businessName}</h4>
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {vendor.bio || vendor.tagline || "A local Southwest Florida business."}
-                </p>
-                {vendor.city && (
-                  <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {vendor.city}, {vendor.state || "FL"}
+              <Link 
+                href={`/businesses/${vendor.id}`}
+                data-testid={`link-vendor-${vendor.id}`}
+              >
+                <div className="bg-muted/50 rounded-lg p-4 hover-elevate cursor-pointer">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold">About {vendor.businessName}</h4>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {vendor.bio || vendor.tagline || "A local Southwest Florida business."}
                   </p>
-                )}
-              </div>
+                  {vendor.city && (
+                    <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {vendor.city}, {vendor.state || "FL"}
+                    </p>
+                  )}
+                </div>
+              </Link>
             )}
 
             <Button

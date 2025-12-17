@@ -20,10 +20,17 @@ export default function BusinessProfile() {
   const [, params] = useRoute("/businesses/:id");
   const vendorId = params?.id;
 
-  const { data: vendor, isLoading } = useQuery<VendorWithDetails>({
-    queryKey: [`/api/vendors/${vendorId}`],
+  const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails; deals: any[] }>({
+    queryKey: ["/api/vendors", vendorId],
+    queryFn: async () => {
+      const res = await fetch(`/api/vendors/${vendorId}`);
+      if (!res.ok) throw new Error("Failed to fetch vendor");
+      return res.json();
+    },
     enabled: !!vendorId,
   });
+  
+  const vendor = vendorData?.vendor;
 
   const { data: products } = useQuery<Product[]>({
     queryKey: [`/api/vendors/${vendorId}/products`],

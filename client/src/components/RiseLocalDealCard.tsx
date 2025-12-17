@@ -9,6 +9,7 @@ export type DealType = "memberOnly" | "free" | "bogo" | "value" | "new";
 export interface RiseLocalDeal {
   id: number;
   title: string;
+  vendorId: string;
   vendorName: string;
   vendorCategory?: string;
   imageUrl?: string;
