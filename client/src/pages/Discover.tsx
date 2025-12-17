@@ -1,12 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { Compass, ChevronDown, ChevronRight, Lock } from "lucide-react";
+import { Compass, ChevronDown, ChevronRight, Lock, MapPin, Navigation, Loader2 } from "lucide-react";
 import RiseLocalDealCard, { RiseLocalDeal, DealType } from "@/components/RiseLocalDealCard";
 import MembershipBanner from "@/components/MembershipBanner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import LocalSpotlight from "@/components/LocalSpotlight";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const FORT_MYERS_DEFAULT = { lat: 26.6406, lng: -81.8723 };
+
+type LocationOption = {
+  id: string;
+  label: string;
+  coords?: { lat: number; lng: number };
+  isGPS?: boolean;
+};
+
+const LOCATION_OPTIONS: LocationOption[] = [
+  { id: "current", label: "Use My Location", isGPS: true },
+  { id: "fort-myers", label: "Fort Myers", coords: { lat: 26.6406, lng: -81.8723 } },
+  { id: "cape-coral", label: "Cape Coral", coords: { lat: 26.5629, lng: -81.9495 } },
+  { id: "bonita-springs", label: "Bonita Springs", coords: { lat: 26.3398, lng: -81.7787 } },
+  { id: "estero", label: "Estero", coords: { lat: 26.4384, lng: -81.8067 } },
+  { id: "naples", label: "Naples", coords: { lat: 26.1420, lng: -81.7948 } },
+];
+
+type LocationState = {
+  status: "idle" | "requesting" | "granted";
+  coords: { lat: number; lng: number } | null;
+  displayName: string;
+};
 
 const FILTER_CHIPS = [
   { id: "all", label: "All Deals" },
@@ -86,6 +117,120 @@ export default function Discover() {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [userMembershipStatus] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [location, setLocation] = useState<LocationState>({
+    status: "idle",
+    coords: FORT_MYERS_DEFAULT,
+    displayName: "Fort Myers",
+  });
+  const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (locationTimeoutRef.current) {
+        clearTimeout(locationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Request GPS location
+  const requestGPSLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Location unavailable",
+        description: "Using Fort Myers as default location.",
+      });
+      return;
+    }
+
+    setLocation(prev => ({ ...prev, status: "requesting" }));
+
+    // Fallback timeout - 5 seconds
+    locationTimeoutRef.current = setTimeout(() => {
+      setLocation(prev => {
+        if (prev.status === "requesting") {
+          toast({
+            title: "Using Fort Myers area",
+            description: "Couldn't get your exact location.",
+          });
+          return {
+            status: "granted",
+            coords: FORT_MYERS_DEFAULT,
+            displayName: "Fort Myers",
+          };
+        }
+        return prev;
+      });
+    }, 5000);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (locationTimeoutRef.current) {
+          clearTimeout(locationTimeoutRef.current);
+          locationTimeoutRef.current = null;
+        }
+        setLocation({
+          status: "granted",
+          coords: {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          },
+          displayName: "Current Location",
+        });
+        toast({
+          title: "Location found",
+          description: "Showing deals near you",
+        });
+      },
+      (error) => {
+        if (locationTimeoutRef.current) {
+          clearTimeout(locationTimeoutRef.current);
+          locationTimeoutRef.current = null;
+        }
+        setLocation({
+          status: "granted",
+          coords: FORT_MYERS_DEFAULT,
+          displayName: "Fort Myers",
+        });
+        toast({
+          title: "Using Fort Myers area",
+          description: error.code === 1 
+            ? "Location access denied." 
+            : "Couldn't get your location.",
+        });
+      },
+      { timeout: 5000, maximumAge: 300000 }
+    );
+  };
+
+  // Handle location selection from dropdown
+  const handleLocationSelect = (optionId: string) => {
+    if (optionId === "current") {
+      requestGPSLocation();
+    } else {
+      const option = LOCATION_OPTIONS.find(o => o.id === optionId);
+      if (option && option.coords) {
+        setLocation({
+          status: "granted",
+          coords: option.coords,
+          displayName: option.label,
+        });
+        toast({
+          title: `Location set to ${option.label}`,
+          description: "Showing nearby deals",
+        });
+      }
+    }
+  };
+
+  // Handle Near Me filter chip click
+  const handleNearMeFilter = () => {
+    if (location.status !== "granted" || location.displayName !== "Current Location") {
+      requestGPSLocation();
+    }
+    setSelectedFilter("near");
+  };
 
   // Generate user initials from first and last name
   const getUserInitials = () => {
@@ -120,17 +265,40 @@ export default function Discover() {
       <header className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2">
-            <Compass className="w-5 h-5 text-primary" />
-            <button
-              className="flex items-center gap-1 text-sm font-medium"
-              data-testid="button-location"
-            >
-              <span className="text-foreground">Fort Myers</span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <button className="text-xs text-primary ml-1" data-testid="link-change-location">
-              Change
-            </button>
+            {location.status === "requesting" ? (
+              <Loader2 className="w-5 h-5 text-primary animate-spin" />
+            ) : (
+              <MapPin className="w-5 h-5 text-primary" />
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-1 text-sm font-medium"
+                  data-testid="button-location"
+                >
+                  <span className="text-foreground">
+                    {location.status === "requesting" ? "Getting location..." : location.displayName}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {LOCATION_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.id}
+                    onClick={() => handleLocationSelect(option.id)}
+                    data-testid={`menu-item-location-${option.id}`}
+                  >
+                    {option.isGPS ? (
+                      <Navigation className="w-4 h-4 mr-2" />
+                    ) : (
+                      <MapPin className="w-4 h-4 mr-2" />
+                    )}
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <Link href="/profile" data-testid="link-user-profile">
             <Avatar className="w-8 h-8 cursor-pointer hover-elevate">
@@ -149,10 +317,11 @@ export default function Discover() {
           <div className="flex gap-2 px-4 py-3">
             {FILTER_CHIPS.map((chip) => {
               const Icon = chip.icon;
+              const isNearMe = chip.id === "near";
               return (
                 <button
                   key={chip.id}
-                  onClick={() => setSelectedFilter(chip.id)}
+                  onClick={() => isNearMe ? handleNearMeFilter() : setSelectedFilter(chip.id)}
                   className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     selectedFilter === chip.id
                       ? "bg-foreground text-background"
@@ -160,7 +329,8 @@ export default function Discover() {
                   }`}
                   data-testid={`pill-filter-${chip.id}`}
                 >
-                  {Icon && <Icon className="w-3 h-3" />}
+                  {isNearMe && <Navigation className="w-3 h-3" />}
+                  {Icon && !isNearMe && <Icon className="w-3 h-3" />}
                   {chip.label}
                 </button>
               );
