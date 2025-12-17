@@ -352,6 +352,25 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  async getVendorWithDeals(vendorId: string): Promise<{ vendor: Vendor; deals: Deal[] } | null> {
+    const vendorResult = await db.select().from(vendors).where(eq(vendors.id, vendorId));
+    if (vendorResult.length === 0) return null;
+
+    const vendor = vendorResult[0];
+
+    // Get active deals for this vendor
+    const vendorDeals = await db
+      .select()
+      .from(deals)
+      .where(and(
+        eq(deals.vendorId, vendorId),
+        eq(deals.isActive, true)
+      ))
+      .orderBy(desc(deals.createdAt));
+
+    return { vendor, deals: vendorDeals };
+  }
+
   async getVendors(): Promise<Vendor[]> {
     return await db.select().from(vendors);
   }

@@ -30,7 +30,9 @@ import {
   insertPlacementImpressionSchema,
   insertPlacementClickSchema,
   fulfillmentOptionsSchema,
-  type FulfillmentOptions
+  updateVendorProfileSchema,
+  type FulfillmentOptions,
+  type VendorDeal
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -700,6 +702,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============================================================================
   // Draft Vendor Profile Routes (Auto-save Support)
+  // ===== VENDOR PROFILE SELF-SERVICE ENDPOINTS =====
+  // NOTE: These MUST be defined BEFORE /api/vendors/:id to avoid route conflicts
+  
+  // GET /api/vendors/me - Get current vendor's profile with deals
+  app.get("/api/vendors/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendor = await storage.getVendorByOwnerId(userId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+
+      // Get deals for this vendor
+      const result = await storage.getVendorWithDeals(vendor.id);
+      if (!result) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+
+      // Map deals to VendorDeal type
+      const vendorDeals: VendorDeal[] = result.deals.map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        description: deal.description,
+        dealType: deal.dealType,
+        tier: deal.tier,
+        category: deal.category,
+        isActive: deal.isActive,
+      }));
+
+      res.json({
+        vendor: result.vendor,
+        deals: vendorDeals,
+      });
+    } catch (error) {
+      console.error("[GET /api/vendors/me] Error:", error);
+      res.status(500).json({ error: "Failed to fetch vendor profile" });
+    }
+  });
+
+  // PATCH /api/vendors/me - Update current vendor's profile
+  app.patch("/api/vendors/me", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const vendor = await storage.getVendorByOwnerId(userId);
+      
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor profile not found" });
+      }
+
+      // Validate request body with strict schema
+      const parsed = updateVendorProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ 
+          error: "Invalid profile data",
+          details: parsed.error.errors 
+        });
+      }
+
+      const updateData = parsed.data;
+
+      // If address is being updated, geocode it
+      if (updateData.address || updateData.city || updateData.zipCode) {
+        const fullAddress = buildFullAddress(
+          updateData.address || vendor.address || "",
+          updateData.city || vendor.city,
+          updateData.state || vendor.state,
+          updateData.zipCode || vendor.zipCode
+        );
+        
+        const coordinates = await geocodeAddress(fullAddress);
+        if (coordinates) {
+          (updateData as any).latitude = coordinates.latitude;
+          (updateData as any).longitude = coordinates.longitude;
+        }
+      }
+
+      const updatedVendor = await storage.updateVendor(vendor.id, updateData);
+      
+      console.log("[PATCH /api/vendors/me] Profile updated for userId:", userId);
+      res.json({ success: true, vendor: updatedVendor });
+    } catch (error) {
+      console.error("[PATCH /api/vendors/me] Error:", error);
+      res.status(500).json({ error: "Failed to update vendor profile" });
+    }
+  });
+
   // NOTE: These MUST be defined BEFORE /api/vendors/:id to avoid route conflicts
   // ============================================================================
 
@@ -842,14 +931,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/vendors/:id - Public vendor profile with deals
   app.get("/api/vendors/:id", async (req, res) => {
     try {
-      const vendor = await storage.getVendor(req.params.id);
-      if (!vendor) {
+      const result = await storage.getVendorWithDeals(req.params.id);
+      if (!result) {
         return res.status(404).json({ error: "Vendor not found" });
       }
-      res.json(vendor);
+
+      // Map deals to VendorDeal type
+      const vendorDeals: VendorDeal[] = result.deals.map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        description: deal.description,
+        dealType: deal.dealType,
+        tier: deal.tier,
+        category: deal.category,
+        isActive: deal.isActive,
+      }));
+
+      res.json({
+        vendor: result.vendor,
+        deals: vendorDeals,
+      });
     } catch (error) {
+      console.error("[GET /api/vendors/:id] Error:", error);
       res.status(500).json({ error: "Failed to fetch vendor" });
     }
   });

@@ -191,6 +191,8 @@ export const vendors = pgTable("vendors", {
   instagram: text("instagram"),
   tiktok: text("tiktok"),
   facebook: text("facebook"),
+  youtube: text("youtube"),
+  twitter: text("twitter"),
   
   // Location & Service
   locationType: text("location_type").notNull(), // Physical storefront, Home-based, Pop-up/Market only
@@ -245,7 +247,9 @@ export const vendors = pgTable("vendors", {
   // Legacy restaurant-specific fields (kept for backward compatibility, will be migrated to restaurantDetails)
   restaurantSources: text("restaurant_sources"), // sources locally from
   localMenuPercent: integer("local_menu_percent"), // % of menu sourced locally
-  menuUrl: text("menu_url"),
+  menuUrl: text("menu_url"), // Link to external menu (ToastTab, website, PDF link)
+  menuFileUrl: text("menu_file_url"), // Uploaded menu file URL (PDF/image)
+  menuType: text("menu_type"), // "link" | "file" | null - determines which menu option is used
   
   // Migration tracking
   legacySourceTable: text("legacy_source_table"), // tracks which table data came from: "vendors", "restaurants", or "serviceProviders"
@@ -1209,3 +1213,124 @@ export const insertPlacementClickSchema = createInsertSchema(placementClicks).om
 
 export type InsertPlacementClick = z.infer<typeof insertPlacementClickSchema>;
 export type PlacementClick = typeof placementClicks.$inferSelect;
+
+// ===== VENDOR PROFILE API TYPES =====
+
+// Deal type for vendor profile responses
+export type VendorDeal = {
+  id: string;
+  title: string;
+  description: string;
+  dealType: string;
+  tier: string;
+  category: string | null;
+  isActive: boolean;
+};
+
+// Vendor profile with all public fields
+export type VendorProfile = {
+  id: string;
+  vendorType: string;
+  businessName: string;
+  displayName: string | null;
+  tagline: string | null;
+  bio: string;
+  
+  // Images
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  heroImageUrl: string | null;
+  gallery: string[];
+  
+  // Contact
+  contactEmail: string | null;
+  phone: string | null;
+  
+  // Social/Online
+  website: string | null;
+  instagram: string | null;
+  tiktok: string | null;
+  facebook: string | null;
+  youtube: string | null;
+  twitter: string | null;
+  
+  // Location
+  address: string | null;
+  city: string;
+  state: string;
+  zipCode: string;
+  latitude: string | null;
+  longitude: string | null;
+  
+  // Business details
+  hours: unknown;
+  locationType: string;
+  serviceOptions: string[];
+  
+  // Menu (for dine vendors)
+  menuUrl: string | null;
+  menuFileUrl: string | null;
+  menuType: string | null;
+  
+  // Trust signals
+  values: string[];
+  badges: string[];
+  isVerified: boolean;
+  followerCount: number;
+};
+
+// Full vendor profile response including deals
+export type VendorProfileResponse = {
+  vendor: VendorProfile;
+  deals: VendorDeal[];
+};
+
+// Zod schema for PATCH /api/vendors/me validation
+export const updateVendorProfileSchema = z.object({
+  // Business info
+  businessName: z.string().min(1).optional(),
+  displayName: z.string().nullable().optional(),
+  tagline: z.string().nullable().optional(),
+  bio: z.string().min(1).optional(),
+  
+  // Images (stored as URLs)
+  logoUrl: z.string().url().nullable().optional(),
+  bannerUrl: z.string().url().nullable().optional(),
+  heroImageUrl: z.string().url().nullable().optional(),
+  gallery: z.array(z.string().url()).optional(),
+  
+  // Contact
+  contactEmail: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  
+  // Social links
+  website: z.string().url().nullable().optional(),
+  instagram: z.string().nullable().optional(),
+  tiktok: z.string().nullable().optional(),
+  facebook: z.string().nullable().optional(),
+  youtube: z.string().nullable().optional(),
+  twitter: z.string().nullable().optional(),
+  
+  // Address
+  address: z.string().nullable().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  
+  // Hours
+  hours: z.record(z.object({
+    open: z.string().optional(),
+    close: z.string().optional(),
+    closed: z.boolean().optional(),
+  })).nullable().optional(),
+  
+  // Menu options
+  menuUrl: z.string().url().nullable().optional(),
+  menuFileUrl: z.string().url().nullable().optional(),
+  menuType: z.enum(["link", "file"]).nullable().optional(),
+  
+  // Values/badges
+  values: z.array(z.string()).optional(),
+}).strict();
+
+export type UpdateVendorProfile = z.infer<typeof updateVendorProfileSchema>;

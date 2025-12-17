@@ -1,0 +1,188 @@
+You are working inside my existing Rise Local codebase (Express + TypeScript + Drizzle + Postgres + Replit Auth/Passport).
+
+Goal: Extend the existing business/vendor profile backend so businesses can set:
+
+profilePicture (logo/avatar)
+
+bannerImage
+
+businessName (or displayName)
+
+contact info (email, phone)
+
+social links (instagram, facebook, tiktok, youtube, etc.)
+
+website
+
+address (structured)
+
+hours (structured per day)
+
+menus option (file upload or link(s))
+And their deals should be listed on their profile.
+
+Critical: Keep all existing business/vendor info and tables. Do NOT delete or replace current columns/routes. Only add what’s missing. Update onboarding/profile setup so the fields above are captured and reflected consistently.
+
+0) Inspect first, then plan
+
+Scan the repo and identify:
+
+DB schema files (Drizzle tables) and existing business/vendor tables and columns
+
+Existing “deals” table and its relationship (vendorId/businessId)
+
+Existing onboarding flow logic (user.role, onboardingComplete, any onboarding routes)
+
+Existing file/image storage approach (if any): upload endpoints, S3/Cloudinary, or storing URLs
+
+Output a short “Current State” summary with file paths + table/column names.
+
+1) Data model changes (additive only)
+
+Do NOT remove existing fields. Extend the existing business/vendor table if it exists; otherwise add a new vendor_profiles table linked to the existing business/vendor record.
+
+Add fields (or equivalents) to support:
+
+Images (stored as URLs):
+
+profileImageUrl (text)
+
+bannerImageUrl (text)
+
+Contact:
+
+contactEmail (text)
+
+contactPhone (text)
+
+Links:
+
+websiteUrl (text)
+
+socialLinks (jsonb) // key-value map like { instagram: "", facebook: "", tiktok: "" }
+
+Address:
+
+addressLine1 (text)
+
+addressLine2 (text, nullable)
+
+city (text)
+
+state (text)
+
+zip (text)
+
+lat (numeric, nullable)
+
+lng (numeric, nullable)
+
+Hours:
+
+hours (jsonb) // structure: { mon: { open:"09:00", close:"17:00", closed:false }, ... }
+
+Menus:
+Support both options:
+
+menuUrl (text, nullable) for a link (ToastTab, PDF link, website menu page)
+
+menuFileUrl (text, nullable) if we support uploaded PDFs/images later
+
+menuType enum/text (“link” | “file” | null)
+
+Deals relationship:
+
+Ensure deals table has vendorId/businessId foreign key.
+
+If it doesn’t, add it additively and backfill safely.
+
+Create migrations using the repo’s existing Drizzle migration workflow. Add indexes where useful (vendorId/userId, city, etc.).
+
+2) API endpoints
+
+Implement endpoints using existing backend patterns and auth.
+
+Public vendor profile read (includes deals)
+
+GET /api/vendors/:id
+Return:
+
+vendor profile fields (including new ones)
+
+a deals array of active deals for that vendor (sorted newest first)
+
+if “menus” exists, return menu link/file fields
+
+Authenticated vendor self endpoints (for onboarding + edits)
+
+GET /api/vendors/me (requires auth)
+
+PATCH /api/vendors/me (requires auth)
+
+allow updating ONLY safe fields listed above + existing safe fields
+
+block ownership/role/userId changes
+
+Onboarding completion
+
+Ensure onboarding flow sets user.onboardingComplete = true only after required profile fields exist.
+
+Define required minimum fields:
+
+businessName
+
+at least one contact method (email or phone)
+
+city/state (or zip)
+
+profileImageUrl optional (but supported)
+If the app already has an onboarding controller, integrate into it; do not create a parallel system.
+
+3) Validation + types
+
+Add Zod (or existing validator in repo) schemas for PATCH payloads.
+
+Return consistent error shapes with existing style.
+
+Export TypeScript types for:
+
+VendorProfile
+
+VendorDeal
+
+VendorProfileResponse (profile + deals)
+
+4) File/image handling (don’t overbuild)
+
+If the app already has uploads: reuse it.
+If not, keep it simple:
+
+Store image URLs in DB
+
+Provide a placeholder path for future uploads
+
+Do NOT add a new storage provider unless absolutely necessary
+
+If you add an upload endpoint, keep it minimal and aligned with existing auth.
+
+5) Update onboarding + profile setup UI contracts
+
+Without fully redesigning UI, ensure backend supports the onboarding/profile setup screens:
+
+a single “Save Profile” action that calls PATCH /api/vendors/me
+
+the vendor profile page calls GET /api/vendors/:id and displays deals + menu + social + hours
+
+Provide:
+
+Exact changed/new files with paths
+
+Example request/response JSON for each endpoint
+
+Example frontend fetch calls (TypeScript) for:
+
+updating profile
+
+loading public vendor profile (with deals)
+
+Start by scanning the codebase and summarizing what exists, then implement.
