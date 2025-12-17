@@ -1,0 +1,55 @@
+You are working inside my existing Rise Local codebase (React + TypeScript + Tailwind + shadcn/ui, wouter routing).
+
+Goal: Update the Rise Local Pass paywall/pricing screen to a more conversion-optimized, mobile-first “What’s Included” section using the exact copy below, and ensure spacing/typography looks great on small screens.
+
+1) Find the correct screen/component
+
+Locate the page/component where the Rise Local Pass pricing is shown (the screen that currently has a “What’s Included” list).
+
+Identify the exact file path(s) and show me where you found it.
+
+2) Replace the existing “What’s Included” block with this version
+
+Section heading (replace the old heading):
+Why You’ll Love Rise Local
+
+Bullets (exact wording):
+
+Save at local restaurants, shops & services
+
+Exclusive members-only deals
+
+Pays for itself with one deal
+
+Discover great businesses near you
+
+Reassurance line (place under the list and above the CTA, or directly under the CTA if that’s the current layout):
+Cancel anytime • No commitment
+
+3) Mobile-first UI requirements
+
+Keep the list extremely scannable: 4 bullets only.
+
+Use a clean icon style (either checkmarks or simple icons), but keep it consistent with the rest of the app.
+
+Make sure line length fits on mobile (avoid wrapping where possible).
+
+Add comfortable spacing: clear separation between heading, bullets, reassurance line, and the subscribe button.
+
+Do not change the price, payment logic, or any subscription wiring.
+
+4) Implementation details
+
+Use existing design system components (shadcn/ui) and Tailwind utilities already used in the project.
+
+Keep styles consistent with the Rise Local brand (simple, premium, not “coupon-y”).
+
+Make the section reusable if possible (optional): extract into a small component like PassBenefits.tsx if that matches existing patterns.
+
+5) Output
+
+Show me the exact diff/changed files.
+
+Confirm the screen renders correctly on common mobile widths (e.g., 390px iPhone width) without overflow.
+
+Proceed by locating the current screen, then implement the changes.
