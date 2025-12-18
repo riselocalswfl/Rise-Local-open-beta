@@ -1010,6 +1010,47 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 
+// B2C Conversations - Consumer to Business messaging
+export const SENDER_ROLES = ["consumer", "vendor"] as const;
+export type SenderRole = typeof SENDER_ROLES[number];
+
+export const conversations = pgTable("conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consumerId: varchar("consumer_id").notNull().references(() => users.id),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  dealId: varchar("deal_id").references(() => deals.id), // Optional context
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  lastMessageAt: true,
+  createdAt: true,
+});
+
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+
+// B2C Conversation Messages
+export const conversationMessages = pgTable("conversation_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => conversations.id),
+  senderId: varchar("sender_id").notNull().references(() => users.id),
+  senderRole: text("sender_role").notNull(), // "consumer" | "vendor"
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
+export type ConversationMessage = typeof conversationMessages.$inferSelect;
+
 // Deal claim status enum values
 export const DEAL_CLAIM_STATUSES = ["CLAIMED", "REDEEMED", "EXPIRED"] as const;
 export type DealClaimStatus = typeof DEAL_CLAIM_STATUSES[number];
