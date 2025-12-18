@@ -50,16 +50,14 @@ export default function Header() {
               const isActive = location === item.href;
               
               return (
-                <Link key={item.href} href={item.href}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`gap-2 ${isActive ? "bg-accent text-accent-foreground" : ""}`}
-                    data-testid={`link-nav-${item.name.toLowerCase().replace(/ /g, "-")}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.name}</span>
-                  </Button>
+                <Link 
+                  key={item.href} 
+                  href={item.href}
+                  className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground min-h-8 px-3 py-2 ${isActive ? "bg-accent text-accent-foreground" : ""}`}
+                  data-testid={`link-nav-${item.name.toLowerCase().replace(/ /g, "-")}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.name}</span>
                 </Link>
               );
             })}
@@ -123,15 +121,14 @@ export default function Header() {
                         </Button>
                       </a>
                       <div className="pt-3 border-t">
-                        <Link href="/auth">
-                          <BrandButton 
-                            className="w-full"
-                            onClick={() => setSignInDialogOpen(false)}
-                            data-testid="button-join-movement"
-                          >
-                            <Heart className="h-4 w-4 mr-2" />
-                            Create a Rise Local account
-                          </BrandButton>
+                        <Link 
+                          href="/auth" 
+                          onClick={() => setSignInDialogOpen(false)}
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 min-h-9 px-4 py-2 w-full"
+                          data-testid="button-join-movement"
+                        >
+                          <Heart className="h-4 w-4" />
+                          Create a Rise Local account
                         </Link>
                       </div>
                     </div>
@@ -186,14 +183,13 @@ export default function Header() {
                         </Button>
                       </a>
                       <div className="pt-3 border-t">
-                        <Link href="/auth">
-                          <BrandButton 
-                            className="w-full"
-                            onClick={() => setSignInDialogOpen(false)}
-                          >
-                            <Heart className="h-4 w-4 mr-2" />
-                            Create a Rise Local account
-                          </BrandButton>
+                        <Link 
+                          href="/auth" 
+                          onClick={() => setSignInDialogOpen(false)}
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 min-h-9 px-4 py-2 w-full"
+                        >
+                          <Heart className="h-4 w-4" />
+                          Create a Rise Local account
                         </Link>
                       </div>
                     </div>

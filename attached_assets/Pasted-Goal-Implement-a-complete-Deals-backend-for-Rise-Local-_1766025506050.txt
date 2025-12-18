@@ -1,0 +1,148 @@
+Goal: Implement a complete Deals backend for Rise Local that powers the Discover screen and individual deal pages. Must support: deal listing, deal detail, redemption tracking, expiration, location filtering (Fort Myers etc.), “free vs pass-locked” deals, and graceful handling when a deal is missing/expired.
+
+Requirements / Context
+	•	Backend: Express.js + TypeScript
+	•	ORM: Drizzle
+	•	DB: PostgreSQL (Neon)
+	•	Auth: useAuth() + users table role + onboardingComplete
+	•	Roles: buyer, vendor, restaurant, service_provider, admin
+	•	App has routes like /discover and /deals/:id
+	•	Current issue: navigating to /deals/46286642 shows Deal Not Found
+
+1) Database Schema (Drizzle)
+
+Create/extend these tables:
+
+vendors (if not already)
+	•	id (uuid pk)
+	•	userId (fk users.id)
+	•	name
+	•	category (food_drink, services, retail, etc.)
+	•	profileImageUrl
+	•	bannerUrl
+	•	address, city, state, zip
+	•	lat (double precision)
+	•	lng (double precision)
+	•	isActive boolean default true
+
+deals
+	•	id uuid pk (IMPORTANT: do not use random numeric ids in URLs unless you truly generate them)
+	•	vendorId fk vendors.id
+	•	title (ex: “20% Off First Purchase”)
+	•	description
+	•	finePrint (optional)
+	•	category (food_drink / services / retail)
+	•	imageUrl (optional)
+	•	savingsAmount integer nullable (ex: 5 = “Save $5”)
+	•	discountType enum: PERCENT, AMOUNT, BOGO, OTHER
+	•	discountValue numeric nullable
+	•	isFree boolean default false (free deal shown to everyone)
+	•	isPassLocked boolean default true (locked unless subscribed)
+	•	startsAt timestamp nullable
+	•	endsAt timestamp nullable
+	•	isActive boolean default true
+	•	deletedAt timestamp nullable (soft delete)
+	•	createdAt, updatedAt
+
+Indexes:
+	•	index on vendorId
+	•	index on isActive, deletedAt
+	•	index on endsAt
+
+deal_redemptions
+	•	id uuid pk
+	•	dealId fk deals.id
+	•	userId fk users.id
+	•	redeemedAt timestamp default now()
+	•	status enum: REDEEMED, VOIDED
+	•	Optional: unique(dealId, userId, date_trunc('day', redeemedAt)) if you want “once per day”
+
+2) Deal “Visibility Rules”
+
+A deal is visible if:
+	•	deals.isActive = true
+	•	deals.deletedAt IS NULL
+	•	If startsAt exists, now >= startsAt
+	•	If endsAt exists, now <= endsAt
+Otherwise it should not 404 silently — return a response that lets the frontend show:
+	•	“This deal expired” OR “This deal was removed”
+
+3) API Endpoints
+
+Create these routes under server/routes/deals.ts and register them.
+
+Public / Consumer
+	1.	GET /api/deals
+Query params:
+
+	•	city=Fort%20Myers
+	•	category=services|food_drink|retail
+	•	minSavings=5
+	•	sort=best_value|newest|nearest
+	•	page, limit
+
+Return each deal with:
+	•	deal fields
+	•	vendor snapshot: vendorName, vendorId, profileImageUrl, distanceMiles (if lat/lng provided)
+	•	computed: isExpired, isLocked (based on user subscription)
+	•	redeemAnytime boolean if no endsAt
+
+	2.	GET /api/deals/:id
+Return:
+
+	•	If not found: { code: "NOT_FOUND" }
+	•	If expired: { code: "EXPIRED" }
+	•	If removed: { code: "REMOVED" }
+	•	If found: full deal + vendor data + lock info
+
+Redemption (requires auth)
+	3.	POST /api/deals/:id/redeem
+Body:
+
+	•	optional: clientTimestamp
+Behavior:
+	•	Verify deal is valid/active/not expired
+	•	Verify user can redeem (subscription if locked)
+	•	Insert redemption record
+	•	Return { success: true, redeemedAt }
+
+Vendor (requires vendor role)
+	4.	GET /api/vendor/deals
+Lists only deals for the logged-in vendor’s vendorId
+	5.	POST /api/vendor/deals
+Create deal (validate fields)
+	6.	PATCH /api/vendor/deals/:id
+Update deal (only if owned by vendor)
+	7.	DELETE /api/vendor/deals/:id
+Soft delete: set deletedAt + isActive false
+
+4) Subscription / Pass Check
+
+If we already have subscriptions:
+	•	Add helper isUserSubscribed(userId) or use existing stripe/subscription table.
+	•	If not implemented yet, stub it:
+	•	return false unless user.role === 'admin'
+So you can wire it now and improve later.
+
+5) Fix the “Deal Not Found” bug
+
+Implement these protections:
+	•	The :id route must accept uuid (recommended).
+	•	If your frontend is generating numeric IDs (like 46286642), stop — use the DB deals.id uuid.
+	•	Ensure the Discover cards link uses the real deal.id returned from /api/deals.
+	•	Add logging in GET /api/deals/:id to print id + query result.
+	•	If deal exists but expired/removed, return the correct code instead of generic 404.
+
+6) Frontend Integration Notes (TanStack Query)
+	•	Discover page uses useQuery(['deals', filters], fetch /api/deals?... )
+	•	Deal detail uses useQuery(['deal', id], fetch /api/deals/:id)
+	•	If response is {code:"EXPIRED"} show the “expired” screen with buttons back to Deals/Home.
+
+Deliverables
+	•	Drizzle schema + migration
+	•	Route file(s) with all endpoints above
+	•	Any required helper middleware for auth + role guard
+	•	Update server route registration
+	•	Seed script to create 3 vendors + 8 deals so UI instantly works
+
+Proceed to implement now in the codebase.

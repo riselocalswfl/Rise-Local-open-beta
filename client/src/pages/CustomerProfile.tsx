@@ -125,14 +125,16 @@ export default function CustomerProfile() {
                 </div>
               </CardHeader>
               <CardContent>
-                <Link href="/dashboard">
-                  <Button variant="default" className="w-full justify-between" data-testid="button-open-dashboard">
-                    <span className="flex items-center gap-2">
-                      <Store className="h-4 w-4" />
-                      Open Vendor Dashboard
-                    </span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                <Link 
+                  href="/dashboard"
+                  className="inline-flex items-center justify-between gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 min-h-9 px-4 py-2 w-full"
+                  data-testid="button-open-dashboard"
+                >
+                  <span className="flex items-center gap-2">
+                    <Store className="h-4 w-4" />
+                    Open Vendor Dashboard
+                  </span>
+                  <ChevronRight className="h-4 w-4" />
                 </Link>
               </CardContent>
             </Card>
