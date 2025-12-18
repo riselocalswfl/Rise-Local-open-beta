@@ -23,9 +23,13 @@ import {
   type Reservation, type InsertReservation,
   type Restaurant,
   type FulfillmentDetails,
+  type Conversation, type InsertConversation,
+  type ConversationMessage, type InsertConversationMessage,
+  type SenderRole,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions, dealClaims,
   restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
+  conversations, conversationMessages,
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
@@ -200,7 +204,7 @@ export interface IStorage {
   updateServiceBooking(id: string, data: Partial<InsertServiceBooking>): Promise<void>;
   updateBookingStatus(id: string, status: string): Promise<void>;
 
-  // Message operations
+  // Message operations (legacy direct messaging)
   createMessage(message: InsertMessage): Promise<Message>;
   getConversations(userId: string): Promise<Array<{
     otherUserId: string;
@@ -213,6 +217,29 @@ export interface IStorage {
   getMessages(userId: string, otherUserId: string): Promise<Message[]>;
   markMessagesAsRead(userId: string, senderId: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
+
+  // B2C Conversation operations
+  getOrCreateConversation(consumerId: string, vendorId: string, dealId?: string): Promise<Conversation>;
+  getConversation(conversationId: string): Promise<Conversation | undefined>;
+  getB2CConversationsForConsumer(consumerId: string): Promise<Array<{
+    conversation: Conversation;
+    vendorName: string;
+    vendorLogoUrl: string | null;
+    lastMessage: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }>>;
+  getB2CConversationsForVendor(vendorId: string): Promise<Array<{
+    conversation: Conversation;
+    consumerName: string;
+    lastMessage: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }>>;
+  getConversationMessages(conversationId: string): Promise<ConversationMessage[]>;
+  createConversationMessage(message: InsertConversationMessage): Promise<ConversationMessage>;
+  markConversationMessagesAsRead(conversationId: string, recipientId: string): Promise<void>;
+  getUnreadB2CMessageCount(userId: string, role: 'consumer' | 'vendor', vendorId?: string): Promise<number>;
 
   // Deal operations
   listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]>;
@@ -1052,6 +1079,223 @@ export class DbStorage implements IStorage {
         )
       );
     return result[0]?.count || 0;
+  }
+
+  // B2C Conversation operations
+  async getOrCreateConversation(consumerId: string, vendorId: string, dealId?: string): Promise<Conversation> {
+    // Check for existing conversation (one per consumer + vendor)
+    const existing = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.consumerId, consumerId),
+          eq(conversations.vendorId, vendorId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      return existing[0];
+    }
+
+    // Create new conversation
+    const result = await db
+      .insert(conversations)
+      .values({
+        consumerId,
+        vendorId,
+        dealId: dealId || null,
+      })
+      .returning();
+
+    return result[0];
+  }
+
+  async getConversation(conversationId: string): Promise<Conversation | undefined> {
+    const result = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getB2CConversationsForConsumer(consumerId: string): Promise<Array<{
+    conversation: Conversation;
+    vendorName: string;
+    vendorLogoUrl: string | null;
+    lastMessage: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }>> {
+    const consumerConversations = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.consumerId, consumerId))
+      .orderBy(desc(conversations.lastMessageAt));
+
+    const results = await Promise.all(
+      consumerConversations.map(async (conv) => {
+        const vendor = await this.getVendor(conv.vendorId);
+        
+        // Get last message
+        const lastMsg = await db
+          .select()
+          .from(conversationMessages)
+          .where(eq(conversationMessages.conversationId, conv.id))
+          .orderBy(desc(conversationMessages.createdAt))
+          .limit(1);
+
+        // Count unread messages from vendor
+        const unreadResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(conversationMessages)
+          .where(
+            and(
+              eq(conversationMessages.conversationId, conv.id),
+              eq(conversationMessages.senderRole, 'vendor'),
+              eq(conversationMessages.isRead, false)
+            )
+          );
+
+        return {
+          conversation: conv,
+          vendorName: vendor?.businessName || 'Unknown Business',
+          vendorLogoUrl: vendor?.logoUrl || null,
+          lastMessage: lastMsg[0]?.content || '',
+          lastMessageAt: lastMsg[0]?.createdAt || conv.createdAt || new Date(),
+          unreadCount: unreadResult[0]?.count || 0,
+        };
+      })
+    );
+
+    return results;
+  }
+
+  async getB2CConversationsForVendor(vendorId: string): Promise<Array<{
+    conversation: Conversation;
+    consumerName: string;
+    lastMessage: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }>> {
+    const vendorConversations = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.vendorId, vendorId))
+      .orderBy(desc(conversations.lastMessageAt));
+
+    const results = await Promise.all(
+      vendorConversations.map(async (conv) => {
+        const consumer = await this.getUser(conv.consumerId);
+        
+        // Get last message
+        const lastMsg = await db
+          .select()
+          .from(conversationMessages)
+          .where(eq(conversationMessages.conversationId, conv.id))
+          .orderBy(desc(conversationMessages.createdAt))
+          .limit(1);
+
+        // Count unread messages from consumer
+        const unreadResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(conversationMessages)
+          .where(
+            and(
+              eq(conversationMessages.conversationId, conv.id),
+              eq(conversationMessages.senderRole, 'consumer'),
+              eq(conversationMessages.isRead, false)
+            )
+          );
+
+        const consumerName = consumer?.firstName && consumer?.lastName
+          ? `${consumer.firstName} ${consumer.lastName}`
+          : consumer?.username || 'Unknown Customer';
+
+        return {
+          conversation: conv,
+          consumerName,
+          lastMessage: lastMsg[0]?.content || '',
+          lastMessageAt: lastMsg[0]?.createdAt || conv.createdAt || new Date(),
+          unreadCount: unreadResult[0]?.count || 0,
+        };
+      })
+    );
+
+    return results;
+  }
+
+  async getConversationMessages(conversationId: string): Promise<ConversationMessage[]> {
+    return await db
+      .select()
+      .from(conversationMessages)
+      .where(eq(conversationMessages.conversationId, conversationId))
+      .orderBy(conversationMessages.createdAt);
+  }
+
+  async createConversationMessage(message: InsertConversationMessage): Promise<ConversationMessage> {
+    // Insert message
+    const result = await db
+      .insert(conversationMessages)
+      .values(message)
+      .returning();
+
+    // Update lastMessageAt on conversation
+    await db
+      .update(conversations)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(conversations.id, message.conversationId));
+
+    return result[0];
+  }
+
+  async markConversationMessagesAsRead(conversationId: string, recipientId: string): Promise<void> {
+    // Mark all messages as read where the recipient is not the sender
+    await db
+      .update(conversationMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(conversationMessages.conversationId, conversationId),
+          sql`${conversationMessages.senderId} != ${recipientId}`,
+          eq(conversationMessages.isRead, false)
+        )
+      );
+  }
+
+  async getUnreadB2CMessageCount(userId: string, role: 'consumer' | 'vendor', vendorId?: string): Promise<number> {
+    if (role === 'consumer') {
+      // Count unread messages from vendors in all consumer's conversations
+      const result = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(conversationMessages)
+        .innerJoin(conversations, eq(conversationMessages.conversationId, conversations.id))
+        .where(
+          and(
+            eq(conversations.consumerId, userId),
+            eq(conversationMessages.senderRole, 'vendor'),
+            eq(conversationMessages.isRead, false)
+          )
+        );
+      return result[0]?.count || 0;
+    } else {
+      // Count unread messages from consumers in vendor's conversations
+      if (!vendorId) return 0;
+      const result = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(conversationMessages)
+        .innerJoin(conversations, eq(conversationMessages.conversationId, conversations.id))
+        .where(
+          and(
+            eq(conversations.vendorId, vendorId),
+            eq(conversationMessages.senderRole, 'consumer'),
+            eq(conversationMessages.isRead, false)
+          )
+        );
+      return result[0]?.count || 0;
+    }
   }
 
   // Deal operations
