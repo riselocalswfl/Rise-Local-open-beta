@@ -183,9 +183,8 @@ export default function MessagesPage() {
       <DetailHeader title="Messages" />
 
       <main className="px-4 py-4">
-        {/* Business Search (consumers only) */}
-        {userRole === "consumer" && (
-          <div ref={searchRef} className="relative mb-4">
+        {/* Business Search - visible for all users */}
+        <div ref={searchRef} className="relative mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -254,16 +253,13 @@ export default function MessagesPage() {
               </Card>
             )}
           </div>
-        )}
 
         {conversations.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No messages yet</h3>
             <p className="text-sm text-muted-foreground">
-              {userRole === "consumer" 
-                ? "Use the search bar above to find a business and start a conversation."
-                : "Customers will appear here when they message your business."}
+              Use the search bar above to find a business and start a conversation.
             </p>
           </div>
         ) : (
