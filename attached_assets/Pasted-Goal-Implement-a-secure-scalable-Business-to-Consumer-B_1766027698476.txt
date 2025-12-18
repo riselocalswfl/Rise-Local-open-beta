@@ -1,0 +1,134 @@
+Goal: Implement a secure, scalable Business-to-Consumer (B2C) messaging system for Rise Local using the messaging structure that already exists, without rebuilding or breaking current chat logic. This feature is a premium / pass-locked feature for businesses.
+
+⸻
+
+🔒 Core Rules (Do NOT Ignore)
+	1.	Reuse existing messaging tables, routes, and socket/event logic already in the codebase.
+	2.	Do not create parallel chat systems.
+	3.	Extend the current message model to support:
+	•	Consumer → Business messages
+	•	Business → Consumer replies
+	4.	All messaging must be:
+	•	Auth-protected
+	•	Role-aware
+	•	Vendor-owned
+
+⸻
+
+🧱 Data Model (Extend, Don’t Replace)
+
+If these already exist, extend them:
+
+conversations
+	•	id (uuid)
+	•	consumerId → users.id
+	•	vendorId → vendors.id
+	•	dealId nullable (optional context)
+	•	lastMessageAt
+	•	createdAt
+
+Rules:
+	•	One active conversation per consumer + vendor (+ deal optional)
+	•	Prevent duplicates
+
+messages
+	•	id
+	•	conversationId
+	•	senderId → users.id
+	•	senderRole enum: consumer | vendor
+	•	content (text)
+	•	isRead boolean default false
+	•	createdAt
+
+⸻
+
+🔐 Access & Permissions
+	•	Consumers:
+	•	Can message a business only from a Deal page or Business profile
+	•	Can only see their own conversations
+	•	Businesses:
+	•	Can only message consumers who initiated contact
+	•	Can only view conversations tied to their vendorId
+	•	Admins:
+	•	Read-only access
+
+⸻
+
+💬 API Endpoints (Extend Existing Ones)
+
+Use existing route files where messaging already lives.
+
+Conversations
+	•	GET /api/messages/conversations
+	•	Returns conversations scoped to user role
+
+Messages
+	•	GET /api/messages/:conversationId
+	•	Returns messages sorted by createdAt ASC
+	•	Marks messages as read when opened
+	•	POST /api/messages/:conversationId
+	•	Body: { content: string }
+	•	Automatically sets senderRole based on user.role
+	•	Updates lastMessageAt
+
+Conversation Creation
+	•	POST /api/messages/start
+	•	Body: { vendorId, dealId? }
+	•	Creates conversation if one doesn’t exist
+	•	Returns conversationId
+
+⸻
+
+🔔 Notifications (Critical)
+
+When a message is sent:
+	1.	Trigger in-app notification for recipient
+	2.	Trigger email notification if recipient is offline
+	•	Businesses receive: “New customer message on Rise Local”
+	•	Consumers receive: “New reply from [Business Name]”
+
+Reuse existing notification/email infrastructure if present.
+
+⸻
+
+💎 Premium Logic
+	•	Business-to-consumer messaging is:
+	•	Free for consumers
+	•	Locked for businesses unless subscribed
+	•	If business is not subscribed:
+	•	Show messages as read-only
+	•	Prompt upgrade CTA
+	•	Admin bypass allowed
+
+⸻
+
+📱 Frontend Integration Notes
+	•	Consumer entry points:
+	•	“Message Business” button on:
+	•	Deal page
+	•	Business profile
+	•	Business entry point:
+	•	Messages tab inside My Account → Vendor Dashboard
+	•	Unread badge count on tab bar
+	•	Optimized for mobile (no desktop-only layouts)
+
+⸻
+
+🧪 Safety & Edge Cases
+	•	Block empty messages
+	•	Rate-limit messages per minute
+	•	Prevent cross-vendor access
+	•	Soft-delete conversations when vendor is deactivated
+	•	Never hard-delete messages
+
+⸻
+
+✅ Deliverables
+	•	Extended schema (only if needed)
+	•	Updated message routes
+	•	Notification triggers
+	•	Permission guards
+	•	Seed test conversation
+	•	Clear comments explaining what was reused vs added
+
+Implement using the existing messaging system. Do not rebuild. Do not duplicate. Do not break current functionality.
