@@ -227,6 +227,7 @@ export interface IStorage {
     vendorId?: string 
   }): Promise<DealWithDistance[]>;
   getDealById(id: string): Promise<Deal | undefined>;
+  getDealByIdWithStatus(id: string): Promise<Deal | undefined>; // Returns deal even if deleted/inactive
   createDeal(deal: InsertDeal): Promise<Deal>;
   updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal>;
   redeemDeal(dealId: string, vendorPinEntered: string, userId?: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }>;
@@ -1181,6 +1182,12 @@ export class DbStorage implements IStorage {
   }
 
   async getDealById(id: string): Promise<Deal | undefined> {
+    const result = await db.select().from(deals).where(eq(deals.id, id));
+    return result[0];
+  }
+
+  // Returns deal even if deleted/inactive - for status checking
+  async getDealByIdWithStatus(id: string): Promise<Deal | undefined> {
     const result = await db.select().from(deals).where(eq(deals.id, id));
     return result[0];
   }

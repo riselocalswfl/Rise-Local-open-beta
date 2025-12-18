@@ -3918,14 +3918,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/deals/:id - Get single deal by ID
+  // GET /api/deals/:id - Get single deal by ID with visibility rules
   app.get("/api/deals/:id", async (req, res) => {
     try {
-      const deal = await storage.getDealById(req.params.id);
+      const dealId = req.params.id;
+      console.log("[DEALS] Fetching deal:", dealId);
+      
+      // Get deal including soft-deleted ones to check status
+      const deal = await storage.getDealByIdWithStatus(dealId);
+      
       if (!deal) {
-        return res.status(404).json({ error: "Deal not found" });
+        console.log("[DEALS] Deal not found:", dealId);
+        return res.status(404).json({ code: "NOT_FOUND", message: "Deal not found" });
       }
-      res.json(deal);
+      
+      // Check if deal was soft deleted
+      if (deal.deletedAt) {
+        console.log("[DEALS] Deal removed:", dealId);
+        return res.status(410).json({ code: "REMOVED", message: "This deal is no longer available" });
+      }
+      
+      // Check if deal is inactive
+      if (!deal.isActive) {
+        console.log("[DEALS] Deal inactive:", dealId);
+        return res.status(410).json({ code: "REMOVED", message: "This deal is no longer active" });
+      }
+      
+      // Check if deal has expired
+      const now = new Date();
+      if (deal.endsAt && new Date(deal.endsAt) < now) {
+        console.log("[DEALS] Deal expired:", dealId);
+        return res.status(410).json({ 
+          code: "EXPIRED", 
+          message: "This deal has expired",
+          expiredAt: deal.endsAt
+        });
+      }
+      
+      // Check if deal hasn't started yet
+      if (deal.startsAt && new Date(deal.startsAt) > now) {
+        console.log("[DEALS] Deal not started yet:", dealId);
+        return res.status(400).json({ 
+          code: "NOT_STARTED", 
+          message: "This deal is not available yet",
+          startsAt: deal.startsAt
+        });
+      }
+      
+      // Get vendor information
+      const vendor = await storage.getVendor(deal.vendorId);
+      
+      // Compute additional fields
+      const response = {
+        ...deal,
+        vendor: vendor ? {
+          id: vendor.id,
+          businessName: vendor.businessName,
+          profileImageUrl: vendor.logoUrl,
+          city: vendor.city,
+          vendorType: vendor.vendorType,
+        } : null,
+        isExpired: deal.endsAt ? new Date(deal.endsAt) < now : false,
+        isLocked: deal.isPassLocked && deal.tier !== 'free',
+        redeemAnytime: !deal.endsAt,
+      };
+      
+      console.log("[DEALS] Deal found:", dealId);
+      res.json(response);
     } catch (error) {
       console.error("Error fetching deal:", error);
       res.status(500).json({ error: "Failed to fetch deal" });
@@ -4177,8 +4236,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate expiration (24 hours from now by default, or deal end date if sooner)
       let expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
-      if (deal.endDate && new Date(deal.endDate) < expiresAt) {
-        expiresAt = new Date(deal.endDate);
+      if (deal.endsAt && new Date(deal.endsAt) < expiresAt) {
+        expiresAt = new Date(deal.endsAt);
       }
 
       // Create the claim
@@ -4228,7 +4287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               tier: deal.tier,
               vendorId: deal.vendorId,
               vendorName,
-              endDate: deal.endDate,
+              endsAt: deal.endsAt,
             } : null,
           };
         })

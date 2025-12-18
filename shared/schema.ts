@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, integer, timestamp, boolean, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, integer, timestamp, boolean, index, jsonb, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1017,25 +1017,43 @@ export type ReservationStatus = typeof RESERVATION_STATUSES[number];
 export const REDEMPTION_TYPES = ["IN_PERSON"] as const;
 export type RedemptionType = typeof REDEMPTION_TYPES[number];
 
+// Discount type enum values
+export const DISCOUNT_TYPES = ["PERCENT", "AMOUNT", "BOGO", "OTHER"] as const;
+export type DiscountType = typeof DISCOUNT_TYPES[number];
+
 // Deals - Special offers and promotions from vendors
 export const deals = pgTable("deals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
-  restaurantId: varchar("restaurant_id").references(() => restaurants.id), // NEW: For restaurant-specific deals
+  restaurantId: varchar("restaurant_id").references(() => restaurants.id), // For restaurant-specific deals
   
   // Deal Content
   title: text("title").notNull(),
   description: text("description").notNull(),
-  category: text("category"), // e.g., "Food & Drink", "Services", "Retail"
+  finePrint: text("fine_print"), // Terms and conditions
+  imageUrl: text("image_url"), // Deal image
+  category: text("category"), // e.g., "food_drink", "services", "retail"
   city: text("city").default("Fort Myers"),
   
+  // Deal Value
+  savingsAmount: integer("savings_amount"), // Dollar value saved (e.g., 5 = "Save $5")
+  discountType: text("discount_type").default("OTHER"), // PERCENT, AMOUNT, BOGO, OTHER
+  discountValue: doublePrecision("discount_value"), // Numeric value (e.g., 20 for 20% off)
+  
   // Deal Classification
-  tier: text("tier").notNull().default("free"), // "free" | "premium"
-  dealType: text("deal_type").notNull(), // "bogo" | "percent" | "addon"
-  redemptionType: text("redemption_type").default("IN_PERSON"), // NEW: How deal is redeemed
+  tier: text("tier").notNull().default("free"), // "free" | "premium" (legacy support)
+  isFree: boolean("is_free").notNull().default(false), // Free deal shown to everyone
+  isPassLocked: boolean("is_pass_locked").notNull().default(true), // Locked unless subscribed
+  dealType: text("deal_type").notNull().default("OTHER"), // "bogo" | "percent" | "addon" | "OTHER"
+  redemptionType: text("redemption_type").default("IN_PERSON"), // How deal is redeemed
+  
+  // Availability
+  startsAt: timestamp("starts_at"), // When deal becomes valid
+  endsAt: timestamp("ends_at"), // When deal expires
   
   // Status
   isActive: boolean("is_active").notNull().default(true),
+  deletedAt: timestamp("deleted_at"), // Soft delete timestamp
   
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
