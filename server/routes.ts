@@ -4065,6 +4065,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isRead: false,
       });
 
+      // Create notification for the recipient
+      const recipientId = senderRole === 'consumer' ? vendor?.ownerId : conversation.consumerId;
+      if (recipientId) {
+        const senderName = senderRole === 'consumer' 
+          ? (await storage.getUser(userId))?.firstName || 'A customer'
+          : vendor?.businessName || 'A business';
+        
+        await storage.createNotification({
+          userId: recipientId,
+          type: 'new_message',
+          title: `New message from ${senderName}`,
+          message: content.trim().substring(0, 100) + (content.length > 100 ? '...' : ''),
+          referenceId: conversationId,
+          referenceType: 'conversation',
+          isRead: false,
+        });
+      }
+
       console.log("[B2C] Message sent:", {
         messageId: message.id,
         conversationId,
@@ -4101,6 +4119,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching B2C unread count:", error);
       res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  // ============ NOTIFICATIONS ROUTES ============
+
+  // GET /api/notifications - Get all notifications for current user
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = await storage.getNotifications(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // GET /api/notifications/unread-count - Get unread notification count
+  app.get("/api/notifications/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread notification count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  // PATCH /api/notifications/:id/read - Mark a notification as read
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await storage.markNotificationAsRead(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  // POST /api/notifications/mark-all-read - Mark all notifications as read
+  app.post("/api/notifications/mark-all-read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to mark notifications as read" });
     }
   });
 
