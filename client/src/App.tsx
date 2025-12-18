@@ -26,6 +26,8 @@ import UnifiedOnboarding from "@/pages/UnifiedOnboarding";
 import CustomerProfile from "@/pages/CustomerProfile";
 import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
+import MessagesPage from "@/pages/MessagesPage";
+import ConversationPage from "@/pages/ConversationPage";
 import MyDeals from "@/pages/MyDeals";
 import Discover from "@/pages/Discover";
 import Browse from "@/pages/Browse";
@@ -214,8 +216,23 @@ function Router() {
           </AppShell>
         )}
       </Route>
-      <Route path="/messages" component={Messages} />
-      <Route path="/messages/:userId" component={MessageThread} />
+      <Route path="/messages">
+        {() => (
+          <AppShell>
+            <MessagesPage />
+          </AppShell>
+        )}
+      </Route>
+      <Route path="/messages/:conversationId">
+        {() => (
+          <AppShell>
+            <ConversationPage />
+          </AppShell>
+        )}
+      </Route>
+      {/* Legacy direct message routes */}
+      <Route path="/dm" component={Messages} />
+      <Route path="/dm/:userId" component={MessageThread} />
       <Route path="/my-deals" component={MyDeals} />
       
       {/* Admin - no tabs */}

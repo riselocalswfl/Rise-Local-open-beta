@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, CheckCircle, XCircle, Lock, Store, ChevronRight } from "lucide-react";
+import { MapPin, Tag, CheckCircle, XCircle, Lock, Store, ChevronRight, MessageSquare } from "lucide-react";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,30 @@ export default function DealDetailPage() {
     },
     onError: (error: any) => {
       setRedemptionResult({ success: false, message: error.message || "Failed to redeem deal" });
+    },
+  });
+
+  const startConversation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/b2c/conversations/start", {
+        vendorId: deal?.vendorId,
+        dealId: id,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to start conversation");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setLocation(`/messages/${data.conversationId}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Unable to start conversation",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -201,14 +225,27 @@ export default function DealDetailPage() {
               </Link>
             )}
 
-            <Button
-              size="lg"
-              className="w-full"
-              onClick={() => setRedeemModalOpen(true)}
-              data-testid="button-redeem-deal"
-            >
-              Redeem This Deal
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                size="lg"
+                className="flex-1"
+                onClick={() => setRedeemModalOpen(true)}
+                data-testid="button-redeem-deal"
+              >
+                Redeem This Deal
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="flex-1"
+                onClick={() => startConversation.mutate()}
+                disabled={startConversation.isPending || !deal?.vendorId}
+                data-testid="button-message-business"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                {startConversation.isPending ? "Starting..." : "Ask a Question"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

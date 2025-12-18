@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useRoute, useLocation } from "wouter";
 import { Link } from "wouter";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BadgeCheck, MapPin, Phone, Mail, Globe, Clock, MessageSquare } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import type { Vendor, Product } from "@shared/schema";
 
 interface VendorWithDetails extends Omit<Vendor, 'contactEmail' | 'contactPhone'> {
@@ -19,6 +21,31 @@ interface VendorWithDetails extends Omit<Vendor, 'contactEmail' | 'contactPhone'
 export default function BusinessProfile() {
   const [, params] = useRoute("/businesses/:id");
   const vendorId = params?.id;
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  const startConversation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/b2c/conversations/start", {
+        vendorId,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to start conversation");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setLocation(`/messages/${data.conversationId}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Unable to start conversation",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails; deals: any[] }>({
     queryKey: ["/api/vendors", vendorId],
@@ -181,12 +208,16 @@ export default function BusinessProfile() {
         </Card>
 
         <div className="flex gap-3">
-          <Link href={`/messages/${vendor.ownerId}`} className="flex-1">
-            <Button variant="outline" className="w-full" data-testid="button-message">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Message
-            </Button>
-          </Link>
+          <Button 
+            variant="outline" 
+            className="flex-1" 
+            onClick={() => startConversation.mutate()}
+            disabled={startConversation.isPending}
+            data-testid="button-message"
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            {startConversation.isPending ? "Starting..." : "Message Business"}
+          </Button>
         </div>
 
         {products && products.length > 0 && (
