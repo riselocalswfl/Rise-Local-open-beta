@@ -33,7 +33,7 @@ interface ConversationsResponse {
 interface VendorSearchResult {
   id: number;
   businessName: string;
-  description?: string;
+  bio?: string;
   logoUrl?: string;
   vendorType?: string;
 }
@@ -232,8 +232,8 @@ export default function MessagesPage() {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{vendor.businessName}</p>
-                        {vendor.description && (
-                          <p className="text-xs text-muted-foreground truncate">{vendor.description}</p>
+                        {vendor.bio && (
+                          <p className="text-xs text-muted-foreground truncate">{vendor.bio}</p>
                         )}
                       </div>
                       {startConversationMutation.isPending && (

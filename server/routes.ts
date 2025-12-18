@@ -285,7 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filtered = allVendors
         .filter(v => 
           v.businessName?.toLowerCase().includes(query) ||
-          v.description?.toLowerCase().includes(query)
+          v.bio?.toLowerCase().includes(query)
         )
         .slice(0, 10); // Limit to 10 results
       
