@@ -248,6 +248,7 @@ export interface IStorage {
   getUnreadNotificationCount(userId: string): Promise<number>;
   markNotificationAsRead(notificationId: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
+  markNotificationsByReferenceAsRead(userId: string, referenceId: string, referenceType: string): Promise<void>;
 
   // Deal operations
   listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]>;
@@ -1350,6 +1351,20 @@ export class DbStorage implements IStorage {
       .where(
         and(
           eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      );
+  }
+
+  async markNotificationsByReferenceAsRead(userId: string, referenceId: string, referenceType: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.referenceId, referenceId),
+          eq(notifications.referenceType, referenceType),
           eq(notifications.isRead, false)
         )
       );

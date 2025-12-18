@@ -3992,6 +3992,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mark messages as read for the recipient
       await storage.markConversationMessagesAsRead(conversationId, userId);
 
+      // Mark related notifications as read for the current user
+      await storage.markNotificationsByReferenceAsRead(userId, conversationId, 'conversation');
+
       // Get vendor and consumer info
       const consumer = await storage.getUser(conversation.consumerId);
       const consumerName = consumer?.firstName && consumer?.lastName

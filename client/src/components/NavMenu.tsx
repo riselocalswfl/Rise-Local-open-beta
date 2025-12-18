@@ -134,13 +134,13 @@ export default function NavMenu() {
                     >
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
                       <span className="font-medium flex-1">{item.name}</span>
-                      {item.name === "Messages" && unreadCount > 0 && (
+                      {item.name === "Messages" && (unreadCount > 0 || notificationCount > 0) && (
                         <Badge 
                           variant="secondary" 
                           className="min-w-6 h-6 flex items-center justify-center px-2"
                           data-testid="badge-unread-count"
                         >
-                          {unreadCount}
+                          {unreadCount + notificationCount}
                         </Badge>
                       )}
                     </div>

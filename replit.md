@@ -33,7 +33,13 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Category System Removal**: Categories have been removed from the database schema and all user interfaces to simplify browsing.
 - **Customer-Facing Business Pages**: Profiles (`/businesses/:id`) use a unified endpoint (`/api/vendors/:id`) and implement capability-based rendering. Legacy routes (`/vendor/:id`, `/vendors`, `/restaurant/:id`) redirect to the unified `/businesses` routes.
 - **Deals-Only Focus**: The app focuses exclusively on deal discovery - cart, checkout, and order functionality have been removed. Vendors can list products/menu items for display purposes, but transactions happen directly with the business.
-- **Direct Messaging**: Supports real-time user-to-vendor messaging with read status.
+- **B2C Messaging System**: Consumer-to-business messaging with conversations linked to optional deal context. Features include:
+  - Consumers can message businesses about deals via "Message Business" buttons
+  - Vendors can view messages in Dashboard Messages tab (read-only without Stripe subscription)
+  - Vendors with Stripe connected can reply to customers (premium feature)
+  - In-app notifications created when new messages are sent
+  - Notification badge in navigation shows combined unread message + notification count
+  - Notifications auto-marked as read when viewing conversations
 - **Stripe Connect Integration**: Facilitates vendor payouts, with the platform collecting payments (product price + 7% FL sales tax) and transferring the full amount to the vendor. Revenue is from an $89/month vendor membership fee, with no transaction fees.
 - **Customer Profile Management**: Users manage their profile (`/profile`) with editable fields for first name, last name, and phone number, enforced by secure API endpoint whitelisting.
 - **Contact Information Storage**: Vendor contact information is stored in individual database columns for improved type safety and data integrity.
@@ -50,6 +56,7 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
   - Vendor info included in deal responses with business name and location
 - **Rise Local Pass User Fields**: Users table includes `isPassMember`, `passExpiresAt`, and `stripeCustomerId` for subscription management
 - **Deals Seed Script**: Run `npx tsx server/seed-deals.ts` to populate 3 sample vendors and 8 deals for testing
+- **Conversations Seed Script**: Run `npx tsx server/seed-conversations.ts` to populate test B2C conversations for messaging feature testing
 
 ### Feature Specifications
 - **Pricing Model**: $89/month membership for vendors; buyers pay product price + 7% FL sales tax, no additional buyer or transaction fees.
