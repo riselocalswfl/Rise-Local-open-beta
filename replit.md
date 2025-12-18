@@ -43,6 +43,13 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Navigation Improvements**: Enhances navigation with a Home tab in the bottom navigation and a new `DetailHeader` component for detail pages.
 - **Light-Only Theme**: The application uses a light-only theme, removing all dark mode styling and implementing semantic CSS variables with Tailwind CSS.
 - **Service Vendor Cards**: The Home page now displays real service vendor cards fetched via a new `/api/service-vendors` endpoint.
+- **Enhanced Deals API**: The deals system has been upgraded with:
+  - New deal fields: `finePrint`, `savingsAmount`, `discountType`, `discountValue`, `imageUrl`, `startsAt`, `endsAt`, `deletedAt`
+  - Deal visibility rules with proper HTTP error codes: `NOT_FOUND` (404), `EXPIRED` (410), `REMOVED` (410)
+  - Deal tiers: `free`, `member`, `standard` with `isPassLocked` flag for membership-only deals
+  - Vendor info included in deal responses with business name and location
+- **Rise Local Pass User Fields**: Users table includes `isPassMember`, `passExpiresAt`, and `stripeCustomerId` for subscription management
+- **Deals Seed Script**: Run `npx tsx server/seed-deals.ts` to populate 3 sample vendors and 8 deals for testing
 
 ### Feature Specifications
 - **Pricing Model**: $89/month membership for vendors; buyers pay product price + 7% FL sales tax, no additional buyer or transaction fees.
