@@ -1086,7 +1086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           serviceDetails: {
             serviceAreas: [data.city],
             certifications: [],
-            yearsInBusiness: null,
+            yearsInBusiness: undefined,
           },
         };
         
