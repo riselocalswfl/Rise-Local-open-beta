@@ -59,6 +59,24 @@ function deriveServiceOptions(fulfillment: FulfillmentOptions): string[] {
   return serviceOptions;
 }
 
+// Helper function to check if user has active Rise Local Pass membership
+async function isUserSubscribed(userId: string | undefined): Promise<boolean> {
+  if (!userId) return false;
+  
+  const user = await storage.getUser(userId);
+  if (!user) return false;
+  
+  // Check if user has active pass membership
+  if (!user.isPassMember) return false;
+  
+  // Check if subscription hasn't expired
+  if (user.passExpiresAt && new Date(user.passExpiresAt) < new Date()) {
+    return false;
+  }
+  
+  return true;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth (IMPORTANT: must be done before routes)
   await setupAuth(app);

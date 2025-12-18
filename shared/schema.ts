@@ -60,6 +60,11 @@ export const users = pgTable("users", {
   notifyValueDeals: boolean("notify_value_deals").default(false),
   marketingConsent: boolean("marketing_consent").default(false),
   
+  // Rise Local Pass membership
+  isPassMember: boolean("is_pass_member").default(false), // Active Rise Local Pass subscription
+  passExpiresAt: timestamp("pass_expires_at"), // When the current subscription period ends
+  stripeCustomerId: text("stripe_customer_id"), // For Stripe subscription management
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
