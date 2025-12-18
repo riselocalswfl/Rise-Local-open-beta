@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, CreditCard, UtensilsCrossed, Tag } from "lucide-react";
+import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, CreditCard, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions, MenuItem, ServiceOffering, Deal } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
@@ -644,6 +644,12 @@ export default function VendorDashboard() {
                     <span>Settings</span>
                   </div>
                 </SelectItem>
+                <SelectItem value="messages" data-testid="select-option-messages">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Messages</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -677,6 +683,10 @@ export default function VendorDashboard() {
             <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
               <Settings className="w-4 h-4" />
               Settings
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="gap-2" data-testid="tab-messages">
+              <MessageSquare className="w-4 h-4" />
+              Messages
             </TabsTrigger>
           </TabsList>
 
@@ -1988,6 +1998,11 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Messages Tab */}
+          <TabsContent value="messages">
+            <VendorMessagesTab vendorId={vendor.id} isSubscribed={!!(vendor as any).stripeAccountId} />
+          </TabsContent>
         </Tabs>
 
         {/* Product Preview Dialog */}
@@ -3250,4 +3265,269 @@ function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
     </div>
   );
 }
+
+// ========== VENDOR MESSAGES TAB ==========
+
+interface VendorConversation {
+  id: number;
+  consumerId: string;
+  vendorId: string;
+  dealId: number | null;
+  lastMessageAt: Date | null;
+  createdAt: Date;
+  consumerName?: string;
+  dealTitle?: string;
+  lastMessage?: string;
+  unreadCount?: number;
+}
+
+interface VendorMessage {
+  id: number;
+  conversationId: number;
+  senderId: string;
+  senderRole: 'consumer' | 'vendor';
+  content: string;
+  sentAt: Date;
+  senderName?: string;
+}
+
+function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSubscribed: boolean }) {
+  const { toast } = useToast();
+  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
+  const [messageInput, setMessageInput] = useState("");
+
+  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<VendorConversation[]>({
+    queryKey: ["/api/b2c/conversations"],
+  });
+
+  const { data: messagesData, isLoading: messagesLoading } = useQuery<{ messages: VendorMessage[]; canReply: boolean }>({
+    queryKey: ["/api/b2c/conversations", selectedConversationId, "messages"],
+    queryFn: async () => {
+      const res = await fetch(`/api/b2c/conversations/${selectedConversationId}`);
+      if (!res.ok) throw new Error("Failed to fetch messages");
+      return res.json();
+    },
+    enabled: !!selectedConversationId,
+    refetchInterval: 5000,
+  });
+
+  const messages = messagesData?.messages || [];
+  const canReply = messagesData?.canReply ?? false;
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const res = await apiRequest("POST", `/api/b2c/conversations/${selectedConversationId}/messages`, { content });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to send message");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setMessageInput("");
+      queryClient.invalidateQueries({ queryKey: ["/api/b2c/conversations", selectedConversationId, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/b2c/conversations"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send message",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSendMessage = () => {
+    if (!messageInput.trim()) return;
+    sendMessageMutation.mutate(messageInput.trim());
+  };
+
+  const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+
+  if (!isSubscribed) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+            <Lock className="w-8 h-8 text-amber-600" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Messaging is a Premium Feature</h3>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            Connect your Stripe account to unlock customer messaging and start building relationships with your customers.
+          </p>
+          <Button onClick={() => {
+            const settingsTab = document.querySelector('[data-testid="tab-settings"]') as HTMLElement;
+            if (settingsTab) settingsTab.click();
+          }}>
+            Go to Settings to Connect Stripe
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2">
+          <MessageSquare className="w-5 h-5" />
+          Customer Messages
+        </CardTitle>
+        <CardDescription>
+          Respond to questions from customers about your deals
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {conversationsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="text-center py-12">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="font-semibold mb-2">No messages yet</h3>
+            <p className="text-muted-foreground">
+              When customers ask questions about your deals, they will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-4 min-h-[400px]">
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-muted/50 p-3 border-b">
+                <h4 className="font-medium text-sm">Conversations</h4>
+              </div>
+              <div className="max-h-[400px] overflow-y-auto">
+                {conversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => setSelectedConversationId(conv.id)}
+                    className={`w-full text-left p-3 border-b last:border-b-0 hover-elevate ${
+                      selectedConversationId === conv.id ? 'bg-primary/10' : ''
+                    }`}
+                    data-testid={`conversation-${conv.id}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium text-sm truncate">
+                        {conv.consumerName || `Customer #${conv.consumerId.slice(0, 6)}`}
+                      </span>
+                      {conv.unreadCount && conv.unreadCount > 0 && (
+                        <Badge variant="default" className="text-xs ml-auto">
+                          {conv.unreadCount}
+                        </Badge>
+                      )}
+                    </div>
+                    {conv.dealTitle && (
+                      <p className="text-xs text-muted-foreground truncate mb-1">
+                        Re: {conv.dealTitle}
+                      </p>
+                    )}
+                    {conv.lastMessage && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {conv.lastMessage}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 border rounded-lg flex flex-col">
+              {selectedConversationId ? (
+                <>
+                  <div className="bg-muted/50 p-3 border-b flex items-center gap-2">
+                    <User className="w-5 h-5" />
+                    <span className="font-medium">
+                      {selectedConversation?.consumerName || `Customer #${selectedConversation?.consumerId.slice(0, 6)}`}
+                    </span>
+                    {selectedConversation?.dealTitle && (
+                      <Badge variant="outline" className="ml-auto text-xs">
+                        {selectedConversation.dealTitle}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex-1 p-4 overflow-y-auto max-h-[300px] space-y-3">
+                    {messagesLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <p className="text-center text-muted-foreground text-sm">
+                        No messages yet
+                      </p>
+                    ) : (
+                      messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.senderRole === 'vendor' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-lg p-3 ${
+                              msg.senderRole === 'vendor'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted'
+                            }`}
+                          >
+                            <p className="text-sm">{msg.content}</p>
+                            <p className={`text-xs mt-1 ${
+                              msg.senderRole === 'vendor' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                            }`}>
+                              {new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="border-t p-3">
+                    {canReply ? (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Type your reply..."
+                          value={messageInput}
+                          onChange={(e) => setMessageInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                          data-testid="input-message"
+                        />
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={!messageInput.trim() || sendMessageMutation.isPending}
+                          data-testid="button-send-message"
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Alert>
+                        <Lock className="w-4 h-4" />
+                        <AlertDescription>
+                          Connect Stripe to reply to customer messages.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <MessageSquare className="w-8 h-8 mx-auto mb-2" />
+                    <p>Select a conversation to view messages</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
