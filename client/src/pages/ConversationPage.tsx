@@ -69,6 +69,7 @@ export default function ConversationPage() {
       setNewMessage("");
       refetch();
       queryClient.invalidateQueries({ queryKey: ["/api/b2c/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
     },
     onError: (error: Error) => {
       if (error.message === "SUBSCRIPTION_REQUIRED") {
@@ -90,6 +91,14 @@ export default function ConversationPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [data?.messages]);
+
+  // When conversation is viewed, invalidate notification counts (messages are marked read on server)
+  useEffect(() => {
+    if (data) {
+      queryClient.invalidateQueries({ queryKey: ["/api/b2c/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    }
+  }, [data]);
 
   const handleSend = () => {
     if (!newMessage.trim()) return;

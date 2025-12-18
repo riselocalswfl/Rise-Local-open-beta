@@ -62,12 +62,21 @@ export default function NavMenu() {
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
 
-  // Fetch unread message count
-  const { data: unreadCount = 0 } = useQuery<number>({
-    queryKey: ["/api/messages/unread/count"],
+  // Fetch unread B2C message count
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/b2c/unread-count"],
     enabled: isAuthenticated,
     refetchInterval: 10000, // Refresh every 10 seconds
   });
+  const unreadCount = unreadData?.count || 0;
+
+  // Fetch unread notification count
+  const { data: notificationData } = useQuery<{ count: number }>({
+    queryKey: ["/api/notifications/unread-count"],
+    enabled: isAuthenticated,
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+  const notificationCount = notificationData?.count || 0;
 
   const handleNavigate = (href: string) => {
     setOpen(false);
