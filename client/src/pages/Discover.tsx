@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "wouter";
-import { Compass, ChevronDown, ChevronRight, Lock, MapPin, Navigation, Loader2 } from "lucide-react";
+import { Compass, ChevronDown, ChevronRight, Lock, MapPin, Navigation, Loader2, MessageSquare } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import RiseLocalDealCard, { RiseLocalDeal, DealType } from "@/components/RiseLocalDealCard";
 import MembershipBanner from "@/components/MembershipBanner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -239,6 +240,17 @@ export default function Discover() {
     return user.email?.charAt(0)?.toUpperCase() || "?";
   };
 
+  // Fetch unread message + notification count
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/b2c/unread-count"],
+    refetchInterval: 10000,
+  });
+  const { data: notificationData } = useQuery<{ count: number }>({
+    queryKey: ["/api/notifications/unread-count"],
+    refetchInterval: 10000,
+  });
+  const totalUnread = (unreadData?.count || 0) + (notificationData?.count || 0);
+
   // Fetch real deals from API with vendor info
   const userCoords = location.coords || FORT_MYERS_DEFAULT;
   const { data: dealsData, isLoading: dealsLoading } = useQuery<(Deal & { vendor?: Vendor })[]>({
@@ -342,14 +354,30 @@ export default function Discover() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <Link href="/profile" data-testid="link-user-profile">
-            <Avatar className="w-8 h-8 cursor-pointer hover-elevate">
-              <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-                {getUserInitials()}
-              </AvatarFallback>
-            </Avatar>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/messages" data-testid="link-messages">
+              <div className="relative cursor-pointer p-2 rounded-full hover-elevate">
+                <MessageSquare className="w-5 h-5 text-foreground" />
+                {totalUnread > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center px-1 text-xs"
+                    data-testid="badge-unread-messages"
+                  >
+                    {totalUnread > 99 ? "99+" : totalUnread}
+                  </Badge>
+                )}
+              </div>
+            </Link>
+            <Link href="/profile" data-testid="link-user-profile">
+              <Avatar className="w-8 h-8 cursor-pointer hover-elevate">
+                <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                  {getUserInitials()}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          </div>
         </div>
       </header>
 
