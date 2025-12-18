@@ -273,6 +273,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search vendors by business name (for messaging feature)
+  app.get("/api/vendors/search", async (req, res) => {
+    try {
+      const query = (req.query.q as string || "").toLowerCase().trim();
+      if (!query || query.length < 2) {
+        return res.json([]);
+      }
+      
+      const allVendors = await storage.getAllVendorListings();
+      const filtered = allVendors
+        .filter(v => 
+          v.businessName?.toLowerCase().includes(query) ||
+          v.description?.toLowerCase().includes(query)
+        )
+        .slice(0, 10); // Limit to 10 results
+      
+      res.json(filtered);
+    } catch (error) {
+      console.error("[GET /api/vendors/search] Error:", error);
+      res.status(500).json({ error: "Failed to search vendors" });
+    }
+  });
+
   app.get("/api/vendors/stats", async (req, res) => {
     try {
       const verifiedVendors = await storage.getVerifiedVendors();
