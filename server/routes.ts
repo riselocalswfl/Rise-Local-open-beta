@@ -3894,6 +3894,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ B2C CONVERSATION ROUTES ============
+
+  // POST /api/b2c/conversations/start - Start or get existing conversation with a business
+  app.post("/api/b2c/conversations/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const consumerId = req.user.claims.sub;
+      const { vendorId, dealId } = req.body;
+
+      if (!vendorId) {
+        return res.status(400).json({ error: "vendorId is required" });
+      }
+
+      // Verify vendor exists
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+
+      // Get or create conversation
+      const conversation = await storage.getOrCreateConversation(consumerId, vendorId, dealId);
+      
+      console.log("[B2C] Conversation started/retrieved:", {
+        conversationId: conversation.id,
+        consumerId,
+        vendorId,
+        dealId
+      });
+
+      res.json({ 
+        conversationId: conversation.id,
+        conversation,
+        vendorName: vendor.businessName
+      });
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+      res.status(500).json({ error: "Failed to start conversation" });
+    }
+  });
+
+  // GET /api/b2c/conversations - Get all B2C conversations for current user
+  app.get("/api/b2c/conversations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: "User not found" });
+      }
+
+      // Check if user is a vendor
+      const isVendorRole = ['vendor', 'restaurant', 'service_provider'].includes(user.role || '');
+      
+      if (isVendorRole) {
+        // Get vendor's conversations
+        const vendor = await storage.getVendorByOwnerId(userId);
+        if (!vendor) {
+          return res.json([]);
+        }
+        const conversations = await storage.getB2CConversationsForVendor(vendor.id);
+        res.json({ role: 'vendor', conversations });
+      } else {
+        // Get consumer's conversations
+        const conversations = await storage.getB2CConversationsForConsumer(userId);
+        res.json({ role: 'consumer', conversations });
+      }
+    } catch (error) {
+      console.error("Error fetching B2C conversations:", error);
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
+  // GET /api/b2c/conversations/:conversationId - Get messages in a conversation
+  app.get("/api/b2c/conversations/:conversationId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { conversationId } = req.params;
+
+      // Get conversation
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Verify user has access (either consumer or vendor owner)
+      const vendor = await storage.getVendor(conversation.vendorId);
+      const isConsumer = conversation.consumerId === userId;
+      const isVendorOwner = vendor?.ownerId === userId;
+
+      if (!isConsumer && !isVendorOwner) {
+        return res.status(403).json({ error: "Access denied to this conversation" });
+      }
+
+      // Get messages
+      const messages = await storage.getConversationMessages(conversationId);
+
+      // Mark messages as read for the recipient
+      await storage.markConversationMessagesAsRead(conversationId, userId);
+
+      // Get vendor and consumer info
+      const consumer = await storage.getUser(conversation.consumerId);
+      const consumerName = consumer?.firstName && consumer?.lastName
+        ? `${consumer.firstName} ${consumer.lastName}`
+        : consumer?.username || 'Unknown Customer';
+
+      res.json({
+        conversation,
+        messages,
+        vendorName: vendor?.businessName || 'Unknown Business',
+        vendorLogoUrl: vendor?.logoUrl || null,
+        consumerName,
+        userRole: isConsumer ? 'consumer' : 'vendor'
+      });
+    } catch (error) {
+      console.error("Error fetching conversation messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // POST /api/b2c/conversations/:conversationId/messages - Send a message in a conversation
+  app.post("/api/b2c/conversations/:conversationId/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { conversationId } = req.params;
+      const { content } = req.body;
+
+      if (!content || content.trim().length === 0) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+
+      // Get conversation
+      const conversation = await storage.getConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Verify user has access and determine role
+      const vendor = await storage.getVendor(conversation.vendorId);
+      const isConsumer = conversation.consumerId === userId;
+      const isVendorOwner = vendor?.ownerId === userId;
+
+      if (!isConsumer && !isVendorOwner) {
+        return res.status(403).json({ error: "Access denied to this conversation" });
+      }
+
+      // Determine sender role
+      const senderRole = isConsumer ? 'consumer' : 'vendor';
+
+      // For vendors, check if they are subscribed (premium feature)
+      if (senderRole === 'vendor') {
+        const vendorOwner = await storage.getUser(userId);
+        const isSubscribed = vendorOwner?.isPassMember && 
+          (!vendorOwner.passExpiresAt || new Date(vendorOwner.passExpiresAt) > new Date());
+        
+        if (!isSubscribed) {
+          return res.status(403).json({ 
+            error: "Premium feature",
+            code: "SUBSCRIPTION_REQUIRED",
+            message: "Messaging customers requires an active Rise Local subscription"
+          });
+        }
+      }
+
+      // Create message
+      const message = await storage.createConversationMessage({
+        conversationId,
+        senderId: userId,
+        senderRole,
+        content: content.trim(),
+        isRead: false,
+      });
+
+      console.log("[B2C] Message sent:", {
+        messageId: message.id,
+        conversationId,
+        senderRole
+      });
+
+      res.json(message);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // GET /api/b2c/unread-count - Get unread B2C message count for current user
+  app.get("/api/b2c/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: "User not found" });
+      }
+
+      const isVendorRole = ['vendor', 'restaurant', 'service_provider'].includes(user.role || '');
+      
+      if (isVendorRole) {
+        const vendor = await storage.getVendorByOwnerId(userId);
+        const count = await storage.getUnreadB2CMessageCount(userId, 'vendor', vendor?.id);
+        res.json({ count, role: 'vendor' });
+      } else {
+        const count = await storage.getUnreadB2CMessageCount(userId, 'consumer');
+        res.json({ count, role: 'consumer' });
+      }
+    } catch (error) {
+      console.error("Error fetching B2C unread count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
   // ============ DEALS ROUTES ============
 
   // GET /api/deals - List all deals with optional filters
