@@ -1051,6 +1051,30 @@ export const insertConversationMessageSchema = createInsertSchema(conversationMe
 export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 
+// Notifications - In-app notifications for users
+export const NOTIFICATION_TYPES = ["new_message", "deal_expiring", "pass_renewal", "system"] as const;
+export type NotificationType = typeof NOTIFICATION_TYPES[number];
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // "new_message" | "deal_expiring" | "pass_renewal" | "system"
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  referenceId: varchar("reference_id"), // Links to conversation, deal, etc.
+  referenceType: text("reference_type"), // "conversation" | "deal" | etc.
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
 // Deal claim status enum values
 export const DEAL_CLAIM_STATUSES = ["CLAIMED", "REDEEMED", "EXPIRED"] as const;
 export type DealClaimStatus = typeof DEAL_CLAIM_STATUSES[number];

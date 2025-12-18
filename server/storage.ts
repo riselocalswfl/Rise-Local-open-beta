@@ -26,10 +26,11 @@ import {
   type Conversation, type InsertConversation,
   type ConversationMessage, type InsertConversationMessage,
   type SenderRole,
+  type Notification, type InsertNotification,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions, dealClaims,
   restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
-  conversations, conversationMessages,
+  conversations, conversationMessages, notifications,
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
@@ -240,6 +241,13 @@ export interface IStorage {
   createConversationMessage(message: InsertConversationMessage): Promise<ConversationMessage>;
   markConversationMessagesAsRead(conversationId: string, recipientId: string): Promise<void>;
   getUnreadB2CMessageCount(userId: string, role: 'consumer' | 'vendor', vendorId?: string): Promise<number>;
+
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotifications(userId: string): Promise<Notification[]>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
+  markNotificationAsRead(notificationId: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
 
   // Deal operations
   listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]>;
@@ -1296,6 +1304,55 @@ export class DbStorage implements IStorage {
         );
       return result[0]?.count || 0;
     }
+  }
+
+  // Notification operations
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const result = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
+    return result[0];
+  }
+
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      );
+    return result[0]?.count || 0;
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, notificationId));
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      );
   }
 
   // Deal operations
