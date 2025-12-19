@@ -79,15 +79,6 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
                 Member Only
               </Badge>
             )}
-            {!deal.memberOnly && (
-              <Badge 
-                variant="secondary" 
-                className="text-[10px] px-1.5 py-0.5"
-                data-testid={`badge-free-${deal.id}`}
-              >
-                Free
-              </Badge>
-            )}
           </div>
 
           {/* Sample Deal badge for fictitious deals */}
