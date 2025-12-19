@@ -946,11 +946,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/vendors/:id - Public vendor profile with deals
-  app.get("/api/vendors/:id", async (req, res) => {
+  app.get("/api/vendors/:id", async (req: any, res) => {
     try {
       const result = await storage.getVendorWithDeals(req.params.id);
       if (!result) {
         return res.status(404).json({ error: "Vendor not found" });
+      }
+
+      // Check if vendor profile is hidden
+      if (!result.vendor.isProfileVisible) {
+        // Allow access if current user is the owner or admin
+        const currentUserId = req.session?.userId || req.user?.claims?.sub;
+        const currentUser = currentUserId ? await storage.getUser(currentUserId) : null;
+        const isOwner = currentUserId === result.vendor.ownerId;
+        const isAdmin = currentUser?.role === "admin";
+        
+        if (!isOwner && !isAdmin) {
+          // Return a special response for hidden profiles (SEO-safe, no 404)
+          return res.status(200).json({ 
+            vendor: null,
+            deals: [],
+            isHidden: true,
+            message: "This business is currently not accepting visitors."
+          });
+        }
       }
 
       // Map deals to VendorDeal type

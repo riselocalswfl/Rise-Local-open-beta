@@ -47,7 +47,7 @@ export default function BusinessProfile() {
     },
   });
 
-  const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails; deals: any[] }>({
+  const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails | null; deals: any[]; isHidden?: boolean; message?: string }>({
     queryKey: ["/api/vendors", vendorId],
     queryFn: async () => {
       const res = await fetch(`/api/vendors/${vendorId}`);
@@ -58,6 +58,8 @@ export default function BusinessProfile() {
   });
   
   const vendor = vendorData?.vendor;
+  const isHidden = vendorData?.isHidden;
+  const hiddenMessage = vendorData?.message;
 
   const { data: products } = useQuery<Product[]>({
     queryKey: [`/api/vendors/${vendorId}/products`],
@@ -81,6 +83,29 @@ export default function BusinessProfile() {
           <Skeleton className="h-32 rounded-lg" />
           <Skeleton className="h-24 rounded-lg" />
           <Skeleton className="h-48 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  // Handle hidden vendor profile
+  if (isHidden) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DetailHeader title="Business Unavailable" />
+        <div className="px-4 py-8 text-center">
+          <div className="max-w-md mx-auto">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <Clock className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold mb-2" data-testid="text-business-unavailable">Business Temporarily Unavailable</h2>
+            <p className="text-muted-foreground mb-6" data-testid="text-unavailable-message">
+              {hiddenMessage || "This business is currently not accepting visitors."}
+            </p>
+            <Link href="/discover">
+              <Button data-testid="button-back-to-discover">Explore Other Businesses</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
