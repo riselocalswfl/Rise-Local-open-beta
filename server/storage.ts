@@ -34,7 +34,7 @@ import {
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
-import { eq, desc, and, sql, gte, lte } from "drizzle-orm";
+import { eq, desc, and, sql, gte, lte, isNull } from "drizzle-orm";
 import { calculateDistanceMiles } from "./geocoding";
 
 // Type for deals with distance information
@@ -291,6 +291,9 @@ export interface IStorage {
   getUserDealClaims(userId: string): Promise<DealClaim[]>;
   getActiveClaimForUserDeal(userId: string, dealId: string): Promise<DealClaim | undefined>;
   redeemDealClaimByToken(token: string): Promise<{ success: boolean; message: string; claim?: DealClaim }>;
+  voidDealClaim(claimId: string): Promise<DealClaim | undefined>;
+  getDealsByVendorId(vendorId: string): Promise<Deal[]>;
+  getUserClaimsForDeal(userId: string, dealId: string): Promise<DealClaim[]>;
 
   // Preferred Placement operations
   getActiveDiscoverSpotlight(): Promise<{ placement: PreferredPlacement; vendor: Vendor; deals: Deal[] } | null>;
@@ -1670,6 +1673,35 @@ export class DbStorage implements IStorage {
       .returning();
     
     return { success: true, message: "Deal redeemed successfully", claim: updated };
+  }
+
+  async voidDealClaim(claimId: string): Promise<DealClaim | undefined> {
+    const [updated] = await db.update(dealClaims)
+      .set({ 
+        status: "VOIDED", 
+        voidedAt: new Date() 
+      })
+      .where(eq(dealClaims.id, claimId))
+      .returning();
+    return updated;
+  }
+
+  async getDealsByVendorId(vendorId: string): Promise<Deal[]> {
+    return await db.select().from(deals)
+      .where(and(
+        eq(deals.vendorId, vendorId),
+        isNull(deals.deletedAt)
+      ))
+      .orderBy(desc(deals.createdAt));
+  }
+
+  async getUserClaimsForDeal(userId: string, dealId: string): Promise<DealClaim[]> {
+    return await db.select().from(dealClaims)
+      .where(and(
+        eq(dealClaims.userId, userId),
+        eq(dealClaims.dealId, dealId)
+      ))
+      .orderBy(desc(dealClaims.claimedAt));
   }
 
   // Preferred Placement operations

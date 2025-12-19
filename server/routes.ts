@@ -4425,6 +4425,260 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== VENDOR DEAL MANAGEMENT ENDPOINTS =====
+
+  // GET /api/vendor/deals - List vendor's own deals with optional status filter
+  app.get("/api/vendor/deals", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const statusFilter = req.query.status as string | undefined;
+
+      // Verify user is a vendor
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(403).json({ error: "Only vendors can access this endpoint" });
+      }
+
+      // Get vendor's deals
+      const allDeals = await storage.getDealsByVendorId(vendor.id);
+      
+      // Apply status filter if provided
+      let filteredDeals = allDeals;
+      if (statusFilter) {
+        filteredDeals = allDeals.filter(d => d.status === statusFilter);
+      }
+
+      // Add computed fields for each deal
+      const now = new Date();
+      const dealsWithMeta = filteredDeals.map(deal => ({
+        ...deal,
+        isExpired: deal.endsAt ? new Date(deal.endsAt) < now : false,
+        computedStatus: deal.endsAt && new Date(deal.endsAt) < now ? 'expired' : deal.status,
+      }));
+
+      console.log("[VENDOR DEALS] Listed", dealsWithMeta.length, "deals for vendor:", vendor.id);
+      res.json(dealsWithMeta);
+    } catch (error) {
+      console.error("Error fetching vendor deals:", error);
+      res.status(500).json({ error: "Failed to fetch deals" });
+    }
+  });
+
+  // GET /api/vendor/deals/:id - Get a single deal for the vendor
+  app.get("/api/vendor/deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.id;
+
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== deal.vendorId) {
+        return res.status(403).json({ error: "You can only view your own deals" });
+      }
+
+      const now = new Date();
+      res.json({
+        ...deal,
+        isExpired: deal.endsAt ? new Date(deal.endsAt) < now : false,
+        computedStatus: deal.endsAt && new Date(deal.endsAt) < now ? 'expired' : deal.status,
+      });
+    } catch (error) {
+      console.error("Error fetching vendor deal:", error);
+      res.status(500).json({ error: "Failed to fetch deal" });
+    }
+  });
+
+  // POST /api/vendor/deals - Create a new deal as draft
+  app.post("/api/vendor/deals", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Verify user is a vendor
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(403).json({ error: "Only vendors can create deals" });
+      }
+
+      // Validate request body
+      const dealData = insertDealSchema.parse({
+        ...req.body,
+        vendorId: vendor.id,
+        status: 'draft', // Always start as draft
+      });
+
+      const deal = await storage.createDeal(dealData);
+      console.log("[VENDOR DEALS] Deal created:", deal.id, "by vendor:", vendor.id);
+      res.status(201).json(deal);
+    } catch (error) {
+      console.error("Error creating deal:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid deal data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create deal" });
+    }
+  });
+
+  // PATCH /api/vendor/deals/:id - Update a deal
+  app.patch("/api/vendor/deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.id;
+
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== existingDeal.vendorId) {
+        return res.status(403).json({ error: "You can only update your own deals" });
+      }
+
+      // Don't allow changing vendorId
+      const { vendorId, ...updateData } = req.body;
+      const updatedDeal = await storage.updateDeal(dealId, updateData);
+
+      console.log("[VENDOR DEALS] Deal updated:", dealId, "by vendor:", vendor.id);
+      res.json(updatedDeal);
+    } catch (error) {
+      console.error("Error updating deal:", error);
+      res.status(500).json({ error: "Failed to update deal" });
+    }
+  });
+
+  // POST /api/vendor/deals/:id/publish - Publish a deal
+  app.post("/api/vendor/deals/:id/publish", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.id;
+
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== existingDeal.vendorId) {
+        return res.status(403).json({ error: "You can only publish your own deals" });
+      }
+
+      // Check if deal is already expired
+      if (existingDeal.endsAt && new Date(existingDeal.endsAt) < new Date()) {
+        return res.status(400).json({ error: "Cannot publish an expired deal" });
+      }
+
+      const updatedDeal = await storage.updateDeal(dealId, {
+        status: 'published',
+        isActive: true,
+      });
+
+      console.log("[VENDOR DEALS] Deal published:", dealId, "by vendor:", vendor.id);
+      res.json(updatedDeal);
+    } catch (error) {
+      console.error("Error publishing deal:", error);
+      res.status(500).json({ error: "Failed to publish deal" });
+    }
+  });
+
+  // POST /api/vendor/deals/:id/pause - Pause a deal
+  app.post("/api/vendor/deals/:id/pause", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.id;
+
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== existingDeal.vendorId) {
+        return res.status(403).json({ error: "You can only pause your own deals" });
+      }
+
+      const updatedDeal = await storage.updateDeal(dealId, {
+        status: 'paused',
+        isActive: false,
+      });
+
+      console.log("[VENDOR DEALS] Deal paused:", dealId, "by vendor:", vendor.id);
+      res.json(updatedDeal);
+    } catch (error) {
+      console.error("Error pausing deal:", error);
+      res.status(500).json({ error: "Failed to pause deal" });
+    }
+  });
+
+  // DELETE /api/vendor/deals/:id - Soft delete a deal
+  app.delete("/api/vendor/deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.id;
+
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== existingDeal.vendorId) {
+        return res.status(403).json({ error: "You can only delete your own deals" });
+      }
+
+      // Soft delete
+      await storage.updateDeal(dealId, {
+        deletedAt: new Date(),
+        isActive: false,
+      });
+
+      console.log("[VENDOR DEALS] Deal deleted:", dealId, "by vendor:", vendor.id);
+      res.json({ success: true, message: "Deal deleted" });
+    } catch (error) {
+      console.error("Error deleting deal:", error);
+      res.status(500).json({ error: "Failed to delete deal" });
+    }
+  });
+
+  // POST /api/vendor/deals/:dealId/void/:claimId - Void a claim (for staff mistakes)
+  app.post("/api/vendor/deals/:dealId/void/:claimId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { dealId, claimId } = req.params;
+
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== deal.vendorId) {
+        return res.status(403).json({ error: "You can only void claims for your own deals" });
+      }
+
+      // Void the claim
+      const voidedClaim = await storage.voidDealClaim(claimId);
+      if (!voidedClaim) {
+        return res.status(404).json({ error: "Claim not found" });
+      }
+
+      console.log("[VENDOR DEALS] Claim voided:", claimId, "for deal:", dealId);
+      res.json(voidedClaim);
+    } catch (error) {
+      console.error("Error voiding claim:", error);
+      res.status(500).json({ error: "Failed to void claim" });
+    }
+  });
+
   // ===== RESERVATION ENDPOINTS =====
 
   // POST /api/reservations/initiate - Create reservation record and return redirect info
