@@ -107,15 +107,35 @@ const serviceFormSchema = z.object({
 const dealFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
+  finePrint: z.string().optional(),
+  valueLabel: z.string().optional(),
   category: z.string().optional(),
   city: z.string().default("Fort Myers"),
-  tier: z.enum(["free", "premium"]).default("free"),
+  tier: z.enum(["free", "member", "standard"]).default("free"),
   dealType: z.enum(["bogo", "percent", "addon"]),
-  isActive: z.boolean().default(true),
+  discountType: z.enum(["percent", "fixed", "bogo", "free_item"]).optional(),
+  discountValue: z.number().optional(),
+  redemptionMethod: z.enum(["qr_code", "numeric_pin", "claim_button", "unique_code", "staff_toggle"]).default("qr_code"),
+  maxRedemptionsPerUser: z.number().int().min(1).default(1),
+  cooldownHours: z.number().int().min(0).optional(),
+  maxRedemptionsTotal: z.number().int().min(0).optional(),
+  startsAt: z.string().optional(),
+  endsAt: z.string().optional(),
+  isActive: z.boolean().default(false),
+  status: z.enum(["draft", "published", "paused", "expired"]).default("draft"),
+  isPassLocked: z.boolean().default(false),
 });
 
 const DEAL_CATEGORIES = ["Food & Drink", "Retail", "Beauty", "Fitness", "Services", "Experiences"];
 const DEAL_CITIES = ["Fort Myers", "Cape Coral", "Bonita Springs", "Estero", "Naples"];
+
+const REDEMPTION_METHODS = [
+  { value: "qr_code", label: "QR Code Scan" },
+  { value: "claim_button", label: "Claim Button" },
+  { value: "numeric_pin", label: "Numeric PIN" },
+  { value: "unique_code", label: "Unique Code" },
+  { value: "staff_toggle", label: "Staff Toggle" },
+];
 
 export default function VendorDashboard() {
   const { toast } = useToast();
@@ -434,17 +454,17 @@ export default function VendorDashboard() {
     },
   });
 
-  // Deal Mutations
+  // Deal Mutations - using vendor deal management endpoints
   const createDealMutation = useMutation({
     mutationFn: async (data: z.infer<typeof dealFormSchema>) => {
       if (!vendor?.id) throw new Error("No vendor ID");
-      return await apiRequest("POST", "/api/deals", { ...data, vendorId: vendor.id });
+      return await apiRequest("POST", "/api/vendor/deals", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0];
-          return typeof key === 'string' && key.startsWith('/api/deals');
+          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
         }
       });
       setDealDialogOpen(false);
@@ -463,13 +483,13 @@ export default function VendorDashboard() {
 
   const updateDealMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<z.infer<typeof dealFormSchema>> }) => {
-      return await apiRequest("PUT", `/api/deals/${id}`, data);
+      return await apiRequest("PUT", `/api/vendor/deals/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0];
-          return typeof key === 'string' && key.startsWith('/api/deals');
+          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
         }
       });
       setDealDialogOpen(false);
@@ -486,23 +506,68 @@ export default function VendorDashboard() {
     },
   });
 
-  const toggleDealMutation = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      return await apiRequest("PUT", `/api/deals/${id}`, { isActive });
+  const publishDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      return await apiRequest("POST", `/api/vendor/deals/${dealId}/publish`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         predicate: (query) => {
           const key = query.queryKey[0];
-          return typeof key === 'string' && key.startsWith('/api/deals');
+          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
         }
       });
-      toast({ title: "Deal status updated" });
+      toast({ title: "Deal published!", description: "Your deal is now live" });
     },
     onError: (error: any) => {
-      console.error("Deal toggle error:", error);
+      console.error("Deal publish error:", error);
       toast({ 
-        title: "Failed to update deal status", 
+        title: "Failed to publish deal", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const pauseDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      return await apiRequest("POST", `/api/vendor/deals/${dealId}/pause`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
+        }
+      });
+      toast({ title: "Deal paused" });
+    },
+    onError: (error: any) => {
+      console.error("Deal pause error:", error);
+      toast({ 
+        title: "Failed to pause deal", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      return await apiRequest("DELETE", `/api/vendor/deals/${dealId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
+        }
+      });
+      toast({ title: "Deal deleted" });
+    },
+    onError: (error: any) => {
+      console.error("Deal delete error:", error);
+      toast({ 
+        title: "Failed to delete deal", 
         variant: "destructive" 
       });
     },
@@ -1429,50 +1494,113 @@ export default function VendorDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {deals.map((deal) => (
-                      <div key={deal.id} className="flex items-center justify-between border rounded-md p-4" data-testid={`deal-${deal.id}`}>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold">{deal.title}</h3>
-                            <Badge variant={deal.isActive ? "default" : "secondary"}>
-                              {deal.isActive ? "Active" : "Inactive"}
-                            </Badge>
-                            <Badge variant="outline">{deal.tier === "premium" ? "Premium" : "Free"}</Badge>
-                            <Badge variant="outline">
-                              {deal.dealType === "bogo" ? "BOGO" : deal.dealType === "percent" ? "% Off" : "Add-on"}
-                            </Badge>
+                    {deals.map((deal) => {
+                      const dealStatus = deal.status || (deal.isActive ? 'published' : 'draft');
+                      const statusColors: Record<string, string> = {
+                        draft: "bg-gray-100 text-gray-700",
+                        published: "bg-green-100 text-green-700",
+                        paused: "bg-amber-100 text-amber-700",
+                        expired: "bg-red-100 text-red-700",
+                      };
+                      return (
+                        <div key={deal.id} className="flex items-start justify-between border rounded-md p-4 gap-4" data-testid={`deal-${deal.id}`}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h3 className="font-semibold">{deal.title}</h3>
+                              <Badge className={statusColors[dealStatus] || statusColors.draft}>
+                                {dealStatus.charAt(0).toUpperCase() + dealStatus.slice(1)}
+                              </Badge>
+                              {deal.tier && (
+                                <Badge variant="outline">
+                                  {deal.tier === "member" ? "Members Only" : deal.tier === "free" ? "Free" : "Standard"}
+                                </Badge>
+                              )}
+                              <Badge variant="outline">
+                                {deal.dealType === "bogo" ? "BOGO" : deal.dealType === "percent" ? "% Off" : "Add-on"}
+                              </Badge>
+                              {deal.isPassLocked && (
+                                <Badge variant="outline" className="bg-primary/10 text-primary">
+                                  <Lock className="w-3 h-3 mr-1" />
+                                  Pass Only
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{deal.description}</p>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                              {deal.valueLabel && <span className="font-medium text-green-600">{deal.valueLabel}</span>}
+                              {deal.category && <span>{deal.category}</span>}
+                              {deal.city && <span>{deal.city}</span>}
+                              {deal.maxRedemptionsPerUser && deal.maxRedemptionsPerUser > 1 && (
+                                <span>{deal.maxRedemptionsPerUser}x per person</span>
+                              )}
+                              {deal.endsAt && (
+                                <span>Ends: {new Date(deal.endsAt).toLocaleDateString()}</span>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{deal.description}</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                            {deal.category && <span>{deal.category}</span>}
-                            {deal.city && <span>{deal.city}</span>}
+                          <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setEditingDeal(deal);
+                                setDealDialogOpen(true);
+                              }}
+                              data-testid={`button-edit-deal-${deal.id}`}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
+                            {dealStatus === 'draft' && (
+                              <Button 
+                                variant="default"
+                                size="sm"
+                                onClick={() => publishDealMutation.mutate(deal.id)}
+                                disabled={publishDealMutation.isPending}
+                                data-testid={`button-publish-deal-${deal.id}`}
+                              >
+                                Publish
+                              </Button>
+                            )}
+                            {dealStatus === 'published' && (
+                              <Button 
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => pauseDealMutation.mutate(deal.id)}
+                                disabled={pauseDealMutation.isPending}
+                                data-testid={`button-pause-deal-${deal.id}`}
+                              >
+                                Pause
+                              </Button>
+                            )}
+                            {dealStatus === 'paused' && (
+                              <Button 
+                                variant="default"
+                                size="sm"
+                                onClick={() => publishDealMutation.mutate(deal.id)}
+                                disabled={publishDealMutation.isPending}
+                                data-testid={`button-resume-deal-${deal.id}`}
+                              >
+                                Resume
+                              </Button>
+                            )}
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this deal?')) {
+                                  deleteDealMutation.mutate(deal.id);
+                                }
+                              }}
+                              disabled={deleteDealMutation.isPending}
+                              data-testid={`button-delete-deal-${deal.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setEditingDeal(deal);
-                              setDealDialogOpen(true);
-                            }}
-                            data-testid={`button-edit-deal-${deal.id}`}
-                          >
-                            <Edit className="w-3 h-3 mr-1" />
-                            Edit
-                          </Button>
-                          <Button 
-                            variant={deal.isActive ? "secondary" : "default"}
-                            size="sm"
-                            onClick={() => toggleDealMutation.mutate({ id: deal.id, isActive: !deal.isActive })}
-                            disabled={toggleDealMutation.isPending}
-                            data-testid={`button-toggle-deal-${deal.id}`}
-                          >
-                            {deal.isActive ? "Deactivate" : "Activate"}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -2351,25 +2479,64 @@ function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; is
   );
 }
 
+type DealFormValues = z.infer<typeof dealFormSchema>;
+
 function DealForm({ 
   onSubmit, 
   isPending,
   defaultValues 
 }: { 
-  onSubmit: (data: z.infer<typeof dealFormSchema>) => void; 
+  onSubmit: (data: DealFormValues) => void; 
   isPending: boolean;
-  defaultValues?: Partial<z.infer<typeof dealFormSchema>>;
+  defaultValues?: Deal | null;
 }) {
-  const form = useForm<z.infer<typeof dealFormSchema>>({
+  const validTiers: DealFormValues["tier"][] = ["free", "member", "standard"];
+  const defaultTier: DealFormValues["tier"] = defaultValues?.tier && validTiers.includes(defaultValues.tier as any) 
+    ? defaultValues.tier as DealFormValues["tier"]
+    : "free";
+  
+  const validStatuses: DealFormValues["status"][] = ["draft", "published", "paused", "expired"];
+  const defaultStatus: DealFormValues["status"] = defaultValues?.status && validStatuses.includes(defaultValues.status as any)
+    ? defaultValues.status as DealFormValues["status"]
+    : "draft";
+
+  const validDealTypes: DealFormValues["dealType"][] = ["bogo", "percent", "addon"];
+  const defaultDealType: DealFormValues["dealType"] = defaultValues?.dealType && validDealTypes.includes(defaultValues.dealType as any)
+    ? defaultValues.dealType as DealFormValues["dealType"]
+    : "bogo";
+
+  const validRedemptionMethods: DealFormValues["redemptionMethod"][] = ["qr_code", "numeric_pin", "claim_button", "unique_code", "staff_toggle"];
+  const defaultRedemptionMethod: DealFormValues["redemptionMethod"] = defaultValues?.redemptionMethod && validRedemptionMethods.includes(defaultValues.redemptionMethod as any)
+    ? defaultValues.redemptionMethod as DealFormValues["redemptionMethod"]
+    : "qr_code";
+
+  const validDiscountTypes: NonNullable<DealFormValues["discountType"]>[] = ["percent", "fixed", "bogo", "free_item"];
+  const defaultDiscountType: DealFormValues["discountType"] = defaultValues?.discountType && validDiscountTypes.includes(defaultValues.discountType as any)
+    ? defaultValues.discountType as DealFormValues["discountType"]
+    : undefined;
+
+  const form = useForm<DealFormValues>({
     resolver: zodResolver(dealFormSchema),
     defaultValues: {
       title: defaultValues?.title || "",
       description: defaultValues?.description || "",
+      finePrint: defaultValues?.finePrint || "",
+      valueLabel: defaultValues?.valueLabel || "",
       category: defaultValues?.category || "",
       city: defaultValues?.city || "Fort Myers",
-      tier: defaultValues?.tier || "free",
-      dealType: defaultValues?.dealType || "bogo",
-      isActive: defaultValues?.isActive ?? true,
+      tier: defaultTier,
+      dealType: defaultDealType,
+      discountType: defaultDiscountType,
+      discountValue: defaultValues?.discountValue || undefined,
+      redemptionMethod: defaultRedemptionMethod,
+      maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
+      cooldownHours: defaultValues?.cooldownHours || undefined,
+      maxRedemptionsTotal: defaultValues?.maxRedemptionsTotal || undefined,
+      startsAt: defaultValues?.startsAt ? new Date(defaultValues.startsAt).toISOString().slice(0, 16) : "",
+      endsAt: defaultValues?.endsAt ? new Date(defaultValues.endsAt).toISOString().slice(0, 16) : "",
+      isActive: defaultValues?.isActive ?? false,
+      status: defaultStatus,
+      isPassLocked: defaultValues?.isPassLocked ?? false,
     },
   });
 
@@ -2416,6 +2583,21 @@ function DealForm({
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
+            name="valueLabel"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Value Label</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., Save $10, 50% Off" {...field} data-testid="input-deal-value-label" />
+                </FormControl>
+                <FormDescription>Shown on the deal card</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="dealType"
             render={({ field }) => (
               <FormItem>
@@ -2436,7 +2618,28 @@ function DealForm({
               </FormItem>
             )}
           />
+        </div>
 
+        <FormField
+          control={form.control}
+          name="finePrint"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fine Print</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Any terms or restrictions..."
+                  rows={2}
+                  {...field}
+                  data-testid="input-deal-fine-print"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="tier"
@@ -2450,8 +2653,32 @@ function DealForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="premium">Premium</SelectItem>
+                    <SelectItem value="free">Free (All Users)</SelectItem>
+                    <SelectItem value="member">Members Only</SelectItem>
+                    <SelectItem value="standard">Standard</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="redemptionMethod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Redemption Method</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-redemption-method">
+                      <SelectValue placeholder="Select method" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {REDEMPTION_METHODS.map((method) => (
+                      <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -2459,6 +2686,122 @@ function DealForm({
             )}
           />
         </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Redemption Limits</h4>
+          <div className="grid grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="maxRedemptionsPerUser"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Per Person</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={1}
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                      data-testid="input-max-per-user"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="cooldownHours"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cooldown (hrs)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={0}
+                      placeholder="0"
+                      {...field}
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                      data-testid="input-cooldown-hours"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="maxRedemptionsTotal"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Total Limit</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min={0}
+                      placeholder="Unlimited"
+                      {...field}
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                      data-testid="input-max-total"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Schedule</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="startsAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Starts At</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="datetime-local"
+                      {...field}
+                      data-testid="input-starts-at"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="endsAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ends At</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="datetime-local"
+                      {...field}
+                      data-testid="input-ends-at"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <Separator />
 
         <div className="grid grid-cols-2 gap-4">
           <FormField

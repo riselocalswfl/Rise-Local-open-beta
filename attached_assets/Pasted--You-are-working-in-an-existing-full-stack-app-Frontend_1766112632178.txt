@@ -1,0 +1,183 @@
+
+
+You are working in an existing full-stack app:
+	•	Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui + TanStack Query + wouter
+	•	Backend: Express.js + TypeScript + Drizzle ORM + PostgreSQL
+	•	Auth: Passport/Replit Auth. useAuth() returns { user } with user.id, user.role, user.onboardingComplete
+
+GOAL
+Build the complete vendor “Create Deals” backend + frontend, AND implement deal redemption using Option A:
+	•	Consumer taps “Claim Deal”
+	•	Server generates a 6-digit numeric code valid for 10 minutes
+	•	Vendor enters the code in “Redeem” screen to mark it redeemed
+
+IMPORTANT PRODUCT RULES
+	•	This app is deals-only: remove/ignore cart, ordering, services, events for this flow.
+	•	Vendor deal management must live under My Account (not “For Businesses”).
+	•	Only roles: vendor, restaurant, service_provider, admin can create/manage deals.
+	•	Vendors can only manage their own deals (vendorUserId === user.id). Admin can manage all.
+	•	Only deals with status=published and currently valid dates appear to consumers.
+
+	1.	DATABASE (Drizzle)
+Add these tables + migrations:
+
+TABLE: deals
+	•	id uuid pk default gen_random_uuid()
+	•	vendorUserId fk -> users.id not null
+	•	title varchar(80) not null
+	•	description text not null
+	•	finePrint text null
+	•	category varchar(32) not null  // restaurant, retail, service, other
+	•	dealType varchar(32) not null  // percent_off, amount_off, bogo, free_item, fixed_price, other
+	•	startAt timestamptz null
+	•	endAt timestamptz null
+	•	isActive boolean not null default true
+	•	status varchar(16) not null default ‘draft’ // draft|published|paused
+	•	heroImageUrl text null
+	•	redemptionMethod varchar(24) not null default ‘time_locked_code’
+	•	claimWindowMinutes int not null default 10
+	•	codeLength int not null default 6
+	•	maxRedemptionsTotal int null
+	•	maxRedemptionsPerUser int not null default 1
+	•	cooldownHours int not null default 168
+	•	createdAt timestamptz not null default now()
+	•	updatedAt timestamptz not null default now()
+Index deals_vendorUserId_idx on vendorUserId
+Index deals_status_idx on status
+
+TABLE: deal_redemptions
+	•	id uuid pk default gen_random_uuid()
+	•	dealId fk -> deals.id not null on delete cascade
+	•	userId fk -> users.id not null
+	•	vendorUserId fk -> users.id not null
+	•	status varchar(16) not null default ‘claimed’ // claimed|redeemed|voided
+	•	redemptionCode varchar(16) not null
+	•	claimedAt timestamptz not null default now()
+	•	claimExpiresAt timestamptz not null
+	•	redeemedAt timestamptz null
+	•	voidedAt timestamptz null
+	•	metadata jsonb null
+Index redemptions_deal_user_idx on (dealId, userId)
+Index redemptions_code_idx on (dealId, redemptionCode)
+Index redemptions_status_idx on (dealId, status)
+
+Enforce uniqueness to prevent duplicate active claims:
+	•	Add a partial unique constraint or server-side check so that for a given (dealId, userId), user cannot have more than one claimed redemption at a time.
+
+	2.	BACKEND (Express API)
+Create middleware guards:
+
+	•	requireAuth
+	•	requireVendorRole (vendor/restaurant/service_provider/admin)
+	•	requireDealOwnerOrAdmin (vendorUserId match or admin)
+
+Vendor Deal CRUD:
+	•	POST   /api/vendor/deals                create deal (draft)
+	•	GET    /api/vendor/deals                list my deals (admin can query all via ?all=true)
+	•	GET    /api/vendor/deals/:id            get deal
+	•	PATCH  /api/vendor/deals/:id            edit deal (only draft/paused allowed; published edits allowed but should keep audit-friendly)
+	•	POST   /api/vendor/deals/:id/publish    set status=published
+	•	POST   /api/vendor/deals/:id/pause      set status=paused
+	•	DELETE /api/vendor/deals/:id            delete deal (only owner/admin)
+Validation: use zod (or your existing validation). Validate title length, required fields, and endAt >= startAt.
+
+Consumer deal browsing:
+	•	GET /api/deals
+Return only:
+	•	status=published
+	•	isActive=true
+	•	startAt is null or startAt <= now()
+	•	endAt is null or endAt >= now()
+	•	GET /api/deals/:id (same visibility rules)
+
+Redemption: OPTION A (time-locked code)
+	•	POST /api/deals/:id/claim
+Requires auth. Must:
+	1.	Verify deal is visible/valid and published.
+	2.	Enforce maxRedemptionsPerUser:
+	•	If user already has a redeemed redemption for this deal and maxRedemptionsPerUser=1 => block.
+	•	If maxRedemptionsPerUser>1, count redeemed redemptions for this user+deal.
+	3.	Enforce cooldownHours:
+	•	Find most recent redeemedAt for this user+deal; if now < redeemedAt + cooldownHours => block.
+	4.	Enforce maxRedemptionsTotal if set:
+	•	Count total redeemed for deal; if >= maxRedemptionsTotal => block.
+	5.	Prevent multiple active claims:
+	•	If user already has status=claimed and claimExpiresAt > now => return existing claim (id + code + expiry).
+	6.	Generate redemptionCode:
+	•	6-digit numeric string, zero-padded allowed (e.g., 042381)
+	•	Ensure uniqueness for that deal among active claims (check collisions, regenerate if needed)
+	7.	claimExpiresAt = now + 10 minutes (use deal.claimWindowMinutes)
+	8.	Insert into deal_redemptions with status=claimed
+Return: { redemptionId, redemptionCode, claimExpiresAt }
+	•	POST /api/vendor/deals/:dealId/redeem
+Vendor-auth. Deal owner/admin only.
+Accept body: { code: string }
+Must:
+	1.	Find redemption for (dealId, code) where status=claimed
+	2.	Ensure now <= claimExpiresAt
+	3.	Mark status=redeemed, set redeemedAt=now
+	4.	Return success payload
+IMPORTANT: Make redemption update atomic/transactional to avoid double redeem.
+	•	POST /api/vendor/deals/:dealId/void
+Vendor-auth. Body: { code: string, reason?: string }
+Find claimed redemption and set status=voided, voidedAt=now.
+
+Add a small job/util to treat expired claims as invalid (no need to delete; just check expiresAt in queries).
+Store times in UTC (timestamptz).
+	3.	FRONTEND (React + wouter + shadcn + Query)
+Add Vendor navigation under /account:
+
+	•	In My Account, if role is vendor/restaurant/service_provider/admin show “My Deals”.
+
+Vendor screens:
+A) /account/deals  (VendorDealsList)
+	•	list my deals with cards showing title, status pill, date range
+	•	actions: Edit, Publish, Pause, Delete
+	•	button: Create Deal
+
+B) /account/deals/new and /account/deals/:id/edit (DealEditor)
+	•	form fields: title, description, finePrint, category, dealType, heroImageUrl (url for now), startAt/endAt
+	•	redemption settings (default locked for MVP):
+	•	redemptionMethod fixed to time_locked_code
+	•	claimWindowMinutes default 10 (editable optional)
+	•	cooldownHours default 168 (editable)
+	•	maxRedemptionsPerUser default 1 (editable)
+	•	maxRedemptionsTotal optional
+	•	Save Draft (POST/PATCH)
+	•	Publish button
+
+C) /account/deals/:id/redeem (VendorRedeemScreen)
+	•	big input for 6-digit code
+	•	Redeem button calls POST /api/vendor/deals/:dealId/redeem
+	•	Show clear success/failure toasts
+
+Consumer screens:
+D) /deals (DealsFeed)
+	•	show published deals list via GET /api/deals
+
+E) /deals/:id (DealDetail)
+	•	Claim Deal button calls POST /api/deals/:id/claim
+	•	on success, route to /deals/:id/claimed/:redemptionId
+
+F) /deals/:id/claimed/:redemptionId (ClaimedDealScreen)
+	•	display redemptionCode in large text
+	•	show countdown timer to claimExpiresAt
+	•	copy button for code
+	•	if expired, show “Claim expired — tap to claim again” (re-call claim endpoint)
+
+Use TanStack Query:
+	•	invalidate vendor deals list after create/edit/publish/pause/delete
+	•	invalidate deal detail after publish
+
+	4.	POLISH / SAFETY
+
+	•	Ensure vendor endpoints are not accessible to consumers (401/403).
+	•	Ensure consumer endpoints never leak draft/paused deals.
+	•	Add friendly error messages for:
+	•	cooldown not passed
+	•	max uses reached
+	•	claim expired
+	•	invalid code
+
+DELIVERABLE
+Implement all code changes with new files, routes, schema updates, and UI pages. Keep code consistent with current project structure (wouter routes in App.tsx, existing AuthBoundary, existing hooks). Provide a brief test checklist at the end.
