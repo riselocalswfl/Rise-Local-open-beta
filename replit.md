@@ -19,6 +19,15 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - **Unified Vendor Architecture**: All vendor types (shop, dine, service) use a single `vendors` table with a `vendorType` field and a `capabilities` JSON field, enabling polymorphic behavior. Products, menu items, and service offerings link to this unified `vendors` table.
 - **Terminology Convention**: "Vendor" is used for backend/database references (API: `/api/vendors`), while "Business" is used for customer-facing UI and routes (`/businesses`, `/businesses/:id`). This provides clear separation between technical and user-facing terminology.
 - **Simplified Authentication & Onboarding**: Streamlined signup routes users based on `intended_role` query parameter. After auth, all users go to `/start` gate which routes based on role and onboarding status.
+- **5-Step Vendor Onboarding Flow**: Vendors complete a comprehensive 5-step onboarding at `/onboarding`:
+  1. **Basic Info**: Business name, contact name, email, phone, city, zip code, and vendor type selection (shop/dine/service)
+  2. **Business Details**: Description, about section, and type-specific fields (e.g., cuisine type for restaurants, service categories)
+  3. **Operations**: Payment methods (cash, credit, etc.) and fulfillment options (pickup, delivery, shipping for shops)
+  4. **Hours, Address & Images**: Street address, 7-day business hours, profile logo upload, and cover banner upload
+  5. **Review & Submit**: Summary of all information with final submission
+  - Auto-save: All forms auto-save to server every 2 seconds with debouncing
+  - Draft persistence: Onboarding progress stored in database via draft vendor record
+  - Image uploads: Uses ImageUpload component with object storage integration
 - **Universal `/start` Gate**: Central routing page that redirects users based on their role and `onboardingComplete` status:
   - Unauthenticated → `/auth`
   - Authenticated + incomplete onboarding + vendor/restaurant/service_provider → `/onboarding`
