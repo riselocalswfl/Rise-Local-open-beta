@@ -29,6 +29,8 @@ import MessageThread from "@/pages/MessageThread";
 import MessagesPage from "@/pages/MessagesPage";
 import ConversationPage from "@/pages/ConversationPage";
 import MyDeals from "@/pages/MyDeals";
+import ClaimedDealScreen from "@/pages/ClaimedDealScreen";
+import VendorRedeemScreen from "@/pages/VendorRedeemScreen";
 import Discover from "@/pages/Discover";
 import Browse from "@/pages/Browse";
 import Favorites from "@/pages/Favorites";
@@ -105,6 +107,24 @@ function Router() {
         {(params) => (
           <AppShell>
             <DealDetailPage />
+          </AppShell>
+        )}
+      </Route>
+      
+      {/* Consumer Claimed Deal Screen with countdown timer */}
+      <Route path="/deals/:id/claimed/:redemptionId">
+        {() => (
+          <AppShell>
+            <ClaimedDealScreen />
+          </AppShell>
+        )}
+      </Route>
+      
+      {/* Vendor Code Redemption Screen */}
+      <Route path="/account/deals/:dealId/redeem">
+        {() => (
+          <AppShell>
+            <VendorRedeemScreen />
           </AppShell>
         )}
       </Route>

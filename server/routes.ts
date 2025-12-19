@@ -4648,11 +4648,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/vendor/deals/:dealId/void/:claimId - Void a claim (for staff mistakes)
-  app.post("/api/vendor/deals/:dealId/void/:claimId", isAuthenticated, async (req: any, res) => {
+  // POST /api/vendor/deals/:dealId/void/:redemptionId - Void a redemption (for staff mistakes)
+  app.post("/api/vendor/deals/:dealId/void/:redemptionId", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { dealId, claimId } = req.params;
+      const { dealId, redemptionId } = req.params;
+      const { reason } = req.body;
 
       const deal = await storage.getDealById(dealId);
       if (!deal) {
@@ -4665,17 +4666,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "You can only void claims for your own deals" });
       }
 
-      // Void the claim
-      const voidedClaim = await storage.voidDealClaim(claimId);
-      if (!voidedClaim) {
-        return res.status(404).json({ error: "Claim not found" });
+      // Void the redemption
+      const voidedRedemption = await storage.voidRedemption(redemptionId, reason);
+      if (!voidedRedemption) {
+        return res.status(404).json({ error: "Redemption not found" });
       }
 
-      console.log("[VENDOR DEALS] Claim voided:", claimId, "for deal:", dealId);
-      res.json(voidedClaim);
+      console.log("[VENDOR DEALS] Redemption voided:", redemptionId, "for deal:", dealId);
+      res.json(voidedRedemption);
     } catch (error) {
-      console.error("Error voiding claim:", error);
-      res.status(500).json({ error: "Failed to void claim" });
+      console.error("Error voiding redemption:", error);
+      res.status(500).json({ error: "Failed to void redemption" });
+    }
+  });
+
+  // POST /api/vendor/deals/:dealId/redeem - Vendor redeems a deal by entering customer's code
+  app.post("/api/vendor/deals/:dealId/redeem", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { dealId } = req.params;
+      const { code } = req.body;
+
+      if (!code) {
+        return res.status(400).json({ error: "Redemption code is required" });
+      }
+
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor || vendor.id !== deal.vendorId) {
+        return res.status(403).json({ error: "You can only redeem codes for your own deals" });
+      }
+
+      // Attempt to redeem the code
+      const result = await storage.redeemByCode(dealId, code, userId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+
+      console.log("[VENDOR DEALS] Deal redeemed via code:", code, "for deal:", dealId);
+      res.json({
+        success: true,
+        message: result.message,
+        redemption: result.redemption,
+      });
+    } catch (error) {
+      console.error("Error redeeming deal:", error);
+      res.status(500).json({ error: "Failed to redeem deal" });
     }
   });
 
@@ -4685,7 +4727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/reservations/initiate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { restaurantId, partySize, requestedTime, dealClaimId, specialRequests } = req.body;
+      const { restaurantId, partySize, requestedTime, dealRedemptionId, specialRequests } = req.body;
       
       // Validate input
       if (!restaurantId || !partySize || !requestedTime) {
@@ -4704,7 +4746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         restaurantId,
         partySize,
         requestedTime: new Date(requestedTime),
-        dealClaimId: dealClaimId || null,
+        dealRedemptionId: dealRedemptionId || null,
         specialRequests: specialRequests || null,
         status: "INITIATED",
         externalProvider: restaurantInfo.reservationMethod,
@@ -4772,9 +4814,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== DEAL CLAIM ENDPOINTS (QR Code-based) =====
+  // ===== DEAL CLAIM ENDPOINTS (Time-Locked Code System) =====
 
-  // POST /api/deals/:id/claim - Claim a deal and generate QR code token
+  // POST /api/deals/:id/claim - Claim a deal and generate time-locked code
   app.post('/api/deals/:id/claim', isAuthenticated, async (req: any, res) => {
     try {
       const dealId = req.params.id;
@@ -4786,9 +4828,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
+      // Check if deal is published
+      if (deal.status !== 'published') {
+        return res.status(400).json({ error: "This deal is not available" });
+      }
+
       // Check if deal is active
       if (!deal.isActive) {
         return res.status(400).json({ error: "This deal is no longer active" });
+      }
+
+      // Check if deal has started
+      if (deal.startsAt && new Date(deal.startsAt) > new Date()) {
+        return res.status(400).json({ error: "This deal has not started yet" });
       }
 
       // Check if deal has expired
@@ -4797,30 +4849,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if user already has an active claim for this deal
-      const existingClaim = await storage.getActiveClaimForUserDeal(userId, dealId);
-      if (existingClaim) {
-        // Return the existing claim instead of creating a new one
+      const existingRedemption = await storage.getActiveRedemptionForUserDeal(userId, dealId);
+      if (existingRedemption) {
+        // Return the existing redemption instead of creating a new one
         return res.json({
-          id: existingClaim.id,
-          dealId: existingClaim.dealId,
-          qrCodeToken: existingClaim.qrCodeToken,
-          status: existingClaim.status,
-          claimedAt: existingClaim.claimedAt,
-          expiresAt: existingClaim.expiresAt,
+          redemptionId: existingRedemption.id,
+          dealId: existingRedemption.dealId,
+          redemptionCode: existingRedemption.redemptionCode,
+          status: existingRedemption.status,
+          claimedAt: existingRedemption.claimedAt,
+          claimExpiresAt: existingRedemption.claimExpiresAt,
           message: "You already have an active claim for this deal",
         });
       }
 
       // === CLAIM LIMIT ENFORCEMENT ===
       
-      // Get all of user's claims for this deal (including redeemed/expired/voided)
-      const userClaims = await storage.getUserClaimsForDeal(userId, dealId);
-      
-      // Filter to only count redeemed claims for limit checking
-      const redeemedClaims = userClaims.filter(c => c.status === 'REDEEMED');
+      // Count redeemed redemptions for this user+deal
+      const redeemedCount = await storage.getUserRedeemedCountForDeal(userId, dealId);
       const maxPerUser = deal.maxRedemptionsPerUser || 1;
       
-      if (redeemedClaims.length >= maxPerUser) {
+      if (redeemedCount >= maxPerUser) {
         return res.status(403).json({ 
           error: `You have already redeemed this deal ${maxPerUser} time(s)`,
           limitReached: true
@@ -4828,11 +4877,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check cooldown period if set
-      if (deal.cooldownHours && deal.cooldownHours > 0) {
-        const lastRedeemed = redeemedClaims[0]; // Already sorted by claimedAt desc
-        if (lastRedeemed && lastRedeemed.redeemedAt) {
-          const cooldownEnd = new Date(lastRedeemed.redeemedAt);
-          cooldownEnd.setHours(cooldownEnd.getHours() + deal.cooldownHours);
+      const cooldownHours = deal.cooldownHours || 168; // Default 1 week
+      if (cooldownHours > 0) {
+        const lastRedemption = await storage.getLastRedemptionForUserDeal(userId, dealId);
+        if (lastRedemption && lastRedemption.redeemedAt) {
+          const cooldownEnd = new Date(lastRedemption.redeemedAt);
+          cooldownEnd.setHours(cooldownEnd.getHours() + cooldownHours);
           
           if (cooldownEnd > new Date()) {
             const hoursRemaining = Math.ceil((cooldownEnd.getTime() - Date.now()) / (1000 * 60 * 60));
@@ -4847,9 +4897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check global redemption limit
       if (deal.maxRedemptionsTotal && deal.maxRedemptionsTotal > 0) {
-        // Count total redemptions for this deal
-        const dealClaims = await storage.getDealClaims(dealId);
-        const totalRedeemed = dealClaims.filter(c => c.status === 'REDEEMED').length;
+        const totalRedeemed = await storage.getTotalRedeemedCountForDeal(dealId);
         
         if (totalRedeemed >= deal.maxRedemptionsTotal) {
           return res.status(403).json({ 
@@ -4859,32 +4907,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Generate unique QR code token
-      const qrCodeToken = `RL-${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-
-      // Calculate expiration (24 hours from now by default, or deal end date if sooner)
-      let expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-      if (deal.endsAt && new Date(deal.endsAt) < expiresAt) {
-        expiresAt = new Date(deal.endsAt);
+      // Get vendor's user ID for the redemption record
+      const vendor = await storage.getVendor(deal.vendorId);
+      if (!vendor) {
+        return res.status(500).json({ error: "Vendor not found" });
       }
 
-      // Create the claim
-      const claim = await storage.createDealClaim({
-        dealId,
-        userId,
-        qrCodeToken,
-        status: "CLAIMED",
-        expiresAt,
-      });
+      // Claim the deal (generates time-locked code)
+      const result = await storage.claimDeal(dealId, userId, vendor.ownerId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
 
       res.json({
-        id: claim.id,
-        dealId: claim.dealId,
-        qrCodeToken: claim.qrCodeToken,
-        status: claim.status,
-        claimedAt: claim.claimedAt,
-        expiresAt: claim.expiresAt,
+        redemptionId: result.redemptionId,
+        dealId: dealId,
+        redemptionCode: result.redemptionCode,
+        status: 'claimed',
+        claimedAt: result.redemption?.claimedAt,
+        claimExpiresAt: result.claimExpiresAt,
       });
     } catch (error) {
       console.error("Error claiming deal:", error);
@@ -4892,23 +4934,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/deal-claims/my - Get current user's claimed deals with deal info
-  app.get('/api/deal-claims/my', isAuthenticated, async (req: any, res) => {
+  // GET /api/redemptions/my - Get current user's redemptions with deal info
+  app.get('/api/redemptions/my', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const claims = await storage.getUserDealClaims(userId);
+      const redemptions = await storage.getUserRedemptions(userId);
 
       // Enrich with deal information
-      const enrichedClaims = await Promise.all(
-        claims.map(async (claim) => {
-          const deal = await storage.getDealById(claim.dealId);
+      const enrichedRedemptions = await Promise.all(
+        redemptions.map(async (redemption) => {
+          const deal = await storage.getDealById(redemption.dealId);
           let vendorName = null;
           if (deal?.vendorId) {
             const vendor = await storage.getVendor(deal.vendorId);
             vendorName = vendor?.businessName || null;
           }
           return {
-            ...claim,
+            ...redemption,
             deal: deal ? {
               id: deal.id,
               title: deal.title,
@@ -4922,25 +4964,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      res.json(enrichedClaims);
+      res.json(enrichedRedemptions);
     } catch (error) {
-      console.error("Error fetching user deal claims:", error);
-      res.status(500).json({ error: "Failed to fetch deal claims" });
+      console.error("Error fetching user redemptions:", error);
+      res.status(500).json({ error: "Failed to fetch redemptions" });
     }
   });
 
-  // GET /api/deal-claims/token/:token - Look up a claim by QR token (for vendor verification)
-  app.get('/api/deal-claims/token/:token', async (req, res) => {
+  // GET /api/redemptions/:id - Get a specific redemption with deal info
+  app.get('/api/redemptions/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const token = req.params.token;
-      const claim = await storage.getDealClaimByToken(token);
+      const userId = req.user.claims.sub;
+      const redemptionId = req.params.id;
+      
+      const redemption = await storage.getRedemption(redemptionId);
+      if (!redemption) {
+        return res.status(404).json({ error: "Redemption not found" });
+      }
 
-      if (!claim) {
-        return res.status(404).json({ error: "Invalid QR code" });
+      // Only the owner or vendor can view this redemption
+      if (redemption.userId !== userId && redemption.vendorUserId !== userId) {
+        return res.status(403).json({ error: "Not authorized to view this redemption" });
       }
 
       // Get deal info
-      const deal = await storage.getDealById(claim.dealId);
+      const deal = await storage.getDealById(redemption.dealId);
       let vendorName = null;
       if (deal?.vendorId) {
         const vendor = await storage.getVendor(deal.vendorId);
@@ -4948,64 +4996,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if expired
-      const isExpired = claim.status === "EXPIRED" || 
-        (claim.expiresAt && new Date(claim.expiresAt) < new Date());
+      const isExpired = new Date(redemption.claimExpiresAt) < new Date() && redemption.status === 'claimed';
 
       res.json({
-        ...claim,
+        ...redemption,
         isExpired,
         deal: deal ? {
           id: deal.id,
           title: deal.title,
           description: deal.description,
+          finePrint: deal.finePrint,
           tier: deal.tier,
           vendorId: deal.vendorId,
           vendorName,
         } : null,
       });
     } catch (error) {
-      console.error("Error fetching deal claim by token:", error);
-      res.status(500).json({ error: "Failed to fetch deal claim" });
-    }
-  });
-
-  // POST /api/deal-claims/token/:token/redeem - Redeem a claim (vendor scans QR)
-  app.post('/api/deal-claims/token/:token/redeem', async (req, res) => {
-    try {
-      const token = req.params.token;
-      const result = await storage.redeemDealClaimByToken(token);
-
-      if (!result.success) {
-        return res.status(400).json({ error: result.message });
-      }
-
-      // Get deal info for response
-      let dealInfo = null;
-      if (result.claim) {
-        const deal = await storage.getDealById(result.claim.dealId);
-        if (deal) {
-          let vendorName = null;
-          if (deal.vendorId) {
-            const vendor = await storage.getVendor(deal.vendorId);
-            vendorName = vendor?.businessName || null;
-          }
-          dealInfo = {
-            title: deal.title,
-            description: deal.description,
-            vendorName,
-          };
-        }
-      }
-
-      res.json({
-        success: true,
-        message: result.message,
-        claim: result.claim,
-        deal: dealInfo,
-      });
-    } catch (error) {
-      console.error("Error redeeming deal claim:", error);
-      res.status(500).json({ error: "Failed to redeem deal" });
+      console.error("Error fetching redemption:", error);
+      res.status(500).json({ error: "Failed to fetch redemption" });
     }
   });
 

@@ -54,6 +54,14 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
   - Deal visibility rules with proper HTTP error codes: `NOT_FOUND` (404), `EXPIRED` (410), `REMOVED` (410)
   - Deal tiers: `free`, `member`, `standard` with `isPassLocked` flag for membership-only deals
   - Vendor info included in deal responses with business name and location
+- **Time-Locked Code Redemption System**: Comprehensive in-person deal redemption flow:
+  - Consumers claim deals to receive a 6-digit numeric code valid for 10 minutes (configurable)
+  - Code is displayed prominently on the ClaimedDealScreen (`/deals/:id/claimed/:redemptionId`) with countdown timer
+  - Vendors enter customer codes at VendorRedeemScreen (`/account/deals/:dealId/redeem`) to complete redemption
+  - Deal redemptions table tracks: `status` (claimed/redeemed/expired/voided), `redemptionCode`, `claimedAt`, `claimExpiresAt`, `redeemedAt`
+  - Atomic redemption with race condition protection via status check in WHERE clause
+  - Claim limit enforcement: per-user counting, cooldown period (default 1 week), global caps, duplicate prevention
+  - Collision-resistant code generation with retry logic
 - **Rise Local Pass User Fields**: Users table includes `isPassMember`, `passExpiresAt`, and `stripeCustomerId` for subscription management
 - **Deals Seed Script**: Run `npx tsx server/seed-deals.ts` to populate 3 sample vendors and 8 deals for testing
 - **Conversations Seed Script**: Run `npx tsx server/seed-conversations.ts` to populate test B2C conversations for messaging feature testing

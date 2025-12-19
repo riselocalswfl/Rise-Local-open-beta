@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User } from "lucide-react";
+import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
@@ -1545,6 +1546,18 @@ export default function VendorDashboard() {
                             </div>
                           </div>
                           <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                            {dealStatus === 'published' && (
+                              <Link href={`/account/deals/${deal.id}/redeem`}>
+                                <Button 
+                                  variant="default"
+                                  size="sm"
+                                  data-testid={`button-redeem-deal-${deal.id}`}
+                                >
+                                  <Ticket className="w-3 h-3 mr-1" />
+                                  Redeem Code
+                                </Button>
+                              </Link>
+                            )}
                             <Button 
                               variant="outline" 
                               size="sm"

@@ -1075,16 +1075,16 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
-// Deal claim status enum values
-export const DEAL_CLAIM_STATUSES = ["CLAIMED", "REDEEMED", "EXPIRED", "VOIDED"] as const;
-export type DealClaimStatus = typeof DEAL_CLAIM_STATUSES[number];
+// Deal redemption status enum values (for time-locked code system)
+export const DEAL_REDEMPTION_STATUSES = ["claimed", "redeemed", "voided"] as const;
+export type DealRedemptionStatus = typeof DEAL_REDEMPTION_STATUSES[number];
 
 // Deal status enum values (for vendor management)
 export const DEAL_STATUSES = ["draft", "published", "paused", "expired"] as const;
 export type DealStatus = typeof DEAL_STATUSES[number];
 
 // Deal redemption method enum values
-export const DEAL_REDEMPTION_METHODS = ["qr_code", "numeric_pin", "claim_button", "unique_code", "staff_toggle"] as const;
+export const DEAL_REDEMPTION_METHODS = ["time_locked_code"] as const;
 export type DealRedemptionMethod = typeof DEAL_REDEMPTION_METHODS[number];
 
 // Reservation status enum values
@@ -1103,14 +1103,16 @@ export type DiscountType = typeof DISCOUNT_TYPES[number];
 export const deals = pgTable("deals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
+  vendorUserId: varchar("vendor_user_id").references(() => users.id), // Direct link to vendor's user account
   restaurantId: varchar("restaurant_id").references(() => restaurants.id), // For restaurant-specific deals
   
   // Deal Content
-  title: text("title").notNull(),
+  title: varchar("title", { length: 80 }).notNull(),
   description: text("description").notNull(),
   finePrint: text("fine_print"), // Terms and conditions
-  imageUrl: text("image_url"), // Deal image
-  category: text("category"), // e.g., "food_drink", "services", "retail"
+  imageUrl: text("image_url"), // Deal image (original field)
+  heroImageUrl: text("hero_image_url"), // Deal hero image (new field)
+  category: varchar("category", { length: 32 }), // restaurant, retail, service, other
   city: text("city").default("Fort Myers"),
   valueLabel: varchar("value_label", { length: 50 }), // e.g., "$5+ value", "BOGO", etc.
   
@@ -1123,17 +1125,21 @@ export const deals = pgTable("deals", {
   tier: text("tier").notNull().default("free"), // "free" | "premium" (legacy support)
   isFree: boolean("is_free").notNull().default(false), // Free deal shown to everyone
   isPassLocked: boolean("is_pass_locked").notNull().default(true), // Locked unless subscribed
-  dealType: text("deal_type").notNull().default("OTHER"), // "bogo" | "percent" | "addon" | "OTHER"
+  dealType: varchar("deal_type", { length: 32 }).notNull().default("other"), // percent_off, amount_off, bogo, free_item, fixed_price, other
   redemptionType: text("redemption_type").default("IN_PERSON"), // How deal is redeemed
   
   // Vendor Deal Management
-  status: text("status").notNull().default("draft"), // draft, published, paused, expired
-  redemptionMethod: text("redemption_method").default("claim_button"), // qr_code, numeric_pin, claim_button, unique_code, staff_toggle
+  status: varchar("status", { length: 16 }).notNull().default("draft"), // draft, published, paused
+  redemptionMethod: varchar("redemption_method", { length: 24 }).notNull().default("time_locked_code"),
+  
+  // Time-Locked Code Settings
+  claimWindowMinutes: integer("claim_window_minutes").notNull().default(10), // How long the code is valid
+  codeLength: integer("code_length").notNull().default(6), // Length of redemption code
   
   // Redemption Limits
   maxRedemptionsTotal: integer("max_redemptions_total"), // Total redemptions allowed for this deal
-  maxRedemptionsPerUser: integer("max_redemptions_per_user").default(1), // Per-user limit
-  cooldownHours: integer("cooldown_hours"), // Hours before same user can claim again
+  maxRedemptionsPerUser: integer("max_redemptions_per_user").notNull().default(1), // Per-user limit
+  cooldownHours: integer("cooldown_hours").default(168), // Hours before same user can claim again (default 1 week)
   
   // Availability
   startsAt: timestamp("starts_at"), // When deal becomes valid
@@ -1146,7 +1152,10 @@ export const deals = pgTable("deals", {
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  index("deals_vendor_user_id_idx").on(table.vendorUserId),
+  index("deals_status_idx").on(table.status),
+]);
 
 export const insertDealSchema = createInsertSchema(deals).omit({
   id: true,
@@ -1157,24 +1166,38 @@ export const insertDealSchema = createInsertSchema(deals).omit({
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
 
-// Deal Redemptions - Log of redeemed deals
+// Deal Redemptions - Time-locked code redemption system
 export const dealRedemptions = pgTable("deal_redemptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  dealId: varchar("deal_id").notNull().references(() => deals.id),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
-  userId: varchar("user_id").references(() => users.id), // Optional: may be anonymous redemptions
+  dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  vendorUserId: varchar("vendor_user_id").notNull().references(() => users.id),
   
-  // Redemption Details
-  redeemedAt: timestamp("redeemed_at").defaultNow(),
-  verifiedByPin: boolean("verified_by_pin").notNull().default(true),
+  // Status tracking
+  status: varchar("status", { length: 16 }).notNull().default("claimed"), // claimed, redeemed, voided
+  
+  // Time-locked code
+  redemptionCode: varchar("redemption_code", { length: 16 }).notNull(),
+  
+  // Timestamps
+  claimedAt: timestamp("claimed_at").notNull().defaultNow(),
+  claimExpiresAt: timestamp("claim_expires_at").notNull(),
+  redeemedAt: timestamp("redeemed_at"),
+  voidedAt: timestamp("voided_at"),
   
   // Optional metadata
-  notes: text("notes"),
-});
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("redemptions_deal_user_idx").on(table.dealId, table.userId),
+  index("redemptions_code_idx").on(table.dealId, table.redemptionCode),
+  index("redemptions_status_idx").on(table.dealId, table.status),
+]);
 
 export const insertDealRedemptionSchema = createInsertSchema(dealRedemptions).omit({
   id: true,
+  claimedAt: true,
   redeemedAt: true,
+  voidedAt: true,
 });
 
 export type InsertDealRedemption = z.infer<typeof insertDealRedemptionSchema>;
@@ -1182,39 +1205,12 @@ export type DealRedemption = typeof dealRedemptions.$inferSelect;
 
 // ===== RESTAURANT RESERVATION SYSTEM =====
 
-// Deal Claims - QR code-based deal tracking with claim status
-export const dealClaims = pgTable("deal_claims", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  dealId: varchar("deal_id").notNull().references(() => deals.id),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  
-  // Claim Details
-  claimedAt: timestamp("claimed_at").defaultNow(),
-  status: text("status").notNull().default("CLAIMED"), // CLAIMED, REDEEMED, EXPIRED, VOIDED
-  qrCodeToken: varchar("qr_code_token").notNull().unique(), // Unique token for QR code generation
-  redemptionCode: varchar("redemption_code", { length: 10 }), // For unique code or numeric PIN redemption
-  
-  // Redemption tracking
-  redeemedAt: timestamp("redeemed_at"),
-  expiresAt: timestamp("expires_at"),
-  voidedAt: timestamp("voided_at"), // For voided claims
-});
-
-export const insertDealClaimSchema = createInsertSchema(dealClaims).omit({
-  id: true,
-  claimedAt: true,
-  redeemedAt: true,
-});
-
-export type InsertDealClaim = z.infer<typeof insertDealClaimSchema>;
-export type DealClaim = typeof dealClaims.$inferSelect;
-
 // Reservations - Rise Local tracking only (not inventory control)
 export const reservations = pgTable("reservations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  dealClaimId: varchar("deal_claim_id").references(() => dealClaims.id), // Optional: linked deal
+  dealRedemptionId: varchar("deal_redemption_id").references(() => dealRedemptions.id), // Optional: linked deal redemption
   
   // Reservation Details
   partySize: integer("party_size").notNull(),

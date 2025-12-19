@@ -1,37 +1,32 @@
 import { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, CheckCircle, XCircle, Lock, Store, ChevronRight, MessageSquare } from "lucide-react";
+import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Clock } from "lucide-react";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Deal, Vendor } from "@shared/schema";
 
+interface ClaimResponse {
+  redemptionId: string;
+  dealId: string;
+  redemptionCode: string;
+  status: string;
+  claimedAt: string;
+  claimExpiresAt: string;
+  message?: string;
+}
+
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-
-  const [redeemModalOpen, setRedeemModalOpen] = useState(false);
-  const [vendorPin, setVendorPin] = useState("");
-  const [redemptionResult, setRedemptionResult] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
+  const [claiming, setClaiming] = useState(false);
 
   const { data: deal, isLoading: dealLoading } = useQuery<Deal>({
     queryKey: ["/api/deals", id],
@@ -55,16 +50,25 @@ export default function DealDetailPage() {
   
   const vendor = vendorData?.vendor;
 
-  const redeemMutation = useMutation({
-    mutationFn: async (pin: string) => {
-      const res = await apiRequest("POST", `/api/deals/${id}/redeem`, { vendorPin: pin });
-      return res.json();
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/deals/${id}/claim`, {});
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to claim deal");
+      }
+      return res.json() as Promise<ClaimResponse>;
     },
     onSuccess: (data) => {
-      setRedemptionResult({ success: true, message: data.message || "Deal redeemed successfully!" });
+      setLocation(`/deals/${id}/claimed/${data.redemptionId}`);
     },
-    onError: (error: any) => {
-      setRedemptionResult({ success: false, message: error.message || "Failed to redeem deal" });
+    onError: (error: Error) => {
+      setClaiming(false);
+      toast({
+        title: "Unable to claim deal",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -92,22 +96,9 @@ export default function DealDetailPage() {
     },
   });
 
-  const handleRedeem = () => {
-    if (!vendorPin || vendorPin.length !== 4) {
-      toast({
-        title: "Invalid PIN",
-        description: "Please enter a 4-digit vendor PIN",
-        variant: "destructive",
-      });
-      return;
-    }
-    redeemMutation.mutate(vendorPin);
-  };
-
-  const resetRedemption = () => {
-    setRedemptionResult(null);
-    setVendorPin("");
-    setRedeemModalOpen(false);
+  const handleClaimDeal = () => {
+    setClaiming(true);
+    claimMutation.mutate();
   };
 
   const dealTypeLabels: Record<string, string> = {
@@ -229,10 +220,21 @@ export default function DealDetailPage() {
               <Button
                 size="lg"
                 className="flex-1"
-                onClick={() => setRedeemModalOpen(true)}
-                data-testid="button-redeem-deal"
+                onClick={handleClaimDeal}
+                disabled={claiming || claimMutation.isPending}
+                data-testid="button-claim-deal"
               >
-                Redeem This Deal
+                {claiming || claimMutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Claiming...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Ticket className="w-4 h-4" />
+                    Claim This Deal
+                  </span>
+                )}
               </Button>
               <Button
                 size="lg"
@@ -246,79 +248,20 @@ export default function DealDetailPage() {
                 {startConversation.isPending ? "Starting..." : "Ask a Question"}
               </Button>
             </div>
+
+            {/* Claim info banner */}
+            <div className="bg-primary/5 rounded-lg p-4 flex items-start gap-3">
+              <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-primary">How it works</p>
+                <p className="text-muted-foreground mt-1">
+                  Claim this deal to get a 10-minute code. Show it to the business to redeem your savings.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Redemption Modal */}
-      <Dialog open={redeemModalOpen} onOpenChange={setRedeemModalOpen}>
-        <DialogContent>
-          {redemptionResult ? (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  {redemptionResult.success ? (
-                    <>
-                      <CheckCircle className="w-6 h-6 text-green-500" />
-                      Success!
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-6 h-6 text-destructive" />
-                      Redemption Failed
-                    </>
-                  )}
-                </DialogTitle>
-                <DialogDescription>{redemptionResult.message}</DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button onClick={resetRedemption} data-testid="button-close-result">
-                  {redemptionResult.success ? "Done" : "Try Again"}
-                </Button>
-              </DialogFooter>
-            </>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle>Redeem Deal</DialogTitle>
-                <DialogDescription>
-                  Ask the vendor for their 4-digit PIN to redeem this deal.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                <label className="text-sm font-medium mb-2 block">Vendor PIN</label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  placeholder="Enter 4-digit PIN"
-                  value={vendorPin}
-                  onChange={(e) => setVendorPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  className="text-center text-2xl tracking-widest"
-                  data-testid="input-vendor-pin"
-                />
-              </div>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setRedeemModalOpen(false)}
-                  data-testid="button-cancel-redeem"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleRedeem}
-                  disabled={vendorPin.length !== 4 || redeemMutation.isPending}
-                  data-testid="button-confirm-redeem"
-                >
-                  {redeemMutation.isPending ? "Redeeming..." : "Redeem"}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
