@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "wouter";
-import { Compass, ChevronDown, ChevronRight, Lock, MapPin, Navigation, Loader2, MessageSquare } from "lucide-react";
+import { ChevronDown, ChevronRight, Lock, MapPin, Navigation, Loader2, MessageSquare, Utensils, Heart, Home, ShoppingBag, Sparkles } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import RiseLocalDealCard, { RiseLocalDeal, DealType } from "@/components/RiseLocalDealCard";
@@ -47,15 +47,19 @@ const FILTER_CHIPS = [
   { id: "all", label: "All Deals" },
   { id: "memberOnly", label: "Member-Only", icon: Lock },
   { id: "free", label: "Free Deals" },
-  { id: "bogo", label: "BOGO" },
-  { id: "value", label: "$5+ Value" },
-  { id: "new", label: "New this week" },
-  { id: "near", label: "Near me" },
+];
+
+const CATEGORY_CHIPS = [
+  { id: "food_drink", label: "Food & Drink", icon: Utensils },
+  { id: "wellness", label: "Wellness & Fitness", icon: Heart },
+  { id: "home_services", label: "Home & Services", icon: Home },
+  { id: "shopping", label: "Shopping & Retail", icon: ShoppingBag },
+  { id: "experiences", label: "Experiences", icon: Sparkles },
 ];
 
 // Helper to calculate distance in miles using Haversine formula
 function calculateDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3958.8; // Earth's radius in miles
+  const R = 3958.8;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -65,55 +69,114 @@ function calculateDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: 
   return R * c;
 }
 
+// Compute savings for a deal
+function computeSavings(deal: Deal): number {
+  if (deal.savingsAmount && deal.savingsAmount > 0) {
+    return deal.savingsAmount;
+  }
+  if (deal.discountType === "PERCENT" && deal.discountValue) {
+    return Math.round(deal.discountValue / 10);
+  }
+  if (deal.dealType === "bogo") {
+    return 10;
+  }
+  if (deal.tier === "premium") {
+    return 15;
+  }
+  return 5;
+}
+
+// Deduplicate deals - removes deals that already appear in usedIds
+function deduplicateDeals(deals: RiseLocalDeal[], usedIds: Set<number>): RiseLocalDeal[] {
+  return deals.filter(deal => {
+    if (usedIds.has(deal.id)) return false;
+    usedIds.add(deal.id);
+    return true;
+  });
+}
+
+// Interleave deals to avoid same vendor appearing back-to-back
+function interleaveByVendor(deals: RiseLocalDeal[]): RiseLocalDeal[] {
+  if (deals.length <= 2) return deals;
+  
+  const result: RiseLocalDeal[] = [];
+  const remaining = [...deals];
+  let lastVendorId: string | null = null;
+  
+  while (remaining.length > 0) {
+    let foundDifferent = false;
+    for (let i = 0; i < remaining.length; i++) {
+      if (remaining[i].vendorId !== lastVendorId) {
+        const [deal] = remaining.splice(i, 1);
+        result.push(deal);
+        lastVendorId = deal.vendorId;
+        foundDifferent = true;
+        break;
+      }
+    }
+    if (!foundDifferent && remaining.length > 0) {
+      const deal = remaining.shift()!;
+      result.push(deal);
+      lastVendorId = deal.vendorId;
+    }
+  }
+  return result;
+}
+
 // Transform API deal to RiseLocalDeal format
 function transformDealToRiseLocal(
   deal: Deal & { vendor?: Vendor },
   userLat: number,
   userLng: number
-): RiseLocalDeal {
+): RiseLocalDeal & { rawDistance: number; createdAt: Date | null; vendorCreatedAt: Date | null } {
   const vendorLat = deal.vendor?.latitude ? parseFloat(deal.vendor.latitude) : null;
   const vendorLng = deal.vendor?.longitude ? parseFloat(deal.vendor.longitude) : null;
   
   let distanceStr = "Fort Myers";
+  let rawDistance = 999;
   if (vendorLat && vendorLng) {
-    const distMiles = calculateDistanceMiles(userLat, userLng, vendorLat, vendorLng);
-    distanceStr = `${distMiles.toFixed(1)} mi`;
+    rawDistance = calculateDistanceMiles(userLat, userLng, vendorLat, vendorLng);
+    distanceStr = `${rawDistance.toFixed(1)} mi`;
   }
   
-  // Map deal type
   let dealType: DealType = "value";
   if (deal.dealType === "bogo") dealType = "bogo";
   else if (deal.tier === "premium") dealType = "memberOnly";
   
-  // Check if deal is new (created within last 7 days)
   const isNew = deal.createdAt ? 
     (Date.now() - new Date(deal.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000 : false;
   
-  // Estimate savings based on deal type
-  let savings = 5;
-  if (deal.dealType === "bogo") savings = 10;
-  else if (deal.tier === "premium") savings = 15;
+  const savings = computeSavings(deal);
   
   return {
-    id: parseInt(deal.id.replace(/\D/g, '').slice(0, 8)) || Math.random() * 1000000,
+    id: parseInt(deal.id.replace(/\D/g, '').slice(0, 8)) || Math.floor(Math.random() * 1000000),
     title: deal.title,
     vendorId: deal.vendorId,
     vendorName: deal.vendor?.businessName || "Local Business",
     vendorCategory: deal.category || undefined,
-    imageUrl: deal.vendor?.logoUrl || undefined,
+    imageUrl: deal.imageUrl || deal.vendor?.logoUrl || undefined,
     savings,
     distance: distanceStr,
+    rawDistance,
     redemptionWindow: "Redeem anytime",
     dealType,
-    memberOnly: deal.tier === "premium",
+    memberOnly: deal.tier === "premium" || deal.isPassLocked === true,
     isNew,
     isFictitious: false,
+    createdAt: deal.createdAt ? new Date(deal.createdAt) : null,
+    vendorCreatedAt: deal.vendor?.createdAt ? new Date(deal.vendor.createdAt) : null,
   };
 }
 
+type ExtendedRiseLocalDeal = RiseLocalDeal & { 
+  rawDistance: number; 
+  createdAt: Date | null; 
+  vendorCreatedAt: Date | null;
+};
+
 export default function Discover() {
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [userMembershipStatus] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const [location, setLocation] = useState<LocationState>({
@@ -123,7 +186,9 @@ export default function Discover() {
   });
   const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cleanup timeout on unmount
+  // Check if user has Rise Local Pass membership
+  const isPassMember = user?.isPassMember === true;
+
   useEffect(() => {
     return () => {
       if (locationTimeoutRef.current) {
@@ -132,7 +197,6 @@ export default function Discover() {
     };
   }, []);
 
-  // Request GPS location
   const requestGPSLocation = () => {
     if (!navigator.geolocation) {
       toast({
@@ -144,7 +208,6 @@ export default function Discover() {
 
     setLocation(prev => ({ ...prev, status: "requesting" }));
 
-    // Fallback timeout - 5 seconds
     locationTimeoutRef.current = setTimeout(() => {
       setLocation(prev => {
         if (prev.status === "requesting") {
@@ -202,7 +265,6 @@ export default function Discover() {
     );
   };
 
-  // Handle location selection from dropdown
   const handleLocationSelect = (optionId: string) => {
     if (optionId === "current") {
       requestGPSLocation();
@@ -222,25 +284,14 @@ export default function Discover() {
     }
   };
 
-  // Handle Near Me filter chip click
-  const handleNearMeFilter = () => {
-    if (location.status !== "granted" || location.displayName !== "Current Location") {
-      requestGPSLocation();
-    }
-    setSelectedFilter("near");
-  };
-
-  // Generate user initials from first and last name
   const getUserInitials = () => {
     if (!user) return "?";
     const first = user.firstName?.charAt(0)?.toUpperCase() || "";
     const last = user.lastName?.charAt(0)?.toUpperCase() || "";
     if (first || last) return `${first}${last}`;
-    // Fallback to email initial if no name
     return user.email?.charAt(0)?.toUpperCase() || "?";
   };
 
-  // Fetch unread message + notification count
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/b2c/unread-count"],
     refetchInterval: 10000,
@@ -251,7 +302,6 @@ export default function Discover() {
   });
   const totalUnread = (unreadData?.count || 0) + (notificationData?.count || 0);
 
-  // Fetch real deals from API with vendor info
   const userCoords = location.coords || FORT_MYERS_DEFAULT;
   const { data: dealsData, isLoading: dealsLoading } = useQuery<(Deal & { vendor?: Vendor })[]>({
     queryKey: ["/api/deals", "with-vendors", userCoords.lat, userCoords.lng],
@@ -260,14 +310,12 @@ export default function Discover() {
       if (!res.ok) throw new Error("Failed to fetch deals");
       const deals: Deal[] = await res.json();
       
-      // Fetch vendor info for each deal
       const dealsWithVendors = await Promise.all(
         deals.map(async (deal) => {
           try {
             const vendorRes = await fetch(`/api/vendors/${deal.vendorId}`);
             if (vendorRes.ok) {
               const data = await vendorRes.json();
-              // API returns { vendor, deals } so extract vendor
               return { ...deal, vendor: data.vendor };
             }
           } catch {}
@@ -278,40 +326,133 @@ export default function Discover() {
     },
   });
 
-  // Transform API deals to RiseLocalDeal format
-  const allDeals = useMemo(() => {
+  // Transform all deals
+  const allTransformedDeals = useMemo(() => {
     if (!dealsData) return [];
     return dealsData.map(deal => transformDealToRiseLocal(deal, userCoords.lat, userCoords.lng));
   }, [dealsData, userCoords.lat, userCoords.lng]);
 
-  const filterDeals = (deals: RiseLocalDeal[], filter: string): RiseLocalDeal[] => {
-    if (filter === "all") return deals;
-    if (filter === "memberOnly") return deals.filter((d) => d.memberOnly);
-    if (filter === "free") return deals.filter((d) => !d.memberOnly);
-    if (filter === "bogo") return deals.filter((d) => d.dealType === "bogo");
-    if (filter === "value") return deals.filter((d) => d.savings >= 5);
-    if (filter === "new") return deals.filter((d) => d.isNew);
-    if (filter === "near") return deals.filter((d) => parseFloat(d.distance) <= 0.5);
+  // Apply top filter (All, Member-Only, Free)
+  const filteredDeals = useMemo(() => {
+    let deals = allTransformedDeals;
+    
+    if (selectedFilter === "memberOnly") {
+      deals = deals.filter(d => d.memberOnly);
+    } else if (selectedFilter === "free") {
+      deals = deals.filter(d => !d.memberOnly);
+    }
+    
+    // Apply category filter if selected
+    if (selectedCategory) {
+      deals = deals.filter(d => d.vendorCategory === selectedCategory);
+    }
+    
     return deals;
+  }, [allTransformedDeals, selectedFilter, selectedCategory]);
+
+  // Create sections with deduplication
+  const { bestValueDeals, useTodayDeals, newBusinessDeals, popularDeals } = useMemo(() => {
+    const usedIds = new Set<number>();
+    
+    // Best Value Near You: savings >= $5, sorted by savings desc then distance asc
+    const bestValue = filteredDeals
+      .filter(d => d.savings >= 5)
+      .sort((a, b) => {
+        if (b.savings !== a.savings) return b.savings - a.savings;
+        return a.rawDistance - b.rawDistance;
+      });
+    const bestValueDeduped = interleaveByVendor(deduplicateDeals(bestValue, usedIds)).slice(0, 8);
+    
+    // Use Today: all remaining deals sorted by distance
+    const useToday = filteredDeals
+      .filter(d => !usedIds.has(d.id))
+      .sort((a, b) => a.rawDistance - b.rawDistance);
+    const useTodayDeduped = interleaveByVendor(deduplicateDeals(useToday, usedIds)).slice(0, 8);
+    
+    // New Local Businesses: vendors created within last 30 days
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const newBusiness = filteredDeals
+      .filter(d => !usedIds.has(d.id) && d.vendorCreatedAt && d.vendorCreatedAt.getTime() > thirtyDaysAgo)
+      .sort((a, b) => {
+        const aTime = a.vendorCreatedAt?.getTime() || 0;
+        const bTime = b.vendorCreatedAt?.getTime() || 0;
+        return bTime - aTime;
+      });
+    const newBusinessDeduped = interleaveByVendor(deduplicateDeals(newBusiness, usedIds)).slice(0, 8);
+    
+    // Popular With Locals: remaining deals (simulating popularity sort)
+    const popular = filteredDeals
+      .filter(d => !usedIds.has(d.id))
+      .sort((a, b) => {
+        if (b.savings !== a.savings) return b.savings - a.savings;
+        return a.rawDistance - b.rawDistance;
+      });
+    const popularDeduped = interleaveByVendor(deduplicateDeals(popular, usedIds)).slice(0, 8);
+    
+    return {
+      bestValueDeals: bestValueDeduped,
+      useTodayDeals: useTodayDeduped,
+      newBusinessDeals: newBusinessDeduped,
+      popularDeals: popularDeduped,
+    };
+  }, [filteredDeals]);
+
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(prev => prev === categoryId ? null : categoryId);
   };
 
-  // Categorize deals into sections
-  const memberExclusives = useMemo(() => {
-    const filtered = allDeals.filter(d => d.memberOnly);
-    return filterDeals(filtered, selectedFilter === "memberOnly" ? "all" : selectedFilter).slice(0, 6);
-  }, [allDeals, selectedFilter]);
+  const getSectionUrl = (section: string) => `/deals?section=${section}`;
 
-  const bestValue = useMemo(() => {
-    const filtered = allDeals.filter(d => d.savings >= 5 && !d.memberOnly);
-    return filterDeals(filtered, selectedFilter === "value" ? "all" : selectedFilter).slice(0, 6);
-  }, [allDeals, selectedFilter]);
+  // Skeleton loader for deal cards
+  const DealCardSkeleton = () => (
+    <div className="flex-shrink-0 w-[180px]">
+      <Skeleton className="aspect-[4/3] rounded-xl mb-2" />
+      <Skeleton className="h-4 w-24 mb-1" />
+      <Skeleton className="h-3 w-32" />
+    </div>
+  );
 
-  const newSpots = useMemo(() => {
-    const filtered = allDeals.filter(d => d.isNew);
-    return filterDeals(filtered, selectedFilter === "new" ? "all" : selectedFilter).slice(0, 6);
-  }, [allDeals, selectedFilter]);
-
-  const getFilterUrl = (filter: string) => `/browse?filter=${filter}`;
+  const DealSection = ({ 
+    title, 
+    deals, 
+    sectionKey, 
+    testId 
+  }: { 
+    title: string; 
+    deals: ExtendedRiseLocalDeal[]; 
+    sectionKey: string;
+    testId: string;
+  }) => {
+    if (deals.length === 0) return null;
+    
+    return (
+      <section className="pt-6">
+        <div className="flex items-center justify-between px-4 mb-4">
+          <h2 className="text-lg font-semibold text-foreground" data-testid={`heading-${testId}`}>
+            {title}
+          </h2>
+          <Link href={getSectionUrl(sectionKey)}>
+            <button
+              className="flex items-center gap-1 text-sm text-primary font-medium"
+              data-testid={`link-see-all-${testId}`}
+            >
+              See all
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </Link>
+        </div>
+        
+        <ScrollArea className="w-full">
+          <div className="flex gap-4 px-4 pb-4">
+            {deals.map((deal) => (
+              <RiseLocalDealCard key={deal.id} deal={deal} isMember={isPassMember} />
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" className="invisible" />
+        </ScrollArea>
+      </section>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background pb-4">
@@ -387,11 +528,10 @@ export default function Discover() {
           <div className="flex gap-2 px-4 py-3">
             {FILTER_CHIPS.map((chip) => {
               const Icon = chip.icon;
-              const isNearMe = chip.id === "near";
               return (
                 <button
                   key={chip.id}
-                  onClick={() => isNearMe ? handleNearMeFilter() : setSelectedFilter(chip.id)}
+                  onClick={() => setSelectedFilter(chip.id)}
                   className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     selectedFilter === chip.id
                       ? "bg-foreground text-background"
@@ -399,8 +539,7 @@ export default function Discover() {
                   }`}
                   data-testid={`pill-filter-${chip.id}`}
                 >
-                  {isNearMe && <Navigation className="w-3 h-3" />}
-                  {Icon && !isNearMe && <Icon className="w-3 h-3" />}
+                  {Icon && <Icon className="w-3 h-3" />}
                   {chip.label}
                 </button>
               );
@@ -410,112 +549,99 @@ export default function Discover() {
         </ScrollArea>
       </div>
 
-      {/* Local Spotlight - Sponsored Business */}
+      {/* Local Spotlight */}
       <LocalSpotlight />
 
-      {/* Member Exclusives Section */}
-      <section className="pt-6">
-        <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-member-exclusives">
-            Member Exclusives Near You
-          </h2>
-          <Link href={getFilterUrl("memberOnly")}>
-            <button
-              className="flex items-center gap-1 text-sm text-primary font-medium"
-              data-testid="link-see-all-member-exclusives"
-            >
-              See all
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </Link>
-        </div>
-        
-        {memberExclusives.length > 0 ? (
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 px-4 pb-4">
-              {memberExclusives.map((deal) => (
-                <RiseLocalDealCard key={deal.id} deal={deal} isMember={userMembershipStatus} />
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" className="invisible" />
-          </ScrollArea>
-        ) : (
-          <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-            No deals match this filter. Try "All Deals".
+      {/* Loading State */}
+      {dealsLoading && (
+        <section className="pt-6">
+          <div className="px-4 mb-4">
+            <Skeleton className="h-6 w-48" />
           </div>
-        )}
-      </section>
-
-      {/* Membership Banner */}
-      <MembershipBanner isMember={userMembershipStatus} />
-
-      {/* Best Value Section */}
-      <section className="pt-2">
-        <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-best-value">
-            Best Value Right Now ($5+ savings)
-          </h2>
-          <Link href={getFilterUrl("value")}>
-            <button
-              className="flex items-center gap-1 text-sm text-primary font-medium"
-              data-testid="link-see-all-best-value"
-            >
-              See all
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </Link>
-        </div>
-
-        {bestValue.length > 0 ? (
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 px-4 pb-4">
-              {bestValue.map((deal) => (
-                <RiseLocalDealCard key={deal.id} deal={deal} isMember={userMembershipStatus} />
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" className="invisible" />
-          </ScrollArea>
-        ) : (
-          <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-            No deals match this filter. Try "All Deals".
+          <div className="flex gap-4 px-4">
+            {[1, 2, 3].map(i => <DealCardSkeleton key={i} />)}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* New Local Spots Section */}
-      <section className="pt-6">
-        <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-new-spots">
-            New Local Spots Added
-          </h2>
-          <Link href={getFilterUrl("new")}>
-            <button
-              className="flex items-center gap-1 text-sm text-primary font-medium"
-              data-testid="link-see-all-new-spots"
-            >
-              See all
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </Link>
-        </div>
+      {/* Deal Sections */}
+      {!dealsLoading && (
+        <>
+          <DealSection 
+            title="Best Value Near You" 
+            deals={bestValueDeals} 
+            sectionKey="bestValue"
+            testId="best-value"
+          />
 
-        {newSpots.length > 0 ? (
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 px-4 pb-4">
-              {newSpots.map((deal) => (
-                <RiseLocalDealCard key={deal.id} deal={deal} isMember={userMembershipStatus} />
-              ))}
+          <DealSection 
+            title="Use Today" 
+            deals={useTodayDeals} 
+            sectionKey="useToday"
+            testId="use-today"
+          />
+
+          {/* Membership Banner */}
+          <MembershipBanner isMember={isPassMember} />
+
+          <DealSection 
+            title="New Local Businesses" 
+            deals={newBusinessDeals} 
+            sectionKey="newBusinesses"
+            testId="new-businesses"
+          />
+
+          <DealSection 
+            title="Popular With Locals" 
+            deals={popularDeals} 
+            sectionKey="popular"
+            testId="popular"
+          />
+
+          {/* Browse by Category */}
+          <section className="pt-6 pb-4">
+            <div className="px-4 mb-4">
+              <h2 className="text-lg font-semibold text-foreground" data-testid="heading-categories">
+                Browse by Category
+              </h2>
             </div>
-            <ScrollBar orientation="horizontal" className="invisible" />
-          </ScrollArea>
-        ) : (
-          <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-            No deals match this filter. Try "All Deals".
-          </div>
-        )}
-      </section>
+            <ScrollArea className="w-full">
+              <div className="flex gap-3 px-4 pb-4">
+                {CATEGORY_CHIPS.map((cat) => {
+                  const Icon = cat.icon;
+                  const isSelected = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => handleCategorySelect(cat.id)}
+                      className={`flex-shrink-0 flex flex-col items-center gap-2 p-4 rounded-xl min-w-[100px] transition-colors ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground border border-border hover:bg-muted/80"
+                      }`}
+                      data-testid={`category-${cat.id}`}
+                    >
+                      <Icon className="w-6 h-6" />
+                      <span className="text-xs font-medium text-center leading-tight">{cat.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <ScrollBar orientation="horizontal" className="invisible" />
+            </ScrollArea>
+          </section>
 
-      {/* Additional spacing for bottom nav */}
+          {/* Empty state when no deals */}
+          {filteredDeals.length === 0 && (
+            <div className="px-4 py-12 text-center">
+              <p className="text-muted-foreground">
+                No deals match your current filters. Try selecting "All Deals".
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
       <div className="h-4" />
     </div>
   );
