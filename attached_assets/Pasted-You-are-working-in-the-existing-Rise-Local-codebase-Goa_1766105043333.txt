@@ -1,0 +1,90 @@
+You are working in the existing Rise Local codebase.
+
+Goal: On /discover, keep deals organized by value/intent sections, but do NOT separate member-only deals into their own section. Instead, member-only deals should appear mixed into the same lists as regular/free deals, with locking/blur behavior for non-members.
+
+1) Keep top controls
+	•	Keep location dropdown.
+	•	Keep top filter pills:
+	•	All Deals
+	•	Member-Only
+	•	Free Deals
+	•	These filters determine which deals are included, but sections remain the same.
+
+2) Discover section order (no “Exclusive Member Deals” section)
+
+Render sections in this exact order (only show if it has results):
+	1.	Best Value Near You
+	•	Includes deals where computed savings >= $5
+	•	Sort: savings desc, then distance asc
+	•	Mixed: include both memberOnly and non-member deals (unless filtered out by top pill)
+	2.	Use Today
+	•	redeemableNow=true OR redeemWindow includes today
+	•	Sort: distance asc, then newest
+	•	Mixed deals
+	3.	New Local Businesses
+	•	Deals from vendors created within last 30 days OR vendor.isNew=true
+	•	Sort newest vendor first
+	•	Mixed deals
+	4.	Popular With Locals
+	•	Sort: redeemsLast7Days desc, then savesLast7Days desc, then distance asc
+	•	Mixed deals
+	5.	Browse by Category
+	•	Chips/icons:
+	•	Food & Drink
+	•	Wellness & Fitness
+	•	Home & Services
+	•	Shopping & Retail
+	•	Experiences
+	•	Selected category filters sections 1–4
+
+3) Locking + paywall behavior (critical)
+	•	If a deal is memberOnly=true and user is NOT a Pass member:
+	•	Render the deal card in the same list but:
+	•	Apply blur/opacity overlay
+	•	Show a lock icon + “Unlock with Rise Local Pass”
+	•	Disable redeem action
+	•	Tapping the card opens the existing Pass paywall modal/screen
+	•	If user IS a Pass member:
+	•	Card behaves normally.
+
+4) Top filter pill behavior
+	•	All Deals: show both memberOnly and non-member deals (mixed)
+	•	Member-Only: show only memberOnly deals (still mixed into sections 1–4, but obviously all will be locked/unlocked depending on membership)
+	•	Free Deals: show only deals where price=0 OR isFree=true (and exclude memberOnly unless the data model allows “free but member-only”; if both exist, treat it as memberOnly and lock it)
+
+5) Deduplication + feed quality
+	•	Do not show the same deal twice anywhere on the Discover page.
+	•	Avoid showing the same vendor back-to-back when possible (simple interleave).
+	•	Keep “See all” for sections 1–4 only; it navigates to a filtered list route (reuse if exists, otherwise create /deals?section=bestValue, etc.)
+
+6) Savings computation helper
+
+Implement computeSavings(deal):
+	•	If deal.savingsAmount exists, use it.
+	•	Else if percentOff and originalPrice exist: originalPrice * (percentOff/100)
+	•	Else if isBOGO and itemPrice exists: savings = itemPrice
+	•	Else savings = 0
+Show badge: “Save $X” (rounded)
+
+7) Pass CTA copy tweak
+
+Change Pass CTA button text:
+	•	From: “Join for $4.99/mo”
+	•	To: “Unlock for $4.99/mo”
+No pricing logic changes.
+
+8) Implementation notes (must match current architecture)
+	•	Router: wouter
+	•	Styling: Tailwind + shadcn/ui
+	•	Data: TanStack Query
+	•	Auth: useAuth(); derive membership flag (use existing subscription status / field; if missing, implement isPassMember derived from user subscription)
+	•	Create shared query base filters: location + radius + selected top filter + selected category
+	•	Keep mobile-first performance; show skeleton loaders per section
+
+Deliverables
+	•	Updated /discover page implementing the mixed feed behavior.
+	•	Updated deal card UI state for locked member-only deals.
+	•	Helper utilities (computeSavings, dedupe/interleave).
+	•	Minimal backend/API changes only if necessary.
+
+Proceed to implement now.
