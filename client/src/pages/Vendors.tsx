@@ -31,7 +31,7 @@ export default function Vendors() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-semibold mb-8" data-testid="heading-local-vendors">Local Vendors</h1>
+        <h1 className="text-3xl font-semibold mb-8" data-testid="heading-local-businesses">Local Businesses</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isLoading ? (
             <>
@@ -41,7 +41,7 @@ export default function Vendors() {
             </>
           ) : vendors && vendors.length === 0 ? (
             <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">No vendors currently listed. Check back soon!</p>
+              <p className="text-muted-foreground">No businesses currently listed. Check back soon!</p>
             </div>
           ) : (
             vendors?.map((vendor) => {

@@ -151,7 +151,7 @@ export default function DealDetailPage() {
           <CardHeader className="pb-4">
             <div className="flex items-start gap-4">
               <Avatar className="h-16 w-16 border">
-                <AvatarImage src={vendor?.logoUrl || ""} alt={vendor?.businessName || "Vendor"} />
+                <AvatarImage src={vendor?.logoUrl || ""} alt={vendor?.businessName || "Business"} />
                 <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
                   {(vendor?.businessName || "V")[0].toUpperCase()}
                 </AvatarFallback>

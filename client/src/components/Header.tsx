@@ -101,11 +101,11 @@ export default function Header() {
                             <span className="text-base font-semibold">Consumer</span>
                           </div>
                           <p className="text-xs text-muted-foreground text-left">
-                            Shop local products, support vendors, and earn rewards
+                            Shop local products, support businesses, and earn rewards
                           </p>
                         </Button>
                       </a>
-                      <a href="/api/login?intended_role=vendor" className="block" data-testid="link-login-vendor">
+                      <a href="/api/login?intended_role=vendor" className="block" data-testid="link-login-business">
                         <Button 
                           variant="outline" 
                           className="w-full h-auto flex flex-col items-start p-5 gap-2 hover-elevate"
@@ -113,7 +113,7 @@ export default function Header() {
                         >
                           <div className="flex items-center gap-3">
                             <Store className="h-5 w-5 text-primary" />
-                            <span className="text-base font-semibold">Vendor</span>
+                            <span className="text-base font-semibold">Business Owner</span>
                           </div>
                           <p className="text-xs text-muted-foreground text-left">
                             Sell products, offer services, or run a restaurant
@@ -164,7 +164,7 @@ export default function Header() {
                             <span className="text-base font-semibold">Consumer</span>
                           </div>
                           <p className="text-xs text-muted-foreground text-left">
-                            Shop local products, support vendors, and earn rewards
+                            Shop local products, support businesses, and earn rewards
                           </p>
                         </Button>
                       </a>
@@ -175,7 +175,7 @@ export default function Header() {
                         >
                           <div className="flex items-center gap-3">
                             <Store className="h-5 w-5 text-primary" />
-                            <span className="text-base font-semibold">Vendor</span>
+                            <span className="text-base font-semibold">Business Owner</span>
                           </div>
                           <p className="text-xs text-muted-foreground text-left">
                             Sell products, offer services, or run a restaurant

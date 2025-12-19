@@ -32,7 +32,7 @@ export async function getProductsWithVendors(): Promise<ProductWithVendor[]> {
     const vendor = vendors.find((v: Vendor) => v.id === product.vendorId);
     return {
       ...product,
-      vendorName: vendor?.businessName || "Unknown Vendor",
+      vendorName: vendor?.businessName || "Unknown Business",
       isVerifiedVendor: vendor?.isVerified || false
     };
   });

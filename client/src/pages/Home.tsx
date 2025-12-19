@@ -77,7 +77,7 @@ export default function Home() {
                     id={product.id}
                     name={product.name}
                     price={product.price ? parseFloat(product.price) : 0}
-                    vendorName={product.vendorName || "Unknown Vendor"}
+                    vendorName={product.vendorName || "Unknown Business"}
                     vendorId={product.vendorId}
                     inventory={product.inventory}
                     isVerifiedVendor={product.isVerifiedVendor}

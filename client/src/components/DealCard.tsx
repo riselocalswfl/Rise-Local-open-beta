@@ -51,7 +51,7 @@ export default function DealCard({ deal, vendor, isPremiumUser = false, distance
       <CardContent className={`p-4 ${isLocked ? "blur-sm" : ""}`}>
         <div className="flex items-start gap-3 mb-3">
           <Avatar className="h-12 w-12 border">
-            <AvatarImage src={vendor?.logoUrl || ""} alt={vendor?.businessName || "Vendor"} />
+            <AvatarImage src={vendor?.logoUrl || ""} alt={vendor?.businessName || "Business"} />
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
               {(vendor?.businessName || "V")[0].toUpperCase()}
             </AvatarFallback>

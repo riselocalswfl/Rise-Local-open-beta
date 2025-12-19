@@ -128,7 +128,7 @@ export default function Messages() {
           Messages
         </h1>
         <p className="text-muted-foreground">
-          Communicate with vendors and customers
+          Communicate with businesses and customers
         </p>
       </div>
 
@@ -138,7 +138,7 @@ export default function Messages() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder={isVendor ? "Search customers to message..." : "Search vendors to message..."}
+            placeholder={isVendor ? "Search customers to message..." : "Search businesses to message..."}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);

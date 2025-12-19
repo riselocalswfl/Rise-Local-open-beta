@@ -600,10 +600,10 @@ export default function VendorDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              Loading your vendor profile...
+              Loading your business profile...
             </p>
             <p className="text-sm text-muted-foreground">
-              If this persists, please contact support or complete the vendor onboarding process.
+              If this persists, please contact support or complete the business onboarding process.
             </p>
           </CardContent>
         </Card>
@@ -617,7 +617,7 @@ export default function VendorDashboard() {
       <div className="min-h-screen bg-bg">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2" data-testid="heading-dashboard">Vendor Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-2" data-testid="heading-dashboard">Business Dashboard</h1>
             <p className="text-muted-foreground">{vendor.businessName}</p>
           </div>
 

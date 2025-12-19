@@ -57,7 +57,7 @@ export default function VendorProfile() {
         <div className="flex items-center justify-center py-16">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading vendor profile...</p>
+            <p className="mt-4 text-muted-foreground">Loading business profile...</p>
           </div>
         </div>
       </div>
@@ -67,11 +67,11 @@ export default function VendorProfile() {
   if (!vendor) {
     return (
       <div className="min-h-screen bg-bg">
-        <DetailHeader title="Vendor Not Found" />
+        <DetailHeader title="Business Not Found" />
         <div className="flex items-center justify-center py-16">
           <Card className="max-w-md">
             <CardContent className="pt-6 text-center">
-              <p className="text-muted-foreground mb-4">Vendor not found</p>
+              <p className="text-muted-foreground mb-4">Business not found</p>
               <a href="/" className="inline-flex items-center gap-2 text-primary hover:underline" data-testid="link-back-to-home">
                 Back to Home
               </a>

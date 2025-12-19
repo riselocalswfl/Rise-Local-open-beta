@@ -142,7 +142,7 @@ export function MasterProfile({ vendor, reviews, faqs, children }: MasterProfile
             </CardHeader>
             <CardContent>
               <div className="text-sm" data-testid="text-payment-methods">
-                {vendor.paymentMethod || "Contact vendor"}
+                {vendor.paymentMethod || "Contact business"}
               </div>
             </CardContent>
           </Card>
