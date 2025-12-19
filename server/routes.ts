@@ -305,6 +305,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Categories endpoint - single source of truth for business categories
+  app.get("/api/categories", async (req, res) => {
+    try {
+      const activeOnly = req.query.active !== "false";
+      const categoryList = await storage.getCategories(activeOnly);
+      res.json(categoryList);
+    } catch (error) {
+      console.error("[GET /api/categories] Error:", error);
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+
   // Admin statistics endpoint
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     try {
