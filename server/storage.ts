@@ -424,8 +424,13 @@ export class DbStorage implements IStorage {
   }
 
   async getAllVendorListings(): Promise<import("@shared/schema").UnifiedVendorListing[]> {
-    // Fetch from unified vendors table (only completed profiles)
-    const completedVendors = await db.select().from(vendors).where(eq(vendors.profileStatus, "complete"));
+    // Fetch from unified vendors table (only completed profiles that are visible)
+    const completedVendors = await db.select().from(vendors).where(
+      and(
+        eq(vendors.profileStatus, "complete"),
+        eq(vendors.isProfileVisible, true)
+      )
+    );
 
     // Map unified vendors to listing format
     return completedVendors.map(v => ({
@@ -444,16 +449,23 @@ export class DbStorage implements IStorage {
   }
 
   async getServiceVendors(): Promise<Vendor[]> {
-    // Fetch service vendors with completed profiles
+    // Fetch service vendors with completed profiles that are visible
     return await db.select().from(vendors)
       .where(and(
         eq(vendors.vendorType, "service"),
-        eq(vendors.profileStatus, "complete")
+        eq(vendors.profileStatus, "complete"),
+        eq(vendors.isProfileVisible, true)
       ));
   }
 
   async getVerifiedVendors(): Promise<Vendor[]> {
-    return await db.select().from(vendors).where(eq(vendors.isVerified, true));
+    // Only return verified vendors that are visible
+    return await db.select().from(vendors).where(
+      and(
+        eq(vendors.isVerified, true),
+        eq(vendors.isProfileVisible, true)
+      )
+    );
   }
 
   async getAllVendorValues(): Promise<string[]> {
@@ -1382,7 +1394,7 @@ export class DbStorage implements IStorage {
   }
 
   // Deal operations
-  async listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]> {
+  async listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string; includeHiddenVendors?: boolean }): Promise<Deal[]> {
     let conditions = [];
     
     if (filters?.category) {
@@ -1399,6 +1411,22 @@ export class DbStorage implements IStorage {
     }
     if (filters?.vendorId) {
       conditions.push(eq(deals.vendorId, filters.vendorId));
+    }
+    
+    // Filter out deals from hidden vendors (unless explicitly including hidden or filtering by specific vendorId)
+    if (!filters?.includeHiddenVendors && !filters?.vendorId) {
+      // Join with vendors to filter by visibility
+      conditions.push(eq(vendors.isProfileVisible, true));
+      
+      const query = db
+        .select({ deal: deals })
+        .from(deals)
+        .innerJoin(vendors, eq(deals.vendorId, vendors.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(deals.createdAt));
+      
+      const results = await query;
+      return results.map(r => r.deal);
     }
 
     if (conditions.length === 0) {
@@ -1420,7 +1448,8 @@ export class DbStorage implements IStorage {
     city?: string; 
     tier?: string; 
     isActive?: boolean; 
-    vendorId?: string 
+    vendorId?: string;
+    includeHiddenVendors?: boolean;
   }): Promise<DealWithDistance[]> {
     // Build base conditions for deals
     let conditions = [];
@@ -1437,21 +1466,31 @@ export class DbStorage implements IStorage {
     if (filters.vendorId) {
       conditions.push(eq(deals.vendorId, filters.vendorId));
     }
+    
+    // Filter out deals from hidden vendors (unless explicitly including hidden or filtering by specific vendorId)
+    if (!filters.includeHiddenVendors && !filters.vendorId) {
+      conditions.push(eq(vendors.isProfileVisible, true));
+    }
 
-    // If no location provided, fall back to city-based filtering
+    // If no location provided, fall back to city-based filtering with vendor visibility
     if (!filters.lat || !filters.lng) {
       if (filters.city) {
         conditions.push(eq(deals.city, filters.city));
       }
       
-      const dealsResult = conditions.length === 0
-        ? await db.select().from(deals).orderBy(desc(deals.createdAt))
-        : await db.select().from(deals).where(and(...conditions)).orderBy(desc(deals.createdAt));
+      // Join with vendors to filter by visibility
+      const query = db
+        .select({ deal: deals })
+        .from(deals)
+        .innerJoin(vendors, eq(deals.vendorId, vendors.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(deals.createdAt));
       
-      return dealsResult as DealWithDistance[];
+      const results = await query;
+      return results.map(r => r.deal) as DealWithDistance[];
     }
 
-    // Location-based filtering: join with vendors to get coordinates
+    // Location-based filtering: join with vendors to get coordinates (already includes visibility filter)
     const query = conditions.length === 0
       ? db.select({
           deal: deals,
