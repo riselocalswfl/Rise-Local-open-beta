@@ -170,10 +170,30 @@ export type UpsertUser = {
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// Business Categories - single source of truth for vendor categorization
+export const categories = pgTable("categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(), // e.g., "food_drink", "wellness", "home_services"
+  label: text("label").notNull(), // e.g., "Food & Drink"
+  icon: text("icon"), // Icon name from lucide-react (e.g., "Utensils", "Heart")
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCategorySchema = createInsertSchema(categories).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
+export type Category = typeof categories.$inferSelect;
+
 export const vendors = pgTable("vendors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   ownerId: varchar("owner_id").notNull().references(() => users.id),
   vendorType: text("vendor_type").notNull().default("shop"), // "shop" | "dine" | "service" - self-labeled category
+  categoryId: varchar("category_id").references(() => categories.id), // Business category from categories table
   
   // Capabilities - which features this vendor has enabled
   capabilities: jsonb("capabilities").notNull().default(sql`'{"products":false,"services":false,"menu":false}'::jsonb`), // {products: boolean, services: boolean, menu: boolean}

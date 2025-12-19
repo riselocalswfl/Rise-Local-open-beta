@@ -1,0 +1,58 @@
+Goal: The categories shown under Discover → “Browse by Category” must be the exact same categories businesses choose from during business account creation/onboarding, with no duplicates, mismatches, or hardcoded lists.
+
+1) Create a Single Source of Truth for Categories
+	•	Create a categories table (or a shared constants module if you already have one) that defines all allowed business categories.
+	•	Recommended schema:
+	•	id (uuid/int)
+	•	key (string, unique, e.g. restaurants, beauty, fitness)
+	•	label (string, e.g. “Restaurants”)
+	•	icon (string optional: icon name / emoji / asset key)
+	•	sortOrder (int)
+	•	isActive (boolean, default true)
+
+2) Update Business Onboarding to Use This List (Not Hardcoded)
+	•	In the business signup flow where vendors pick their category:
+	•	Fetch categories from GET /api/categories?active=true
+	•	Save the vendor’s selected category as either:
+	•	vendor.categoryId referencing categories.id (preferred), or
+	•	vendor.categoryKey referencing categories.key
+	•	Enforce validation: vendor can only select from categories returned by the API.
+
+3) Update Discover Page “Browse by Category” to Use the Same List
+	•	Replace the Discover page’s category UI list with the exact same API data:
+	•	GET /api/categories?active=true
+	•	Render the returned categories in sortOrder.
+	•	On tap:
+	•	Navigate to your existing vendor/deals listing view and filter by that category:
+	•	example: /discover?category=<categoryKey> or /vendors?categoryId=<id>
+
+4) Filtering Must Match Vendor Data
+	•	Update vendor/deal queries so category filtering uses the stored category reference:
+	•	If vendor stores categoryId, filter by that.
+	•	If vendor stores categoryKey, filter by that.
+	•	Ensure visibility rules still apply (hidden profiles / hidden deals stay hidden).
+
+5) Backwards Compatibility / Migration
+	•	If vendors currently have categories stored as strings:
+	•	Add a migration that maps existing values to the closest categories.key
+	•	Store the mapped categoryId going forward
+	•	Keep a fallback temporarily to avoid breaking existing vendor profiles.
+
+6) Deliverables
+
+Implement:
+	•	DB: categories table + seed data
+	•	API:
+	•	GET /api/categories
+	•	Frontend:
+	•	Business onboarding category selector uses API
+	•	Discover “Browse by Category” uses API
+	•	Tests or quick checks to confirm:
+	•	The category list matches 1:1 in both places
+	•	Filtering works
+	•	No category is shown on Discover that can’t be chosen in onboarding
+
+Constraints:
+	•	Do not hardcode category lists in multiple components.
+	•	Keep current styling and UX the same—only swap the data source.
+	•	Use the existing tech stack (React + TS + Drizzle + Express + TanStack Query + wouter).
