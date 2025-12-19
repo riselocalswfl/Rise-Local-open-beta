@@ -1,0 +1,71 @@
+You are working inside the Rise Local app codebase.
+
+Goal: Ensure that all business onboarding and account creation elements are fully unified and displayed consistently across:
+	•	Business onboarding flow
+	•	Business dashboard
+	•	Business account settings (“My Account”)
+
+1. Terminology Standardization
+	•	Replace all instances of the word “vendor” with “business” throughout the app:
+	•	UI text
+	•	Form labels
+	•	Routes
+	•	Component names
+	•	Database field labels (display-only, not breaking schema)
+	•	Dashboard headings
+	•	User-facing language should always say Business, never Vendor.
+
+2. Single Source of Truth for Business Profile Data
+	•	Create (or confirm) one canonical Business Profile object that is used by:
+	•	Onboarding forms
+	•	Business dashboard
+	•	Account settings
+	•	Public business profile page
+	•	All views should read from and write to the same data source, not duplicates.
+
+3. Unified Business Profile Fields
+
+Ensure the following fields appear identically in onboarding, dashboard, and settings:
+	•	Business name
+	•	Profile photo
+	•	Banner image
+	•	Business category (shop, restaurant, service, etc.)
+	•	Short description / bio
+	•	Contact info (email, phone)
+	•	Website
+	•	Social media links
+	•	Address + service area
+	•	Business hours
+	•	Menu or offerings (if applicable)
+	•	Deals associated with the business
+
+Field order, labels, and required/optional status should be consistent everywhere.
+
+4. Dashboard + “My Account” Structure
+	•	Move all business management tools into My Account
+	•	Business users should see:
+	•	Profile Settings
+	•	Deals Management
+	•	Billing / Plan
+	•	Visibility / Status
+	•	Remove any separate “For Businesses” dashboard entry points
+
+5. Component Reuse
+	•	Reuse the same form components for:
+	•	Onboarding
+	•	Editing profile in dashboard
+	•	Editing profile in settings
+	•	Do not create parallel forms or duplicated logic.
+
+6. Data Integrity Rules
+	•	Changes made in any location (onboarding, dashboard, settings) must:
+	•	Instantly reflect everywhere else
+	•	Update the public business profile correctly
+	•	Prevent partial or conflicting profile states.
+
+7. UX Expectations
+	•	Business users should feel like onboarding → dashboard → settings is one continuous experience
+	•	No repeated questions unless editing
+	•	No mismatched wording or missing fields
+
+Implement these changes without removing existing business data.
