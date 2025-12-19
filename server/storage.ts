@@ -26,10 +26,11 @@ import {
   type ConversationMessage, type InsertConversationMessage,
   type SenderRole,
   type Notification, type InsertNotification,
+  type Category,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
-  conversations, conversationMessages, notifications,
+  conversations, conversationMessages, notifications, categories,
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
@@ -78,6 +79,11 @@ export interface IStorage {
   updateVendor(id: string, data: Partial<InsertVendor>): Promise<Vendor>;
   deleteVendor(id: string): Promise<void>;
   updateVendorVerification(id: string, isVerified: boolean): Promise<void>;
+
+  // Category operations
+  getCategories(activeOnly?: boolean): Promise<import("@shared/schema").Category[]>;
+  getCategory(id: string): Promise<import("@shared/schema").Category | undefined>;
+  getCategoryByKey(key: string): Promise<import("@shared/schema").Category | undefined>;
 
   // Product operations
   getProduct(id: string): Promise<Product | undefined>;
@@ -508,6 +514,26 @@ export class DbStorage implements IStorage {
 
   async updateVendorVerification(id: string, isVerified: boolean): Promise<void> {
     await db.update(vendors).set({ isVerified }).where(eq(vendors.id, id));
+  }
+
+  // Category operations
+  async getCategories(activeOnly: boolean = true): Promise<Category[]> {
+    if (activeOnly) {
+      return await db.select().from(categories)
+        .where(eq(categories.isActive, true))
+        .orderBy(categories.sortOrder);
+    }
+    return await db.select().from(categories).orderBy(categories.sortOrder);
+  }
+
+  async getCategory(id: string): Promise<Category | undefined> {
+    const result = await db.select().from(categories).where(eq(categories.id, id));
+    return result[0];
+  }
+
+  async getCategoryByKey(key: string): Promise<Category | undefined> {
+    const result = await db.select().from(categories).where(eq(categories.key, key));
+    return result[0];
   }
 
   // Product operations
