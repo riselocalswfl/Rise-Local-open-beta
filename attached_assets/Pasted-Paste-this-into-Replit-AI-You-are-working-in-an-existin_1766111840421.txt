@@ -1,0 +1,153 @@
+Paste this into Replit AI:
+
+You are working in an existing full-stack app with:
+	•	Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui + TanStack Query + wouter
+	•	Backend: Express.js + TypeScript + Drizzle ORM + PostgreSQL
+	•	Auth: Passport (Replit auth). useAuth() provides user with user.id and user.role and onboardingComplete.
+
+Goal: Implement a complete “Vendor Deals” system so vendors can create, edit, publish, pause, and delete deals from inside My Account (not a separate “For Businesses” section). Customers can view deals on the consumer side.
+
+REQUIREMENTS
+	1.	Data model (Drizzle schema + migrations)
+Create these tables:
+
+A. deals
+	•	id (uuid pk)
+	•	vendorUserId (fk -> users.id)  // owner
+	•	businessId (optional if you have businesses table; otherwise store vendorUserId only)
+	•	title (varchar 80)
+	•	description (text, max ~500)
+	•	finePrint (text nullable)
+	•	category (enum or varchar: restaurant, retail, service, other)
+	•	dealType (enum: percent_off, amount_off, bogo, free_item, fixed_price, other)
+	•	valueLabel (varchar nullable) // optional: “$5+ value” “BOGO” etc
+	•	startAt (timestamp nullable)
+	•	endAt (timestamp nullable)
+	•	isActive (boolean default true)
+	•	status (enum: draft, published, paused, expired) default draft
+	•	heroImageUrl (text nullable)
+	•	redemptionMethod (enum: qr_code, numeric_pin, claim_button, unique_code, staff_toggle) default claim_button
+	•	maxRedemptionsTotal (int nullable)
+	•	maxRedemptionsPerUser (int nullable, default 1)
+	•	cooldownHours (int nullable) // prevent repeated use same day/week
+	•	createdAt, updatedAt
+
+B. deal_redemptions
+	•	id (uuid pk)
+	•	dealId (fk -> deals.id, cascade delete)
+	•	userId (fk -> users.id) // consumer
+	•	vendorUserId (fk -> users.id) // owner vendor
+	•	status (enum: claimed, redeemed, voided) default claimed
+	•	claimedAt (timestamp default now)
+	•	redeemedAt (timestamp nullable)
+	•	voidedAt (timestamp nullable)
+	•	claimExpiresAt (timestamp nullable) // for time-boxed claims (e.g., 10 minutes)
+	•	redemptionCode (varchar nullable) // if using unique code or pin
+	•	metadata (jsonb nullable) // device info, notes
+
+C. deal_locations (only if vendors have multiple locations)
+	•	id uuid
+	•	dealId fk
+	•	address, city, state, zip, lat, lng (nullable)
+
+Add indexes:
+	•	deals.vendorUserId
+	•	deal_redemptions.dealId + userId
+	•	deal_redemptions.dealId + status
+
+	2.	Authorization / role guard
+Only users with role in (vendor, restaurant, service_provider, admin) can create/manage deals.
+Vendors can only manage their own deals (vendorUserId match).
+Admin can view/manage all.
+	3.	API routes (Express)
+Implement and validate inputs (zod or existing validation approach).
+
+Vendor routes:
+	•	POST /api/vendor/deals            (create draft)
+	•	GET /api/vendor/deals             (list my deals, filter by status)
+	•	GET /api/vendor/deals/:id         (get my deal)
+	•	PATCH /api/vendor/deals/:id       (edit)
+	•	POST /api/vendor/deals/:id/publish
+	•	POST /api/vendor/deals/:id/pause
+	•	DELETE /api/vendor/deals/:id
+
+Consumer routes:
+	•	GET /api/deals                    (public list: only published + active + in date range)
+	•	GET /api/deals/:id                (public detail)
+
+Redemption routes (consumer + vendor):
+	•	POST /api/deals/:id/claim
+Behavior:
+	•	require auth
+	•	enforce maxRedemptionsPerUser and cooldownHours using deal_redemptions history
+	•	create deal_redemption with status=claimed
+	•	set claimExpiresAt = now + 10 minutes (configurable)
+	•	if redemptionMethod requires code, generate a short code (6 digits or 8 alphanumeric) stored in redemptionCode
+	•	return claim payload
+	•	POST /api/vendor/deals/:dealId/redeem
+Behavior:
+	•	vendor-auth only, must own the deal
+	•	accept { redemptionId } OR { code }
+	•	verify claim exists, not expired, status=claimed
+	•	mark as redeemed, set redeemedAt
+	•	POST /api/vendor/deals/:dealId/void
+optional: if staff mis-taps; set status=voided
+
+	4.	Frontend (React)
+Add a “My Account” section for vendors:
+
+	•	/account (already exists)
+	•	Add tab: “My Deals”
+
+Pages/components:
+A) VendorDealsList
+	•	list cards of deals with status pill (draft/published/paused/expired)
+	•	actions: Edit, Publish, Pause, Delete
+	•	button: “Create Deal”
+
+B) DealEditor (create/edit)
+Form fields:
+	•	title, description, finePrint
+	•	category, dealType
+	•	startAt, endAt (optional)
+	•	redemptionMethod select
+	•	maxRedemptionsPerUser, cooldownHours, maxRedemptionsTotal
+	•	heroImageUrl upload OR url (use existing upload approach; if none, store URL for now)
+
+Form behavior:
+	•	save as draft (POST/PATCH)
+	•	publish button uses publish endpoint
+
+C) VendorRedeemScreen (simple staff view)
+	•	shows “Redeem a Deal”
+	•	input field for code OR redemptionId
+	•	redeem button calls /api/vendor/deals/:dealId/redeem
+	•	show success/failure states
+
+Consumer UI:
+	•	Deals feed uses GET /api/deals
+	•	Deal detail page has “Claim Deal” button
+	•	after claim, show “Your Redemption” screen with countdown until expiry + code/QR if used
+
+	5.	UX rules
+
+	•	Published deals show on consumer side only if:
+	•	status=published
+	•	isActive=true
+	•	startAt <= now (or null)
+	•	endAt >= now (or null)
+	•	Expired deals automatically appear as expired in vendor list (derived from endAt).
+
+	6.	Testing / edge cases
+
+	•	prevent non-vendors from accessing vendor deal routes
+	•	vendor cannot edit another vendor’s deal
+	•	enforce claim limits + cooldown reliably server-side
+	•	handle time zone consistently (store UTC in DB)
+
+Implement with minimal UI that matches existing shadcn + tailwind patterns. Use TanStack Query for API calls and cache invalidation after create/edit/publish/redeem. Keep routes consistent with wouter. Add any necessary navigation changes so vendors reach “My Deals” via “My Account”.
+
+Output:
+	•	code changes + files created
+	•	migration files
+	•	brief notes on how to test the flow end-to-end
