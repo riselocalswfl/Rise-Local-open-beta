@@ -17,8 +17,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Store, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check } from "lucide-react";
+import { Store, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check, Clock, MapPin, Image } from "lucide-react";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
+import { ImageUpload } from "@/components/ImageUpload";
 import type { FulfillmentOptions } from "@shared/schema";
 
 // Step 1: Business Basics + Vendor Type
@@ -67,6 +68,22 @@ const step3Schema = z.object({
   paymentMethods: z.array(z.string()).min(1, "Select at least one payment method"),
   fulfillmentMethods: z.any().optional(),
 });
+
+// Step 4: Hours, Address & Images
+const step4Schema = z.object({
+  address: z.string().optional(),
+  hours: z.object({
+    monday: z.string().optional(),
+    tuesday: z.string().optional(),
+    wednesday: z.string().optional(),
+    thursday: z.string().optional(),
+    friday: z.string().optional(),
+    saturday: z.string().optional(),
+    sunday: z.string().optional(),
+  }).optional(),
+});
+
+const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
 const PAYMENT_METHOD_OPTIONS = [
   "Credit/Debit Card",
@@ -234,6 +251,27 @@ export default function UnifiedOnboarding() {
     },
   });
 
+  // Step 4 Form (Hours, Address & Images)
+  const form4 = useForm({
+    resolver: zodResolver(step4Schema),
+    defaultValues: {
+      address: "",
+      hours: {
+        monday: "",
+        tuesday: "",
+        wednesday: "",
+        thursday: "",
+        friday: "",
+        saturday: "",
+        sunday: "",
+      },
+    },
+  });
+
+  // Image state for Step 4 (managed separately since they're uploaded, not form fields)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+
   // Reset form2 when vendor type changes to clear stale data
   const previousVendorType = useRef<string | null>(null);
   useEffect(() => {
@@ -372,6 +410,24 @@ export default function UnifiedOnboarding() {
               },
             });
           }
+
+          // Populate form 4 fields (hours, address, images)
+          form4.reset({
+            address: draft.address || "",
+            hours: draft.hours || {
+              monday: "",
+              tuesday: "",
+              wednesday: "",
+              thursday: "",
+              friday: "",
+              saturday: "",
+              sunday: "",
+            },
+          });
+
+          // Load image URLs
+          if (draft.logoUrl) setLogoUrl(draft.logoUrl);
+          if (draft.bannerUrl) setBannerUrl(draft.bannerUrl);
         }
       } catch (error) {
         console.error("Error loading draft vendor:", error);
@@ -404,7 +460,7 @@ export default function UnifiedOnboarding() {
   };
 
   // Auto-save function
-  const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3') => {
+  const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3' | 'step4') => {
     if (isInitialLoadRef.current) return;
 
     try {
@@ -501,6 +557,9 @@ export default function UnifiedOnboarding() {
           if (selectedVendorType === "shop" && data.fulfillmentMethods) {
             updateData.fulfillmentOptions = data.fulfillmentMethods;
           }
+        } else if (formType === 'step4') {
+          updateData.address = data.address;
+          updateData.hours = data.hours;
         }
 
         console.log("[Auto-save] Updating draft vendor with fields:", Object.keys(updateData));
@@ -551,7 +610,7 @@ export default function UnifiedOnboarding() {
   }, [draftVendorId, selectedVendorType, updateDraftVendorId]);
 
   // Debounced auto-save for each form
-  const debouncedAutoSave = useCallback((data: any, formType: 'step1' | 'step2' | 'step3') => {
+  const debouncedAutoSave = useCallback((data: any, formType: 'step1' | 'step2' | 'step3' | 'step4') => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
@@ -582,6 +641,13 @@ export default function UnifiedOnboarding() {
     return () => subscription3.unsubscribe();
   }, [form3.watch, debouncedAutoSave]);
 
+  useEffect(() => {
+    const subscription4 = form4.watch((data) => {
+      debouncedAutoSave(data, 'step4');
+    });
+    return () => subscription4.unsubscribe();
+  }, [form4.watch, debouncedAutoSave]);
+
   // Step navigation
   const handleStep1Next = async () => {
     const isValid = await form1.trigger();
@@ -603,6 +669,14 @@ export default function UnifiedOnboarding() {
     const isValid = await form3.trigger();
     if (isValid) {
       setStep(4);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const handleStep4Next = async () => {
+    const isValid = await form4.trigger();
+    if (isValid) {
+      setStep(5);
       window.scrollTo(0, 0);
     }
   };
@@ -636,7 +710,7 @@ export default function UnifiedOnboarding() {
     completeMutation.mutate(draftVendorId);
   };
 
-  const progress = (step / 4) * 100;
+  const progress = (step / 5) * 100;
 
   return (
     <div className="min-h-screen bg-muted/30 py-12 px-4">
@@ -650,7 +724,7 @@ export default function UnifiedOnboarding() {
             Create Your Business Profile
           </h1>
           <p className="text-muted-foreground">
-            Step {step} of 4
+            Step {step} of 5
           </p>
         </div>
 
@@ -1277,8 +1351,177 @@ export default function UnifiedOnboarding() {
           </Card>
         )}
 
-        {/* Step 4: Review & Submit */}
+        {/* Step 4: Hours, Address & Images */}
         {step === 4 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Hours, Address & Images</CardTitle>
+              <CardDescription>Help customers find and recognize your business</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form4}>
+                <form className="space-y-6">
+                  {/* Street Address */}
+                  <FormField
+                    control={form4.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Street Address (optional)
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="123 Main Street" 
+                            {...field} 
+                            data-testid="input-address"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Your business street address for customers to find you
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Business Hours */}
+                  <div className="space-y-4">
+                    <Label className="flex items-center gap-2 text-base font-medium">
+                      <Clock className="w-4 h-4" />
+                      Business Hours
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enter your hours for each day (e.g., "9:00 AM - 5:00 PM" or "Closed")
+                    </p>
+                    <div className="space-y-3">
+                      {DAYS_OF_WEEK.map((day) => (
+                        <FormField
+                          key={day}
+                          control={form4.control}
+                          name={`hours.${day}`}
+                          render={({ field }) => (
+                            <FormItem className="grid grid-cols-[100px_1fr] gap-4 items-center">
+                              <FormLabel className="capitalize text-right">{day}</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="e.g., 9:00 AM - 5:00 PM or Closed"
+                                  {...field}
+                                  data-testid={`input-hours-${day}`}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Profile Photo/Logo */}
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2 text-base font-medium">
+                      <Image className="w-4 h-4" />
+                      Profile Photo/Logo (optional)
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Square image that represents your business
+                    </p>
+                    <ImageUpload
+                      currentImageUrl={logoUrl}
+                      onUploadComplete={async (imageUrl) => {
+                        setLogoUrl(imageUrl);
+                        if (draftVendorId) {
+                          await fetch(`/api/vendors/${draftVendorId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ logoUrl: imageUrl }),
+                          });
+                        }
+                      }}
+                      onRemove={async () => {
+                        setLogoUrl(null);
+                        if (draftVendorId) {
+                          await fetch(`/api/vendors/${draftVendorId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ logoUrl: null }),
+                          });
+                        }
+                      }}
+                      maxSizeMB={5}
+                      aspectRatio="square"
+                    />
+                  </div>
+
+                  {/* Cover Photo/Banner */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium">Cover Photo/Banner (optional)</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Wide banner image for your profile header
+                    </p>
+                    <ImageUpload
+                      currentImageUrl={bannerUrl}
+                      onUploadComplete={async (imageUrl) => {
+                        setBannerUrl(imageUrl);
+                        if (draftVendorId) {
+                          await fetch(`/api/vendors/${draftVendorId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ bannerUrl: imageUrl }),
+                          });
+                        }
+                      }}
+                      onRemove={async () => {
+                        setBannerUrl(null);
+                        if (draftVendorId) {
+                          await fetch(`/api/vendors/${draftVendorId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ bannerUrl: null }),
+                          });
+                        }
+                      }}
+                      maxSizeMB={5}
+                      aspectRatio="landscape"
+                    />
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setStep(3);
+                        window.scrollTo(0, 0);
+                      }}
+                      data-testid="button-back-step4"
+                    >
+                      <ArrowLeft className="mr-2 w-4 h-4" />
+                      Back
+                    </Button>
+                    <Button
+                      type="button"
+                      size="lg"
+                      onClick={handleStep4Next}
+                      data-testid="button-next-step4"
+                    >
+                      Continue
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 5: Review & Submit */}
+        {step === 5 && (
           <Card>
             <CardHeader>
               <CardTitle>Review & Submit</CardTitle>
@@ -1310,9 +1553,49 @@ export default function UnifiedOnboarding() {
                 <div>
                   <h3 className="font-medium mb-2">Location</h3>
                   <p className="text-muted-foreground">
+                    {form4.getValues("address") ? `${form4.getValues("address")}, ` : ""}
                     {form1.getValues("city")}, FL {form1.getValues("zipCode")}
                   </p>
                 </div>
+
+                {/* Show hours summary if any are filled in */}
+                {Object.values(form4.getValues("hours") || {}).some(h => h) && (
+                  <div>
+                    <h3 className="font-medium mb-2">Business Hours</h3>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      {DAYS_OF_WEEK.map(day => {
+                        const hours = form4.getValues(`hours.${day}`);
+                        return hours ? (
+                          <div key={day} className="flex">
+                            <span className="capitalize w-24">{day}:</span>
+                            <span>{hours}</span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Show images if uploaded */}
+                {(logoUrl || bannerUrl) && (
+                  <div>
+                    <h3 className="font-medium mb-2">Images</h3>
+                    <div className="flex gap-4">
+                      {logoUrl && (
+                        <div className="text-center">
+                          <img src={logoUrl} alt="Logo" className="w-16 h-16 rounded-lg object-cover" />
+                          <span className="text-xs text-muted-foreground">Logo</span>
+                        </div>
+                      )}
+                      {bannerUrl && (
+                        <div className="text-center">
+                          <img src={bannerUrl} alt="Banner" className="w-24 h-16 rounded-lg object-cover" />
+                          <span className="text-xs text-muted-foreground">Banner</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="bg-muted/50 p-4 rounded-lg">
@@ -1326,10 +1609,10 @@ export default function UnifiedOnboarding() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setStep(3);
+                    setStep(4);
                     window.scrollTo(0, 0);
                   }}
-                  data-testid="button-back-step4"
+                  data-testid="button-back-step5"
                 >
                   <ArrowLeft className="mr-2 w-4 h-4" />
                   Back
