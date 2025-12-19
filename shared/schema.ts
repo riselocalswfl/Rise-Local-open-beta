@@ -274,6 +274,9 @@ export const vendors = pgTable("vendors", {
   averageRating: integer("average_rating"), // 0-500 (5.00 stars = 500) for service providers
   isFeatured: boolean("is_featured").default(false), // migrated from restaurants/serviceProviders
   
+  // Profile Visibility - controls whether business appears in public listings
+  isProfileVisible: boolean("is_profile_visible").notNull().default(true), // When false, business is hidden from all consumer views
+  
   // Deal Redemption PIN
   vendorPin: text("vendor_pin"), // 4-digit PIN for deal redemption verification
   
