@@ -1,16 +1,21 @@
 import { Link, useLocation } from "wouter";
 import { Compass, Grid3X3, Heart, User, Store } from "lucide-react";
-
-const tabs = [
-  { name: "Discover", href: "/discover", icon: Compass },
-  { name: "Browse", href: "/browse", icon: Grid3X3 },
-  { name: "Businesses", href: "/businesses", icon: Store },
-  { name: "Favorites", href: "/favorites", icon: Heart },
-  { name: "Profile", href: "/profile", icon: User },
-];
+import { useAuth } from "@/hooks/useAuth";
 
 export default function BottomTabs() {
   const [location] = useLocation();
+  const { user } = useAuth();
+  
+  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  const profileHref = isVendor ? "/account" : "/profile";
+
+  const tabs = [
+    { name: "Discover", href: "/discover", icon: Compass },
+    { name: "Browse", href: "/browse", icon: Grid3X3 },
+    { name: "Businesses", href: "/businesses", icon: Store },
+    { name: "Favorites", href: "/favorites", icon: Heart },
+    { name: "Account", href: profileHref, icon: User },
+  ];
 
   return (
     <nav
@@ -23,10 +28,11 @@ export default function BottomTabs() {
           const Icon = tab.icon;
           const isActive = location === tab.href || 
             (tab.href === "/discover" && (location === "/" || location === "/deals")) ||
-            (tab.href === "/businesses" && location.startsWith("/businesses"));
+            (tab.href === "/businesses" && location.startsWith("/businesses")) ||
+            (tab.href === profileHref && (location.startsWith("/account") || location === "/profile"));
           
           return (
-            <Link key={tab.href} href={tab.href}>
+            <Link key={tab.name} href={tab.href}>
               <button
                 className={`flex flex-col items-center justify-center gap-1 px-3 py-2 min-w-[64px] transition-colors ${
                   isActive

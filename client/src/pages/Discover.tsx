@@ -192,6 +192,9 @@ export default function Discover() {
 
   // Check if user has Rise Local Pass membership
   const isPassMember = user?.isPassMember === true;
+  
+  // Check if user is a business owner
+  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
 
   useEffect(() => {
     return () => {
@@ -521,7 +524,7 @@ export default function Discover() {
                 )}
               </div>
             </Link>
-            <Link href="/profile" data-testid="link-user-profile">
+            <Link href={isVendor ? "/account" : "/profile"} data-testid="link-user-profile">
               <Avatar className="w-8 h-8 cursor-pointer hover-elevate">
                 <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
@@ -585,7 +588,7 @@ export default function Discover() {
         <ScrollArea className="w-full">
           <div className="flex gap-3 px-4 pb-4">
             {(categoriesData || []).map((cat) => {
-              const Icon = ICON_MAP[cat.icon] || Sparkles;
+              const Icon = (cat.icon && ICON_MAP[cat.icon]) || Sparkles;
               const isSelected = selectedCategory === cat.key;
               return (
                 <button

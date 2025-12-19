@@ -20,16 +20,19 @@ const publicNavigationItems = [
   { name: "Businesses", href: "/businesses", icon: Store },
 ];
 
-const authenticatedNavigationItems = [
-  { name: "Deals", href: "/deals", icon: Tag },
-  { name: "Businesses", href: "/businesses", icon: Store },
-  { name: "My Account", href: "/profile", icon: User },
-];
-
 export default function Header() {
   const [location, setLocation] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const [signInDialogOpen, setSignInDialogOpen] = useState(false);
+  
+  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  const accountHref = isVendor ? "/account" : "/profile";
+
+  const authenticatedNavigationItems = [
+    { name: "Deals", href: "/deals", icon: Tag },
+    { name: "Businesses", href: "/businesses", icon: Store },
+    { name: "My Account", href: accountHref, icon: User },
+  ];
 
   // Determine navigation items based on authentication
   const navigationItems = user ? authenticatedNavigationItems : publicNavigationItems;
