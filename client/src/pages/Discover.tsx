@@ -86,20 +86,27 @@ function computeSavings(deal: Deal): number {
   return 5;
 }
 
-// Deduplicate deals - removes deals that already appear in usedIds
-function deduplicateDeals(deals: RiseLocalDeal[], usedIds: Set<number>): RiseLocalDeal[] {
-  return deals.filter(deal => {
-    if (usedIds.has(deal.id)) return false;
-    usedIds.add(deal.id);
-    return true;
-  });
+type ExtendedRiseLocalDeal = RiseLocalDeal & { 
+  rawDistance: number; 
+  createdAt: Date | null; 
+  vendorCreatedAt: Date | null;
+};
+
+// Filter out deals that have already been used
+function filterUsedDeals(deals: ExtendedRiseLocalDeal[], usedIds: Set<number>): ExtendedRiseLocalDeal[] {
+  return deals.filter(deal => !usedIds.has(deal.id));
+}
+
+// Mark deals as used (call this after slicing to only mark displayed deals)
+function markDealsAsUsed(deals: ExtendedRiseLocalDeal[], usedIds: Set<number>): void {
+  deals.forEach(deal => usedIds.add(deal.id));
 }
 
 // Interleave deals to avoid same vendor appearing back-to-back
-function interleaveByVendor(deals: RiseLocalDeal[]): RiseLocalDeal[] {
+function interleaveByVendor(deals: ExtendedRiseLocalDeal[]): ExtendedRiseLocalDeal[] {
   if (deals.length <= 2) return deals;
   
-  const result: RiseLocalDeal[] = [];
+  const result: ExtendedRiseLocalDeal[] = [];
   const remaining = [...deals];
   let lastVendorId: string | null = null;
   
@@ -167,12 +174,6 @@ function transformDealToRiseLocal(
     vendorCreatedAt: deal.vendor?.createdAt ? new Date(deal.vendor.createdAt) : null,
   };
 }
-
-type ExtendedRiseLocalDeal = RiseLocalDeal & { 
-  rawDistance: number; 
-  createdAt: Date | null; 
-  vendorCreatedAt: Date | null;
-};
 
 export default function Discover() {
   const [selectedFilter, setSelectedFilter] = useState("all");
@@ -350,7 +351,7 @@ export default function Discover() {
     return deals;
   }, [allTransformedDeals, selectedFilter, selectedCategory]);
 
-  // Create sections with deduplication
+  // Create sections with deduplication - only mark displayed deals as used
   const { bestValueDeals, useTodayDeals, newBusinessDeals, popularDeals } = useMemo(() => {
     const usedIds = new Set<number>();
     
@@ -361,39 +362,41 @@ export default function Discover() {
         if (b.savings !== a.savings) return b.savings - a.savings;
         return a.rawDistance - b.rawDistance;
       });
-    const bestValueDeduped = interleaveByVendor(deduplicateDeals(bestValue, usedIds)).slice(0, 8);
+    const bestValueSliced = interleaveByVendor(bestValue).slice(0, 8);
+    markDealsAsUsed(bestValueSliced, usedIds);
     
     // Use Today: all remaining deals sorted by distance
-    const useToday = filteredDeals
-      .filter(d => !usedIds.has(d.id))
+    const useToday = filterUsedDeals(filteredDeals, usedIds)
       .sort((a, b) => a.rawDistance - b.rawDistance);
-    const useTodayDeduped = interleaveByVendor(deduplicateDeals(useToday, usedIds)).slice(0, 8);
+    const useTodaySliced = interleaveByVendor(useToday).slice(0, 8);
+    markDealsAsUsed(useTodaySliced, usedIds);
     
     // New Local Businesses: vendors created within last 30 days
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const newBusiness = filteredDeals
-      .filter(d => !usedIds.has(d.id) && d.vendorCreatedAt && d.vendorCreatedAt.getTime() > thirtyDaysAgo)
+    const newBusiness = filterUsedDeals(filteredDeals, usedIds)
+      .filter(d => d.vendorCreatedAt && d.vendorCreatedAt.getTime() > thirtyDaysAgo)
       .sort((a, b) => {
         const aTime = a.vendorCreatedAt?.getTime() || 0;
         const bTime = b.vendorCreatedAt?.getTime() || 0;
         return bTime - aTime;
       });
-    const newBusinessDeduped = interleaveByVendor(deduplicateDeals(newBusiness, usedIds)).slice(0, 8);
+    const newBusinessSliced = interleaveByVendor(newBusiness).slice(0, 8);
+    markDealsAsUsed(newBusinessSliced, usedIds);
     
     // Popular With Locals: remaining deals (simulating popularity sort)
-    const popular = filteredDeals
-      .filter(d => !usedIds.has(d.id))
+    const popular = filterUsedDeals(filteredDeals, usedIds)
       .sort((a, b) => {
         if (b.savings !== a.savings) return b.savings - a.savings;
         return a.rawDistance - b.rawDistance;
       });
-    const popularDeduped = interleaveByVendor(deduplicateDeals(popular, usedIds)).slice(0, 8);
+    const popularSliced = interleaveByVendor(popular).slice(0, 8);
+    markDealsAsUsed(popularSliced, usedIds);
     
     return {
-      bestValueDeals: bestValueDeduped,
-      useTodayDeals: useTodayDeduped,
-      newBusinessDeals: newBusinessDeduped,
-      popularDeals: popularDeduped,
+      bestValueDeals: bestValueSliced,
+      useTodayDeals: useTodaySliced,
+      newBusinessDeals: newBusinessSliced,
+      popularDeals: popularSliced,
     };
   }, [filteredDeals]);
 

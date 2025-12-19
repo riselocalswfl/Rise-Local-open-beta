@@ -25,7 +25,7 @@ export default function MembershipBanner({ isMember = false }: MembershipBannerP
           <div className="flex flex-wrap gap-2">
             <Link href="/membership">
               <Button size="sm" data-testid="button-join-membership">
-                Join for $4.99/mo
+                Unlock for $4.99/mo
               </Button>
             </Link>
             <Link href="/membership#benefits">
