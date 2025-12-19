@@ -1,0 +1,49 @@
+You are working in the Rise Local app codebase (React + wouter + shadcn/ui).
+
+Goal: Redesign the My Account area to have exactly 3 tabs (and no other tabs/sections inside My Account), with a simple mobile-first UI and consistent navigation.
+
+1) My Account Tabs (Only 3)
+
+Update the “My Account” page to show only these 3 tabs, in this order:
+
+Tab 1: Business Profile
+	•	Label: Business Profile
+	•	Purpose: Contains all public-facing business info (profile photo, banner, business name, description, categories, address/service area, hours, contact info, website, social links, menu if applicable, etc.)
+	•	This content currently lives in the second tab from the right — move/reuse that exact form here.
+
+Tab 2: My Deals
+	•	Label: My Deals
+	•	Purpose: Create/edit/manage deals attached to the logged-in business
+	•	Show a simple list of existing deals + a clear “Create Deal” CTA.
+
+Tab 3: Settings
+	•	Label: Settings
+	•	Purpose: Contains account/security/app settings (password/auth, notifications, billing/plan, logout, etc.)
+	•	Keep it clean and minimal (group items, no clutter).
+
+Remove/hide any other My Account tabs, business dashboard links, or “For Businesses” entry points that duplicate this.
+
+2) Simple, Mobile-First Navigation
+	•	Tabs must be clearly tappable with strong visual state for active tab.
+	•	Default tab on load: Business Profile.
+	•	Keep spacing and typography optimized for mobile.
+
+3) Back Arrow Navigation on All Pages
+
+Add a consistent top header with a back arrow on:
+	•	My Account main page
+	•	Business Profile edit pages / subpages (if any)
+	•	My Deals list + deal create/edit pages
+	•	Settings page + any settings subpages
+
+Back arrow behavior:
+	•	Use browser/app history when available (navigate(-1))
+	•	If there is no history, fallback route should go to the My Account root.
+
+4) Implementation Rules
+	•	Do not duplicate business profile fields/forms — reuse shared components so onboarding + business profile settings show the same data and UI.
+	•	Ensure business profile edits update the same canonical business profile record used across the app.
+	•	Keep naming consistent: Business (not vendor) everywhere in UI.
+	•	Make sure the tab routes work properly with wouter (e.g., /account/profile, /account/deals, /account/settings) and do not break auth guards.
+
+Deliver the final implementation with clean component structure and no dead/unused routes.
