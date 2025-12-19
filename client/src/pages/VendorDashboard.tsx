@@ -636,14 +636,6 @@ export default function VendorDashboard() {
                     <span>Profile</span>
                   </div>
                 </SelectItem>
-                {(vendor.capabilities as any)?.products && (
-                  <SelectItem value="products" data-testid="select-option-products">
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4" />
-                      <span>Products ({products.length})</span>
-                    </div>
-                  </SelectItem>
-                )}
                 {(vendor.capabilities as any)?.menu && (
                   <SelectItem value="menu" data-testid="select-option-menu">
                     <div className="flex items-center gap-2">
@@ -686,12 +678,6 @@ export default function VendorDashboard() {
               <Store className="w-4 h-4" />
               Profile
             </TabsTrigger>
-            {(vendor.capabilities as any)?.products && (
-              <TabsTrigger value="products" className="gap-2" data-testid="tab-products">
-                <Package className="w-4 h-4" />
-                Products ({products.length})
-              </TabsTrigger>
-            )}
             {(vendor.capabilities as any)?.menu && (
               <TabsTrigger value="menu" className="gap-2" data-testid="tab-menu">
                 <UtensilsCrossed className="w-4 h-4" />
@@ -1198,152 +1184,6 @@ export default function VendorDashboard() {
             </Card>
           </TabsContent>
 
-          {/* Products Tab */}
-          <TabsContent value="products">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Manage Products</CardTitle>
-                <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-product">
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Product
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
-                    <DialogHeader>
-                      <DialogTitle className="text-[#222]">Add New Product</DialogTitle>
-                    </DialogHeader>
-                    <AddProductForm 
-                      onSubmit={createProductMutation.mutate}
-                      isPending={createProductMutation.isPending}
-                      onPreview={(data) => {
-                        setPreviewProductData(data);
-                        setProductPreviewDialogOpen(true);
-                      }}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {products.length === 0 ? (
-                  <div className="text-center py-16">
-                    <div className="mx-auto w-24 h-24 mb-4 rounded-full bg-muted flex items-center justify-center">
-                      <Package className="w-12 h-12 text-muted-foreground" />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2">No Products Yet</h3>
-                    <p className="text-sm text-muted-foreground mb-6">
-                      Add your first product and start reaching your local customers!
-                    </p>
-                    <Button 
-                      variant="default" 
-                      onClick={() => setProductDialogOpen(true)}
-                      data-testid="button-add-first-product"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Your First Product
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {products.map((product) => (
-                      <Card key={product.id} className="overflow-hidden" data-testid={`product-card-${product.id}`}>
-                        {product.imageUrl && (
-                          <div className="aspect-square overflow-hidden bg-muted">
-                            <img 
-                              src={product.imageUrl} 
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        )}
-                        {!product.imageUrl && (
-                          <div className="aspect-square bg-muted flex items-center justify-center">
-                            <Package className="w-12 h-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        <CardContent className="p-4 space-y-3">
-                          <div>
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <h3 className="font-semibold line-clamp-1" data-testid={`product-name-${product.id}`}>{product.name}</h3>
-                              {product.isFeatured && (
-                                <Badge variant="default" className="shrink-0">Featured</Badge>
-                              )}
-                            </div>
-                            {product.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-bold" data-testid={`product-price-${product.id}`}>
-                              ${((product.priceCents || 0) / 100).toFixed(2)}
-                            </span>
-                            {product.unitType && product.unitType !== "per item" && (
-                              <span className="text-sm text-muted-foreground">/ {product.unitType.replace('per ', '')}</span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm" data-testid={`product-stock-${product.id}`}>
-                              Stock: {product.stock}
-                            </span>
-                            {product.stock < 5 && product.stock > 0 && (
-                              <Badge variant="outline" className="gap-1">
-                                <AlertCircle className="w-3 h-3" />
-                                Low Stock
-                              </Badge>
-                            )}
-                            {product.stock === 0 && (
-                              <Badge variant="destructive">Out of Stock</Badge>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">Status:</span>
-                              <Switch
-                                checked={product.status === "active"}
-                                onCheckedChange={(checked) => {
-                                  updateProductMutation.mutate({
-                                    id: product.id,
-                                    data: { status: checked ? "active" : "hidden" }
-                                  });
-                                }}
-                                data-testid={`switch-status-${product.id}`}
-                              />
-                              <span className="text-xs">{product.status === "active" ? "Active" : "Hidden"}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="flex-1"
-                              data-testid={`button-edit-${product.id}`}
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => deleteProductMutation.mutate(product.id)}
-                              data-testid={`button-delete-${product.id}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Menu Tab */}
           <TabsContent value="menu">
             <Card>
@@ -1800,29 +1640,6 @@ export default function VendorDashboard() {
                 <CardDescription>Enable or disable features for your business</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
-                <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
-                  <div className="space-y-1 flex-1">
-                    <Label htmlFor="products-capability" className="text-base font-semibold">Products</Label>
-                    <p className="text-sm text-[#747474]">
-                      Sell physical products with inventory, pricing, and variants
-                    </p>
-                  </div>
-                  <Switch
-                    id="products-capability"
-                    checked={(vendor.capabilities as any)?.products === true}
-                    onCheckedChange={(checked) => {
-                      const currentCapabilities = (vendor.capabilities || {}) as any;
-                      updateVendorMutation.mutate({ 
-                        capabilities: { 
-                          ...currentCapabilities, 
-                          products: checked 
-                        } 
-                      });
-                    }}
-                    data-testid="switch-products-capability"
-                  />
-                </div>
-
                 <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
                   <div className="space-y-1 flex-1">
                     <Label htmlFor="services-capability" className="text-base font-semibold">Services</Label>
