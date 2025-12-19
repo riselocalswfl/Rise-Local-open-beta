@@ -4791,6 +4791,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "This deal is no longer active" });
       }
 
+      // Check if deal has expired
+      if (deal.endsAt && new Date(deal.endsAt) < new Date()) {
+        return res.status(410).json({ error: "This deal has expired" });
+      }
+
       // Check if user already has an active claim for this deal
       const existingClaim = await storage.getActiveClaimForUserDeal(userId, dealId);
       if (existingClaim) {
@@ -4804,6 +4809,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt: existingClaim.expiresAt,
           message: "You already have an active claim for this deal",
         });
+      }
+
+      // === CLAIM LIMIT ENFORCEMENT ===
+      
+      // Get all of user's claims for this deal (including redeemed/expired/voided)
+      const userClaims = await storage.getUserClaimsForDeal(userId, dealId);
+      
+      // Filter to only count redeemed claims for limit checking
+      const redeemedClaims = userClaims.filter(c => c.status === 'REDEEMED');
+      const maxPerUser = deal.maxRedemptionsPerUser || 1;
+      
+      if (redeemedClaims.length >= maxPerUser) {
+        return res.status(403).json({ 
+          error: `You have already redeemed this deal ${maxPerUser} time(s)`,
+          limitReached: true
+        });
+      }
+
+      // Check cooldown period if set
+      if (deal.cooldownHours && deal.cooldownHours > 0) {
+        const lastRedeemed = redeemedClaims[0]; // Already sorted by claimedAt desc
+        if (lastRedeemed && lastRedeemed.redeemedAt) {
+          const cooldownEnd = new Date(lastRedeemed.redeemedAt);
+          cooldownEnd.setHours(cooldownEnd.getHours() + deal.cooldownHours);
+          
+          if (cooldownEnd > new Date()) {
+            const hoursRemaining = Math.ceil((cooldownEnd.getTime() - Date.now()) / (1000 * 60 * 60));
+            return res.status(403).json({ 
+              error: `Please wait ${hoursRemaining} more hour(s) before claiming this deal again`,
+              cooldownRemaining: hoursRemaining,
+              cooldownEndsAt: cooldownEnd.toISOString()
+            });
+          }
+        }
+      }
+
+      // Check global redemption limit
+      if (deal.maxRedemptionsTotal && deal.maxRedemptionsTotal > 0) {
+        // Count total redemptions for this deal
+        const dealClaims = await storage.getDealClaims(dealId);
+        const totalRedeemed = dealClaims.filter(c => c.status === 'REDEEMED').length;
+        
+        if (totalRedeemed >= deal.maxRedemptionsTotal) {
+          return res.status(403).json({ 
+            error: "This deal has reached its maximum number of redemptions",
+            soldOut: true
+          });
+        }
       }
 
       // Generate unique QR code token

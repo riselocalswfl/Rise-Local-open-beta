@@ -1704,6 +1704,12 @@ export class DbStorage implements IStorage {
       .orderBy(desc(dealClaims.claimedAt));
   }
 
+  async getDealClaims(dealId: string): Promise<DealClaim[]> {
+    return await db.select().from(dealClaims)
+      .where(eq(dealClaims.dealId, dealId))
+      .orderBy(desc(dealClaims.claimedAt));
+  }
+
   // Preferred Placement operations
   async getActiveDiscoverSpotlight(): Promise<{ placement: PreferredPlacement; vendor: Vendor; deals: Deal[] } | null> {
     const now = new Date();
