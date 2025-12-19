@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +20,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Store, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check, Clock, MapPin, Image } from "lucide-react";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
-import type { FulfillmentOptions } from "@shared/schema";
+import type { FulfillmentOptions, Category } from "@shared/schema";
 
 // Step 1: Business Basics + Vendor Type
 const step1Schema = z.object({
   vendorType: z.enum(["shop", "dine", "service"], { required_error: "Please select a business type" }),
+  categoryId: z.string().optional(),
   businessName: z.string().min(1, "Business name is required"),
   contactName: z.string().min(1, "Contact name is required"),
   email: z.string().email("Valid email is required"),
@@ -117,6 +118,11 @@ export default function UnifiedOnboarding() {
   const [step, setStep] = useState(1);
   const [selectedVendorType, setSelectedVendorType] = useState<"shop" | "dine" | "service" | null>(null);
 
+  // Fetch categories from API - single source of truth
+  const { data: categoriesData } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
   // Auto-save state
   const [draftVendorId, setDraftVendorId] = useState<string | null>(() => {
     // Initialize from sessionStorage if available
@@ -189,6 +195,7 @@ export default function UnifiedOnboarding() {
     resolver: zodResolver(step1Schema),
     defaultValues: {
       vendorType: undefined,
+      categoryId: "",
       businessName: "",
       contactName: "",
       email: "",
@@ -361,6 +368,7 @@ export default function UnifiedOnboarding() {
           // Populate form 1 fields
           form1.reset({
             vendorType: draft.vendorType,
+            categoryId: draft.categoryId || "",
             businessName: draft.businessName || "",
             contactName: draft.contactName || "",
             email: draft.contactEmail || "",
@@ -476,6 +484,7 @@ export default function UnifiedOnboarding() {
           credentials: "include",
           body: JSON.stringify({
             vendorType: data.vendorType,
+            categoryId: data.categoryId || null,
             businessName: data.businessName,
             contactName: data.contactName || "",
             bio: data.bio || "",
@@ -525,6 +534,7 @@ export default function UnifiedOnboarding() {
           updateData.city = data.city;
           updateData.zipCode = data.zipCode;
           updateData.bio = data.bio;
+          updateData.categoryId = data.categoryId || null;
         } else if (formType === 'step2') {
           updateData.tagline = data.tagline;
           updateData.website = data.website;
@@ -773,7 +783,35 @@ export default function UnifiedOnboarding() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Choose the category that best describes your business
+                          Choose the type that best describes your business
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form1.control}
+                    name="categoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Business Category</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-category">
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(categoriesData || []).map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id} data-testid={`option-category-${cat.key}`}>
+                                {cat.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Choose the category that best describes what you offer
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

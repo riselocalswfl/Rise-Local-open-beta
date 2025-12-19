@@ -17,7 +17,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Deal, Vendor } from "@shared/schema";
+import type { Deal, Vendor, Category } from "@shared/schema";
+
+// Map category icon strings from database to Lucide components
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Utensils,
+  Heart,
+  Home,
+  ShoppingBag,
+  Sparkles,
+};
 
 const FORT_MYERS_DEFAULT = { lat: 26.6406, lng: -81.8723 };
 
@@ -49,13 +58,7 @@ const FILTER_CHIPS = [
   { id: "free", label: "Free Deals" },
 ];
 
-const CATEGORY_CHIPS = [
-  { id: "food_drink", label: "Food & Drink", icon: Utensils },
-  { id: "wellness", label: "Wellness & Fitness", icon: Heart },
-  { id: "home_services", label: "Home & Services", icon: Home },
-  { id: "shopping", label: "Shopping & Retail", icon: ShoppingBag },
-  { id: "experiences", label: "Experiences", icon: Sparkles },
-];
+// CATEGORY_CHIPS are now fetched from the API
 
 // Helper to calculate distance in miles using Haversine formula
 function calculateDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -302,6 +305,11 @@ export default function Discover() {
     refetchInterval: 10000,
   });
   const totalUnread = (unreadData?.count || 0) + (notificationData?.count || 0);
+
+  // Fetch categories from API - single source of truth
+  const { data: categoriesData } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
 
   const userCoords = location.coords || FORT_MYERS_DEFAULT;
   const { data: dealsData, isLoading: dealsLoading } = useQuery<(Deal & { vendor?: Vendor })[]>({
@@ -576,19 +584,19 @@ export default function Discover() {
         </div>
         <ScrollArea className="w-full">
           <div className="flex gap-3 px-4 pb-4">
-            {CATEGORY_CHIPS.map((cat) => {
-              const Icon = cat.icon;
-              const isSelected = selectedCategory === cat.id;
+            {(categoriesData || []).map((cat) => {
+              const Icon = ICON_MAP[cat.icon] || Sparkles;
+              const isSelected = selectedCategory === cat.key;
               return (
                 <button
                   key={cat.id}
-                  onClick={() => handleCategorySelect(cat.id)}
+                  onClick={() => handleCategorySelect(cat.key)}
                   className={`flex-shrink-0 flex flex-col items-center gap-2 p-4 rounded-xl min-w-[100px] transition-colors ${
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-foreground border border-border hover:bg-muted/80"
                   }`}
-                  data-testid={`category-${cat.id}`}
+                  data-testid={`category-${cat.key}`}
                 >
                   <Icon className="w-6 h-6" />
                   <span className="text-xs font-medium text-center leading-tight">{cat.label}</span>
