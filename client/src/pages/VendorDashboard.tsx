@@ -1824,6 +1824,41 @@ export default function VendorDashboard() {
               </Card>
             )}
 
+            {/* Profile Visibility Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Visibility</CardTitle>
+                <CardDescription>Control whether your business is visible to the public</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
+                <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
+                  <div className="space-y-1 flex-1">
+                    <Label htmlFor="profile-visibility" className="text-base font-semibold">Show Profile Publicly</Label>
+                    <p className="text-sm text-[#747474]">
+                      When disabled, your business profile and deals will be hidden from public listings. You can still access your dashboard and manage your business.
+                    </p>
+                  </div>
+                  <Switch
+                    id="profile-visibility"
+                    checked={vendor.isProfileVisible !== false}
+                    onCheckedChange={(checked) => {
+                      updateVendorMutation.mutate({ isProfileVisible: checked });
+                    }}
+                    disabled={updateVendorMutation.isPending}
+                    data-testid="switch-profile-visibility"
+                  />
+                </div>
+                {vendor.isProfileVisible === false && (
+                  <Alert variant="default" className="bg-amber-50 border-amber-200">
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800">
+                      Your profile is currently hidden from public view. Toggle the switch above to make it visible again.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+
           </TabsContent>
 
           {/* Messages Tab */}
