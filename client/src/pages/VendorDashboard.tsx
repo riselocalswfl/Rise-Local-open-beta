@@ -114,11 +114,17 @@ const dealFormSchema = z.object({
   tier: z.enum(["free", "member", "standard"]).default("free"),
   dealType: z.enum(["bogo", "percent", "addon"]),
   discountType: z.enum(["percent", "fixed", "bogo", "free_item"]).optional(),
-  discountValue: z.number().optional(),
+  discountValue: z.coerce.number().optional(),
   redemptionMethod: z.enum(["qr_code", "numeric_pin", "claim_button", "unique_code", "staff_toggle"]).default("qr_code"),
-  maxRedemptionsPerUser: z.number().int().min(1).default(1),
-  cooldownHours: z.number().int().min(0).optional(),
-  maxRedemptionsTotal: z.number().int().min(0).optional(),
+  maxRedemptionsPerUser: z.coerce.number().int().min(1).default(1),
+  cooldownHours: z.preprocess(
+    (val) => val === "" || val === undefined ? undefined : Number(val),
+    z.number().int().min(0).optional()
+  ),
+  maxRedemptionsTotal: z.preprocess(
+    (val) => val === "" || val === undefined ? undefined : Number(val),
+    z.number().int().min(0).optional()
+  ),
   startsAt: z.string().optional(),
   endsAt: z.string().optional(),
   isActive: z.boolean().default(false),
