@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface User {
   id: string;
@@ -19,8 +20,11 @@ interface AuthBoundaryProps {
 export function AuthBoundary({ children }: AuthBoundaryProps) {
   const [location, setLocation] = useLocation();
   
-  const { data: user, isLoading, error } = useQuery<User | null>({
+  const { data: user, isLoading } = useQuery<User | null>({
     queryKey: ["/api/auth/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: false,
+    staleTime: 30000,
   });
 
   const isPublicRoute = PUBLIC_ROUTES.some(route => location === route || location.startsWith(route + "/"));
@@ -29,7 +33,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
   useEffect(() => {
     if (isLoading) return;
 
-    if (!isPublicRoute && !isGateRoute && (error || !user)) {
+    if (!isPublicRoute && !isGateRoute && !user) {
       console.log("[AuthBoundary] Not authenticated, redirecting to /auth");
       const currentPath = window.location.pathname;
       sessionStorage.setItem("returnTo", currentPath);
@@ -41,7 +45,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
       console.log("[AuthBoundary] Authenticated but onboarding incomplete, redirecting to /start");
       setLocation("/start");
     }
-  }, [isLoading, user, error, setLocation, isPublicRoute, isGateRoute, location]);
+  }, [isLoading, user, setLocation, isPublicRoute, isGateRoute, location]);
 
   if (isLoading) {
     return (
@@ -58,7 +62,7 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
     return <>{children}</>;
   }
 
-  if (error || !user) {
+  if (!user) {
     return null;
   }
 
