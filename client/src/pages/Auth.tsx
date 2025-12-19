@@ -1,9 +1,21 @@
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
+import { useAuth } from "@/hooks/useAuth";
 import heroImage from "@assets/ChatGPT_Image_Dec_17,_2025,_03_54_36_PM_1766004883576.png";
 
 export default function Auth() {
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const returnTo = typeof window !== 'undefined' ? sessionStorage.getItem("returnTo") : null;
+
+  // If user is already authenticated, redirect to discover
+  useEffect(() => {
+    if (!isLoading && user) {
+      setLocation("/discover");
+    }
+  }, [user, isLoading, setLocation]);
   
   const handleStartSelling = () => {
     const url = returnTo 
