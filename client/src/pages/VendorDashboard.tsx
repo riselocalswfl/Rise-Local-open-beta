@@ -18,14 +18,12 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, CreditCard, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User } from "lucide-react";
+import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { Vendor, Product, Event, VendorFAQ, FulfillmentOptions, MenuItem, ServiceOffering, Deal } from "@shared/schema";
+import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal } from "@shared/schema";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
-import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
-import StripeConnectCard from "@/components/StripeConnectCard";
 import Header from "@/components/Header";
 import { z } from "zod";
 
@@ -153,15 +151,6 @@ export default function VendorDashboard() {
     }
   }, [vendor]);
 
-  // Check if we should open Settings tab (from onboarding Stripe Connect flow)
-  useEffect(() => {
-    const shouldOpenSettings = sessionStorage.getItem("openStripeSettings");
-    if (shouldOpenSettings === "true") {
-      setActiveTab("settings");
-      sessionStorage.removeItem("openStripeSettings");
-    }
-  }, []);
-
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: [`/api/products?vendorId=${vendor?.id}`],
     enabled: !!vendor?.id,
@@ -192,12 +181,6 @@ export default function VendorDashboard() {
   // Fetch deals
   const { data: deals = [] } = useQuery<Deal[]>({
     queryKey: [`/api/deals?vendorId=${vendor?.id}`],
-    enabled: !!vendor?.id,
-  });
-
-  // Check Stripe Connect status
-  const { data: stripeStatus } = useQuery<{ connected: boolean; accountId: string | null }>({
-    queryKey: ["/api/stripe/account-status"],
     enabled: !!vendor?.id,
   });
 
@@ -566,35 +549,6 @@ export default function VendorDashboard() {
             <p className="text-muted-foreground">{vendor.businessName}</p>
           </div>
 
-
-        {/* Stripe Connect Coming Soon Banner */}
-        {stripeStatus && !stripeStatus.connected && (
-          <Alert className="mb-6 border-primary/20 bg-primary/5" data-testid="alert-stripe-not-connected">
-            <CreditCard className="h-4 w-4 text-primary" />
-            <AlertDescription className="ml-2">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">Stripe Connect Launching Next Week</span>
-                    <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Credit card payments will be available soon! In the meantime, accept payments via Venmo, CashApp, Zelle, and other methods you've enabled.
-                  </p>
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => setActiveTab("settings")}
-                  className="flex-shrink-0"
-                  data-testid="button-view-stripe-info"
-                >
-                  Learn More
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Mobile Select Dropdown */}
@@ -1125,88 +1079,6 @@ export default function VendorDashboard() {
                     placeholder="Add value tags (e.g., organic, sustainable, fair-trade)"
                   />
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment Methods Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Methods</CardTitle>
-                <CardDescription>Configure which payment methods you accept</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <Label className="font-semibold">Standard Payment Methods</Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Select all payment methods you accept. "Credit Card (Through App)" requires Stripe Connect setup.
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {["Credit Card (Through App)", "Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].map((method) => {
-                      const currentPreferences = vendor.paymentPreferences || [];
-                      const isChecked = currentPreferences.includes(method);
-                      
-                      return (
-                        <div key={method} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`payment-${method}`}
-                            checked={isChecked}
-                            onCheckedChange={(checked) => {
-                              const newPreferences = checked
-                                ? [...currentPreferences, method]
-                                : currentPreferences.filter(m => m !== method);
-                              updateVendorMutation.mutate({ paymentPreferences: newPreferences });
-                            }}
-                            data-testid={`checkbox-payment-${method}`}
-                          />
-                          <Label htmlFor={`payment-${method}`} className="cursor-pointer text-sm">
-                            {method}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                  
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Custom Payment Methods</Label>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Add any other payment methods you accept (e.g., "Bitcoin", "Wire Transfer")
-                  </p>
-                  <TagInput
-                    tags={(vendor.paymentPreferences || []).filter(
-                      p => !["Credit Card (Through App)", "Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
-                    )}
-                    onChange={(customMethods) => {
-                      const standardMethods = (vendor.paymentPreferences || []).filter(
-                        p => ["Credit Card (Through App)", "Direct", "Venmo", "Zelle", "CashApp", "PayPal", "Cash"].includes(p)
-                      );
-                      const newPreferences = [...standardMethods, ...customMethods];
-                      updateVendorMutation.mutate({ paymentPreferences: newPreferences });
-                    }}
-                    placeholder="Type a payment method and press Enter..."
-                    maxTags={5}
-                    testId="input-custom-payment-methods"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Fulfillment Methods Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Fulfillment Methods</CardTitle>
-                <CardDescription>Configure how customers can receive their orders</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FulfillmentEditor
-                  value={vendor.fulfillmentOptions as FulfillmentOptions || {}}
-                  onChange={(fulfillmentOptions) => {
-                    updateVendorMutation.mutate({ fulfillmentOptions });
-                  }}
-                />
               </CardContent>
             </Card>
 
@@ -1988,20 +1860,11 @@ export default function VendorDashboard() {
               </Card>
             )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Processing</CardTitle>
-                <CardDescription>Connect your Stripe account to accept online payments</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <StripeConnectCard />
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Messages Tab */}
           <TabsContent value="messages">
-            <VendorMessagesTab vendorId={vendor.id} isSubscribed={!!(vendor as any).stripeAccountId} />
+            <VendorMessagesTab vendorId={vendor.id} isSubscribed={true} />
           </TabsContent>
         </Tabs>
 
@@ -3312,7 +3175,7 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
   });
 
   const messages = messagesData?.messages || [];
-  const canReply = messagesData?.canReply ?? false;
+  const canReply = true; // Always allow vendors to reply
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -3343,28 +3206,6 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
   };
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
-
-  if (!isSubscribed) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-            <Lock className="w-8 h-8 text-amber-600" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">Messaging is a Premium Feature</h3>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Connect your Stripe account to unlock customer messaging and start building relationships with your customers.
-          </p>
-          <Button onClick={() => {
-            const settingsTab = document.querySelector('[data-testid="tab-settings"]') as HTMLElement;
-            if (settingsTab) settingsTab.click();
-          }}>
-            Go to Settings to Connect Stripe
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
@@ -3482,36 +3323,27 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
                   </div>
 
                   <div className="border-t p-3">
-                    {canReply ? (
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Type your reply..."
-                          value={messageInput}
-                          onChange={(e) => setMessageInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleSendMessage();
-                            }
-                          }}
-                          data-testid="input-message"
-                        />
-                        <Button
-                          onClick={handleSendMessage}
-                          disabled={!messageInput.trim() || sendMessageMutation.isPending}
-                          data-testid="button-send-message"
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Alert>
-                        <Lock className="w-4 h-4" />
-                        <AlertDescription>
-                          Connect Stripe to reply to customer messages.
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Type your reply..."
+                        value={messageInput}
+                        onChange={(e) => setMessageInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                        data-testid="input-message"
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={!messageInput.trim() || sendMessageMutation.isPending}
+                        data-testid="button-send-message"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </>
               ) : (
