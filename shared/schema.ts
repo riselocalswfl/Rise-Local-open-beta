@@ -1076,8 +1076,16 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
 // Deal claim status enum values
-export const DEAL_CLAIM_STATUSES = ["CLAIMED", "REDEEMED", "EXPIRED"] as const;
+export const DEAL_CLAIM_STATUSES = ["CLAIMED", "REDEEMED", "EXPIRED", "VOIDED"] as const;
 export type DealClaimStatus = typeof DEAL_CLAIM_STATUSES[number];
+
+// Deal status enum values (for vendor management)
+export const DEAL_STATUSES = ["draft", "published", "paused", "expired"] as const;
+export type DealStatus = typeof DEAL_STATUSES[number];
+
+// Deal redemption method enum values
+export const DEAL_REDEMPTION_METHODS = ["qr_code", "numeric_pin", "claim_button", "unique_code", "staff_toggle"] as const;
+export type DealRedemptionMethod = typeof DEAL_REDEMPTION_METHODS[number];
 
 // Reservation status enum values
 export const RESERVATION_STATUSES = ["INITIATED", "BOOKED_EXTERNALLY", "CANCELLED"] as const;
@@ -1104,6 +1112,7 @@ export const deals = pgTable("deals", {
   imageUrl: text("image_url"), // Deal image
   category: text("category"), // e.g., "food_drink", "services", "retail"
   city: text("city").default("Fort Myers"),
+  valueLabel: varchar("value_label", { length: 50 }), // e.g., "$5+ value", "BOGO", etc.
   
   // Deal Value
   savingsAmount: integer("savings_amount"), // Dollar value saved (e.g., 5 = "Save $5")
@@ -1116,6 +1125,15 @@ export const deals = pgTable("deals", {
   isPassLocked: boolean("is_pass_locked").notNull().default(true), // Locked unless subscribed
   dealType: text("deal_type").notNull().default("OTHER"), // "bogo" | "percent" | "addon" | "OTHER"
   redemptionType: text("redemption_type").default("IN_PERSON"), // How deal is redeemed
+  
+  // Vendor Deal Management
+  status: text("status").notNull().default("draft"), // draft, published, paused, expired
+  redemptionMethod: text("redemption_method").default("claim_button"), // qr_code, numeric_pin, claim_button, unique_code, staff_toggle
+  
+  // Redemption Limits
+  maxRedemptionsTotal: integer("max_redemptions_total"), // Total redemptions allowed for this deal
+  maxRedemptionsPerUser: integer("max_redemptions_per_user").default(1), // Per-user limit
+  cooldownHours: integer("cooldown_hours"), // Hours before same user can claim again
   
   // Availability
   startsAt: timestamp("starts_at"), // When deal becomes valid
@@ -1172,12 +1190,14 @@ export const dealClaims = pgTable("deal_claims", {
   
   // Claim Details
   claimedAt: timestamp("claimed_at").defaultNow(),
-  status: text("status").notNull().default("CLAIMED"), // CLAIMED, REDEEMED, EXPIRED
+  status: text("status").notNull().default("CLAIMED"), // CLAIMED, REDEEMED, EXPIRED, VOIDED
   qrCodeToken: varchar("qr_code_token").notNull().unique(), // Unique token for QR code generation
+  redemptionCode: varchar("redemption_code", { length: 10 }), // For unique code or numeric PIN redemption
   
   // Redemption tracking
   redeemedAt: timestamp("redeemed_at"),
   expiresAt: timestamp("expires_at"),
+  voidedAt: timestamp("voided_at"), // For voided claims
 });
 
 export const insertDealClaimSchema = createInsertSchema(dealClaims).omit({
