@@ -24,6 +24,7 @@ import RestaurantProfile from "@/pages/RestaurantProfile";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import UnifiedOnboarding from "@/pages/UnifiedOnboarding";
 import CustomerProfile from "@/pages/CustomerProfile";
+import AccountPage from "@/pages/AccountPage";
 import Messages from "@/pages/Messages";
 import MessageThread from "@/pages/MessageThread";
 import MessagesPage from "@/pages/MessagesPage";
@@ -227,6 +228,20 @@ function Router() {
       {/* Vendor Routes - no tabs */}
       <Route path="/onboarding" component={UnifiedOnboarding} />
       <Route path="/dashboard" component={BusinessDashboard} />
+      
+      {/* Business Account Routes - 3 tab structure */}
+      <Route path="/account">
+        {() => <Redirect to="/account/profile" />}
+      </Route>
+      <Route path="/account/profile">
+        {() => <AccountPage tab="profile" />}
+      </Route>
+      <Route path="/account/deals">
+        {() => <AccountPage tab="deals" />}
+      </Route>
+      <Route path="/account/settings">
+        {() => <AccountPage tab="settings" />}
+      </Route>
       
       {/* Customer Routes */}
       <Route path="/profile">
