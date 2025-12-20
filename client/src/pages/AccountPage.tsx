@@ -509,7 +509,7 @@ function MyDealsTab({ vendor, deals, setLocation }: MyDealsTabProps) {
           </p>
         </div>
         <Button 
-          onClick={() => setLocation("/dashboard?tab=deals")}
+          onClick={() => setLocation("/dashboard?tab=deals&action=create")}
           data-testid="button-create-deal"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -526,7 +526,7 @@ function MyDealsTab({ vendor, deals, setLocation }: MyDealsTabProps) {
               Create your first deal to attract more customers
             </p>
             <Button 
-              onClick={() => setLocation("/dashboard?tab=deals")}
+              onClick={() => setLocation("/dashboard?tab=deals&action=create")}
               data-testid="button-create-first-deal"
             >
               <Plus className="h-4 w-4 mr-2" />
