@@ -55,7 +55,7 @@ export default function MyDeals() {
             <p className="text-muted-foreground mb-6">
               Claim deals to get QR codes you can show at local businesses
             </p>
-            <Link href="/deals">
+            <Link href="/discover">
               <Button data-testid="button-browse-deals">
                 Browse Deals
                 <ArrowRight className="w-4 h-4 ml-2" />

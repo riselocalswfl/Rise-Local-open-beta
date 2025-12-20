@@ -132,7 +132,7 @@ export default function DealDetailPage() {
             <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-back-to-home">
               Back to Home
             </Button>
-            <Button onClick={() => setLocation("/deals")} data-testid="button-back-to-deals">
+            <Button onClick={() => setLocation("/discover")} data-testid="button-back-to-deals">
               Back to Deals
             </Button>
           </div>
@@ -143,7 +143,7 @@ export default function DealDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <DetailHeader title={deal.title} backHref="/deals" />
+      <DetailHeader title={deal.title} backHref="/discover" />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
 

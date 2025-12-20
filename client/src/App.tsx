@@ -96,13 +96,9 @@ function Router() {
       
       <Route path="/membership" component={Membership} />
       
-      {/* Legacy Deals Hub */}
+      {/* Legacy Deals Hub - Redirect to Discover */}
       <Route path="/deals">
-        {() => (
-          <AppShell>
-            <DealsPage />
-          </AppShell>
-        )}
+        {() => <Redirect to="/discover" />}
       </Route>
       <Route path="/deals/:id">
         {(params) => (

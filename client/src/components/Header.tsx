@@ -16,7 +16,7 @@ import { useState } from "react";
 
 // Navigation items configuration
 const publicNavigationItems = [
-  { name: "Deals", href: "/deals", icon: Tag },
+  { name: "Deals", href: "/discover", icon: Tag },
   { name: "Businesses", href: "/businesses", icon: Store },
 ];
 
@@ -29,7 +29,7 @@ export default function Header() {
   const accountHref = isVendor ? "/dashboard" : "/profile";
 
   const authenticatedNavigationItems = [
-    { name: "Deals", href: "/deals", icon: Tag },
+    { name: "Deals", href: "/discover", icon: Tag },
     { name: "Businesses", href: "/businesses", icon: Store },
     { name: "My Account", href: accountHref, icon: User },
   ];
@@ -42,7 +42,7 @@ export default function Header() {
       <header className="sticky top-0 z-40 backdrop-blur bg-bg/95 border-b border-border/50 shadow-sm">
         <nav className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/deals" data-testid="link-home">
+          <Link href="/discover" data-testid="link-home">
             <BrandLogo className="mt-5" linkDisabled />
           </Link>
 

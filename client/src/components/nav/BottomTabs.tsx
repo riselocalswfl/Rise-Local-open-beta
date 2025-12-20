@@ -27,7 +27,7 @@ export default function BottomTabs() {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = location === tab.href || 
-            (tab.href === "/discover" && (location === "/" || location === "/deals")) ||
+            (tab.href === "/discover" && location === "/") ||
             (tab.href === "/businesses" && location.startsWith("/businesses")) ||
             (tab.href === profileHref && (location.startsWith("/dashboard") || location === "/profile"));
           

@@ -415,7 +415,7 @@ export default function Discover() {
     setSelectedCategory(prev => prev === categoryId ? null : categoryId);
   };
 
-  const getSectionUrl = (section: string) => `/deals?section=${section}`;
+  const getSectionUrl = (section: string) => `/discover?section=${section}`;
 
   // Skeleton loader for deal cards
   const DealCardSkeleton = () => (
