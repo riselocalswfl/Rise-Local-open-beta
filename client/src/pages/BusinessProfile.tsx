@@ -69,8 +69,8 @@ export default function BusinessProfile() {
   const getVendorTypeBadge = (type: string) => {
     const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
       shop: { label: "Shop", variant: "default" },
-      dine: { label: "Restaurant", variant: "secondary" },
-      service: { label: "Service Provider", variant: "outline" },
+      dine: { label: "Dine", variant: "secondary" },
+      service: { label: "Service", variant: "outline" },
     };
     return badges[type] || badges.shop;
   };
