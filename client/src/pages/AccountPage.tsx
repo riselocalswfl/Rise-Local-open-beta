@@ -18,7 +18,6 @@ import {
   ChevronRight, 
   Plus, 
   Eye, 
-  CreditCard, 
   Bell, 
   LogOut,
   MapPin,
@@ -647,28 +646,6 @@ function SettingsTab({ vendor, updateVendorMutation, handleLogout }: SettingsTab
             </CardContent>
           </Card>
 
-          <Card data-testid="card-billing">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Billing & Subscription
-              </CardTitle>
-              <CardDescription>
-                Your Rise Local business subscription
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="p-4 border rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium">Business Plan</p>
-                  <Badge variant="default">$89/month</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Full access to all Rise Local business features including deals, messaging, and analytics.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </>
       )}
 
