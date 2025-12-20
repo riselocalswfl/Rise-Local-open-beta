@@ -28,6 +28,7 @@ import { TagInput } from "@/components/TagInput";
 import { ImageUpload } from "@/components/ImageUpload";
 import Header from "@/components/Header";
 import { VendorDealCard } from "@/components/VendorDealCard";
+import { ProfileAccordionEditor, StickyActionBar } from "@/components/profile";
 import { z } from "zod";
 
 // Form schemas for validation
@@ -162,6 +163,8 @@ export default function VendorDashboard() {
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [showSaved, setShowSaved] = useState(false);
+  const [profileDirty, setProfileDirty] = useState(false);
 
   // Fetch the authenticated user's vendor
   const { data: vendor, isLoading: vendorLoading, isError } = useQuery<Vendor>({
@@ -722,306 +725,49 @@ export default function VendorDashboard() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Profile Tab */}
-          <TabsContent value="profile" className="space-y-6">
-            {/* Business Info Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Business Info</CardTitle>
-                <CardDescription>Tell customers about your business</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="businessName">Business Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="businessName"
-                    defaultValue={vendor.businessName || ""}
-                    placeholder="e.g., Sunshine Grove Farm"
-                    data-testid="input-business-name"
-                    onBlur={(e) => {
-                      if (e.target.value !== vendor.businessName) {
-                        updateVendorMutation.mutate({ businessName: e.target.value });
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contactName">Owner / Contact Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="contactName"
-                    defaultValue={vendor.contactName || ""}
-                    placeholder="e.g., Jane Smith"
-                    data-testid="input-contact-name"
-                    required
-                    onBlur={(e) => {
-                      const value = e.target.value.trim();
-                      if (!value) {
-                        toast({
-                          title: "Contact name required",
-                          description: "Please enter an owner or contact name for your business",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      if (value !== vendor.contactName) {
-                        updateVendorMutation.mutate({ contactName: value });
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tagline">Tagline</Label>
-                  <Input
-                    id="tagline"
-                    defaultValue={vendor.tagline || ""}
-                    placeholder="e.g., Seasonal produce grown with regenerative practices"
-                    data-testid="input-tagline"
-                    onBlur={(e) => {
-                      if (e.target.value !== vendor.tagline) {
-                        updateVendorMutation.mutate({ tagline: e.target.value });
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio (max 300 characters)</Label>
-                  <Textarea
-                    id="bio"
-                    defaultValue={vendor.bio}
-                    maxLength={300}
-                    rows={4}
-                    placeholder="Tell your story..."
-                    data-testid="input-bio"
-                    onBlur={(e) => {
-                      if (e.target.value !== vendor.bio) {
-                        updateVendorMutation.mutate({ bio: e.target.value });
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">{vendor.bio?.length || 0}/300 characters</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Location & Contact Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Location & Contact</CardTitle>
-                <CardDescription>Help customers reach and find you</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="address">Street Address (optional)</Label>
-                  <Input
-                    id="address"
-                    defaultValue={vendor.address || ""}
-                    placeholder="123 Main Street"
-                    data-testid="input-address"
-                    onBlur={(e) => {
-                      if (e.target.value !== vendor.address) {
-                        updateVendorMutation.mutate({ address: e.target.value });
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="addressLine2">Address Line 2 (optional)</Label>
-                  <Input
-                    id="addressLine2"
-                    defaultValue={(vendor as any).addressLine2 || ""}
-                    placeholder="Suite, Apt, Floor"
-                    data-testid="input-address-line-2"
-                    onBlur={(e) => {
-                      if (e.target.value !== (vendor as any).addressLine2) {
-                        updateVendorMutation.mutate({ addressLine2: e.target.value });
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      defaultValue={vendor.city || "Fort Myers"}
-                      placeholder="Fort Myers"
-                      data-testid="input-city"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.city) {
-                          updateVendorMutation.mutate({ city: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="zipCode">Zip Code</Label>
-                    <Input
-                      id="zipCode"
-                      defaultValue={vendor.zipCode || ""}
-                      placeholder="33901"
-                      data-testid="input-zip-code"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.zipCode) {
-                          updateVendorMutation.mutate({ zipCode: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Contact Email (optional)</Label>
-                    <Input
-                      id="contactEmail"
-                      type="email"
-                      defaultValue={vendor.contactEmail || ""}
-                      placeholder="contact@example.com"
-                      data-testid="input-contact-email"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.contactEmail) {
-                          updateVendorMutation.mutate({ contactEmail: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="contactPhone">Phone Number</Label>
-                    <Input
-                      id="contactPhone"
-                      type="tel"
-                      defaultValue={
-                        typeof vendor.contact === 'object' && vendor.contact !== null && 'phone' in vendor.contact
-                          ? (vendor.contact as any).phone || ""
-                          : ""
-                      }
-                      placeholder="(239) 555-0123"
-                      data-testid="input-contact-phone"
-                      onBlur={(e) => {
-                        const currentContact = typeof vendor.contact === 'object' && vendor.contact !== null 
-                          ? vendor.contact as any 
-                          : {};
-                        const updatedContact = { ...currentContact, phone: e.target.value };
-                        updateVendorMutation.mutate({ contact: updatedContact });
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website Link (optional)</Label>
-                  <Input
-                    id="website"
-                    type="url"
-                    defaultValue={vendor.website || ""}
-                    placeholder="https://yourwebsite.com"
-                    data-testid="input-website"
-                    onBlur={(e) => {
-                      if (e.target.value !== vendor.website) {
-                        updateVendorMutation.mutate({ website: e.target.value });
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="instagram">Instagram (optional)</Label>
-                    <Input
-                      id="instagram"
-                      defaultValue={vendor.instagram || ""}
-                      placeholder="@yourbusiness"
-                      data-testid="input-instagram"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.instagram) {
-                          updateVendorMutation.mutate({ instagram: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="facebook">Facebook (optional)</Label>
-                    <Input
-                      id="facebook"
-                      defaultValue={vendor.facebook || ""}
-                      placeholder="YourBusinessPage"
-                      data-testid="input-facebook"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.facebook) {
-                          updateVendorMutation.mutate({ facebook: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tiktok">TikTok (optional)</Label>
-                    <Input
-                      id="tiktok"
-                      defaultValue={vendor.tiktok || ""}
-                      placeholder="@yourbusiness"
-                      data-testid="input-tiktok"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.tiktok) {
-                          updateVendorMutation.mutate({ tiktok: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="youtube">YouTube (optional)</Label>
-                    <Input
-                      id="youtube"
-                      defaultValue={vendor.youtube || ""}
-                      placeholder="@yourchannel"
-                      data-testid="input-youtube"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.youtube) {
-                          updateVendorMutation.mutate({ youtube: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="twitter">Twitter/X (optional)</Label>
-                    <Input
-                      id="twitter"
-                      defaultValue={vendor.twitter || ""}
-                      placeholder="@yourbusiness"
-                      data-testid="input-twitter"
-                      onBlur={(e) => {
-                        if (e.target.value !== vendor.twitter) {
-                          updateVendorMutation.mutate({ twitter: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Profile Tab - Mobile-First Accordion Layout */}
+          <TabsContent value="profile" className="pb-20 md:pb-6">
+            <div className="mb-4 hidden md:flex justify-end gap-3">
+              <Link href={`/businesses/${vendor.id}`}>
+                <Button variant="outline" data-testid="button-preview-profile-desktop">
+                  <Eye className="w-4 h-4 mr-2" />
+                  Preview Public Profile
+                </Button>
+              </Link>
+            </div>
+            
+            <ProfileAccordionEditor
+              vendor={vendor}
+              onFieldChange={(updates) => {
+                setProfileDirty(true);
+                updateVendorMutation.mutate(updates as any, {
+                  onSuccess: () => {
+                    setProfileDirty(false);
+                    setShowSaved(true);
+                    setTimeout(() => setShowSaved(false), 2000);
+                    toast({ title: "Profile updated" });
+                  },
+                  onError: () => {
+                    toast({ 
+                      title: "Failed to save", 
+                      description: "Please try again",
+                      variant: "destructive" 
+                    });
+                  },
+                });
+              }}
+              isSaving={updateVendorMutation.isPending}
+            />
 
             {/* Menu Options Section - Only for dine vendors */}
             {vendor.vendorType === "dine" && (
-              <Card>
+              <Card className="mt-4">
                 <CardHeader>
-                  <CardTitle>Menu Options</CardTitle>
-                  <CardDescription>Share your menu with customers</CardDescription>
+                  <CardTitle className="text-base">Menu Options</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent>
                   <div className="space-y-2">
-                    <Label htmlFor="menuUrl">Menu Link (optional)</Label>
+                    <Label htmlFor="menuUrl">Menu Link</Label>
                     <Input
                       id="menuUrl"
                       type="url"
@@ -1038,170 +784,23 @@ export default function VendorDashboard() {
                       }}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Link to your online menu (ToastTab, Square, PDF, or your website)
+                      Link to your online menu (ToastTab, Square, PDF, or website)
                     </p>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Business Hours Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Business Hours</CardTitle>
-                <CardDescription>Let customers know when you're available</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => {
-                  return (
-                    <div key={day} className="grid grid-cols-[120px_1fr] gap-4 items-center">
-                      <Label htmlFor={`hours-${day}`} className="capitalize">{day}</Label>
-                      <Input
-                        id={`hours-${day}`}
-                        value={localHours[day] || ""}
-                        placeholder="e.g., 9:00 AM - 5:00 PM or Closed"
-                        data-testid={`input-hours-${day}`}
-                        onChange={(e) => {
-                          const updatedHours = { ...localHours, [day]: e.target.value };
-                          setLocalHours(updatedHours);
-                        }}
-                        onBlur={(e) => {
-                          const updatedHours = { ...localHours, [day]: e.target.value };
-                          if (e.target.value !== ((vendor.hours as any) || {})[day]) {
-                            updateVendorMutation.mutate(
-                              { hours: updatedHours },
-                              {
-                                onSuccess: () => {
-                                  toast({
-                                    title: "Hours updated",
-                                    description: `Business hours for ${day} have been saved`,
-                                  });
-                                },
-                                onError: () => {
-                                  setLocalHours((vendor.hours as Record<string, string>) || {});
-                                },
-                              }
-                            );
-                          }
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-                <p className="text-xs text-muted-foreground pt-2">
-                  Enter your operating hours for each day, or type "Closed" for days you're not open
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Business Values Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Business Values</CardTitle>
-                <CardDescription>Show your commitment to the local community</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Checkbox
-                      id="showLocalSourcing"
-                      checked={showLocalSourcing}
-                      onCheckedChange={(checked) => {
-                        const newValue = checked === true;
-                        setShowLocalSourcing(newValue);
-                        updateVendorMutation.mutate({ showLocalSourcing: newValue });
-                      }}
-                      data-testid="checkbox-show-local-sourcing"
-                    />
-                    <Label htmlFor="showLocalSourcing" className="text-sm font-normal cursor-pointer">
-                      Display local sourcing percentage on my public profile
-                    </Label>
-                  </div>
-                  
-                  <Label htmlFor="localSourcing">Local Sourcing: {localSourcingPercent}%</Label>
-                  <Slider
-                    id="localSourcing"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={[localSourcingPercent]}
-                    onValueChange={([value]) => setLocalSourcingPercent(value)}
-                    onValueCommit={([value]) => {
-                      if (value !== vendor.localSourcingPercent) {
-                        updateVendorMutation.mutate({ localSourcingPercent: value });
-                      }
-                    }}
-                    data-testid="slider-local-sourcing"
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Percentage of products sourced locally
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Value Tags</Label>
-                  <TagInput
-                    tags={localValues}
-                    onChange={(values) => {
-                      const previousValues = localValues;
-                      setLocalValues(values);
-                      updateVendorMutation.mutate(
-                        { values },
-                        {
-                          onError: () => {
-                            setLocalValues(previousValues);
-                          },
-                        }
-                      );
-                    }}
-                    placeholder="Add value tags (e.g., organic, sustainable, fair-trade)"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Profile Photo/Logo & Banner Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Photo/Logo & Cover Banner</CardTitle>
-                <CardDescription>Add visual branding to represent your business</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Profile Photo/Logo</Label>
-                  <p className="text-sm text-muted-foreground mb-2">Square logo for profile display</p>
-                  <ImageUpload
-                    currentImageUrl={vendor.logoUrl}
-                    onUploadComplete={(imageUrl) => {
-                      updateVendorMutation.mutate({ logoUrl: imageUrl });
-                    }}
-                    onRemove={() => {
-                      updateVendorMutation.mutate({ logoUrl: null });
-                    }}
-                    maxSizeMB={5}
-                    aspectRatio="square"
-                    disabled={updateVendorMutation.isPending}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Cover Photo/Banner</Label>
-                  <p className="text-sm text-muted-foreground mb-2">Wide banner image for profile header</p>
-                  <ImageUpload
-                    currentImageUrl={vendor.bannerUrl}
-                    onUploadComplete={(imageUrl) => {
-                      updateVendorMutation.mutate({ bannerUrl: imageUrl });
-                    }}
-                    onRemove={() => {
-                      updateVendorMutation.mutate({ bannerUrl: null });
-                    }}
-                    maxSizeMB={5}
-                    aspectRatio="landscape"
-                    disabled={updateVendorMutation.isPending}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            {/* Mobile Sticky Action Bar */}
+            <StickyActionBar
+              vendorId={vendor.id}
+              isDirty={profileDirty}
+              isSaving={updateVendorMutation.isPending}
+              showSaved={showSaved}
+              onSave={() => {
+                toast({ title: "Changes saved automatically" });
+              }}
+            />
           </TabsContent>
 
           {/* Menu Tab */}
