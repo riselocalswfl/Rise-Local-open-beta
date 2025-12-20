@@ -1194,18 +1194,18 @@ export const dealRedemptions = pgTable("deal_redemptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Direct vendor reference for fast lookup
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: varchar("user_id").references(() => users.id), // Can be null for anonymous redemptions
   vendorUserId: varchar("vendor_user_id").references(() => users.id), // Legacy field, kept for compatibility
   
   // Unique redemption code (format: RL-XXXXXX)
-  code: varchar("code", { length: 16 }).notNull().unique(),
+  code: varchar("code", { length: 16 }), // Nullable for legacy records
   
   // Status tracking: issued | verified | voided | expired
   status: varchar("status", { length: 16 }).notNull().default("issued"),
   
   // Timestamps
-  issuedAt: timestamp("issued_at").notNull().defaultNow(),
-  expiresAt: timestamp("expires_at").notNull(),
+  issuedAt: timestamp("issued_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
   verifiedAt: timestamp("verified_at"),
   voidedAt: timestamp("voided_at"),
   
@@ -1214,6 +1214,11 @@ export const dealRedemptions = pgTable("deal_redemptions", {
   claimedAt: timestamp("claimed_at"),
   claimExpiresAt: timestamp("claim_expires_at"),
   redeemedAt: timestamp("redeemed_at"),
+  
+  // Additional legacy fields
+  verifiedByPin: boolean("verified_by_pin").notNull().default(true),
+  notes: text("notes"),
+  voidReason: text("void_reason"),
   
   // Optional metadata
   metadata: jsonb("metadata"),
