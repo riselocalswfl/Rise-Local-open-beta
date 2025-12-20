@@ -1,0 +1,53 @@
+Ensure that all published deals are consistently displayed across the Rise Local app.
+
+Deal definition & source of truth
+	•	A deal is considered published when status = "published" and isActive = true.
+	•	The Deals table is the single source of truth.
+	•	Each deal is linked to exactly one vendor via vendorId.
+
+Discover Page
+	•	Display a feed of all published deals from local vendors.
+	•	Sort by:
+	1.	Featured / preferred placement (if applicable)
+	2.	Newest published deals
+	•	Each deal card should show:
+	•	Deal title
+	•	Deal value / offer
+	•	Vendor name + profile image
+	•	Distance or location (if available)
+	•	Tapping a deal navigates to the vendor’s business profile, anchored or scrolled to that deal.
+
+Browse Page
+	•	Display the same published deals as Discover.
+	•	Allow filtering by:
+	•	Category (shop, dine, services)
+	•	Location
+	•	Deal type (percentage off, dollar off, free item, etc.)
+	•	Filters should never hide a deal that is published unless the user explicitly filters it out.
+
+Business Profile Page
+	•	Show only deals that belong to that vendor.
+	•	Only display deals with status = "published".
+	•	Deals should appear in a dedicated “Deals” section on the profile.
+	•	The deal data shown here must be the exact same data as Discover and Browse (no duplicated logic).
+
+Data & UI consistency rules
+	•	Use shared query logic or a shared hook/service for fetching published deals.
+	•	Avoid hard-coded or duplicated deal lists per page.
+	•	If a deal is unpublished or expired, it must:
+	•	Immediately disappear from Discover and Browse
+	•	Immediately disappear from the business profile
+
+Performance & UX
+	•	Cache deal queries appropriately using TanStack Query.
+	•	Show loading states while deals are fetching.
+	•	Show an empty state message if a vendor has no active deals.
+
+Validation
+	•	Test by:
+	1.	Publishing a deal
+	2.	Confirming it appears on Discover, Browse, and the vendor profile
+	3.	Unpublishing the deal
+	4.	Confirming it is removed everywhere instantly
+
+The goal is one deal, one source of truth, visible everywhere it should be — nowhere it shouldn’t.
