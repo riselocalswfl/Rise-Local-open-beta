@@ -4355,11 +4355,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Only vendors can create deals" });
       }
 
-      // Validate request body
-      const dealData = insertDealSchema.parse({
+      // Convert date strings to Date objects if provided
+      const bodyWithDates = {
         ...req.body,
         vendorId: vendor.id, // Always use the authenticated vendor's ID
-      });
+        startsAt: req.body.startsAt ? new Date(req.body.startsAt) : undefined,
+        endsAt: req.body.endsAt ? new Date(req.body.endsAt) : undefined,
+      };
+
+      // Validate request body
+      const dealData = insertDealSchema.parse(bodyWithDates);
 
       const deal = await storage.createDeal(dealData);
       console.log("[DEALS] Deal created:", deal.id, "by vendor:", vendor.id);
@@ -4393,6 +4398,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update the deal (don't allow changing vendorId)
       const { vendorId, ...updateData } = req.body;
+      
+      // Convert date strings to Date objects if provided
+      if (updateData.startsAt) {
+        updateData.startsAt = new Date(updateData.startsAt);
+      }
+      if (updateData.endsAt) {
+        updateData.endsAt = new Date(updateData.endsAt);
+      }
+      
       const updatedDeal = await storage.updateDeal(dealId, updateData);
       
       console.log("[DEALS] Deal updated:", dealId, "by vendor:", vendor.id);
@@ -4535,12 +4549,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Only vendors can create deals" });
       }
 
-      // Validate request body
-      const dealData = insertDealSchema.parse({
+      // Convert date strings to Date objects if provided
+      const bodyWithDates = {
         ...req.body,
         vendorId: vendor.id,
         status: 'draft', // Always start as draft
-      });
+        startsAt: req.body.startsAt ? new Date(req.body.startsAt) : undefined,
+        endsAt: req.body.endsAt ? new Date(req.body.endsAt) : undefined,
+      };
+
+      // Validate request body
+      const dealData = insertDealSchema.parse(bodyWithDates);
 
       const deal = await storage.createDeal(dealData);
       console.log("[VENDOR DEALS] Deal created:", deal.id, "by vendor:", vendor.id);
@@ -4573,6 +4592,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Don't allow changing vendorId
       const { vendorId, ...updateData } = req.body;
+      
+      // Convert date strings to Date objects if provided
+      if (updateData.startsAt) {
+        updateData.startsAt = new Date(updateData.startsAt);
+      }
+      if (updateData.endsAt) {
+        updateData.endsAt = new Date(updateData.endsAt);
+      }
+      
       const updatedDeal = await storage.updateDeal(dealId, updateData);
 
       console.log("[VENDOR DEALS] Deal updated:", dealId, "by vendor:", vendor.id);
