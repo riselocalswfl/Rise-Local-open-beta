@@ -226,7 +226,10 @@ export function VendorDealCard({
           {/* Quick Redeem button for published deals on mobile */}
           {isPublished && (
             <div className="mt-3 sm:hidden">
-              <Link href={`/dashboard/deals/${deal.id}/redeem`}>
+              <Link 
+                href={`/dashboard/deals/${deal.id}/redeem`}
+                data-testid={`link-quick-redeem-${deal.id}`}
+              >
                 <Button 
                   variant="default" 
                   className="w-full h-11"
@@ -243,7 +246,7 @@ export function VendorDealCard({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent className="bg-background" data-testid={`dialog-delete-${deal.id}`}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Deal</AlertDialogTitle>
             <AlertDialogDescription>
@@ -257,7 +260,7 @@ export function VendorDealCard({
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground"
               data-testid={`confirm-delete-${deal.id}`}
             >
               {isDeleting ? "Deleting..." : "Delete"}
