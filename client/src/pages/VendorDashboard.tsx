@@ -22,6 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal } from "@shared/schema";
+import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
 import { ImageUpload } from "@/components/ImageUpload";
@@ -223,9 +224,15 @@ export default function VendorDashboard() {
     enabled: !!vendor?.id,
   });
 
-  // Fetch deals
+  // Fetch deals (includeAll=true to see drafts/paused deals for vendor management)
+  const dealsFilters = { vendorId: vendor?.id, includeAll: true };
   const { data: deals = [] } = useQuery<Deal[]>({
-    queryKey: [`/api/deals?vendorId=${vendor?.id}`],
+    queryKey: [DEALS_QUERY_KEY, dealsFilters],
+    queryFn: async () => {
+      const res = await fetch(`/api/deals?vendorId=${vendor?.id}&includeAll=true`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch deals");
+      return res.json();
+    },
     enabled: !!vendor?.id,
   });
 
@@ -479,6 +486,16 @@ export default function VendorDashboard() {
     },
   });
 
+  // Helper to invalidate all deal queries across the app
+  const invalidateAllDealQueries = () => {
+    queryClient.invalidateQueries({ 
+      predicate: (query) => {
+        const key = query.queryKey[0];
+        return key === DEALS_QUERY_KEY || (typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals')));
+      }
+    });
+  };
+
   // Deal Mutations - using vendor deal management endpoints
   const createDealMutation = useMutation({
     mutationFn: async (data: z.infer<typeof dealFormSchema>) => {
@@ -486,12 +503,7 @@ export default function VendorDashboard() {
       return await apiRequest("POST", "/api/vendor/deals", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          const key = query.queryKey[0];
-          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
-        }
-      });
+      invalidateAllDealQueries();
       setDealDialogOpen(false);
       setEditingDeal(null);
       toast({ title: "Deal created successfully" });
@@ -511,12 +523,7 @@ export default function VendorDashboard() {
       return await apiRequest("PUT", `/api/vendor/deals/${id}`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          const key = query.queryKey[0];
-          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
-        }
-      });
+      invalidateAllDealQueries();
       setDealDialogOpen(false);
       setEditingDeal(null);
       toast({ title: "Deal updated successfully" });
@@ -536,12 +543,7 @@ export default function VendorDashboard() {
       return await apiRequest("POST", `/api/vendor/deals/${dealId}/publish`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          const key = query.queryKey[0];
-          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
-        }
-      });
+      invalidateAllDealQueries();
       toast({ title: "Deal published!", description: "Your deal is now live" });
     },
     onError: (error: any) => {
@@ -559,12 +561,7 @@ export default function VendorDashboard() {
       return await apiRequest("POST", `/api/vendor/deals/${dealId}/pause`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          const key = query.queryKey[0];
-          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
-        }
-      });
+      invalidateAllDealQueries();
       toast({ title: "Deal paused" });
     },
     onError: (error: any) => {
@@ -581,12 +578,7 @@ export default function VendorDashboard() {
       return await apiRequest("DELETE", `/api/vendor/deals/${dealId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          const key = query.queryKey[0];
-          return typeof key === 'string' && (key.startsWith('/api/deals') || key.startsWith('/api/vendor/deals'));
-        }
-      });
+      invalidateAllDealQueries();
       toast({ title: "Deal deleted" });
     },
     onError: (error: any) => {

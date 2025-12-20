@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ImageUpload } from "@/components/ImageUpload";
 import type { Vendor, Deal } from "@shared/schema";
+import { useVendorDeals } from "@/hooks/useDeals";
 
 type TabValue = "profile" | "deals" | "settings";
 
@@ -54,10 +55,7 @@ export default function AccountPage({ tab = "profile" }: AccountPageProps) {
     enabled: isVendor,
   });
 
-  const { data: deals = [] } = useQuery<Deal[]>({
-    queryKey: ["/api/deals", vendor?.id],
-    enabled: !!vendor?.id,
-  });
+  const { data: deals = [] } = useVendorDeals(vendor?.id, !!vendor?.id);
 
   const updateVendorMutation = useMutation({
     mutationFn: async (data: Partial<Vendor>) => {
