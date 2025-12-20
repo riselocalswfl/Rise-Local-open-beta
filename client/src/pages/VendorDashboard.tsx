@@ -178,6 +178,25 @@ export default function VendorDashboard() {
     }
   }, [vendor]);
 
+  // Handle URL parameters for auto-opening dialogs
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    const action = params.get("action");
+    
+    if (tab) {
+      setActiveTab(tab);
+    }
+    
+    // Auto-open deal creation dialog if action=create and on deals tab
+    if (tab === "deals" && action === "create" && vendor) {
+      setEditingDeal(null);
+      setDealDialogOpen(true);
+      // Clear the URL params after handling
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [vendor]);
+
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: [`/api/products?vendorId=${vendor?.id}`],
     enabled: !!vendor?.id,
