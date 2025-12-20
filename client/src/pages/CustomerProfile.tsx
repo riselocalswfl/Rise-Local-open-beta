@@ -22,10 +22,10 @@ export default function CustomerProfile() {
   const [editedPhone, setEditedPhone] = useState("");
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
 
-  // Redirect vendors to the dedicated account page
+  // Redirect vendors to the dedicated dashboard
   useEffect(() => {
     if (isVendor) {
-      setLocation("/account");
+      setLocation("/dashboard");
     }
   }, [isVendor, setLocation]);
 

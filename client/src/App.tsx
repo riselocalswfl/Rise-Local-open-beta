@@ -229,18 +229,18 @@ function Router() {
       <Route path="/onboarding" component={UnifiedOnboarding} />
       <Route path="/dashboard" component={BusinessDashboard} />
       
-      {/* Business Account Routes - 3 tab structure */}
+      {/* Legacy /account routes - redirect to /dashboard */}
       <Route path="/account">
-        {() => <Redirect to="/account/profile" />}
+        {() => <Redirect to="/dashboard" />}
       </Route>
       <Route path="/account/profile">
-        {() => <AccountPage tab="profile" />}
+        {() => <Redirect to="/dashboard" />}
       </Route>
       <Route path="/account/deals">
-        {() => <AccountPage tab="deals" />}
+        {() => <Redirect to="/dashboard?tab=deals" />}
       </Route>
       <Route path="/account/settings">
-        {() => <AccountPage tab="settings" />}
+        {() => <Redirect to="/dashboard" />}
       </Route>
       
       {/* Customer Routes */}

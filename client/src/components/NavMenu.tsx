@@ -43,7 +43,7 @@ const vendorNavigationItems = [
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Businesses", href: "/businesses", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },
-  { name: "My Account", href: "/account", icon: UserCircle },
+  { name: "Dashboard", href: "/dashboard", icon: UserCircle },
 ];
 
 const restaurantNavigationItems = [
@@ -54,7 +54,7 @@ const restaurantNavigationItems = [
   { name: "Events", href: "/events", icon: Calendar },
   { name: "Businesses", href: "/businesses", icon: Store },
   { name: "Messages", href: "/messages", icon: MessageSquare },
-  { name: "My Account", href: "/account", icon: UserCircle },
+  { name: "Dashboard", href: "/dashboard", icon: UserCircle },
 ];
 
 export default function NavMenu() {

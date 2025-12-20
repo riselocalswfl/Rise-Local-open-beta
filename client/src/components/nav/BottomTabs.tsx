@@ -7,7 +7,7 @@ export default function BottomTabs() {
   const { user } = useAuth();
   
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
-  const profileHref = isVendor ? "/account" : "/profile";
+  const profileHref = isVendor ? "/dashboard" : "/profile";
 
   const tabs = [
     { name: "Discover", href: "/discover", icon: Compass },
@@ -29,7 +29,7 @@ export default function BottomTabs() {
           const isActive = location === tab.href || 
             (tab.href === "/discover" && (location === "/" || location === "/deals")) ||
             (tab.href === "/businesses" && location.startsWith("/businesses")) ||
-            (tab.href === profileHref && (location.startsWith("/account") || location === "/profile"));
+            (tab.href === profileHref && (location.startsWith("/dashboard") || location === "/profile"));
           
           return (
             <Link key={tab.name} href={tab.href}>

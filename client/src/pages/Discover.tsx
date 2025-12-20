@@ -522,7 +522,7 @@ export default function Discover() {
                 )}
               </div>
             </Link>
-            <Link href={isVendor ? "/account" : "/profile"} data-testid="link-user-profile">
+            <Link href={isVendor ? "/dashboard" : "/profile"} data-testid="link-user-profile">
               <Avatar className="w-8 h-8 cursor-pointer hover-elevate">
                 <AvatarImage src={user?.profileImageUrl || undefined} alt="Profile" />
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">

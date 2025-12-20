@@ -1404,7 +1404,7 @@ export default function VendorDashboard() {
                           </div>
                           <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                             {dealStatus === 'published' && (
-                              <Link href={`/account/deals/${deal.id}/redeem`}>
+                              <Link href={`/dashboard/deals/${deal.id}/redeem`}>
                                 <Button 
                                   variant="default"
                                   size="sm"

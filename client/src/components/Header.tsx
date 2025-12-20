@@ -26,7 +26,7 @@ export default function Header() {
   const [signInDialogOpen, setSignInDialogOpen] = useState(false);
   
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
-  const accountHref = isVendor ? "/account" : "/profile";
+  const accountHref = isVendor ? "/dashboard" : "/profile";
 
   const authenticatedNavigationItems = [
     { name: "Deals", href: "/deals", icon: Tag },
