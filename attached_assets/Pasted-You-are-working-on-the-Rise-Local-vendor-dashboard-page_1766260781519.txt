@@ -1,0 +1,53 @@
+You are working on the Rise Local vendor dashboard page “Manage Deals”. The current deal card UI is not mobile-friendly: the deal title wraps awkwardly (one word per line), action buttons overflow off-screen, spacing is tight, and the hierarchy is unclear.
+
+Goal: Redesign the “Manage Deals” page + deal cards to be clean, thumb-friendly, and responsive on iPhone widths (375px), while keeping existing functionality.
+
+Requirements
+	1.	Responsive layout
+	•	Ensure nothing overflows horizontally on mobile (overflow-x-hidden on page container).
+	•	Use a max width container and consistent padding (ex: px-4).
+	•	Deal cards must be full width and stack cleanly.
+	2.	Header improvements
+	•	“Manage Deals” title + subtitle on left.
+	•	Primary CTA “Add Deal” on the right on desktop, but on mobile it should:
+	•	either become full-width under the title (w-full sm:w-auto)
+	•	OR become a floating/sticky bottom button (“+ Add Deal”) (choose the best UX).
+	•	Keep Rise Local brand styling (green button).
+	3.	Deal Card hierarchy (each deal)
+Inside each deal card, show these sections in this order:
+	•	Top row: Deal Title (left) + Status badge (right)
+	•	Title should wrap normally and look good:
+	•	text-base font-semibold leading-snug
+	•	use line-clamp-2 (or 3) with ellipsis to prevent huge cards
+	•	Second row (compact metadata):
+	•	Price (ex: $10) • Category (ex: Fitness) • Location (ex: Fort Myers)
+	•	Use smaller muted text and a clean “dot separator”
+	•	Tag pills row: (ex: Free, BOGO) should wrap to next line gracefully and not force width overflow.
+	4.	Fix action buttons (Redeem/Edit/Pause/Delete)
+	•	Do NOT show 4 wide buttons in a single row on mobile.
+	•	Replace with:
+	•	A single “Actions” button or 3-dot menu (DropdownMenu from shadcn/ui) on the top right of the card
+	•	Menu items:
+	•	Redeem Code
+	•	Edit Deal
+	•	Pause/Resume (toggle label based on status)
+	•	Delete (danger styled)
+	•	Add confirmation modal for Delete.
+	•	Keep Redeem Code easy to access (either first menu item or a small secondary button under title).
+	5.	Status clarity
+	•	Show a clear badge: Published / Paused / Draft.
+	•	If paused, visually dim the card slightly (opacity-80) and adjust badge color.
+	6.	Accessibility & touch targets
+	•	Buttons must be at least 44px tall on mobile.
+	•	Icons + labels where helpful.
+	•	Avoid tiny icon-only buttons unless inside a menu.
+	7.	Implementation details
+	•	Use existing stack: React + Tailwind + shadcn/ui.
+	•	Refactor the deal card component into something like DealCard.tsx for cleanliness.
+	•	Ensure no logic breaks: existing handlers for redeem/edit/pause/delete must still work.
+	•	Add line-clamp plugin if not already enabled OR implement truncation with CSS.
+
+Deliverables
+	•	Update the Manage Deals page UI and styling to meet the above requirements.
+	•	Output the exact files changed and a short explanation of what was improved.
+	•	Verify on mobile widths (320px–430px) with no horizontal scrolling.
