@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { BadgeCheck, MapPin, Phone, Mail, Globe, Clock, MessageSquare, Tag, Lock, Percent, DollarSign, Gift } from "lucide-react";
+import { BadgeCheck, MapPin, Phone, Mail, Globe, Clock, MessageSquare, Tag, Lock, Percent, DollarSign, Gift, Leaf } from "lucide-react";
+import { SiInstagram, SiFacebook, SiTiktok, SiYoutube } from "react-icons/si";
+import { Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Vendor, Product, VendorDeal } from "@shared/schema";
@@ -139,45 +141,131 @@ export default function BusinessProfile() {
 
   const typeBadge = getVendorTypeBadge(vendor.vendorType || "shop");
 
+  // Helper to extract hours - supports both legacy format and new HoursData format
+  const getHoursSchedule = (): Record<string, string> => {
+    if (!vendor.hours || typeof vendor.hours !== 'object') return {};
+    const hours = vendor.hours as any;
+    // New HoursData format has { byAppointment, schedule }
+    if ('schedule' in hours && typeof hours.schedule === 'object') {
+      return hours.schedule as Record<string, string>;
+    }
+    // Legacy format is just Record<string, string>
+    return hours as Record<string, string>;
+  };
+
+  const hoursSchedule = getHoursSchedule();
+  const isByAppointment = vendor.hours && typeof vendor.hours === 'object' && 
+    'byAppointment' in (vendor.hours as any) && (vendor.hours as any).byAppointment;
+
+  // Helper to check if hours are set
+  const hasHours = isByAppointment || Object.values(hoursSchedule).some(v => v && v.trim());
+
+  // Helper to check if any social links exist
+  const hasSocialLinks = vendor.instagram || vendor.facebook || vendor.tiktok || 
+    vendor.youtube || vendor.twitter;
+
+  // Helper to normalize social URLs - handles both handles and full URLs
+  const getSocialUrl = (platform: string, value: string | null | undefined): string => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    // If already a full URL, return as-is
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    // Remove @ prefix if present
+    const handle = trimmed.replace(/^@/, '');
+    // Build platform URL
+    const bases: Record<string, string> = {
+      instagram: 'https://instagram.com/',
+      facebook: 'https://facebook.com/',
+      tiktok: 'https://tiktok.com/@',
+      youtube: 'https://youtube.com/@',
+      twitter: 'https://twitter.com/',
+    };
+    return (bases[platform] || '') + handle;
+  };
+
+  // Helper to get display name (just the handle)
+  const getSocialDisplay = (value: string | null | undefined): string => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    // If full URL, extract the path
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      try {
+        const url = new URL(trimmed);
+        return url.pathname.replace(/^\/+/, '').replace(/@/g, '');
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  };
+
+  // Helper to format address
+  const formatAddress = () => {
+    const parts = [];
+    if (vendor.address) parts.push(vendor.address);
+    if ((vendor as any).addressLine2) parts.push((vendor as any).addressLine2);
+    if (vendor.city) {
+      const cityLine = vendor.zipCode ? `${vendor.city}, FL ${vendor.zipCode}` : `${vendor.city}, FL`;
+      parts.push(cityLine);
+    }
+    return parts;
+  };
+
+  const addressParts = formatAddress();
+
   return (
     <div className="min-h-screen bg-background">
       <DetailHeader title={vendor.businessName || "Business Profile"} />
       
-      <main className="px-4 py-4 space-y-4">
-        <Card data-testid="card-business-header">
-          <CardContent className="p-4">
-            <div className="flex gap-4">
-              <Avatar className="h-20 w-20 flex-shrink-0">
-                <AvatarImage src={vendor.logoUrl || undefined} alt={vendor.businessName || "Business"} />
-                <AvatarFallback className="text-lg">
-                  {vendor.businessName?.substring(0, 2).toUpperCase() || "BZ"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h1 className="text-xl font-semibold" data-testid="text-business-name">
-                        {vendor.businessName || "Business"}
-                      </h1>
-                      {vendor.isVerified && (
-                        <BadgeCheck className="h-5 w-5 text-primary" data-testid="icon-verified" />
-                      )}
+      <main className="space-y-4">
+        {/* Banner Image */}
+        {vendor.bannerUrl && (
+          <div className="w-full h-32 md:h-48 overflow-hidden" data-testid="banner-image">
+            <img 
+              src={vendor.bannerUrl} 
+              alt={`${vendor.businessName} banner`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
+        <div className="px-4 space-y-4">
+          <Card data-testid="card-business-header">
+            <CardContent className="p-4">
+              <div className="flex gap-4">
+                <Avatar className="h-20 w-20 flex-shrink-0">
+                  <AvatarImage src={vendor.logoUrl || undefined} alt={vendor.businessName || "Business"} />
+                  <AvatarFallback className="text-lg">
+                    {vendor.businessName?.substring(0, 2).toUpperCase() || "BZ"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h1 className="text-xl font-semibold" data-testid="text-business-name">
+                          {vendor.businessName || "Business"}
+                        </h1>
+                        {vendor.isVerified && (
+                          <BadgeCheck className="h-5 w-5 text-primary" data-testid="icon-verified" />
+                        )}
+                      </div>
+                      <Badge variant={typeBadge.variant} data-testid="badge-vendor-type">
+                        {typeBadge.label}
+                      </Badge>
                     </div>
-                    <Badge variant={typeBadge.variant} data-testid="badge-vendor-type">
-                      {typeBadge.label}
-                    </Badge>
                   </div>
+                  {vendor.tagline && (
+                    <p className="text-sm text-muted-foreground italic" data-testid="text-tagline">
+                      {vendor.tagline}
+                    </p>
+                  )}
                 </div>
-                {vendor.tagline && (
-                  <p className="text-sm text-muted-foreground italic" data-testid="text-tagline">
-                    {vendor.tagline}
-                  </p>
-                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
         {vendor.bio && (
           <Card data-testid="card-about">
@@ -250,15 +338,19 @@ export default function BusinessProfile() {
             <CardTitle className="text-lg">Contact & Location</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {vendor.city && (
-              <div className="flex items-center gap-3 text-sm">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span data-testid="text-location">{vendor.city}, FL</span>
+            {addressParts.length > 0 && (
+              <div className="flex items-start gap-3 text-sm">
+                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div data-testid="text-location">
+                  {addressParts.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </div>
               </div>
             )}
             {vendor.contactPhone && (
               <div className="flex items-center gap-3 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
+                <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a 
                   href={`tel:${vendor.contactPhone}`} 
                   className="text-primary hover:underline"
@@ -270,7 +362,7 @@ export default function BusinessProfile() {
             )}
             {vendor.contactEmail && (
               <div className="flex items-center gap-3 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
+                <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a 
                   href={`mailto:${vendor.contactEmail}`} 
                   className="text-primary hover:underline"
@@ -282,7 +374,7 @@ export default function BusinessProfile() {
             )}
             {vendor.website && (
               <div className="flex items-center gap-3 text-sm">
-                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a 
                   href={vendor.website} 
                   target="_blank" 
@@ -296,6 +388,135 @@ export default function BusinessProfile() {
             )}
           </CardContent>
         </Card>
+
+        {/* Business Hours */}
+        {hasHours && (
+          <Card data-testid="card-hours">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Hours</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isByAppointment ? (
+                <div className="flex items-center gap-2 text-sm" data-testid="text-by-appointment">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>By Appointment Only</span>
+                </div>
+              ) : (
+                <div className="space-y-1.5 text-sm">
+                  {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => {
+                    const value = hoursSchedule[day];
+                    if (!value || !value.trim()) return null;
+                    return (
+                      <div key={day} className="flex justify-between gap-4" data-testid={`hours-${day}`}>
+                        <span className="capitalize text-muted-foreground">{day}</span>
+                        <span>{value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Social Links */}
+        {hasSocialLinks && (
+          <Card data-testid="card-social">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Connect</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                {vendor.instagram && (
+                  <a 
+                    href={getSocialUrl('instagram', vendor.instagram)}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    data-testid="link-instagram"
+                  >
+                    <SiInstagram className="h-4 w-4" />
+                    <span>{getSocialDisplay(vendor.instagram)}</span>
+                  </a>
+                )}
+                {vendor.facebook && (
+                  <a 
+                    href={getSocialUrl('facebook', vendor.facebook)}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    data-testid="link-facebook"
+                  >
+                    <SiFacebook className="h-4 w-4" />
+                    <span>{getSocialDisplay(vendor.facebook)}</span>
+                  </a>
+                )}
+                {vendor.tiktok && (
+                  <a 
+                    href={getSocialUrl('tiktok', vendor.tiktok)}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    data-testid="link-tiktok"
+                  >
+                    <SiTiktok className="h-4 w-4" />
+                    <span>{getSocialDisplay(vendor.tiktok)}</span>
+                  </a>
+                )}
+                {vendor.youtube && (
+                  <a 
+                    href={getSocialUrl('youtube', vendor.youtube)}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    data-testid="link-youtube"
+                  >
+                    <SiYoutube className="h-4 w-4" />
+                    <span>{getSocialDisplay(vendor.youtube)}</span>
+                  </a>
+                )}
+                {vendor.twitter && (
+                  <a 
+                    href={getSocialUrl('twitter', vendor.twitter)}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    data-testid="link-twitter"
+                  >
+                    <Twitter className="h-4 w-4" />
+                    <span>{getSocialDisplay(vendor.twitter)}</span>
+                  </a>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Business Values */}
+        {((vendor.values && vendor.values.length > 0) || (vendor.showLocalSourcing && vendor.localSourcingPercent)) && (
+          <Card data-testid="card-values">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Our Values</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {vendor.values && vendor.values.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {vendor.values.map((value: string, i: number) => (
+                    <Badge key={i} variant="secondary" data-testid={`value-tag-${i}`}>
+                      {value}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {vendor.showLocalSourcing && vendor.localSourcingPercent && vendor.localSourcingPercent > 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-local-sourcing">
+                  <Leaf className="h-4 w-4 text-primary" />
+                  <span>{vendor.localSourcingPercent}% locally sourced</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex gap-3">
           <Button 
@@ -338,6 +559,7 @@ export default function BusinessProfile() {
             </CardContent>
           </Card>
         )}
+        </div>
       </main>
     </div>
   );
