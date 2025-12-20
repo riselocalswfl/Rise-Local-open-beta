@@ -38,7 +38,7 @@ export function buildDealsQueryKey(filters?: DealFilters): (string | DealFilters
   return [DEALS_QUERY_KEY, filters];
 }
 
-export function useDeals(filters?: DealFilters) {
+export function useDeals(filters?: DealFilters, options?: { enabled?: boolean }) {
   const endpoint = buildDealsEndpoint(filters);
   
   return useQuery<Deal[]>({
@@ -48,6 +48,7 @@ export function useDeals(filters?: DealFilters) {
       if (!res.ok) throw new Error("Failed to fetch deals");
       return res.json();
     },
+    enabled: options?.enabled !== false,
   });
 }
 
@@ -64,10 +65,10 @@ export function useDeal(id: string) {
 }
 
 export function useVendorDeals(vendorId: string | undefined, enabled: boolean = true) {
+  const shouldFetch = !!vendorId && enabled;
   return useDeals(
-    vendorId && enabled
-      ? { vendorId, includeAll: true }
-      : undefined
+    shouldFetch ? { vendorId, includeAll: true } : undefined,
+    { enabled: shouldFetch }
   );
 }
 
