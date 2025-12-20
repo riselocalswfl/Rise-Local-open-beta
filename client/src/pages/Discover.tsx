@@ -28,7 +28,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Sparkles,
 };
 
-const FORT_MYERS_DEFAULT = { lat: 26.6406, lng: -81.8723 };
+const SWFL_DEFAULT = { lat: 26.6406, lng: -81.8723 };
 
 type LocationOption = {
   id: string;
@@ -39,6 +39,7 @@ type LocationOption = {
 
 const LOCATION_OPTIONS: LocationOption[] = [
   { id: "current", label: "Use My Location", isGPS: true },
+  { id: "swfl", label: "SWFL", coords: { lat: 26.6406, lng: -81.8723 } },
   { id: "fort-myers", label: "Fort Myers", coords: { lat: 26.6406, lng: -81.8723 } },
   { id: "cape-coral", label: "Cape Coral", coords: { lat: 26.5629, lng: -81.9495 } },
   { id: "bonita-springs", label: "Bonita Springs", coords: { lat: 26.3398, lng: -81.7787 } },
@@ -142,7 +143,7 @@ function transformDealToRiseLocal(
   const vendorLat = deal.vendor?.latitude ? parseFloat(deal.vendor.latitude) : null;
   const vendorLng = deal.vendor?.longitude ? parseFloat(deal.vendor.longitude) : null;
   
-  let distanceStr = "Fort Myers";
+  let distanceStr = "SWFL";
   let rawDistance = 999;
   if (vendorLat && vendorLng) {
     rawDistance = calculateDistanceMiles(userLat, userLng, vendorLat, vendorLng);
@@ -185,8 +186,8 @@ export default function Discover() {
   const { toast } = useToast();
   const [location, setLocation] = useState<LocationState>({
     status: "idle",
-    coords: FORT_MYERS_DEFAULT,
-    displayName: "Fort Myers",
+    coords: SWFL_DEFAULT,
+    displayName: "SWFL",
   });
   const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -208,7 +209,7 @@ export default function Discover() {
     if (!navigator.geolocation) {
       toast({
         title: "Location unavailable",
-        description: "Using Fort Myers as default location.",
+        description: "Using SWFL as default location.",
       });
       return;
     }
@@ -219,13 +220,13 @@ export default function Discover() {
       setLocation(prev => {
         if (prev.status === "requesting") {
           toast({
-            title: "Using Fort Myers area",
+            title: "Using SWFL area",
             description: "Couldn't get your exact location.",
           });
           return {
             status: "granted",
-            coords: FORT_MYERS_DEFAULT,
-            displayName: "Fort Myers",
+            coords: SWFL_DEFAULT,
+            displayName: "SWFL",
           };
         }
         return prev;
@@ -258,11 +259,11 @@ export default function Discover() {
         }
         setLocation({
           status: "granted",
-          coords: FORT_MYERS_DEFAULT,
-          displayName: "Fort Myers",
+          coords: SWFL_DEFAULT,
+          displayName: "SWFL",
         });
         toast({
-          title: "Using Fort Myers area",
+          title: "Using SWFL area",
           description: error.code === 1 
             ? "Location access denied." 
             : "Couldn't get your location.",
@@ -314,7 +315,7 @@ export default function Discover() {
     queryKey: ["/api/categories"],
   });
 
-  const userCoords = location.coords || FORT_MYERS_DEFAULT;
+  const userCoords = location.coords || SWFL_DEFAULT;
   const { data: dealsData, isLoading: dealsLoading } = useQuery<(Deal & { vendor?: Vendor })[]>({
     queryKey: ["/api/deals", "with-vendors", userCoords.lat, userCoords.lng],
     queryFn: async () => {
