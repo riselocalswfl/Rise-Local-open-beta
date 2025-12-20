@@ -1,0 +1,39 @@
+You are working on the Rise Local app. I want to remove any and all wording that explicitly says “free deals” or labels deals as “Free” for standard/full-access deals.
+
+Business rule:
+If a user can see/redeem a deal (i.e., it’s behind the correct access wall), it should be implied that it’s redeemable with no extra charge at redemption. The app should NOT market deals as “free.” Only the access wall / membership status controls visibility.
+
+Requirements
+	1.	Search and remove wording globally
+	•	Find and remove/replace all UI text that includes:
+	•	“free deals”
+	•	“free to redeem”
+	•	“Free” pill/tag/badge that implies the deal itself is free
+	•	Any similar copy that frames deals as free
+	•	This includes: Discover, Browse, Deal cards, Deal detail pages, onboarding, pricing pages, modals, tooltips, vendor dashboard, and any marketing banners.
+	2.	Replace with neutral language (if needed)
+	•	If a label is required for UI clarity, replace “Free” with one of:
+	•	“Included”
+	•	“Available”
+	•	“Redeemable”
+	•	Or remove the label entirely if it adds clutter.
+	•	Do NOT add new “free” synonyms like “no-cost” or “$0” unless the deal is literally priced at $0 as part of the offer.
+	3.	Keep paywall logic intact
+	•	Do not change the membership gating logic.
+	•	Make sure premium/locked deals still show as locked when appropriate.
+	•	Accessible deals should not have a “Free” indicator—just show the deal normally.
+	4.	Vendor dashboard
+	•	Remove any “Free” tags/vendors shouldn’t be selecting “Free” as a deal type unless it’s actually a price field.
+	•	If there’s a “Free” toggle/tag in deal creation, remove it from the form and database usage (unless it’s used for something else critical—then refactor to a neutral field).
+	5.	Deliverables
+	•	Provide a list of every file changed.
+	•	Confirm there are zero occurrences of:
+	•	“free deal”
+	•	“free deals”
+	•	>Free< in deal badge components (unless it’s unrelated to deals)
+
+Implementation Guidance
+	•	Add a single constant or copy map for deal-related microcopy (optional), so we don’t reintroduce “Free” later.
+	•	Run a project-wide search (case-insensitive) for: free, Free, FREE, and update only deal-related instances.
+
+Make these changes fully in code.
