@@ -1,7 +1,7 @@
-# Rise Local - Fort Myers Deals & Local Business Discovery
+# Rise Local - SWFL Deals & Local Business Discovery
 
 ## Overview
-Rise Local is a mobile-first app connecting local businesses with shoppers in Fort Myers, Florida. Local businesses offer exclusive deals, and shoppers discover new places to save money while supporting their community. The platform features deal discovery, membership perks (Rise Local Pass), and business profiles. The vision is to make it easy for locals to find great deals and support neighborhood businesses in SWFL.
+Rise Local is a mobile-first application designed to connect local businesses in Southwest Florida (SWFL) with shoppers. Its primary purpose is to facilitate deal discovery, allowing local businesses to offer exclusive deals and shoppers to find savings while supporting their community. The platform includes features for deal discovery, a membership program (Rise Local Pass), and comprehensive business profiles. The overarching vision is to simplify the process for residents to locate attractive deals and patronize neighborhood businesses throughout SWFL, encompassing areas like Fort Myers, Cape Coral, Bonita Springs, Estero, and Naples. The pricing model involves an $89/month membership fee for vendors, with buyers paying the product price plus 7% FL sales tax, and no additional buyer or transaction fees.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -9,93 +9,37 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX
-The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI and shadcn/ui (new-york preset) for components, styled with Tailwind CSS. The design is **mobile-first** (iPhone/Android primary, desktop secondary), featuring a forest green primary color, brand-specific colors (Wheat, Clay, Ink, Paper), and distinct fonts (Playfair Display, Work Sans, JetBrains Mono). The BrandLogo component always links to the home page (/discover) from every screen. The Auth page hero section is optimized for mobile with a compact layout, 6-word headline ("Shop local. Sell local."), single-line subheadline, and two large CTAs (Shop Local, Sell With Us) above the fold with 56px touch targets on a clean white background.
+The frontend is developed using React 18, TypeScript, and Vite. It leverages Radix UI and shadcn/ui (new-york preset) for UI components, styled with Tailwind CSS. The design prioritizes a mobile-first approach, with a primary focus on iPhone/Android and secondary consideration for desktop. Key branding elements include a forest green primary color, brand-specific accent colors (Wheat, Clay, Ink, Paper), and distinct fonts (Playfair Display, Work Sans, JetBrains Mono). A consistent `BrandLogo` component links to the home page (`/discover`) from all screens. The authentication page's hero section is optimized for mobile, featuring a concise layout, a 6-word headline ("Shop local. Sell local."), a single-line subheadline, and two prominent CTAs ("Shop Local," "Sell With Us") positioned above the fold with 56px touch targets on a clean white background. The application uses a light-only theme, with no dark mode styling, and implements semantic CSS variables with Tailwind CSS.
 
 ### Technical Implementations
-- **Frontend State Management**: TanStack Query manages server state, React hooks handle local UI state. Wouter is used for client-side routing.
-- **Backend**: Express.js with TypeScript provides a RESTful API.
+- **Frontend State Management**: TanStack Query manages server-side state, while React hooks handle local UI state. Wouter is used for client-side routing.
+- **Backend**: An Express.js server with TypeScript provides a RESTful API.
 - **Data Storage**: PostgreSQL, accessed via Neon's serverless driver, uses Drizzle ORM for type-safe queries and schema management.
-- **Authentication**: Replit Auth via OIDC with sessions stored in PostgreSQL. Role-based access includes `buyer`, `vendor`, `restaurant`, `service_provider`, and `admin`. All pages require authentication except `/auth`. The `AuthBoundary` component wraps the entire router to enforce login, redirecting unauthenticated users to `/auth`. Return URLs are stored in sessionStorage for post-login redirect.
-- **Unified Vendor Architecture**: All vendor types (shop, dine, service) use a single `vendors` table with a `vendorType` field and a `capabilities` JSON field, enabling polymorphic behavior. Products, menu items, and service offerings link to this unified `vendors` table.
-- **Terminology Convention**: "Vendor" is used for backend/database references (API: `/api/vendors`), while "Business" is used for customer-facing UI and routes (`/businesses`, `/businesses/:id`). This provides clear separation between technical and user-facing terminology.
-- **Simplified Authentication & Onboarding**: Streamlined signup routes users based on `intended_role` query parameter. After auth, all users go to `/start` gate which routes based on role and onboarding status.
-- **5-Step Vendor Onboarding Flow**: Vendors complete a comprehensive 5-step onboarding at `/onboarding`:
-  1. **Basic Info**: Business name, contact name, email, phone, city, zip code, and vendor type selection (shop/dine/service)
-  2. **Business Details**: Description, about section, and type-specific fields (e.g., cuisine type for restaurants, service categories)
-  3. **Operations**: Payment methods (cash, credit, etc.) and fulfillment options (pickup, delivery, shipping for shops)
-  4. **Hours, Address & Images**: Street address, 7-day business hours, profile logo upload, and cover banner upload
-  5. **Review & Submit**: Summary of all information with final submission
-  - Auto-save: All forms auto-save to server every 2 seconds with debouncing
-  - Draft persistence: Onboarding progress stored in database via draft vendor record
-  - Image uploads: Uses ImageUpload component with object storage integration
-- **Universal `/start` Gate**: Central routing page that redirects users based on their role and `onboardingComplete` status:
-  - Unauthenticated → `/auth`
-  - Authenticated + incomplete onboarding + vendor/restaurant/service_provider → `/onboarding`
-  - Authenticated + incomplete onboarding + buyer → `/discover`
-  - Authenticated + complete onboarding + admin → `/admin`
-  - Authenticated + complete onboarding + vendor/restaurant/service_provider → `/dashboard`
-  - Authenticated + complete onboarding + buyer → `/discover` (or returnTo if stored)
-  - Also handles `returnTo` from sessionStorage for deep link preservation.
-- **Mobile-First Discover Page**: The `/discover` page is the new consumer home featuring a location bar, horizontally-scrollable filter chips (All Deals, Member-Only, Free Deals, BOGO, $5+ Value, New this week, Near me), and three curated deal sections ("Member Exclusives Near You", "Best Value Right Now", "New Local Spots Added") with horizontal card scrolling. Deal cards display savings pills, member-only badges, and locked overlays for non-members. A membership banner promotes the Rise Local Pass ($4.99/mo). Currently uses mock data. Bottom tab navigation includes Discover, Browse, Favorites, and Profile tabs.
-- **Rise Local Pass Membership**: The `/membership` page presents the Rise Local Pass subscription ($4.99/month) with pricing card, benefits list, and subscribe CTA. Non-members see locked deal overlays with "Unlock with Rise Local Pass" prompts directing them to join.
-- **Unified Vendor Dashboard**: A single capability-aware `/dashboard` serves all vendor types, dynamically showing/hiding tabs based on vendor capabilities.
-- **3-Tab Business Account Page**: Business owners (vendors, restaurants, service providers) access their account at `/account` with 3 URL-based tabs:
-  1. **Business Profile** (`/account/profile`): Edit business name, contact info, location, web/social links, profile logo, and cover banner
-  2. **My Deals** (`/account/deals`): View and manage active deals, create new deals, links to dashboard for full deal management
-  3. **Settings** (`/account/settings`): Business visibility toggle, billing info, notifications, and logout
-  - Back arrow navigation returns to previous page or `/discover` fallback
-  - Role-based navigation: vendors see "Account" in bottom tabs linking to `/account`, consumers see "Account" linking to `/profile`
-  - CustomerProfile.tsx redirects vendors to `/account` via useEffect to maintain separation
-- **Unified Category System**: Business categories are managed via a dedicated `categories` database table providing a single source of truth. The `/api/categories` endpoint serves category data to both the Discover page (Browse by Category section) and vendor onboarding (Business Category selection). Five default categories are seeded: Food & Drink, Wellness & Fitness, Home & Services, Shopping & Retail, and Experiences. Each vendor can optionally have a `categoryId` linking to this table. Categories support custom Lucide icons and sort ordering.
-- **Customer-Facing Business Pages**: Profiles (`/businesses/:id`) use a unified endpoint (`/api/vendors/:id`) and implement capability-based rendering. Legacy routes (`/vendor/:id`, `/vendors`, `/restaurant/:id`) redirect to the unified `/businesses` routes.
-- **Deals-Only Focus**: The app focuses exclusively on deal discovery - cart, checkout, and order functionality have been removed. Vendors can list products/menu items for display purposes, but transactions happen directly with the business.
-- **B2C Messaging System**: Consumer-to-business messaging with conversations linked to optional deal context. Features include:
-  - Consumers can message businesses about deals via "Message Business" buttons
-  - Vendors can view messages in Dashboard Messages tab (read-only without Stripe subscription)
-  - Vendors with Stripe connected can reply to customers (premium feature)
-  - In-app notifications created when new messages are sent
-  - Notification badge in navigation shows combined unread message + notification count
-  - Notifications auto-marked as read when viewing conversations
-- **Stripe Connect Integration**: Facilitates vendor payouts, with the platform collecting payments (product price + 7% FL sales tax) and transferring the full amount to the vendor. Revenue is from an $89/month vendor membership fee, with no transaction fees.
-- **Customer Profile Management**: Users manage their profile (`/profile`) with editable fields for first name, last name, and phone number, enforced by secure API endpoint whitelisting.
-- **Contact Information Storage**: Vendor contact information is stored in individual database columns for improved type safety and data integrity.
-- **Near Me Location Filtering**: Implements GPS coordinates and server-side geocoding for location-based filtering of deals with radius presets, using the Haversine formula for distance calculation.
-- **Reservation Provider Architecture**: Utilizes an `IReservationProvider` interface with factory pattern for integrating external reservation systems (OpenTable, SevenRooms, Resy) while preserving deep linking for existing flows.
-- **Restaurant Admin Settings Panel**: Adds a settings section in VendorDashboard for dine vendors to manage reservation options and deal participation.
-- **Navigation Improvements**: Enhances navigation with a Home tab in the bottom navigation and a new `DetailHeader` component for detail pages.
-- **Light-Only Theme**: The application uses a light-only theme, removing all dark mode styling and implementing semantic CSS variables with Tailwind CSS.
-- **Service Vendor Cards**: The Home page now displays real service vendor cards fetched via a new `/api/service-vendors` endpoint.
-- **Enhanced Deals API**: The deals system has been upgraded with:
-  - New deal fields: `finePrint`, `savingsAmount`, `discountType`, `discountValue`, `imageUrl`, `startsAt`, `endsAt`, `deletedAt`
-  - Deal visibility rules with proper HTTP error codes: `NOT_FOUND` (404), `EXPIRED` (410), `REMOVED` (410)
-  - Deal tiers: `free`, `member`, `standard` with `isPassLocked` flag for membership-only deals
-  - Vendor info included in deal responses with business name and location
-- **Time-Locked Code Redemption System**: Comprehensive in-person deal redemption flow:
-  - Consumers claim deals to receive a 6-digit numeric code valid for 10 minutes (configurable)
-  - Code is displayed prominently on the ClaimedDealScreen (`/deals/:id/claimed/:redemptionId`) with countdown timer
-  - Vendors enter customer codes at VendorRedeemScreen (`/account/deals/:dealId/redeem`) to complete redemption
-  - Deal redemptions table tracks: `status` (claimed/redeemed/expired/voided), `redemptionCode`, `claimedAt`, `claimExpiresAt`, `redeemedAt`
-  - Atomic redemption with race condition protection via status check in WHERE clause
-  - Claim limit enforcement: per-user counting, cooldown period (default 1 week), global caps, duplicate prevention
-  - Collision-resistant code generation with retry logic
-- **Rise Local Pass User Fields**: Users table includes `isPassMember`, `passExpiresAt`, and `stripeCustomerId` for subscription management
-- **Deals Seed Script**: Run `npx tsx server/seed-deals.ts` to populate 3 sample vendors and 8 deals for testing
-- **Conversations Seed Script**: Run `npx tsx server/seed-conversations.ts` to populate test B2C conversations for messaging feature testing
+- **Authentication**: Replit Auth via OIDC is used, with sessions stored in PostgreSQL. Role-based access supports `buyer`, `vendor`, `restaurant`, `service_provider`, and `admin`. All pages, except `/auth`, require authentication. An `AuthBoundary` component enforces login, redirecting unauthenticated users to `/auth` and storing return URLs in `sessionStorage`.
+- **Unified Vendor Architecture**: A single `vendors` table accommodates all vendor types (shop, dine, service) using a `vendorType` field and a `capabilities` JSON field for polymorphic behavior. Products, menu items, and service offerings link to this unified table. Customer-facing terminology uses "Business" (e.g., `/businesses`), while backend and API references use "Vendor" (e.g., `/api/vendors`).
+- **Simplified Authentication & Onboarding**: Streamlined signup routes users based on an `intended_role` query parameter. After authentication, all users are directed to a `/start` gate that routes them based on their role and onboarding completion status.
+- **5-Step Vendor Onboarding Flow**: Vendors complete a comprehensive onboarding process at `/onboarding`, covering basic information, business details, operations, hours/address/images, and a final review. This flow includes auto-saving, draft persistence, and image uploads.
+- **Universal `/start` Gate**: This central routing page handles redirection based on authentication status, onboarding completion, user role, and `returnTo` URLs.
+- **Mobile-First Discover Page**: The `/discover` page serves as the consumer home, featuring a location bar, horizontally-scrollable filter chips, and three curated deal sections with horizontal card scrolling. Deal cards display savings, member-only badges, and locked overlays for non-members. A membership banner promotes the Rise Local Pass. Bottom tab navigation includes Discover, Browse, Favorites, and Profile.
+- **Rise Local Pass Membership**: The `/membership` page details the Rise Local Pass subscription ($4.99/month), showcasing benefits and a subscribe CTA. Non-members encounter locked deal overlays prompting them to subscribe. The `users` table includes `isPassMember`, `passExpiresAt`, and `stripeCustomerId` for subscription management.
+- **Unified Vendor Dashboard**: A single capability-aware `/dashboard` serves all vendor types, dynamically adjusting tabs based on vendor capabilities.
+- **3-Tab Business Account Page**: Business owners manage their account at `/account` via three URL-based tabs: Business Profile, My Deals, and Settings. Customer users access `/profile` for personal account management.
+- **Unified Category System**: A dedicated `categories` database table provides a single source of truth for business categories, served by the `/api/categories` endpoint. Five default categories are seeded, each supporting custom Lucide icons and sort ordering.
+- **Deals-Only Focus**: The application focuses exclusively on deal discovery, excluding cart, checkout, and order functionalities. Transactions occur directly with businesses. The deals system includes new fields (`finePrint`, `savingsAmount`, `discountType`, `discountValue`, `imageUrl`, `startsAt`, `endsAt`, `deletedAt`), visibility rules, and deal tiers (`free`, `member`, `standard`).
+- **B2C Messaging System**: Implements a consumer-to-business messaging system with optional deal context. Features include "Message Business" buttons, vendor message viewing in the Dashboard (read-only for non-Stripe users), vendor replies for Stripe-connected businesses (premium feature), and in-app notifications.
+- **Stripe Connect Integration**: Facilitates vendor payouts, with the platform collecting payments (product price + 7% FL sales tax) and transferring the full amount to the vendor. Revenue is primarily from an $89/month vendor membership fee.
+- **Near Me Location Filtering**: Implements GPS coordinates and server-side geocoding with the Haversine formula for radius-based deal filtering.
+- **Time-Locked Code Redemption System**: A comprehensive in-person deal redemption flow where consumers claim deals to receive a 6-digit code valid for 10 minutes. Vendors redeem codes at a specific screen, with atomic redemption, race condition protection, claim limit enforcement, and collision-resistant code generation.
 
 ### Feature Specifications
-- **Pricing Model**: $89/month membership for vendors; buyers pay product price + 7% FL sales tax, no additional buyer or transaction fees.
-- **Geographic Focus**: Exclusively serves local Fort Myers vendors.
+- **Geographic Focus**: Serves local vendors across Southwest Florida (SWFL), including Fort Myers, Cape Coral, Bonita Springs, Estero, and Naples.
 - **Fulfillment**: Supports pickup, local delivery, and shipping options configurable by vendors.
-- **Fort Myers Spotlight**: Dedicated feature for highlighting local content or businesses.
 - **Application Routes**:
-  - **Public Route**: `/auth` - the only route accessible without authentication.
-  - **Gate Routes**: `/start` and `/onboarding` - allowed for authenticated users regardless of onboarding status; `/start` handles role-based routing.
-  - **Protected Routes**: All other routes require authentication and completed onboarding including `/discover`, `/browse`, `/favorites`, `/membership`, `/products`, `/businesses`, `/businesses/:id`, `/services`, `/eat-local`, `/live-local`, `/events`, `/events/:id`, `/spotlight`, `/profile`, `/messages`, `/dashboard`, `/events/my`, `/admin`.
-  - **Vendor Account Access**: Vendors access their account at `/account` with 3 tabs (Business Profile, My Deals, Settings). Consumer users access `/profile` for their personal account.
-  - **Vendor Dashboard Access**: Vendors can access the full dashboard via the "Manage in Dashboard" link in `/account/deals`, which links to `/dashboard`.
-  - **Legacy Route Redirects**: Old routes (`/vendors`, `/vendor/:id`, `/restaurant/:id`, `/app/businesses`) redirect to the unified `/businesses` routes for backwards compatibility.
-  - **Auth Route Consolidation**: Single unified auth page at `/auth` handles both login and signup. Legacy routes (`/join`, `/login`, `/signup`, `/sign-in`, `/sign-up`, `/register`, `/welcome`) redirect to `/auth` or `/start`.
-  - **Global Auth Enforcement**: `AuthBoundary` component wraps the router to check authentication on every page load. Unauthenticated users are redirected to `/auth` with return URL preserved. Authenticated users with incomplete onboarding are redirected to `/start`.
+  - **Public Route**: `/auth` is the only route accessible without authentication.
+  - **Gate Routes**: `/start` and `/onboarding` are allowed for authenticated users regardless of onboarding status; `/start` handles role-based routing.
+  - **Protected Routes**: All other routes require authentication and completed onboarding (e.g., `/discover`, `/dashboard`, `/profile`, `/account`).
+  - **Redirects**: Legacy routes are redirected to unified paths (e.g., old vendor routes to `/businesses`, various signup/login routes to `/auth`).
+  - **Global Auth Enforcement**: An `AuthBoundary` component globally enforces authentication and redirects.
 
 ## External Dependencies
 
@@ -124,14 +68,6 @@ The frontend is built with React 18, TypeScript, and Vite, utilizing Radix UI an
 - `@neondatabase/serverless`
 - `drizzle-orm`
 - `drizzle-kit`
-
-### Development Tools
-- `@replit/vite-plugin-*`
-- `tsx`
-- `esbuild`
-
-### Fonts
-- Google Fonts CDN
 
 ### APIs
 - OpenStreetMap Nominatim API (for geocoding)

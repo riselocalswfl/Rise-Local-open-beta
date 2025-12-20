@@ -7,7 +7,7 @@ export default function VendorCardExample() {
         id="v1"
         name="Artisan Bakery"
         bio="Handcrafted sourdough and pastries made with locally sourced organic ingredients. Baking fresh daily since 2020."
-        city="Fort Myers"
+        city="SWFL"
         categories={["Bakery", "Organic", "Artisan"]}
         isVerified={true}
         followerCount={245}

@@ -37,7 +37,7 @@ export default function Membership() {
               Unlock Local Savings
             </h2>
             <p className="text-muted-foreground">
-              One membership. Hundreds of exclusive deals across Fort Myers.
+              One membership. Hundreds of exclusive deals across SWFL.
             </p>
           </div>
 

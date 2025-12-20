@@ -26,7 +26,7 @@ export default function Products() {
             </h1>
           </div>
           <p className="text-lg text-text/70 max-w-3xl">
-            Discover unique products from Fort Myers makers, farmers, and artisans. Every purchase supports local businesses and keeps our community thriving.
+            Discover unique products from SWFL makers, farmers, and artisans. Every purchase supports local businesses and keeps our community thriving.
           </p>
         </div>
       </div>

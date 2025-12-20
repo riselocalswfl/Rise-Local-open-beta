@@ -7,7 +7,7 @@ export default function EventCardExample() {
         id="e1"
         title="Kombucha Brewing Workshop"
         dateTime="2025-10-15T14:00:00"
-        location="Community Center, Fort Myers"
+        location="Community Center, SWFL"
         category="Workshop"
         description="Learn the art of brewing kombucha from scratch. We'll cover fermentation techniques, flavor combinations, and health benefits."
         ticketsAvailable={15}

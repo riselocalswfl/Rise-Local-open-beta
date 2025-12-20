@@ -45,7 +45,7 @@ export default function Services() {
             </h1>
           </div>
           <p className="text-lg text-text/70 max-w-3xl">
-            Browse local services in Fort Myers. From home repairs to wellness coaching, find the perfect service for your needs from verified local professionals.
+            Browse local services in SWFL. From home repairs to wellness coaching, find the perfect service for your needs from verified local professionals.
           </p>
         </div>
       </div>

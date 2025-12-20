@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import type { Deal, Vendor } from "@shared/schema";
 
-const FORT_MYERS_DEFAULT = { lat: 26.6406, lng: -81.8723 };
+const SWFL_DEFAULT = { lat: 26.6406, lng: -81.8723 };
 
 interface DealWithDistance extends Deal {
   distanceMiles?: number;
@@ -80,17 +80,17 @@ export default function DealsPage() {
     };
   }, []);
 
-  // Use default Fort Myers location as fallback
+  // Use default SWFL location as fallback
   const useDefaultLocation = () => {
     setLocation({
       status: "granted",
-      coords: FORT_MYERS_DEFAULT,
+      coords: SWFL_DEFAULT,
     });
     setNearMeEnabled(true);
     setCity("all");
     toast({
-      title: "Using Fort Myers area",
-      description: "Showing deals near downtown Fort Myers",
+      title: "Using SWFL area",
+      description: "Showing deals near SWFL",
     });
   };
 
@@ -113,14 +113,14 @@ export default function DealsPage() {
     locationTimeoutRef.current = setTimeout(() => {
       setLocation((prev) => {
         if (prev.status === "requesting") {
-          // Use Fort Myers default when geolocation times out
+          // Use SWFL default when geolocation times out
           toast({
-            title: "Using Fort Myers area",
-            description: "Couldn't get your exact location. Showing deals near Fort Myers.",
+            title: "Using SWFL area",
+            description: "Couldn't get your exact location. Showing deals near SWFL.",
           });
           return {
             status: "granted",
-            coords: FORT_MYERS_DEFAULT,
+            coords: SWFL_DEFAULT,
           };
         }
         return prev;
@@ -160,15 +160,15 @@ export default function DealsPage() {
         // Use default location on any error
         setLocation({
           status: "granted",
-          coords: FORT_MYERS_DEFAULT,
+          coords: SWFL_DEFAULT,
         });
         setNearMeEnabled(true);
         setCity("all");
         toast({
-          title: "Using Fort Myers area",
+          title: "Using SWFL area",
           description: error.code === 1 
-            ? "Location access denied. Showing deals near Fort Myers." 
-            : "Couldn't get your location. Showing deals near Fort Myers.",
+            ? "Location access denied. Showing deals near SWFL." 
+            : "Couldn't get your location. Showing deals near SWFL.",
         });
       },
       { timeout: 5000, maximumAge: 300000 } // 5 second timeout, cache for 5 minutes

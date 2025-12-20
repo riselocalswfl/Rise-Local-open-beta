@@ -130,7 +130,7 @@ export default function LiveLocal() {
             Services
           </h1>
           <p className="text-xl text-primary-foreground/90 max-w-2xl" data-testid="text-hero-tagline">
-            Connect with trusted Fort Myers service providers for your home, health, and lifestyle needs.
+            Connect with trusted SWFL service providers for your home, health, and lifestyle needs.
           </p>
         </div>
       </div>

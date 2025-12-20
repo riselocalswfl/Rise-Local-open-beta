@@ -15,7 +15,7 @@ export default function SpotlightBanner({ title, body, city }: SpotlightBannerPr
     <div className="relative h-[60vh] md:h-[70vh] overflow-hidden rounded-lg">
       <img
         src={heroImage}
-        alt="Fort Myers Local Market"
+        alt="SWFL Local Market"
         className="absolute inset-0 w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />

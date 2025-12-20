@@ -71,7 +71,7 @@ export default function EventsLayout() {
         {activeTab === "browse" && (
           <div className="mb-6">
             <h1 className="text-3xl font-playfair font-bold mb-2">Browse Events</h1>
-            <p className="text-muted-foreground">Discover local events in Fort Myers</p>
+            <p className="text-muted-foreground">Discover local events in SWFL</p>
           </div>
         )}
 

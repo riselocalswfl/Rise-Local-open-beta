@@ -57,7 +57,7 @@ export default function Auth() {
                 Shop local. Sell local.
               </h1>
               <p className="text-lg text-white/90 drop-shadow" data-testid="text-auth-subheadline">
-                Deals from Fort Myers businesses
+                Deals from SWFL businesses
               </p>
             </div>
 

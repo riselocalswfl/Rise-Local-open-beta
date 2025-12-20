@@ -25,7 +25,7 @@ export default function EatLocal() {
             </h1>
           </div>
           <p className="text-lg text-text/70 max-w-3xl">
-            Discover Fort Myers restaurants partnering with local farms and makers. Every meal supports our farming community and brings you the freshest, locally-sourced ingredients.
+            Discover SWFL restaurants partnering with local farms and makers. Every meal supports our farming community and brings you the freshest, locally-sourced ingredients.
           </p>
         </div>
       </div>

@@ -9,9 +9,9 @@ import heroImage from "@assets/generated_images/Fort_Myers_local_market_hero_092
 export default function Spotlight() {
   // todo: remove mock functionality
   const spotlightData = {
-    title: "Discover Fort Myers Local Treasures",
-    body: "Fort Myers is home to a thriving community of artisans, farmers, and local makers who bring passion and craftsmanship to everything they create. Our spotlight celebrates the diverse voices and talents that make our local community unique. From organic bakeries to sustainable plant nurseries, each featured business represents the heart and soul of our neighborhood. Join us in supporting local and discover deals that save you money while connecting you to your neighbors.",
-    city: "Fort Myers",
+    title: "Discover SWFL Local Treasures",
+    body: "Southwest Florida is home to a thriving community of artisans, farmers, and local makers who bring passion and craftsmanship to everything they create. Our spotlight celebrates the diverse voices and talents that make our local community unique. From organic bakeries to sustainable plant nurseries, each featured business represents the heart and soul of our neighborhood. Join us in supporting local and discover deals that save you money while connecting you to your neighbors.",
+    city: "SWFL",
   };
 
   const featuredVendors = [
@@ -19,7 +19,7 @@ export default function Spotlight() {
       id: "v1",
       name: "Artisan Bakery",
       bio: "Handcrafted sourdough and pastries made with locally sourced organic ingredients. Baking fresh daily since 2020.",
-      city: "Fort Myers",
+      city: "SWFL",
       values: ["Organic", "Locally Sourced"],
       isVerified: true,
       followerCount: 245,
@@ -28,7 +28,7 @@ export default function Spotlight() {
       id: "v2",
       name: "Tropical Kombucha Co.",
       bio: "Small-batch fermented beverages with tropical flavors. Probiotic-rich and locally brewed.",
-      city: "Fort Myers",
+      city: "SWFL",
       values: ["Health Focused", "Organic"],
       isVerified: true,
       followerCount: 189,
@@ -40,7 +40,7 @@ export default function Spotlight() {
       id: "e1",
       title: "Kombucha Brewing Workshop",
       dateTime: "2025-10-15T14:00:00",
-      location: "Community Center, Fort Myers",
+      location: "Community Center, SWFL",
       category: "Workshop",
       description: "Learn the art of brewing kombucha from scratch. We'll cover fermentation techniques, flavor combinations, and health benefits.",
       ticketsAvailable: 15,
@@ -91,14 +91,14 @@ export default function Spotlight() {
         <div className="relative h-[50vh] overflow-hidden">
           <img
             src={heroImage}
-            alt="Fort Myers Spotlight"
+            alt="SWFL Spotlight"
             className="absolute inset-0 w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/20" />
           <div className="relative h-full flex flex-col justify-end p-6 md:p-12 max-w-7xl mx-auto">
             <Badge className="mb-4 bg-chart-3 text-white border-0 w-fit">
               <Star className="w-3 h-3 mr-1" />
-              Fort Myers Spotlight
+              SWFL Spotlight
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
               {spotlightData.title}

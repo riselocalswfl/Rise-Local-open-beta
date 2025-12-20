@@ -94,7 +94,7 @@ export default function Home() {
             <div>
               <h2 className="font-heading text-2xl sm:text-3xl lg:text-4xl text-text font-bold">Dine Local</h2>
               <p className="text-text/70 mt-1 text-sm sm:text-base">
-                Explore Fort Myers restaurants with locally-sourced ingredients
+                Explore SWFL restaurants with locally-sourced ingredients
               </p>
             </div>
             <Link href="/eat-local" data-testid="link-view-all-restaurants">

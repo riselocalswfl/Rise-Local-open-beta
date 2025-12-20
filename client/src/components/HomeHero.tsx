@@ -49,7 +49,7 @@ export default function HomeHero() {
         <div className="relative h-[250px] sm:h-[300px] md:h-auto md:min-h-[400px] order-first md:order-last">
           <img
             src={fortMyersImg}
-            alt="Fort Myers local market"
+            alt="SWFL local market"
             className="absolute inset-0 h-full w-full object-cover"
           />
         </div>
