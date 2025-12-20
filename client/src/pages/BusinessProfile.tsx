@@ -7,10 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { BadgeCheck, MapPin, Phone, Mail, Globe, Clock, MessageSquare } from "lucide-react";
+import { BadgeCheck, MapPin, Phone, Mail, Globe, Clock, MessageSquare, Tag, Lock, Percent, DollarSign, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Vendor, Product } from "@shared/schema";
+import type { Vendor, Product, VendorDeal } from "@shared/schema";
 
 interface VendorWithDetails extends Omit<Vendor, 'contactEmail' | 'contactPhone'> {
   products?: Product[];
@@ -47,7 +47,7 @@ export default function BusinessProfile() {
     },
   });
 
-  const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails | null; deals: any[]; isHidden?: boolean; message?: string }>({
+  const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails | null; deals: VendorDeal[]; isHidden?: boolean; message?: string }>({
     queryKey: ["/api/vendors", vendorId],
     queryFn: async () => {
       const res = await fetch(`/api/vendors/${vendorId}`);
@@ -58,8 +58,20 @@ export default function BusinessProfile() {
   });
   
   const vendor = vendorData?.vendor;
+  const deals = vendorData?.deals || [];
   const isHidden = vendorData?.isHidden;
   const hiddenMessage = vendorData?.message;
+  
+  // Get deal type icon
+  const getDealTypeIcon = (dealType: string) => {
+    switch (dealType) {
+      case "percent_off": return Percent;
+      case "amount_off": return DollarSign;
+      case "bogo": return Gift;
+      case "free_item": return Gift;
+      default: return Tag;
+    }
+  };
 
   const { data: products } = useQuery<Product[]>({
     queryKey: [`/api/vendors/${vendorId}/products`],
@@ -176,6 +188,59 @@ export default function BusinessProfile() {
               <p className="text-sm text-muted-foreground" data-testid="text-bio">
                 {vendor.bio}
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Deals Section */}
+        {deals.length > 0 ? (
+          <Card data-testid="card-deals">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Deals</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {deals.map((deal) => {
+                const DealIcon = getDealTypeIcon(deal.dealType);
+                return (
+                  <Link key={deal.id} href={`/deals/${deal.id}`}>
+                    <div 
+                      className="p-3 bg-muted/50 rounded-lg hover-elevate active-elevate-2 cursor-pointer"
+                      data-testid={`deal-${deal.id}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <DealIcon className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-sm truncate" data-testid={`deal-title-${deal.id}`}>
+                              {deal.title}
+                            </h4>
+                            {deal.isPassLocked && (
+                              <Lock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2" data-testid={`deal-description-${deal.id}`}>
+                            {deal.description}
+                          </p>
+                          {deal.savingsAmount && deal.savingsAmount > 0 && (
+                            <Badge variant="secondary" className="mt-2 text-xs" data-testid={`deal-savings-${deal.id}`}>
+                              Save ${deal.savingsAmount}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card data-testid="card-no-deals">
+            <CardContent className="p-6 text-center">
+              <Tag className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No active deals at this time</p>
             </CardContent>
           </Card>
         )}

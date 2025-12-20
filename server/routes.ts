@@ -774,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Vendor profile not found" });
       }
 
-      // Map deals to VendorDeal type
+      // Map deals to VendorDeal type (vendor sees all their own deals)
       const vendorDeals: VendorDeal[] = result.deals.map(deal => ({
         id: deal.id,
         title: deal.title,
@@ -783,6 +783,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tier: deal.tier,
         category: deal.category,
         isActive: deal.isActive,
+        savingsAmount: deal.savingsAmount,
+        isPassLocked: deal.isPassLocked,
+        finePrint: deal.finePrint,
+        valueLabel: deal.valueLabel,
       }));
 
       res.json({
@@ -984,16 +988,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Map deals to VendorDeal type
-      const vendorDeals: VendorDeal[] = result.deals.map(deal => ({
-        id: deal.id,
-        title: deal.title,
-        description: deal.description,
-        dealType: deal.dealType,
-        tier: deal.tier,
-        category: deal.category,
-        isActive: deal.isActive,
-      }));
+      // Filter and map deals - only return published and active deals for public profile
+      const vendorDeals: VendorDeal[] = result.deals
+        .filter(deal => deal.status === 'published' && deal.isActive)
+        .map(deal => ({
+          id: deal.id,
+          title: deal.title,
+          description: deal.description,
+          dealType: deal.dealType,
+          tier: deal.tier,
+          category: deal.category,
+          isActive: deal.isActive,
+          savingsAmount: deal.savingsAmount,
+          isPassLocked: deal.isPassLocked,
+          finePrint: deal.finePrint,
+          valueLabel: deal.valueLabel,
+        }));
 
       res.json({
         vendor: result.vendor,
