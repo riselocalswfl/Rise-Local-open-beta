@@ -16,19 +16,23 @@ export default function Businesses() {
     queryKey: ["/api/vendors"],
   });
 
-  const filteredVendors = vendors?.filter((vendor) =>
-    vendor.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    vendor.bio?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    vendor.city?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredVendors = vendors?.filter((vendor) => {
+    const name = vendor.businessName || "";
+    const bio = vendor.bio || "";
+    const city = vendor.city || "";
+    const query = searchQuery.toLowerCase();
+    return name.toLowerCase().includes(query) ||
+      bio.toLowerCase().includes(query) ||
+      city.toLowerCase().includes(query);
+  });
 
-  const getVendorTypeBadge = (type: "shop" | "dine" | "service") => {
-    const badges = {
-      shop: { label: "Shop", variant: "default" as const },
-      dine: { label: "Dine", variant: "secondary" as const },
-      service: { label: "Service", variant: "outline" as const },
+  const getVendorTypeBadge = (type: string | null | undefined) => {
+    const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+      shop: { label: "Shop", variant: "default" },
+      dine: { label: "Dine", variant: "secondary" },
+      service: { label: "Service", variant: "outline" },
     };
-    return badges[type];
+    return badges[type || "shop"] || badges.shop;
   };
 
   return (
@@ -71,6 +75,8 @@ export default function Businesses() {
           ) : (
             filteredVendors?.map((vendor) => {
               const typeBadge = getVendorTypeBadge(vendor.vendorType);
+              const businessName = vendor.businessName || "Business";
+              const city = vendor.city || "SWFL";
               
               return (
                 <Link key={vendor.id} href={`/businesses/${vendor.id}`}>
@@ -78,14 +84,14 @@ export default function Businesses() {
                     <CardContent className="p-4">
                       <div className="flex gap-3">
                         <Avatar className="h-14 w-14 flex-shrink-0">
-                          <AvatarImage src={vendor.logoUrl} alt={vendor.businessName} />
-                          <AvatarFallback>{vendor.businessName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          <AvatarImage src={vendor.logoUrl || undefined} alt={businessName} />
+                          <AvatarFallback>{businessName.substring(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <h3 className="font-semibold" data-testid={`text-business-name-${vendor.id}`}>
-                                {vendor.businessName}
+                                {businessName}
                               </h3>
                               {vendor.isVerified && (
                                 <BadgeCheck className="h-4 w-4 text-primary" data-testid={`icon-verified-${vendor.id}`} />
@@ -102,7 +108,7 @@ export default function Businesses() {
                           )}
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <MapPin className="h-3 w-3" />
-                            <span data-testid={`text-city-${vendor.id}`}>{vendor.city}, FL</span>
+                            <span data-testid={`text-city-${vendor.id}`}>{city}, FL</span>
                           </div>
                         </div>
                       </div>
