@@ -4423,30 +4423,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/deals/:id/redeem - Redeem a deal with vendor PIN verification
-  app.post("/api/deals/:id/redeem", async (req: any, res) => {
+  // POST /api/deals/:id/redeem - Issue a redemption code for a deal (customer endpoint)
+  app.post("/api/deals/:id/redeem", isAuthenticated, async (req: any, res) => {
     try {
       const dealId = req.params.id;
-      const { vendorPin } = req.body;
+      const userId = req.user.claims.sub;
 
-      if (!vendorPin) {
-        return res.status(400).json({ error: "Vendor PIN is required" });
+      // Get the deal to find the vendorId
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Get optional user ID if authenticated
-      const userId = req.user?.claims?.sub;
+      if (!deal.isActive) {
+        return res.status(400).json({ error: "This deal is no longer active" });
+      }
 
-      const result = await storage.redeemDeal(dealId, vendorPin, userId);
+      // Check if deal is pass-locked and user has pass
+      if (deal.isPassLocked) {
+        const user = await storage.getUser(userId);
+        if (!user?.isPassMember) {
+          return res.status(403).json({ error: "This deal requires a Rise Local Pass membership" });
+        }
+      }
+
+      // Issue the redemption code
+      const result = await storage.issueDealCode(dealId, deal.vendorId, userId);
       
       if (!result.success) {
         return res.status(400).json({ error: result.message });
       }
 
-      console.log("[DEALS] Deal redeemed:", dealId, "user:", userId || "anonymous");
-      res.json(result);
+      console.log("[DEALS] Code issued for deal:", dealId, "user:", userId, "code:", result.code);
+      res.json({
+        success: true,
+        message: result.message,
+        code: result.code,
+        expiresAt: result.expiresAt,
+        redemptionId: result.redemption?.id,
+      });
     } catch (error) {
-      console.error("Error redeeming deal:", error);
-      res.status(500).json({ error: "Failed to redeem deal" });
+      console.error("Error issuing redemption code:", error);
+      res.status(500).json({ error: "Failed to issue redemption code" });
+    }
+  });
+
+  // GET /api/me/redemptions - Get current user's redemption history
+  app.get("/api/me/redemptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const redemptions = await storage.getUserRedemptions(userId);
+      
+      // Enrich with deal info
+      const enrichedRedemptions = await Promise.all(
+        redemptions.map(async (r) => {
+          const deal = await storage.getDealById(r.dealId);
+          return {
+            ...r,
+            deal: deal ? { id: deal.id, title: deal.title, imageUrl: deal.imageUrl || deal.heroImageUrl } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedRedemptions);
+    } catch (error) {
+      console.error("Error fetching user redemptions:", error);
+      res.status(500).json({ error: "Failed to fetch redemptions" });
+    }
+  });
+
+  // POST /api/vendor/redemptions/verify - Vendor verifies a redemption code
+  app.post("/api/vendor/redemptions/verify", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { code } = req.body;
+
+      if (!code) {
+        return res.status(400).json({ error: "Redemption code is required" });
+      }
+
+      // Verify user is a vendor
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(403).json({ error: "Only vendors can verify redemption codes" });
+      }
+
+      // Verify the code
+      const result = await storage.verifyRedemptionCode(code.toUpperCase(), vendor.id);
+
+      if (!result.success) {
+        console.log("[VENDOR] Failed code verification:", code, "vendor:", vendor.id, "reason:", result.message);
+        return res.status(400).json({ error: result.message });
+      }
+
+      // Get deal info for the response
+      const deal = result.redemption ? await storage.getDealById(result.redemption.dealId) : null;
+
+      console.log("[VENDOR] Code verified:", code, "vendor:", vendor.id, "deal:", result.redemption?.dealId);
+      res.json({
+        success: true,
+        message: result.message,
+        redemption: result.redemption,
+        deal: deal ? { id: deal.id, title: deal.title } : null,
+      });
+    } catch (error) {
+      console.error("Error verifying redemption code:", error);
+      res.status(500).json({ error: "Failed to verify redemption code" });
+    }
+  });
+
+  // GET /api/vendor/redemptions - Get vendor's redemption history
+  app.get("/api/vendor/redemptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Verify user is a vendor
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(403).json({ error: "Only vendors can access this endpoint" });
+      }
+
+      const redemptions = await storage.getVendorRedemptions(vendor.id);
+      
+      // Enrich with deal info
+      const enrichedRedemptions = await Promise.all(
+        redemptions.map(async (r) => {
+          const deal = await storage.getDealById(r.dealId);
+          return {
+            ...r,
+            deal: deal ? { id: deal.id, title: deal.title } : null,
+          };
+        })
+      );
+
+      res.json(enrichedRedemptions);
+    } catch (error) {
+      console.error("Error fetching vendor redemptions:", error);
+      res.status(500).json({ error: "Failed to fetch redemptions" });
     }
   });
 
@@ -4745,44 +4858,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/vendor/deals/:dealId/redeem - Vendor redeems a deal by entering customer's code
+  // POST /api/vendor/deals/:dealId/redeem - Legacy endpoint, redirects to unified verify
+  // Use POST /api/vendor/redemptions/verify instead
   app.post("/api/vendor/deals/:dealId/redeem", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { dealId } = req.params;
       const { code } = req.body;
 
       if (!code) {
         return res.status(400).json({ error: "Redemption code is required" });
       }
 
-      const deal = await storage.getDealById(dealId);
-      if (!deal) {
-        return res.status(404).json({ error: "Deal not found" });
-      }
-
-      // Verify user owns the vendor that owns this deal
+      // Verify user is a vendor
       const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== deal.vendorId) {
-        return res.status(403).json({ error: "You can only redeem codes for your own deals" });
+      if (!vendor) {
+        return res.status(403).json({ error: "Only vendors can verify redemption codes" });
       }
 
-      // Attempt to redeem the code
-      const result = await storage.redeemByCode(dealId, code, userId);
+      // Use the new unified verify method
+      const result = await storage.verifyRedemptionCode(code.toUpperCase(), vendor.id);
 
       if (!result.success) {
         return res.status(400).json({ error: result.message });
       }
 
-      console.log("[VENDOR DEALS] Deal redeemed via code:", code, "for deal:", dealId);
+      console.log("[VENDOR DEALS] Deal verified via code:", code, "vendor:", vendor.id);
       res.json({
         success: true,
         message: result.message,
         redemption: result.redemption,
       });
     } catch (error) {
-      console.error("Error redeeming deal:", error);
-      res.status(500).json({ error: "Failed to redeem deal" });
+      console.error("Error verifying deal:", error);
+      res.status(500).json({ error: "Failed to verify deal" });
     }
   });
 
