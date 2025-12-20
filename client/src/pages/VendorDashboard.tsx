@@ -126,8 +126,6 @@ const dealFormSchema = z.object({
     (val) => val === "" || val === undefined ? undefined : Number(val),
     z.number().int().min(0).optional()
   ),
-  startsAt: z.string().optional(),
-  endsAt: z.string().optional(),
   isActive: z.boolean().default(false),
   status: z.enum(["draft", "published", "paused", "expired"]).default("draft"),
   isPassLocked: z.boolean().default(false),
@@ -2422,8 +2420,6 @@ function DealForm({
       maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
       cooldownHours: defaultValues?.cooldownHours || undefined,
       maxRedemptionsTotal: defaultValues?.maxRedemptionsTotal || undefined,
-      startsAt: defaultValues?.startsAt ? new Date(defaultValues.startsAt).toISOString().slice(0, 16) : "",
-      endsAt: defaultValues?.endsAt ? new Date(defaultValues.endsAt).toISOString().slice(0, 16) : "",
       isActive: defaultValues?.isActive ?? false,
       status: defaultStatus,
       isPassLocked: defaultValues?.isPassLocked ?? false,
@@ -2639,49 +2635,6 @@ function DealForm({
                       value={field.value || ""}
                       onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                       data-testid="input-max-total"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
-
-        <Separator />
-
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Schedule</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="startsAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Starts At</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="datetime-local"
-                      {...field}
-                      data-testid="input-starts-at"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="endsAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ends At</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="datetime-local"
-                      {...field}
-                      data-testid="input-ends-at"
                     />
                   </FormControl>
                   <FormMessage />
