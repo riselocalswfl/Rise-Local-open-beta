@@ -1,0 +1,110 @@
+You are working on the Rise Local app. Right now, vendors can create deals in Manage Deals, but those deals are not reliably showing up across the rest of the app (Discover, Browse, and Business Profile page).
+
+Goal: Make deals created/edited/paused/deleted in the vendor dashboard become the single source of truth and automatically reflect everywhere in the app with consistent filtering, sorting, and real-time updates.
+
+Scope: Pages that must show deals
+	1.	Discover page
+	•	Show a feed/section of deals (optionally “Newest” or “Near You” depending on current design).
+	2.	Browse page
+	•	Show all deals with filters (category, location, tags/value labels if present).
+	3.	Business Profile page
+	•	Show only deals for that specific business (vendor).
+	•	Deals must match the vendor’s actual profile ID (no mismatches).
+
+⸻
+
+Data model requirements
+
+1) Database tables / schema (Drizzle + Postgres)
+
+Ensure we have:
+	•	vendors table (or equivalent vendor profile table)
+	•	deals table with at minimum:
+	•	id (uuid)
+	•	vendorId (FK → vendors.id)
+	•	title
+	•	description (optional)
+	•	price or value (optional, but consistent)
+	•	category
+	•	locationCity or locationId
+	•	tags (array or join table)
+	•	status enum: draft | published | paused
+	•	startDate, endDate (optional)
+	•	createdAt, updatedAt
+
+Important: The vendorId stored on the deal must be the same vendor profile ID used by the Business Profile page.
+
+2) Canonical API endpoints (Express)
+
+Create/confirm REST endpoints:
+	•	GET /api/deals
+	•	supports query params: status=published, category=, city=, vendorId=, search=, sort=
+	•	default returns ONLY published deals for consumer pages
+	•	GET /api/deals/:id
+	•	POST /api/vendor/deals (vendor only)
+	•	PATCH /api/vendor/deals/:id (vendor only)
+	•	DELETE /api/vendor/deals/:id (vendor only)
+	•	POST /api/vendor/deals/:id/pause OR PATCH with status
+	•	POST /api/vendor/deals/:id/publish OR PATCH with status
+
+Add server-side validation so consumers never see paused/draft deals.
+
+⸻
+
+Frontend requirements (React + TanStack Query)
+
+1) Create ONE shared data hook
+
+Create a hook like:
+	•	client/src/hooks/useDeals.ts
+that wraps TanStack Query and fetches from the canonical endpoint.
+
+Examples of query keys:
+	•	['deals', filters] for Discover/Browse
+	•	['deals', { vendorId }] for vendor profile
+	•	['vendorDeals'] for vendor dashboard (includes paused/draft)
+
+2) Update all pages to use the same hook
+
+Refactor:
+	•	Discover deals section to use useDeals({ status: 'published', sort: 'newest', ... })
+	•	Browse page to use useDeals({ status: 'published', category, city, search })
+	•	Business Profile page to use useDeals({ status: 'published', vendorId })
+
+No page should use mocked data or separate deal-fetching logic.
+
+3) Ensure mutations invalidate queries
+
+When a vendor:
+	•	creates a deal
+	•	edits a deal
+	•	pauses/resumes
+	•	deletes
+The app must immediately update everywhere by invalidating:
+	•	['deals']
+	•	['deals', { vendorId }]
+	•	['vendorDeals']
+Use queryClient.invalidateQueries() appropriately.
+
+⸻
+
+Vendor ownership + linking requirements
+	•	When vendor creates a deal, backend must set vendorId based on the authenticated vendor account (not from client input alone).
+	•	Business profile route /vendor/:id must fetch vendor info and show deals with vendorId = :id
+	•	Add safeguards to prevent deals from accidentally connecting to the wrong vendor.
+
+⸻
+
+Output required
+	1.	List exact files changed (backend + frontend).
+	2.	Confirm the pages now display:
+	•	New deals appear in Discover/Browse immediately after publish
+	•	Vendor’s business profile always shows only that vendor’s deals
+	•	Paused/draft never appear to consumers
+	3.	Add a quick test checklist:
+	•	Create deal → publish → appears on Discover/Browse/Profile
+	•	Pause deal → disappears from consumer pages
+	•	Edit deal → updates everywhere
+	•	Delete deal → removed everywhere
+
+Implement the above fully in code.
