@@ -56,7 +56,6 @@ type LocationState = {
 const FILTER_CHIPS = [
   { id: "all", label: "All Deals" },
   { id: "memberOnly", label: "Member-Only", icon: Lock },
-  { id: "free", label: "Free Deals" },
 ];
 
 // CATEGORY_CHIPS are now fetched from the API
@@ -345,14 +344,12 @@ export default function Discover() {
     return dealsData.map(deal => transformDealToRiseLocal(deal, userCoords.lat, userCoords.lng));
   }, [dealsData, userCoords.lat, userCoords.lng]);
 
-  // Apply top filter (All, Member-Only, Free)
+  // Apply top filter (All, Member-Only)
   const filteredDeals = useMemo(() => {
     let deals = allTransformedDeals;
     
     if (selectedFilter === "memberOnly") {
       deals = deals.filter(d => d.memberOnly);
-    } else if (selectedFilter === "free") {
-      deals = deals.filter(d => !d.memberOnly);
     }
     
     // Apply category filter if selected
