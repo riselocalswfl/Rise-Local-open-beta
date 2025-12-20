@@ -1,4 +1,4 @@
-import { Menu, Home, ShoppingBag, Store, UtensilsCrossed, Wrench, Calendar, Heart, UserCircle, MessageSquare, LogOut } from "lucide-react";
+import { Menu, Home, Store, UtensilsCrossed, Wrench, Calendar, Heart, UserCircle, MessageSquare, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +15,7 @@ import {
 } from "@/components/ui/sheet";
 
 const publicNavigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Discover", href: "/discover", icon: Home },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
@@ -25,8 +24,7 @@ const publicNavigationItems = [
 ];
 
 const buyerNavigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Discover", href: "/discover", icon: Home },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
@@ -36,8 +34,7 @@ const buyerNavigationItems = [
 ];
 
 const vendorNavigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Discover", href: "/discover", icon: Home },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },
@@ -47,8 +44,7 @@ const vendorNavigationItems = [
 ];
 
 const restaurantNavigationItems = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Shop", href: "/products", icon: ShoppingBag },
+  { name: "Discover", href: "/discover", icon: Home },
   { name: "Dine", href: "/eat-local", icon: UtensilsCrossed },
   { name: "Services", href: "/services", icon: Wrench },
   { name: "Events", href: "/events", icon: Calendar },

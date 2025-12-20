@@ -145,12 +145,9 @@ function Router() {
       <Route path="/welcome">
         {() => <Redirect to="/start" />}
       </Route>
+      {/* Legacy Products - Redirect to Discover (Rise Local is deals-focused, not marketplace) */}
       <Route path="/products">
-        {() => (
-          <AppShell>
-            <Products />
-          </AppShell>
-        )}
+        {() => <Redirect to="/discover" />}
       </Route>
       {/* Legacy vendor routes - redirect to businesses */}
       <Route path="/vendors">

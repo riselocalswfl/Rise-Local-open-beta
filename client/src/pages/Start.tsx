@@ -29,7 +29,8 @@ export default function Start() {
     const returnTo = sessionStorage.getItem("returnTo");
     
     // Gate routes that should never be returnTo destinations
-    const gateRoutes = ["/auth", "/start", "/onboarding", "/welcome"];
+    // Include legacy routes that now redirect elsewhere
+    const gateRoutes = ["/auth", "/start", "/onboarding", "/welcome", "/products", "/deals"];
     const isValidReturnTo = returnTo && !gateRoutes.includes(returnTo);
 
     if (!onboardingComplete) {
