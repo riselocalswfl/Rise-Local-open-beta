@@ -7,28 +7,73 @@ export interface DealFilters {
   tier?: string;
   isActive?: boolean;
   vendorId?: string;
+  status?: string;
+  includeAll?: boolean;
+  lat?: number;
+  lng?: number;
+  radiusMiles?: number;
+}
+
+export const DEALS_QUERY_KEY = "/api/deals";
+
+function buildDealsEndpoint(filters?: DealFilters): string {
+  const params = new URLSearchParams();
+  
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.city) params.set("city", filters.city);
+  if (filters?.tier) params.set("tier", filters.tier);
+  if (filters?.isActive !== undefined) params.set("isActive", String(filters.isActive));
+  if (filters?.vendorId) params.set("vendorId", filters.vendorId);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.includeAll) params.set("includeAll", "true");
+  if (filters?.lat !== undefined) params.set("lat", String(filters.lat));
+  if (filters?.lng !== undefined) params.set("lng", String(filters.lng));
+  if (filters?.radiusMiles !== undefined) params.set("radiusMiles", String(filters.radiusMiles));
+  
+  const queryString = params.toString();
+  return queryString ? `/api/deals?${queryString}` : "/api/deals";
+}
+
+export function buildDealsQueryKey(filters?: DealFilters): (string | DealFilters | undefined)[] {
+  return [DEALS_QUERY_KEY, filters];
 }
 
 export function useDeals(filters?: DealFilters) {
-  const queryParams = new URLSearchParams();
+  const endpoint = buildDealsEndpoint(filters);
   
-  if (filters?.category) queryParams.set("category", filters.category);
-  if (filters?.city) queryParams.set("city", filters.city);
-  if (filters?.tier) queryParams.set("tier", filters.tier);
-  if (filters?.isActive !== undefined) queryParams.set("isActive", String(filters.isActive));
-  if (filters?.vendorId) queryParams.set("vendorId", filters.vendorId);
-
-  const queryString = queryParams.toString();
-  const endpoint = queryString ? `/api/deals?${queryString}` : "/api/deals";
-
   return useQuery<Deal[]>({
-    queryKey: ["/api/deals", filters],
+    queryKey: buildDealsQueryKey(filters),
+    queryFn: async () => {
+      const res = await fetch(endpoint, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch deals");
+      return res.json();
+    },
   });
 }
 
 export function useDeal(id: string) {
   return useQuery<Deal>({
-    queryKey: ["/api/deals", id],
+    queryKey: [DEALS_QUERY_KEY, id],
+    queryFn: async () => {
+      const res = await fetch(`/api/deals/${id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch deal");
+      return res.json();
+    },
     enabled: !!id,
+  });
+}
+
+export function useVendorDeals(vendorId: string | undefined, enabled: boolean = true) {
+  return useDeals(
+    vendorId && enabled
+      ? { vendorId, includeAll: true }
+      : undefined
+  );
+}
+
+export function usePublishedDeals(filters?: Omit<DealFilters, 'status' | 'includeAll'>) {
+  return useDeals({
+    ...filters,
+    status: 'published',
   });
 }
