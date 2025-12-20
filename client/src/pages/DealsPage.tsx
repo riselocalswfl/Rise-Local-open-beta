@@ -298,7 +298,7 @@ export default function DealsPage() {
           
           {/* Trust Line */}
           <p className="text-sm text-white/70 mt-4">
-            Free for locals • Cancel anytime
+            Supporting SWFL businesses
           </p>
         </div>
       </section>

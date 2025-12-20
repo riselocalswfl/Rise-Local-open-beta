@@ -114,7 +114,7 @@ const dealFormSchema = z.object({
   valueLabel: z.string().optional(),
   category: z.string().optional(),
   city: z.string().default("Fort Myers"),
-  tier: z.enum(["free", "member", "standard"]).default("free"),
+  tier: z.enum(["standard", "member"]).default("standard"),
   dealType: z.enum(["bogo", "percent", "addon"]),
   discountType: z.enum(["percent", "fixed", "bogo", "free_item"]).optional(),
   discountValue: z.coerce.number().optional(),
@@ -2268,10 +2268,12 @@ function DealForm({
   isPending: boolean;
   defaultValues?: Deal | null;
 }) {
-  const validTiers: DealFormValues["tier"][] = ["free", "member", "standard"];
-  const defaultTier: DealFormValues["tier"] = defaultValues?.tier && validTiers.includes(defaultValues.tier as any) 
-    ? defaultValues.tier as DealFormValues["tier"]
-    : "free";
+  const validTiers: DealFormValues["tier"][] = ["standard", "member"];
+  // Map legacy "free" tier to "standard"
+  const mappedTier = defaultValues?.tier === "free" ? "standard" : defaultValues?.tier;
+  const defaultTier: DealFormValues["tier"] = mappedTier && validTiers.includes(mappedTier as any) 
+    ? mappedTier as DealFormValues["tier"]
+    : "standard";
   
   const validStatuses: DealFormValues["status"][] = ["draft", "published", "paused", "expired"];
   const defaultStatus: DealFormValues["status"] = defaultValues?.status && validStatuses.includes(defaultValues.status as any)
@@ -2429,9 +2431,8 @@ function DealForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="free">Free (All Users)</SelectItem>
+                    <SelectItem value="standard">Available to All</SelectItem>
                     <SelectItem value="member">Members Only</SelectItem>
-                    <SelectItem value="standard">Standard</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

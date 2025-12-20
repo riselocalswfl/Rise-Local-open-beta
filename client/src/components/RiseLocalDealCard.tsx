@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCallback } from "react";
 
-export type DealType = "memberOnly" | "free" | "bogo" | "value" | "new";
+export type DealType = "memberOnly" | "standard" | "bogo" | "value" | "new";
 
 export interface RiseLocalDeal {
   id: number;

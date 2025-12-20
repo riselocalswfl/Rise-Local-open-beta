@@ -203,9 +203,9 @@ export function VendorDealCard({
 
           {/* Tag pills row */}
           <div className="flex items-center flex-wrap gap-1.5">
-            {deal.tier && (
+            {deal.tier === "member" && (
               <Badge variant="outline" className="text-xs">
-                {deal.tier === "member" ? "Members Only" : deal.tier === "free" ? "Free" : "Standard"}
+                Members Only
               </Badge>
             )}
             <Badge variant="outline" className="text-xs">

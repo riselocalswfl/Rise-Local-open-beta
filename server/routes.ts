@@ -4338,7 +4338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           vendorType: vendor.vendorType,
         } : null,
         isExpired: deal.endsAt ? new Date(deal.endsAt) < now : false,
-        isLocked: deal.isPassLocked && deal.tier !== 'free',
+        isLocked: deal.isPassLocked && deal.tier !== 'standard' && deal.tier !== 'free',
         redeemAnytime: !deal.endsAt,
       };
       
