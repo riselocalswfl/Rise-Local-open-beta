@@ -43,7 +43,7 @@ export default function Header() {
         <nav className="mx-auto max-w-7xl px-4 md:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/deals" data-testid="link-home">
-            <BrandLogo className="mt-5" />
+            <BrandLogo className="mt-5" linkDisabled />
           </Link>
 
           {/* Desktop Navigation */}
