@@ -1,0 +1,141 @@
+You are working in the Rise Local codebase (React 18 + TypeScript + Vite + Tailwind + shadcn/ui + TanStack Query + wouter). I need you to redesign the Business Dashboard → Profile page to be mobile-first, structured, and appealing, AND ensure that everything a business enters shows up correctly on the public business profile that consumers see.
+
+Primary Goals
+	1.	Make the profile editor feel like a modern mobile app: clean sections, less scrolling, easy completion
+	2.	Add clear save/feedback UX: sticky save bar, dirty-state, toasts
+	3.	Enforce single source of truth so there is zero mismatch between dashboard data and public profile display
+
+⸻
+
+Non-Negotiable Sync Requirement
+
+Every field edited in the Business Dashboard must render on the public business profile page (consumer view) from the same saved backend data.
+	•	No hardcoded/duplicate fields
+	•	No placeholder text appearing publicly if a field exists
+	•	Public profile must hide empty fields/sections gracefully
+
+⸻
+
+Mobile-First Dashboard Redesign Requirements
+
+1) Convert the long form into sectioned Accordion layout
+
+Replace the long continuous form with a shadcn Accordion (only one open at a time by default) with section completion indicators (✅ when valid):
+
+Sections (recommended):
+	•	Basics (Business Name, Tagline, Bio)
+	•	Contact (Email, Phone, Website)
+	•	Location (Street optional, City, Zip)
+	•	Social Links (Instagram, TikTok, YouTube, Twitter/X)
+	•	Hours (fast controls)
+	•	Branding (Logo/Profile photo + Cover banner)
+	•	Values (toggle + slider + value tags)
+
+Add a “Continue” button per section to open the next section.
+
+2) Add a sticky bottom action bar (mobile)
+
+Add a sticky bottom bar on small screens:
+	•	Primary: Save Changes
+	•	Secondary: Preview Public Profile
+	•	Show “Saving…” / “Saved” feedback and toast notifications
+	•	Disable Save when no changes (dirty state)
+
+3) Improve mobile input ergonomics
+	•	Single-column layout, strong spacing rhythm, touch targets ≥44px
+	•	Use proper input types:
+	•	Phone: type="tel" + formatting (###-###-####)
+	•	Zip: inputMode="numeric"
+	•	Email: type="email"
+	•	Website: type="url"
+	•	Bio: show character count (keep 300 max)
+
+4) Make Social Links compact
+
+Render social links as a clean list (icon + label + input). Only show platforms that are filled on the public profile. Optional “Add social link” expansion is fine, but keep all supported fields.
+
+5) Hours editor must be fast
+
+Replace the current hours UX with:
+	•	Toggle: By appointment only (if enabled, hide daily hours and show a short note)
+	•	Otherwise each day includes:
+	•	Closed toggle
+	•	Start + End time inputs
+	•	Add shortcut: Copy Monday to all
+
+6) Branding uploads should look clean
+
+For Logo and Banner:
+	•	Responsive preview with rounded corners
+	•	Upload / Replace / Remove actions
+	•	Recommended sizes helper text
+	•	Prevent overflow on small screens
+
+7) Values section clearer
+	•	Toggle: “Display local sourcing percentage on public profile”
+	•	Slider shows live label: “Local sourcing: X%”
+	•	Value tags: add/remove chips, enter key adds, render as badges
+
+⸻
+
+Public Business Profile Display Requirements (Consumer View)
+
+Single Source of Truth + Field Parity
+
+Refactor the public business profile page to consume the same business profile data as the dashboard form (same schema/field names). Ensure all populated fields display publicly:
+
+Basics
+	•	Business name, tagline, bio
+
+Branding
+	•	Banner + logo shown in the header
+
+Values
+	•	Local sourcing percentage ONLY if the display toggle is ON
+	•	Value tags as visible chips/badges
+
+Contact & Location
+	•	City, Zip, Street address (only if provided)
+	•	Phone, Website
+	•	Email optional (only show if you add an “email visible” toggle; otherwise keep it hidden publicly)
+
+Social Links
+	•	Show only the icons/links for platforms that are filled in
+
+Hours
+	•	Show “By appointment only” when enabled
+	•	Otherwise render readable hours; hide closed days
+
+Public Profile Layout Order
+	1.	Banner + Logo
+	2.	Business name + tagline
+	3.	Bio
+	4.	Values (if enabled)
+	5.	Contact & location
+	6.	Hours
+	7.	Social links
+
+Never show on the public profile:
+	•	“N/A”
+	•	Placeholder text
+	•	Empty sections
+
+⸻
+
+Technical Requirements
+	•	Use shadcn/ui components (Accordion, Card, Button, Input, Textarea, Switch, Badge/Chip, Toast)
+	•	Keep existing backend fields and API routes intact (no breaking migrations unless required)
+	•	Use lightweight validation per section, but don’t block saving unrelated sections
+	•	Ensure end-to-end works: load existing values → edit → save → public profile reflects changes immediately
+
+⸻
+
+Deliverables
+	1.	Updated Business Dashboard → Profile page with the new accordion layout + sticky save bar
+	2.	Updated Public Business Profile page that renders the same saved data (field parity guaranteed)
+	3.	Shared types/interfaces and reusable components if needed:
+	•	BusinessProfileForm (edit)
+	•	PublicBusinessProfile (view)
+	•	ProfileHeader, ProfileSection, HoursEditor/Display, SocialLinks, ImageUploaderCard, ValuesDisplay
+
+Implement this cleanly without breaking other routes.
