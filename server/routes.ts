@@ -4420,9 +4420,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== existingDeal.vendorId) {
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(existingDeal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "You can only update your own deals" });
       }
 
@@ -4599,9 +4599,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== deal.vendorId) {
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(deal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "You can only view redemptions for your own deals" });
       }
 
@@ -4663,9 +4663,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== deal.vendorId) {
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(deal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "You can only view your own deals" });
       }
 
@@ -4727,9 +4727,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== existingDeal.vendorId) {
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(existingDeal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "You can only update your own deals" });
       }
 
@@ -4770,10 +4770,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log("[PUBLISH] Found deal:", { id: existingDeal.id, title: existingDeal.title, currentStatus: existingDeal.status, vendorId: existingDeal.vendorId });
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== existingDeal.vendorId) {
-        console.log("[PUBLISH] Authorization failed. Vendor:", vendor?.id, "Deal vendor:", existingDeal.vendorId);
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(existingDeal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        console.log("[PUBLISH] Authorization failed. Vendor owner:", vendor?.ownerId, "User:", userId);
         return res.status(403).json({ error: "You can only publish your own deals" });
       }
 
@@ -4810,9 +4810,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== existingDeal.vendorId) {
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(existingDeal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "You can only pause your own deals" });
       }
 
@@ -4840,9 +4840,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== existingDeal.vendorId) {
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(existingDeal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "You can only delete your own deals" });
       }
 
@@ -4872,9 +4872,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Deal not found" });
       }
 
-      // Verify user owns the vendor that owns this deal
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor || vendor.id !== deal.vendorId) {
+      // Get the vendor that owns this deal and verify the user is its owner
+      const vendor = await storage.getVendor(deal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
         return res.status(403).json({ error: "You can only void claims for your own deals" });
       }
 
