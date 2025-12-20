@@ -26,9 +26,9 @@ import type { Deal } from "@shared/schema";
 interface VendorDealCardProps {
   deal: Deal;
   onEdit: (deal: Deal) => void;
-  onPublish: (dealId: number) => void;
-  onPause: (dealId: number) => void;
-  onDelete: (dealId: number) => void;
+  onPublish: (dealId: string) => void;
+  onPause: (dealId: string) => void;
+  onDelete: (dealId: string) => void;
   isPublishing?: boolean;
   isPausing?: boolean;
   isDeleting?: boolean;
@@ -69,7 +69,7 @@ export function VendorDealCard({
     deal.valueLabel && { value: deal.valueLabel, highlight: true },
     deal.category,
     deal.city,
-  ].filter(Boolean);
+  ].filter((item): item is { value: string; highlight: boolean } | string => Boolean(item));
 
   return (
     <>

@@ -26,6 +26,7 @@ import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMe
 import { TagInput } from "@/components/TagInput";
 import { ImageUpload } from "@/components/ImageUpload";
 import Header from "@/components/Header";
+import { VendorDealCard } from "@/components/VendorDealCard";
 import { z } from "zod";
 
 // Form schemas for validation
@@ -1314,8 +1315,8 @@ export default function VendorDashboard() {
 
           {/* Deals Tab */}
           <TabsContent value="deals">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <Card className="overflow-x-hidden">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <CardTitle>Manage Deals</CardTitle>
                   <CardDescription>Create and manage special offers for your customers</CardDescription>
@@ -1325,8 +1326,8 @@ export default function VendorDashboard() {
                   if (!open) setEditingDeal(null);
                 }}>
                   <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-deal">
-                      <Plus className="w-4 h-4 mr-1" />
+                    <Button className="w-full sm:w-auto h-11 sm:h-9" data-testid="button-add-deal">
+                      <Plus className="w-4 h-4 mr-2" />
                       Add Deal
                     </Button>
                   </DialogTrigger>
@@ -1350,133 +1351,30 @@ export default function VendorDashboard() {
                   </DialogContent>
                 </Dialog>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4">
                 {deals.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No deals yet. Create your first deal to attract more customers!</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {deals.map((deal) => {
-                      const dealStatus = deal.status || (deal.isActive ? 'published' : 'draft');
-                      const statusColors: Record<string, string> = {
-                        draft: "bg-gray-100 text-gray-700",
-                        published: "bg-green-100 text-green-700",
-                        paused: "bg-amber-100 text-amber-700",
-                        expired: "bg-red-100 text-red-700",
-                      };
-                      return (
-                        <div key={deal.id} className="flex items-start justify-between border rounded-md p-4 gap-4" data-testid={`deal-${deal.id}`}>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h3 className="font-semibold">{deal.title}</h3>
-                              <Badge className={statusColors[dealStatus] || statusColors.draft}>
-                                {dealStatus.charAt(0).toUpperCase() + dealStatus.slice(1)}
-                              </Badge>
-                              {deal.tier && (
-                                <Badge variant="outline">
-                                  {deal.tier === "member" ? "Members Only" : deal.tier === "free" ? "Free" : "Standard"}
-                                </Badge>
-                              )}
-                              <Badge variant="outline">
-                                {deal.dealType === "bogo" ? "BOGO" : deal.dealType === "percent" ? "% Off" : "Add-on"}
-                              </Badge>
-                              {deal.isPassLocked && (
-                                <Badge variant="outline" className="bg-primary/10 text-primary">
-                                  <Lock className="w-3 h-3 mr-1" />
-                                  Pass Only
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{deal.description}</p>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                              {deal.valueLabel && <span className="font-medium text-green-600">{deal.valueLabel}</span>}
-                              {deal.category && <span>{deal.category}</span>}
-                              {deal.city && <span>{deal.city}</span>}
-                              {deal.maxRedemptionsPerUser && deal.maxRedemptionsPerUser > 1 && (
-                                <span>{deal.maxRedemptionsPerUser}x per person</span>
-                              )}
-                              {deal.endsAt && (
-                                <span>Ends: {new Date(deal.endsAt).toLocaleDateString()}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-                            {dealStatus === 'published' && (
-                              <Link href={`/dashboard/deals/${deal.id}/redeem`}>
-                                <Button 
-                                  variant="default"
-                                  size="sm"
-                                  data-testid={`button-redeem-deal-${deal.id}`}
-                                >
-                                  <Ticket className="w-3 h-3 mr-1" />
-                                  Redeem Code
-                                </Button>
-                              </Link>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => {
-                                setEditingDeal(deal);
-                                setDealDialogOpen(true);
-                              }}
-                              data-testid={`button-edit-deal-${deal.id}`}
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Edit
-                            </Button>
-                            {dealStatus === 'draft' && (
-                              <Button 
-                                variant="default"
-                                size="sm"
-                                onClick={() => publishDealMutation.mutate(deal.id)}
-                                disabled={publishDealMutation.isPending}
-                                data-testid={`button-publish-deal-${deal.id}`}
-                              >
-                                Publish
-                              </Button>
-                            )}
-                            {dealStatus === 'published' && (
-                              <Button 
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => pauseDealMutation.mutate(deal.id)}
-                                disabled={pauseDealMutation.isPending}
-                                data-testid={`button-pause-deal-${deal.id}`}
-                              >
-                                Pause
-                              </Button>
-                            )}
-                            {dealStatus === 'paused' && (
-                              <Button 
-                                variant="default"
-                                size="sm"
-                                onClick={() => publishDealMutation.mutate(deal.id)}
-                                disabled={publishDealMutation.isPending}
-                                data-testid={`button-resume-deal-${deal.id}`}
-                              >
-                                Resume
-                              </Button>
-                            )}
-                            <Button 
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm('Are you sure you want to delete this deal?')) {
-                                  deleteDealMutation.mutate(deal.id);
-                                }
-                              }}
-                              disabled={deleteDealMutation.isPending}
-                              data-testid={`button-delete-deal-${deal.id}`}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="space-y-3">
+                    {deals.map((deal) => (
+                      <VendorDealCard
+                        key={deal.id}
+                        deal={deal}
+                        onEdit={(d) => {
+                          setEditingDeal(d);
+                          setDealDialogOpen(true);
+                        }}
+                        onPublish={(id) => publishDealMutation.mutate(id)}
+                        onPause={(id) => pauseDealMutation.mutate(id)}
+                        onDelete={(id) => deleteDealMutation.mutate(id)}
+                        isPublishing={publishDealMutation.isPending}
+                        isPausing={pauseDealMutation.isPending}
+                        isDeleting={deleteDealMutation.isPending}
+                      />
+                    ))}
                   </div>
                 )}
               </CardContent>
