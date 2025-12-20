@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Deal, Vendor, Category } from "@shared/schema";
+import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
 
 // Map category icon strings from database to Lucide components
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -315,17 +316,18 @@ export default function Discover() {
   });
 
   const userCoords = location.coords || SWFL_DEFAULT;
+  const dealsFilters = { lat: userCoords.lat, lng: userCoords.lng, radiusMiles: 25 };
   const { data: dealsData, isLoading: dealsLoading } = useQuery<(Deal & { vendor?: Vendor })[]>({
-    queryKey: ["/api/deals", "with-vendors", userCoords.lat, userCoords.lng],
+    queryKey: [DEALS_QUERY_KEY, dealsFilters],
     queryFn: async () => {
-      const res = await fetch(`/api/deals?lat=${userCoords.lat}&lng=${userCoords.lng}&radiusMiles=25`);
+      const res = await fetch(`/api/deals?lat=${userCoords.lat}&lng=${userCoords.lng}&radiusMiles=25`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch deals");
       const deals: Deal[] = await res.json();
       
       const dealsWithVendors = await Promise.all(
         deals.map(async (deal) => {
           try {
-            const vendorRes = await fetch(`/api/vendors/${deal.vendorId}`);
+            const vendorRes = await fetch(`/api/vendors/${deal.vendorId}`, { credentials: "include" });
             if (vendorRes.ok) {
               const data = await vendorRes.json();
               return { ...deal, vendor: data.vendor };
