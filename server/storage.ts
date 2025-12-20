@@ -1882,7 +1882,7 @@ export class DbStorage implements IStorage {
         status: 'voided', 
         voidedAt: new Date(),
         updatedAt: new Date(),
-        metadata: reason ? { voidReason: reason } : undefined
+        voidReason: reason || null
       })
       .where(eq(dealRedemptions.id, redemptionId))
       .returning();

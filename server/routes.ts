@@ -4499,13 +4499,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code } = req.body;
 
       if (!code) {
-        return res.status(400).json({ error: "Redemption code is required" });
+        return res.json({ success: false, message: "Please enter a redemption code" });
       }
 
       // Verify user is a vendor
       const vendor = await storage.getVendorByOwnerId(userId);
       if (!vendor) {
-        return res.status(403).json({ error: "Only vendors can verify redemption codes" });
+        return res.json({ success: false, message: "Only vendors can verify redemption codes" });
       }
 
       // Verify the code
@@ -4513,7 +4513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!result.success) {
         console.log("[VENDOR] Failed code verification:", code, "vendor:", vendor.id, "reason:", result.message);
-        return res.status(400).json({ error: result.message });
+        return res.json({ success: false, message: result.message });
       }
 
       // Get deal info for the response
@@ -4528,7 +4528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error verifying redemption code:", error);
-      res.status(500).json({ error: "Failed to verify redemption code" });
+      res.json({ success: false, message: "Failed to verify redemption code. Please try again." });
     }
   });
 

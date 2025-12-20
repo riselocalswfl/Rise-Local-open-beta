@@ -1220,9 +1220,6 @@ export const dealRedemptions = pgTable("deal_redemptions", {
   notes: text("notes"),
   voidReason: text("void_reason"),
   
-  // Optional metadata
-  metadata: jsonb("metadata"),
-  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
