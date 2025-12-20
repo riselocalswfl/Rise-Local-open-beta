@@ -1098,8 +1098,8 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
-// Deal redemption status enum values (for time-locked code system)
-export const DEAL_REDEMPTION_STATUSES = ["claimed", "redeemed", "voided"] as const;
+// Deal redemption status enum values (for unified code system)
+export const DEAL_REDEMPTION_STATUSES = ["issued", "verified", "voided", "expired"] as const;
 export type DealRedemptionStatus = typeof DEAL_REDEMPTION_STATUSES[number];
 
 // Deal status enum values (for vendor management)
@@ -1189,38 +1189,56 @@ export const insertDealSchema = createInsertSchema(deals).omit({
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
 
-// Deal Redemptions - Time-locked code redemption system
+// Deal Redemptions - Unified code-based redemption system
 export const dealRedemptions = pgTable("deal_redemptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+  vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Direct vendor reference for fast lookup
   userId: varchar("user_id").notNull().references(() => users.id),
-  vendorUserId: varchar("vendor_user_id").notNull().references(() => users.id),
+  vendorUserId: varchar("vendor_user_id").references(() => users.id), // Legacy field, kept for compatibility
   
-  // Status tracking
-  status: varchar("status", { length: 16 }).notNull().default("claimed"), // claimed, redeemed, voided
+  // Unique redemption code (format: RL-XXXXXX)
+  code: varchar("code", { length: 16 }).notNull().unique(),
   
-  // Time-locked code
-  redemptionCode: varchar("redemption_code", { length: 16 }).notNull(),
+  // Status tracking: issued | verified | voided | expired
+  status: varchar("status", { length: 16 }).notNull().default("issued"),
   
   // Timestamps
-  claimedAt: timestamp("claimed_at").notNull().defaultNow(),
-  claimExpiresAt: timestamp("claim_expires_at").notNull(),
-  redeemedAt: timestamp("redeemed_at"),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
   voidedAt: timestamp("voided_at"),
+  
+  // Legacy fields for backward compatibility (kept but deprecated)
+  redemptionCode: varchar("redemption_code", { length: 16 }),
+  claimedAt: timestamp("claimed_at"),
+  claimExpiresAt: timestamp("claim_expires_at"),
+  redeemedAt: timestamp("redeemed_at"),
   
   // Optional metadata
   metadata: jsonb("metadata"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("redemptions_deal_user_idx").on(table.dealId, table.userId),
-  index("redemptions_code_idx").on(table.dealId, table.redemptionCode),
+  index("redemptions_code_unique_idx").on(table.code),
+  index("redemptions_vendor_idx").on(table.vendorId),
   index("redemptions_status_idx").on(table.dealId, table.status),
+  index("redemptions_user_status_idx").on(table.userId, table.status),
 ]);
 
 export const insertDealRedemptionSchema = createInsertSchema(dealRedemptions).omit({
   id: true,
-  claimedAt: true,
-  redeemedAt: true,
+  issuedAt: true,
+  verifiedAt: true,
   voidedAt: true,
+  redemptionCode: true,
+  claimedAt: true,
+  claimExpiresAt: true,
+  redeemedAt: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertDealRedemption = z.infer<typeof insertDealRedemptionSchema>;
