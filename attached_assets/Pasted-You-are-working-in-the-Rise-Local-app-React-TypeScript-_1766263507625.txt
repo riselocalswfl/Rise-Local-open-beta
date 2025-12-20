@@ -1,0 +1,140 @@
+You are working in the Rise Local app (React + TypeScript + Express + Drizzle + Postgres + TanStack Query). Right now, the deal redemption UI shows a list of options / legacy redemption flows. I want to delete/disable all existing redemption functions and replace them with one unified redemption system that uses a randomly generated redemption code.
+
+High-level behavior (single source of truth)
+	•	A customer taps Redeem on a deal they have access to.
+	•	The system generates a unique one-time code for that user + deal (ex: RL-7K3P9D) and displays it.
+	•	The business (vendor) verifies the code in their dashboard Verify Redemption screen.
+	•	Code becomes used after verification (cannot be reused).
+	•	A user can’t generate infinite codes for the same deal (rate limit + active code rule).
+
+⸻
+
+1) Database changes (Drizzle)
+
+Create a new table deal_redemptions:
+
+Fields:
+	•	id (uuid primary key)
+	•	dealId (FK → deals.id, required, indexed)
+	•	vendorId (FK → vendors.id, required, indexed) (denormalize for faster lookup)
+	•	userId (FK → users.id, required, indexed)
+	•	code (string, required, unique, indexed)
+	•	status enum: issued | verified | voided | expired
+	•	issuedAt timestamp
+	•	verifiedAt timestamp nullable
+	•	expiresAt timestamp nullable (ex: 15 minutes after issue)
+	•	createdAt, updatedAt
+
+Constraints / indexes:
+	•	unique index on code
+	•	composite index on (dealId, userId, status) for active code lookup
+	•	optionally prevent multiple “issued” codes per user per deal at once (enforced in service logic)
+
+Run migration(s) accordingly.
+
+⸻
+
+2) Backend API (Express)
+
+Remove old redemption endpoints and implement ONLY these:
+
+Customer endpoints
+	1.	POST /api/deals/:dealId/redeem
+
+	•	Auth required.
+	•	Validate:
+	•	deal exists and is published
+	•	user has access (paywall rules)
+	•	If user already has an active issued code for this deal that isn’t expired, return the existing code (don’t create duplicates).
+	•	Otherwise generate a new code:
+	•	format: RL- + 6–8 chars (uppercase letters + numbers)
+	•	cryptographically secure generation (crypto.randomBytes)
+	•	check uniqueness in DB; retry if collision
+	•	Create row in deal_redemptions with status=issued, expiresAt=now+15min
+	•	Return: { code, expiresAt, redemptionId }
+
+	2.	GET /api/me/redemptions?status=issued
+
+	•	Return the user’s active issued redemptions (optional but helpful)
+
+Vendor endpoints
+	3.	POST /api/vendor/redemptions/verify
+Body: { code: string }
+
+	•	Vendor auth required.
+	•	Look up redemption by code.
+	•	Validate:
+	•	exists
+	•	status=issued
+	•	not expired
+	•	redemption.vendorId matches authenticated vendor’s vendorId (so vendors can’t verify other vendors’ codes)
+	•	Set status=verified, set verifiedAt=now
+	•	Return: redemption details + linked deal title and user (basic)
+
+	4.	GET /api/vendor/redemptions?status=verified&from=&to=
+
+	•	Vendor auth required.
+	•	Lists verified redemptions for analytics/audit.
+
+Also add simple rate limiting:
+	•	On POST /redeem, limit to e.g. 5 attempts / 10 minutes per user.
+	•	Don’t allow “spam” generation.
+
+⸻
+
+3) Frontend changes (React)
+
+Remove old redemption UI
+	•	Delete or bypass any existing “choose redemption method” list or multiple options.
+	•	Replace with a single flow: Redeem → shows code
+
+Deal Detail / Deal Card
+	•	Button text: Redeem
+	•	On click:
+	•	call POST /api/deals/:dealId/redeem
+	•	show a modal or full-screen sheet with:
+	•	large code (copy button)
+	•	expiration timer (“Expires in 14:32”)
+	•	instructions: “Show this code to the business”
+	•	If user already has an active issued code, show it instead of generating a new one.
+
+Vendor Dashboard
+
+Add a “Verify Redemption” screen inside My Account / Vendor Dashboard:
+	•	Input field for code (manual entry) + submit button
+	•	After verify:
+	•	show success state: deal name, timestamp, status verified
+	•	show error messages for invalid/expired/already used
+
+TanStack Query cache
+	•	Create hooks:
+	•	useRedeemDeal(dealId)
+	•	useVerifyRedemption()
+	•	Invalidate or refresh:
+	•	user redemption list
+	•	vendor redemption list
+
+⸻
+
+4) Security + edge cases
+	•	Codes must be one-time use (verified only once).
+	•	Codes must be vendor-scoped (vendor can only verify their codes).
+	•	Expired codes should be rejected; optionally mark status expired on access.
+	•	Don’t expose user PII on the customer modal—vendor sees details only after verification.
+
+⸻
+
+5) Deliverables
+	1.	Remove all old redemption functions and UI routes related to redemption options.
+	2.	Implement the new unified system end-to-end (DB + API + UI).
+	3.	Provide a list of files changed + new files created.
+	4.	Add a short test checklist:
+
+	•	Create deal → publish → user can redeem → code appears
+	•	Redeem again → returns same active code
+	•	Verify with correct vendor → success and code becomes used
+	•	Verify again → fails (already verified)
+	•	Expired code → fails
+	•	Wrong vendor tries to verify → fails
+
+Implement fully in code, not just suggestions.
