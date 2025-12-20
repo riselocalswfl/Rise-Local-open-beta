@@ -4232,9 +4232,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============ DEALS ROUTES ============
 
   // GET /api/deals - List all deals with optional filters
+  // Consumer pages see only published deals by default
+  // Vendors can pass includeAll=true to see all their deals
   app.get("/api/deals", async (req, res) => {
     try {
-      const { category, city, tier, isActive, vendorId, lat, lng, radiusMiles } = req.query;
+      const { category, city, tier, isActive, vendorId, lat, lng, radiusMiles, status, includeAll } = req.query;
       
       // If location params are provided, use location-based filtering
       if (lat && lng) {
@@ -4246,7 +4248,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           city: city as string | undefined,
           tier: tier as string | undefined,
           isActive: isActive !== undefined ? isActive === 'true' : undefined,
-          vendorId: vendorId as string | undefined
+          vendorId: vendorId as string | undefined,
+          status: status as string | undefined,
+          includeAll: includeAll === 'true'
         };
         
         const deals = await storage.listDealsWithLocation(filters);
@@ -4262,6 +4266,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (tier) filters.tier = tier as string;
       if (isActive !== undefined) filters.isActive = isActive === 'true';
       if (vendorId) filters.vendorId = vendorId as string;
+      if (status) filters.status = status as string;
+      if (includeAll === 'true') filters.includeAll = true;
       
       const deals = await storage.listDeals(filters);
       res.json(deals);

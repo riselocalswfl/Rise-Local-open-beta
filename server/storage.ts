@@ -256,7 +256,7 @@ export interface IStorage {
   markNotificationsByReferenceAsRead(userId: string, referenceId: string, referenceType: string): Promise<void>;
 
   // Deal operations
-  listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string }): Promise<Deal[]>;
+  listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string; status?: string; includeAll?: boolean }): Promise<Deal[]>;
   listDealsWithLocation(filters: { 
     lat?: number; 
     lng?: number; 
@@ -265,7 +265,9 @@ export interface IStorage {
     city?: string; 
     tier?: string; 
     isActive?: boolean; 
-    vendorId?: string 
+    vendorId?: string;
+    status?: string;
+    includeAll?: boolean;
   }): Promise<DealWithDistance[]>;
   getDealById(id: string): Promise<Deal | undefined>;
   getDealByIdWithStatus(id: string): Promise<Deal | undefined>; // Returns deal even if deleted/inactive
@@ -1420,7 +1422,7 @@ export class DbStorage implements IStorage {
   }
 
   // Deal operations
-  async listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string; includeHiddenVendors?: boolean }): Promise<Deal[]> {
+  async listDeals(filters?: { category?: string; city?: string; tier?: string; isActive?: boolean; vendorId?: string; status?: string; includeAll?: boolean; includeHiddenVendors?: boolean }): Promise<Deal[]> {
     let conditions = [];
     
     if (filters?.category) {
@@ -1437,6 +1439,16 @@ export class DbStorage implements IStorage {
     }
     if (filters?.vendorId) {
       conditions.push(eq(deals.vendorId, filters.vendorId));
+    }
+    
+    // Status filter - if includeAll is true, show all statuses, otherwise filter by status
+    if (!filters?.includeAll) {
+      if (filters?.status) {
+        conditions.push(eq(deals.status, filters.status));
+      } else {
+        // Default to published only for consumer pages
+        conditions.push(eq(deals.status, 'published'));
+      }
     }
     
     // Filter out deals from hidden vendors (unless explicitly including hidden or filtering by specific vendorId)
@@ -1475,6 +1487,8 @@ export class DbStorage implements IStorage {
     tier?: string; 
     isActive?: boolean; 
     vendorId?: string;
+    status?: string;
+    includeAll?: boolean;
     includeHiddenVendors?: boolean;
   }): Promise<DealWithDistance[]> {
     // Build base conditions for deals
@@ -1491,6 +1505,16 @@ export class DbStorage implements IStorage {
     }
     if (filters.vendorId) {
       conditions.push(eq(deals.vendorId, filters.vendorId));
+    }
+    
+    // Status filter - if includeAll is true, show all statuses, otherwise filter by status
+    if (!filters.includeAll) {
+      if (filters.status) {
+        conditions.push(eq(deals.status, filters.status));
+      } else {
+        // Default to published only for consumer pages
+        conditions.push(eq(deals.status, 'published'));
+      }
     }
     
     // Filter out deals from hidden vendors (unless explicitly including hidden or filtering by specific vendorId)
