@@ -1614,11 +1614,13 @@ export class DbStorage implements IStorage {
   }
 
   async updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal> {
+    console.log("[STORAGE] updateDeal called with id:", id, "data:", JSON.stringify(data));
     const result = await db
       .update(deals)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(deals.id, id))
       .returning();
+    console.log("[STORAGE] updateDeal result:", result.length > 0 ? { id: result[0].id, status: result[0].status, isActive: result[0].isActive } : "NO RESULT");
     return result[0];
   }
 

@@ -4248,6 +4248,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { category, city, tier, isActive, vendorId, lat, lng, radiusMiles, status, includeAll } = req.query;
       
+      console.log("[DEALS API] GET /api/deals called with params:", {
+        category, city, tier, isActive, vendorId, lat, lng, radiusMiles, status, includeAll
+      });
+      
       // If location params are provided, use location-based filtering
       if (lat && lng) {
         const filters = {
@@ -4263,7 +4267,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           includeAll: includeAll === 'true'
         };
         
+        console.log("[DEALS API] Using location-based filtering with filters:", filters);
         const deals = await storage.listDealsWithLocation(filters);
+        console.log("[DEALS API] Location-based query returned", deals.length, "deals");
+        if (deals.length > 0) {
+          console.log("[DEALS API] Sample deal statuses:", deals.slice(0, 5).map(d => ({ id: d.id, title: d.title, status: d.status, isActive: d.isActive })));
+        }
         res.json(deals);
         return;
       }
@@ -4279,10 +4288,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (status) filters.status = status as string;
       if (includeAll === 'true') filters.includeAll = true;
       
+      console.log("[DEALS API] Using standard filtering with filters:", filters);
       const deals = await storage.listDeals(filters);
+      console.log("[DEALS API] Standard query returned", deals.length, "deals");
+      if (deals.length > 0) {
+        console.log("[DEALS API] Sample deal statuses:", deals.slice(0, 5).map(d => ({ id: d.id, title: d.title, status: d.status, isActive: d.isActive })));
+      }
       res.json(deals);
     } catch (error) {
-      console.error("Error fetching deals:", error);
+      console.error("[DEALS API] Error fetching deals:", error);
       res.status(500).json({ error: "Failed to fetch deals" });
     }
   });
@@ -4746,31 +4760,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const dealId = req.params.id;
 
+      console.log("[PUBLISH] Attempting to publish deal:", dealId, "by user:", userId);
+
       const existingDeal = await storage.getDealById(dealId);
       if (!existingDeal) {
+        console.log("[PUBLISH] Deal not found:", dealId);
         return res.status(404).json({ error: "Deal not found" });
       }
+
+      console.log("[PUBLISH] Found deal:", { id: existingDeal.id, title: existingDeal.title, currentStatus: existingDeal.status, vendorId: existingDeal.vendorId });
 
       // Verify user owns the vendor that owns this deal
       const vendor = await storage.getVendorByOwnerId(userId);
       if (!vendor || vendor.id !== existingDeal.vendorId) {
+        console.log("[PUBLISH] Authorization failed. Vendor:", vendor?.id, "Deal vendor:", existingDeal.vendorId);
         return res.status(403).json({ error: "You can only publish your own deals" });
       }
 
+      console.log("[PUBLISH] Authorization passed. Vendor:", vendor.businessName, "(", vendor.id, ")");
+
       // Check if deal is already expired
       if (existingDeal.endsAt && new Date(existingDeal.endsAt) < new Date()) {
+        console.log("[PUBLISH] Deal is expired, cannot publish. endsAt:", existingDeal.endsAt);
         return res.status(400).json({ error: "Cannot publish an expired deal" });
       }
 
+      console.log("[PUBLISH] Updating deal status to published...");
       const updatedDeal = await storage.updateDeal(dealId, {
         status: 'published',
         isActive: true,
       });
 
-      console.log("[VENDOR DEALS] Deal published:", dealId, "by vendor:", vendor.id);
+      console.log("[PUBLISH] SUCCESS! Deal published:", dealId, "New status:", updatedDeal?.status, "isActive:", updatedDeal?.isActive);
       res.json(updatedDeal);
     } catch (error) {
-      console.error("Error publishing deal:", error);
+      console.error("[PUBLISH] Error publishing deal:", error);
       res.status(500).json({ error: "Failed to publish deal" });
     }
   });
