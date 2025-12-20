@@ -291,25 +291,25 @@ export interface IStorage {
     restaurantName: string;
   } | undefined>;
 
-  // Deal Redemption operations (time-locked code system)
-  claimDeal(dealId: string, userId: string, vendorUserId: string): Promise<{ 
+  // Deal Redemption operations (unified code system)
+  issueDealCode(dealId: string, vendorId: string, userId: string): Promise<{ 
     success: boolean; 
     message: string; 
     redemption?: DealRedemption;
-    redemptionId?: string;
-    redemptionCode?: string;
-    claimExpiresAt?: Date;
+    code?: string;
+    expiresAt?: Date;
   }>;
   getRedemption(id: string): Promise<DealRedemption | undefined>;
-  getRedemptionByCode(dealId: string, code: string): Promise<DealRedemption | undefined>;
+  getRedemptionByCode(code: string): Promise<DealRedemption | undefined>;
   getUserRedemptions(userId: string): Promise<DealRedemption[]>;
   getActiveRedemptionForUserDeal(userId: string, dealId: string): Promise<DealRedemption | undefined>;
-  redeemByCode(dealId: string, code: string, vendorUserId: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }>;
+  verifyRedemptionCode(code: string, vendorId: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }>;
   voidRedemption(redemptionId: string, reason?: string): Promise<DealRedemption | undefined>;
   getDealsByVendorId(vendorId: string): Promise<Deal[]>;
-  getUserRedeemedCountForDeal(userId: string, dealId: string): Promise<number>;
-  getLastRedemptionForUserDeal(userId: string, dealId: string): Promise<DealRedemption | undefined>;
-  getTotalRedeemedCountForDeal(dealId: string): Promise<number>;
+  getVendorRedemptions(vendorId: string): Promise<DealRedemption[]>;
+  getUserVerifiedCountForDeal(userId: string, dealId: string): Promise<number>;
+  getLastVerifiedRedemptionForUserDeal(userId: string, dealId: string): Promise<DealRedemption | undefined>;
+  getTotalVerifiedCountForDeal(dealId: string): Promise<number>;
 
   // Preferred Placement operations
   getActiveDiscoverSpotlight(): Promise<{ placement: PreferredPlacement; vendor: Vendor; deals: Deal[] } | null>;
@@ -1622,48 +1622,9 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  // Legacy method - deprecated, use issueDealCode and verifyRedemptionCode instead
   async redeemDeal(dealId: string, vendorPinEntered: string, userId?: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }> {
-    // Get the deal first
-    const deal = await this.getDealById(dealId);
-    if (!deal) {
-      return { success: false, message: "Deal not found" };
-    }
-
-    if (!deal.isActive) {
-      return { success: false, message: "Deal is no longer active" };
-    }
-
-    // Get the vendor to verify PIN and get vendorUserId
-    const vendor = await this.getVendor(deal.vendorId);
-    if (!vendor) {
-      return { success: false, message: "Vendor not found" };
-    }
-
-    // Verify the PIN
-    if (!vendor.vendorPin || vendor.vendorPin !== vendorPinEntered) {
-      return { success: false, message: "Invalid vendor PIN" };
-    }
-
-    // Create the redemption record with time-locked code system
-    const claimWindowMinutes = deal.claimWindowMinutes || 10;
-    const claimExpiresAt = new Date(Date.now() + claimWindowMinutes * 60 * 1000);
-    const redemptionCode = this.generateRedemptionCode(deal.codeLength || 6);
-    
-    const redemption = await db.insert(dealRedemptions).values({
-      dealId,
-      vendorUserId: vendor.ownerId,
-      userId: userId || 'anonymous',
-      status: 'redeemed',
-      redemptionCode,
-      claimExpiresAt,
-      redeemedAt: new Date(),
-    }).returning();
-
-    return { 
-      success: true, 
-      message: "Deal redeemed successfully",
-      redemption: redemption[0]
-    };
+    return { success: false, message: "This redemption method is deprecated. Please use the new code-based system." };
   }
 
   async getDealRedemptions(dealId: string): Promise<DealRedemption[]> {
@@ -1671,15 +1632,16 @@ export class DbStorage implements IStorage {
       .select()
       .from(dealRedemptions)
       .where(eq(dealRedemptions.dealId, dealId))
-      .orderBy(desc(dealRedemptions.claimedAt));
+      .orderBy(desc(dealRedemptions.issuedAt));
   }
 
+  // Legacy method - use getVendorRedemptions with vendorId instead
   async getVendorDealRedemptions(vendorUserId: string): Promise<DealRedemption[]> {
     return await db
       .select()
       .from(dealRedemptions)
       .where(eq(dealRedemptions.vendorUserId, vendorUserId))
-      .orderBy(desc(dealRedemptions.claimedAt));
+      .orderBy(desc(dealRedemptions.issuedAt));
   }
 
   // Reservation operations
@@ -1727,58 +1689,86 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  // Deal Redemption operations (time-locked code system)
+  // Deal Redemption operations (unified code system)
   
-  // Generate a unique redemption code for a deal
-  private generateRedemptionCode(length: number = 6): string {
-    const chars = '0123456789';
-    let code = '';
-    for (let i = 0; i < length; i++) {
+  // Generate a unique redemption code in RL-XXXXXX format
+  private generateRedemptionCode(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude easily confused chars (0, O, 1, I)
+    let code = 'RL-';
+    for (let i = 0; i < 6; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
   }
 
-  // Claim a deal - generates a time-locked code
-  async claimDeal(dealId: string, userId: string, vendorUserId: string): Promise<{ 
+  // Issue a deal code - generates a time-locked code for customer redemption
+  async issueDealCode(dealId: string, vendorId: string, userId: string): Promise<{ 
     success: boolean; 
     message: string; 
     redemption?: DealRedemption;
-    redemptionId?: string;
-    redemptionCode?: string;
-    claimExpiresAt?: Date;
+    code?: string;
+    expiresAt?: Date;
   }> {
-    // Get the deal to check claim window and code length
+    // Get the deal to check claim window
     const deal = await this.getDealById(dealId);
     if (!deal) {
       return { success: false, message: "Deal not found" };
     }
+
+    if (!deal.isActive) {
+      return { success: false, message: "This deal is no longer active" };
+    }
     
     const claimWindowMinutes = deal.claimWindowMinutes || 10;
-    const codeLength = deal.codeLength || 6;
     
-    // Check for existing active claim
+    // Check for existing active (issued) code for this user/deal
     const existingClaim = await this.getActiveRedemptionForUserDeal(userId, dealId);
-    if (existingClaim && new Date(existingClaim.claimExpiresAt) > new Date()) {
+    if (existingClaim) {
       return { 
         success: true, 
-        message: "You already have an active claim for this deal",
+        message: "You already have an active code for this deal",
         redemption: existingClaim,
-        redemptionId: existingClaim.id,
-        redemptionCode: existingClaim.redemptionCode,
-        claimExpiresAt: existingClaim.claimExpiresAt
+        code: existingClaim.code,
+        expiresAt: existingClaim.expiresAt
       };
     }
     
-    // Generate unique code (retry if collision)
+    // Check user's redemption limit for this deal
+    const userVerifiedCount = await this.getUserVerifiedCountForDeal(userId, dealId);
+    const maxPerUser = deal.maxRedemptionsPerUser || 1;
+    if (userVerifiedCount >= maxPerUser) {
+      return { success: false, message: "You have reached the maximum redemptions for this deal" };
+    }
+
+    // Check cooldown period
+    if (deal.cooldownHours && deal.cooldownHours > 0) {
+      const lastRedemption = await this.getLastVerifiedRedemptionForUserDeal(userId, dealId);
+      if (lastRedemption?.verifiedAt) {
+        const cooldownEnd = new Date(lastRedemption.verifiedAt.getTime() + deal.cooldownHours * 60 * 60 * 1000);
+        if (cooldownEnd > new Date()) {
+          const hoursLeft = Math.ceil((cooldownEnd.getTime() - Date.now()) / (1000 * 60 * 60));
+          return { success: false, message: `You can redeem this deal again in ${hoursLeft} hours` };
+        }
+      }
+    }
+
+    // Check total redemption limit
+    if (deal.maxRedemptionsTotal) {
+      const totalVerified = await this.getTotalVerifiedCountForDeal(dealId);
+      if (totalVerified >= deal.maxRedemptionsTotal) {
+        return { success: false, message: "This deal has reached its maximum redemptions" };
+      }
+    }
+    
+    // Generate unique code (retry if collision - using globally unique codes)
     let code = '';
     let attempts = 0;
     const maxAttempts = 10;
     
     while (attempts < maxAttempts) {
-      code = this.generateRedemptionCode(codeLength);
-      const existing = await this.getRedemptionByCode(dealId, code);
-      if (!existing || existing.status !== 'claimed' || new Date(existing.claimExpiresAt) < new Date()) {
+      code = this.generateRedemptionCode();
+      const existing = await this.getRedemptionByCode(code);
+      if (!existing) {
         break;
       }
       attempts++;
@@ -1788,24 +1778,23 @@ export class DbStorage implements IStorage {
       return { success: false, message: "Unable to generate unique code. Please try again." };
     }
     
-    const claimExpiresAt = new Date(Date.now() + claimWindowMinutes * 60 * 1000);
+    const expiresAt = new Date(Date.now() + claimWindowMinutes * 60 * 1000);
     
     const [redemption] = await db.insert(dealRedemptions).values({
       dealId,
+      vendorId,
       userId,
-      vendorUserId,
-      status: 'claimed',
-      redemptionCode: code,
-      claimExpiresAt,
+      code,
+      status: 'issued',
+      expiresAt,
     }).returning();
     
     return { 
       success: true, 
-      message: "Deal claimed successfully",
+      message: "Code issued successfully",
       redemption,
-      redemptionId: redemption.id,
-      redemptionCode: redemption.redemptionCode,
-      claimExpiresAt: redemption.claimExpiresAt
+      code: redemption.code,
+      expiresAt: redemption.expiresAt
     };
   }
 
@@ -1814,19 +1803,17 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async getRedemptionByCode(dealId: string, code: string): Promise<DealRedemption | undefined> {
+  // Get redemption by code (globally unique, not per-deal)
+  async getRedemptionByCode(code: string): Promise<DealRedemption | undefined> {
     const result = await db.select().from(dealRedemptions)
-      .where(and(
-        eq(dealRedemptions.dealId, dealId),
-        eq(dealRedemptions.redemptionCode, code)
-      ));
+      .where(eq(dealRedemptions.code, code));
     return result[0];
   }
 
   async getUserRedemptions(userId: string): Promise<DealRedemption[]> {
     return await db.select().from(dealRedemptions)
       .where(eq(dealRedemptions.userId, userId))
-      .orderBy(desc(dealRedemptions.claimedAt));
+      .orderBy(desc(dealRedemptions.issuedAt));
   }
 
   async getActiveRedemptionForUserDeal(userId: string, dealId: string): Promise<DealRedemption | undefined> {
@@ -1835,48 +1822,58 @@ export class DbStorage implements IStorage {
       .where(and(
         eq(dealRedemptions.userId, userId),
         eq(dealRedemptions.dealId, dealId),
-        eq(dealRedemptions.status, 'claimed'),
-        gte(dealRedemptions.claimExpiresAt, now)
+        eq(dealRedemptions.status, 'issued'),
+        gte(dealRedemptions.expiresAt, now)
       ));
     return result[0];
   }
 
-  async redeemByCode(dealId: string, code: string, vendorUserId: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }> {
-    const redemption = await this.getRedemptionByCode(dealId, code);
+  // Verify a redemption code - vendor enters customer's code to complete redemption
+  async verifyRedemptionCode(code: string, vendorId: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }> {
+    const redemption = await this.getRedemptionByCode(code);
     
     if (!redemption) {
       return { success: false, message: "Invalid redemption code" };
     }
     
-    if (redemption.vendorUserId !== vendorUserId) {
-      return { success: false, message: "You are not authorized to redeem this code" };
+    if (redemption.vendorId !== vendorId) {
+      return { success: false, message: "This code is not for your business" };
     }
     
-    if (redemption.status === 'redeemed') {
-      return { success: false, message: "This code has already been redeemed" };
+    if (redemption.status === 'verified') {
+      return { success: false, message: "This code has already been verified" };
     }
     
     if (redemption.status === 'voided') {
       return { success: false, message: "This code has been voided" };
     }
-    
-    if (new Date(redemption.claimExpiresAt) < new Date()) {
-      return { success: false, message: "This code has expired. Customer needs to claim again." };
+
+    if (redemption.status === 'expired') {
+      return { success: false, message: "This code has expired" };
     }
     
+    if (new Date(redemption.expiresAt) < new Date()) {
+      // Mark as expired
+      await db.update(dealRedemptions)
+        .set({ status: 'expired' })
+        .where(eq(dealRedemptions.id, redemption.id));
+      return { success: false, message: "This code has expired. Customer needs to get a new code." };
+    }
+    
+    // Atomically update to verified status
     const [updated] = await db.update(dealRedemptions)
-      .set({ status: 'redeemed', redeemedAt: new Date() })
+      .set({ status: 'verified', verifiedAt: new Date(), updatedAt: new Date() })
       .where(and(
         eq(dealRedemptions.id, redemption.id),
-        eq(dealRedemptions.status, 'claimed') // Ensure atomic update
+        eq(dealRedemptions.status, 'issued') // Ensure atomic update
       ))
       .returning();
     
     if (!updated) {
-      return { success: false, message: "Unable to redeem. The code may have already been used." };
+      return { success: false, message: "Unable to verify. The code may have already been used." };
     }
     
-    return { success: true, message: "Deal redeemed successfully!", redemption: updated };
+    return { success: true, message: "Deal verified successfully!", redemption: updated };
   }
 
   async voidRedemption(redemptionId: string, reason?: string): Promise<DealRedemption | undefined> {
@@ -1884,6 +1881,7 @@ export class DbStorage implements IStorage {
       .set({ 
         status: 'voided', 
         voidedAt: new Date(),
+        updatedAt: new Date(),
         metadata: reason ? { voidReason: reason } : undefined
       })
       .where(eq(dealRedemptions.id, redemptionId))
@@ -1900,35 +1898,41 @@ export class DbStorage implements IStorage {
       .orderBy(desc(deals.createdAt));
   }
 
-  async getUserRedeemedCountForDeal(userId: string, dealId: string): Promise<number> {
+  async getVendorRedemptions(vendorId: string): Promise<DealRedemption[]> {
+    return await db.select().from(dealRedemptions)
+      .where(eq(dealRedemptions.vendorId, vendorId))
+      .orderBy(desc(dealRedemptions.issuedAt));
+  }
+
+  async getUserVerifiedCountForDeal(userId: string, dealId: string): Promise<number> {
     const result = await db.select({ count: sql<number>`count(*)` })
       .from(dealRedemptions)
       .where(and(
         eq(dealRedemptions.userId, userId),
         eq(dealRedemptions.dealId, dealId),
-        eq(dealRedemptions.status, 'redeemed')
+        eq(dealRedemptions.status, 'verified')
       ));
     return Number(result[0]?.count || 0);
   }
 
-  async getLastRedemptionForUserDeal(userId: string, dealId: string): Promise<DealRedemption | undefined> {
+  async getLastVerifiedRedemptionForUserDeal(userId: string, dealId: string): Promise<DealRedemption | undefined> {
     const result = await db.select().from(dealRedemptions)
       .where(and(
         eq(dealRedemptions.userId, userId),
         eq(dealRedemptions.dealId, dealId),
-        eq(dealRedemptions.status, 'redeemed')
+        eq(dealRedemptions.status, 'verified')
       ))
-      .orderBy(desc(dealRedemptions.redeemedAt))
+      .orderBy(desc(dealRedemptions.verifiedAt))
       .limit(1);
     return result[0];
   }
 
-  async getTotalRedeemedCountForDeal(dealId: string): Promise<number> {
+  async getTotalVerifiedCountForDeal(dealId: string): Promise<number> {
     const result = await db.select({ count: sql<number>`count(*)` })
       .from(dealRedemptions)
       .where(and(
         eq(dealRedemptions.dealId, dealId),
-        eq(dealRedemptions.status, 'redeemed')
+        eq(dealRedemptions.status, 'verified')
       ));
     return Number(result[0]?.count || 0);
   }
