@@ -1449,6 +1449,32 @@ export default function VendorDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="vendorType">Business Type</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    This determines how your business is categorized in the app
+                  </p>
+                  <Select
+                    value={vendor.vendorType || "shop"}
+                    onValueChange={(value) => {
+                      if (value !== vendor.vendorType) {
+                        updateVendorMutation.mutate({ vendorType: value as "shop" | "dine" | "service" });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="vendorType" data-testid="select-vendor-type">
+                      <SelectValue placeholder="Select business type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="shop">Shop</SelectItem>
+                      <SelectItem value="dine">Dine</SelectItem>
+                      <SelectItem value="service">Service</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-2">
                   <Label htmlFor="logoUrl">Logo URL</Label>
                   <Input
                     id="logoUrl"
