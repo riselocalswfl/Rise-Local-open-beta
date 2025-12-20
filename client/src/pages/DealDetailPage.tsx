@@ -10,23 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import RedeemCodeModal from "@/components/RedeemCodeModal";
 import type { Deal, Vendor } from "@shared/schema";
-
-interface ClaimResponse {
-  redemptionId: string;
-  dealId: string;
-  redemptionCode: string;
-  status: string;
-  claimedAt: string;
-  claimExpiresAt: string;
-  message?: string;
-}
 
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [claiming, setClaiming] = useState(false);
+  const [redeemModalOpen, setRedeemModalOpen] = useState(false);
 
   const { data: deal, isLoading: dealLoading } = useQuery<Deal>({
     queryKey: ["/api/deals", id],
@@ -49,28 +40,6 @@ export default function DealDetailPage() {
   });
   
   const vendor = vendorData?.vendor;
-
-  const claimMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/deals/${id}/claim`, {});
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to claim deal");
-      }
-      return res.json() as Promise<ClaimResponse>;
-    },
-    onSuccess: (data) => {
-      setLocation(`/deals/${id}/claimed/${data.redemptionId}`);
-    },
-    onError: (error: Error) => {
-      setClaiming(false);
-      toast({
-        title: "Unable to claim deal",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
   const startConversation = useMutation({
     mutationFn: async () => {
@@ -95,11 +64,6 @@ export default function DealDetailPage() {
       });
     },
   });
-
-  const handleClaimDeal = () => {
-    setClaiming(true);
-    claimMutation.mutate();
-  };
 
   const dealTypeLabels: Record<string, string> = {
     bogo: "Buy One Get One",
@@ -220,21 +184,13 @@ export default function DealDetailPage() {
               <Button
                 size="lg"
                 className="flex-1"
-                onClick={handleClaimDeal}
-                disabled={claiming || claimMutation.isPending}
-                data-testid="button-claim-deal"
+                onClick={() => setRedeemModalOpen(true)}
+                data-testid="button-redeem-deal"
               >
-                {claiming || claimMutation.isPending ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Claiming...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Ticket className="w-4 h-4" />
-                    Claim This Deal
-                  </span>
-                )}
+                <span className="flex items-center gap-2">
+                  <Ticket className="w-4 h-4" />
+                  Get Redemption Code
+                </span>
               </Button>
               <Button
                 size="lg"
@@ -249,19 +205,24 @@ export default function DealDetailPage() {
               </Button>
             </div>
 
-            {/* Claim info banner */}
             <div className="bg-primary/5 rounded-lg p-4 flex items-start gap-3">
               <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-medium text-primary">How it works</p>
                 <p className="text-muted-foreground mt-1">
-                  Claim this deal to get a 10-minute code. Show it to the business to redeem your savings.
+                  Get a redemption code valid for 10 minutes. Show it to the business to redeem your savings.
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <RedeemCodeModal
+        deal={deal}
+        open={redeemModalOpen}
+        onOpenChange={setRedeemModalOpen}
+      />
     </div>
   );
 }

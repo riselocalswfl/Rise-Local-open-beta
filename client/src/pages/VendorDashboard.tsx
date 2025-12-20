@@ -678,6 +678,12 @@ export default function VendorDashboard() {
                     <span>Messages</span>
                   </div>
                 </SelectItem>
+                <SelectItem value="verify" data-testid="select-option-verify">
+                  <div className="flex items-center gap-2">
+                    <Ticket className="w-4 h-4" />
+                    <span>Verify Code</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -709,6 +715,10 @@ export default function VendorDashboard() {
             <TabsTrigger value="messages" className="gap-2" data-testid="tab-messages">
               <MessageSquare className="w-4 h-4" />
               Messages
+            </TabsTrigger>
+            <TabsTrigger value="verify" className="gap-2" data-testid="tab-verify">
+              <Ticket className="w-4 h-4" />
+              Verify Code
             </TabsTrigger>
           </TabsList>
 
@@ -1771,6 +1781,10 @@ export default function VendorDashboard() {
           {/* Messages Tab */}
           <TabsContent value="messages">
             <VendorMessagesTab vendorId={vendor.id} isSubscribed={true} />
+          </TabsContent>
+
+          <TabsContent value="verify">
+            <VerifyCodeTab />
           </TabsContent>
         </Tabs>
 
@@ -3203,6 +3217,188 @@ function ProductPreview({ product, vendor }: { product: any; vendor: Vendor }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ========== VERIFY CODE TAB ==========
+
+interface VerificationResult {
+  success: boolean;
+  message: string;
+  redemption?: {
+    id: string;
+    dealId: string;
+    code: string;
+    status: string;
+    verifiedAt: string;
+  };
+  deal?: {
+    id: string;
+    title: string;
+  };
+}
+
+function VerifyCodeTab() {
+  const { toast } = useToast();
+  const [code, setCode] = useState("");
+  const [result, setResult] = useState<VerificationResult | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const verifyMutation = useMutation({
+    mutationFn: async (codeInput: string): Promise<VerificationResult> => {
+      const res = await apiRequest("POST", "/api/vendor/redemptions/verify", {
+        code: codeInput.toUpperCase().trim(),
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setResult(data);
+      setIsVerifying(false);
+      if (data.success) {
+        toast({
+          title: "Code Verified",
+          description: `Successfully verified: ${data.deal?.title || "Deal"}`,
+        });
+        setCode("");
+      }
+    },
+    onError: (error: Error) => {
+      setResult({
+        success: false,
+        message: error.message || "Failed to verify code",
+      });
+      setIsVerifying(false);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) {
+      toast({
+        title: "Enter a code",
+        description: "Please enter the customer's redemption code",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsVerifying(true);
+    setResult(null);
+    verifyMutation.mutate(code);
+  };
+
+  const handleReset = () => {
+    setCode("");
+    setResult(null);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2">
+          <Ticket className="w-5 h-5" />
+          Verify Redemption Code
+        </CardTitle>
+        <CardDescription>
+          Enter the customer's redemption code to verify and redeem their deal
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="redemption-code">Customer Code</Label>
+            <div className="flex gap-3">
+              <Input
+                id="redemption-code"
+                placeholder="RL-XXXXXX"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                className="font-mono text-lg tracking-wider"
+                maxLength={9}
+                disabled={isVerifying}
+                data-testid="input-redemption-code"
+              />
+              <Button
+                type="submit"
+                disabled={isVerifying || !code.trim()}
+                data-testid="button-verify-code"
+              >
+                {isVerifying ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Verifying...
+                  </span>
+                ) : (
+                  "Verify"
+                )}
+              </Button>
+            </div>
+          </div>
+        </form>
+
+        {result && (
+          <div className={`p-4 rounded-lg border-2 ${
+            result.success
+              ? "bg-primary/5 border-primary/30"
+              : "bg-destructive/5 border-destructive/30"
+          }`}>
+            {result.success ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-primary">
+                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Ticket className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">Code Verified</p>
+                    <p className="text-sm text-muted-foreground">{result.message}</p>
+                  </div>
+                </div>
+                {result.deal && (
+                  <div className="bg-background rounded-lg p-3">
+                    <p className="text-sm text-muted-foreground">Deal</p>
+                    <p className="font-medium">{result.deal.title}</p>
+                  </div>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  className="w-full"
+                  data-testid="button-verify-another"
+                >
+                  Verify Another Code
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <div>
+                    <p className="font-semibold">Verification Failed</p>
+                    <p className="text-sm">{result.message}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  className="w-full"
+                  data-testid="button-try-again"
+                >
+                  Try Again
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+          <p className="text-sm font-medium">How it works:</p>
+          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+            <li>Customer shows you their redemption code (format: RL-XXXXXX)</li>
+            <li>Enter the code above and click "Verify"</li>
+            <li>If valid, the deal is redeemed and the customer gets their discount</li>
+          </ol>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
