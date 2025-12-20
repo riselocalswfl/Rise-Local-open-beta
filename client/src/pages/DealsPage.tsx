@@ -18,6 +18,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import type { Deal, Vendor } from "@shared/schema";
+import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
 
 const SWFL_DEFAULT = { lat: 26.6406, lng: -81.8723 };
 
@@ -191,10 +192,19 @@ export default function DealsPage() {
 
   const queryString = queryParams.toString();
 
+  const dealsFilters = {
+    category: category !== "all" ? category : undefined,
+    city: !nearMeEnabled && city !== "all" ? city : undefined,
+    lat: nearMeEnabled && location.coords ? location.coords.lat : undefined,
+    lng: nearMeEnabled && location.coords ? location.coords.lng : undefined,
+    radiusMiles: nearMeEnabled && location.coords ? parseInt(radiusMiles) : undefined,
+    isActive: true,
+  };
+  
   const { data: deals, isLoading: dealsLoading } = useQuery<DealWithDistance[]>({
-    queryKey: ["/api/deals", { category, city, nearMeEnabled, radiusMiles, lat: location.coords?.lat, lng: location.coords?.lng }],
+    queryKey: [DEALS_QUERY_KEY, dealsFilters],
     queryFn: async () => {
-      const res = await fetch(`/api/deals?${queryString}`);
+      const res = await fetch(`/api/deals?${queryString}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch deals");
       return res.json();
     },
