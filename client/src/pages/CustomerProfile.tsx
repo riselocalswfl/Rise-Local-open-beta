@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { LogOut, Edit2, Save, X, ChevronRight, MessageSquare } from "lucide-react";
+import { LogOut, Edit2, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -28,17 +27,6 @@ export default function CustomerProfile() {
       setLocation("/dashboard");
     }
   }, [isVendor, setLocation]);
-
-  // Fetch unread message + notification count
-  const { data: unreadData } = useQuery<{ count: number }>({
-    queryKey: ["/api/b2c/unread-count"],
-    refetchInterval: 10000,
-  });
-  const { data: notificationData } = useQuery<{ count: number }>({
-    queryKey: ["/api/notifications/unread-count"],
-    refetchInterval: 10000,
-  });
-  const totalUnread = (unreadData?.count || 0) + (notificationData?.count || 0);
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: { firstName?: string; lastName?: string; phone?: string }) => {
@@ -143,41 +131,6 @@ export default function CustomerProfile() {
         </div>
 
         <div className="space-y-6">
-          {/* Messages Section */}
-          <Card data-testid="card-messages">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Messages
-                    {totalUnread > 0 && (
-                      <Badge variant="destructive" className="ml-2" data-testid="badge-messages-count">
-                        {totalUnread}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    Your conversations with local businesses
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Link 
-                href="/messages"
-                className="inline-flex items-center justify-between gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 min-h-9 px-4 py-2 w-full"
-                data-testid="button-view-messages"
-              >
-                <span className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  View Messages
-                </span>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </CardContent>
-          </Card>
-
           {/* Account Information */}
           <Card data-testid="card-account-info">
             <CardHeader>
