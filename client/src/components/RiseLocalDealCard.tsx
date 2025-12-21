@@ -71,7 +71,7 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(); }}
     >
-        <div className="relative rounded-xl overflow-hidden bg-muted aspect-[4/3] mb-2">
+        <div className="relative rounded-xl overflow-hidden bg-muted aspect-[16/9] mb-2">
           <img
             src={currentImage}
             alt={deal.title}
