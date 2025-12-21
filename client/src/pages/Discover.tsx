@@ -113,6 +113,26 @@ function markDealsAsUsed(deals: ExtendedRiseLocalDeal[], usedIds: Set<string>): 
   deals.forEach(deal => usedIds.add(deal.id));
 }
 
+// Transform ExtendedRiseLocalDeal to DiscoverDeal format (stable function outside component)
+function toDiscoverDeal(deal: ExtendedRiseLocalDeal): DiscoverDeal {
+  return {
+    id: deal.id,
+    title: deal.title,
+    vendorId: deal.vendorId,
+    vendorName: deal.vendorName,
+    vendorCategory: deal.vendorCategory,
+    imageUrl: deal.imageUrl,
+    vendorBannerUrl: deal.vendorBannerUrl,
+    vendorLogoUrl: deal.vendorLogoUrl,
+    savings: deal.savings,
+    distance: deal.distance,
+    redemptionWindow: deal.redemptionWindow,
+    memberOnly: deal.memberOnly,
+    isNew: deal.isNew,
+    isFictitious: deal.isFictitious,
+  };
+}
+
 // Interleave deals to avoid same vendor appearing back-to-back
 function interleaveByVendor(deals: ExtendedRiseLocalDeal[]): ExtendedRiseLocalDeal[] {
   if (deals.length <= 2) return deals;
@@ -488,24 +508,6 @@ export default function Discover() {
       <Skeleton className="h-3 w-32" />
     </div>
   );
-
-  // Transform ExtendedRiseLocalDeal to DiscoverDeal format
-  const toDiscoverDeal = (deal: ExtendedRiseLocalDeal): DiscoverDeal => ({
-    id: deal.id,
-    title: deal.title,
-    vendorId: deal.vendorId,
-    vendorName: deal.vendorName,
-    vendorCategory: deal.vendorCategory,
-    imageUrl: deal.imageUrl,
-    vendorBannerUrl: deal.vendorBannerUrl,
-    vendorLogoUrl: deal.vendorLogoUrl,
-    savings: deal.savings,
-    distance: deal.distance,
-    redemptionWindow: deal.redemptionWindow,
-    memberOnly: deal.memberOnly,
-    isNew: deal.isNew,
-    isFictitious: deal.isFictitious,
-  });
 
   const DealSection = ({ 
     title, 

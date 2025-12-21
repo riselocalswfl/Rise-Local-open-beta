@@ -19,6 +19,7 @@ export default function DealDetailPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [redeemModalOpen, setRedeemModalOpen] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
 
   const { data: deal, isLoading: dealLoading } = useQuery<Deal>({
     queryKey: ["/api/deals", id],
@@ -151,14 +152,13 @@ export default function DealDetailPage() {
     placeholderImage,
   ].filter((url): url is string => Boolean(url));
   
-  const [imageIndex, setImageIndex] = useState(0);
   const currentImage = imageFallbackChain[imageIndex] || placeholderImage;
   
-  const handleImageError = useCallback(() => {
+  const handleImageError = () => {
     if (imageIndex < imageFallbackChain.length - 1) {
       setImageIndex(prev => prev + 1);
     }
-  }, [imageIndex, imageFallbackChain.length]);
+  };
 
   return (
     <div className="min-h-screen bg-background">
