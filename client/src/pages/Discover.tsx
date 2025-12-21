@@ -695,38 +695,6 @@ export default function Discover() {
         </section>
       )}
 
-      {/* Browse by Category */}
-      <section className="pt-6 pb-4">
-        <div className="px-4 mb-4">
-          <h2 className="text-section-header text-foreground" data-testid="heading-categories">
-            Browse by Category
-          </h2>
-        </div>
-        <ScrollArea className="w-full">
-          <div className="flex gap-3 px-4 pb-4">
-            {(categoriesData || []).map((cat) => {
-              const Icon = (cat.icon && ICON_MAP[cat.icon]) || Sparkles;
-              const isSelected = selectedCategory === cat.key;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => handleCategorySelect(cat.key)}
-                  className={`flex-shrink-0 flex flex-col items-center gap-2 p-4 rounded-xl min-w-[100px] transition-colors ${
-                    isSelected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground border border-border hover:bg-muted/80"
-                  }`}
-                  data-testid={`category-${cat.key}`}
-                >
-                  <Icon className="w-6 h-6" />
-                  <span className="text-meta-emphasis text-center">{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <ScrollBar orientation="horizontal" className="invisible" />
-        </ScrollArea>
-      </section>
 
       {/* Deal Sections */}
       {!dealsLoading && (
