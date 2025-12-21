@@ -1136,32 +1136,6 @@ export default function VendorDashboard() {
                 <Separator className="my-6" />
 
                 <div className="space-y-2">
-                  <Label htmlFor="vendorPin">Deal Redemption PIN</Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    A 4-6 digit PIN used by staff to verify deal redemptions in-store
-                  </p>
-                  <Input
-                    id="vendorPin"
-                    type="password"
-                    defaultValue={vendor.vendorPin || ""}
-                    placeholder="Enter 4-6 digit PIN"
-                    maxLength={6}
-                    data-testid="input-vendor-pin"
-                    onBlur={(e) => {
-                      const value = e.target.value.trim();
-                      if (value && (value.length < 4 || value.length > 6 || !/^\d+$/.test(value))) {
-                        return;
-                      }
-                      if (value !== vendor.vendorPin) {
-                        updateVendorMutation.mutate({ vendorPin: value || null });
-                      }
-                    }}
-                  />
-                </div>
-
-                <Separator className="my-6" />
-
-                <div className="space-y-2">
                   <Label>Account Actions</Label>
                   <Button 
                     variant="outline" 
