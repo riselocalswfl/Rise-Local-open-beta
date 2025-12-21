@@ -115,7 +115,7 @@ export default function MessagesPage() {
       }
 
       // Create new conversation by sending initial message
-      const res = await apiRequest("POST", "/api/b2c/conversations", {
+      const res = await apiRequest("POST", "/api/b2c/conversations/start", {
         vendorId: vendorId,
         message: "Hi, I'd like to learn more about your business!"
       });

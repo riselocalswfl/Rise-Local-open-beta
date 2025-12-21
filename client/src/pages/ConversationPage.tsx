@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Lock, ArrowRight } from "lucide-react";
+import { Send, ArrowLeft, X } from "lucide-react";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -143,15 +142,52 @@ export default function ConversationPage() {
 
   const { messages, vendorName, vendorLogoUrl, consumerName, userRole } = data;
   const otherPartyName = userRole === "consumer" ? vendorName : consumerName;
+  const backHref = userRole === "vendor" ? "/dashboard" : "/messages";
+  const otherPartyAvatar = userRole === "consumer" ? vendorLogoUrl : null;
+  const otherPartyInitial = (otherPartyName || "?")[0].toUpperCase();
+
+  const formatMessageTime = (dateStr: Date | string | null) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <DetailHeader 
-        title={otherPartyName} 
-        backHref={userRole === "vendor" ? "/dashboard" : "/messages"}
-      />
+      {/* Custom Chat Header */}
+      <header className="border-b bg-background sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Link href={backHref}>
+              <Button variant="ghost" size="icon" data-testid="button-back">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={otherPartyAvatar || undefined} />
+              <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                {otherPartyInitial}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="font-semibold text-base" data-testid="text-conversation-name">
+                {otherPartyName}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Typically responds in a few hours
+              </p>
+            </div>
+          </div>
+          <Link href={backHref}>
+            <Button variant="ghost" size="icon" data-testid="button-close">
+              <X className="h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
+      </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-muted/30">
         {messages.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>Start the conversation by sending a message</p>
@@ -161,31 +197,37 @@ export default function ConversationPage() {
             const isMyMessage = 
               (userRole === "consumer" && msg.senderRole === "consumer") ||
               (userRole === "vendor" && msg.senderRole === "vendor");
+            const isFromBusiness = msg.senderRole === "vendor";
 
             return (
               <div
                 key={msg.id}
-                className={`flex ${isMyMessage ? "justify-end" : "justify-start"}`}
+                className={`flex items-end gap-2 ${isMyMessage ? "justify-end" : "justify-start"}`}
                 data-testid={`message-${msg.id}`}
               >
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    isMyMessage
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  }`}
-                >
-                  <p className="text-sm">{msg.content}</p>
-                  <p className={`text-xs mt-1 ${
-                    isMyMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-                  }`}>
-                    {msg.createdAt
-                      ? new Date(msg.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : ""}
-                  </p>
+                {/* Avatar for incoming messages (from the other party) */}
+                {!isMyMessage && (
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={otherPartyAvatar || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                      {otherPartyInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                
+                <div className={`flex flex-col ${isMyMessage ? "items-end" : "items-start"}`}>
+                  <div
+                    className={`max-w-[280px] rounded-2xl px-4 py-2.5 ${
+                      isMyMessage
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-card border shadow-sm rounded-bl-md"
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed">{msg.content}</p>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                    {formatMessageTime(msg.createdAt)}
+                  </span>
                 </div>
               </div>
             );
@@ -194,23 +236,26 @@ export default function ConversationPage() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Message Input */}
       <div className="border-t bg-background p-4">
-        <div className="flex gap-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Type a message..."
-            className="flex-1"
-            data-testid="input-message"
-          />
+        <div className="flex items-center gap-3">
+          <div className="flex-1 relative">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Type a message..."
+              className="pr-4 rounded-full bg-muted/50 border-0"
+              data-testid="input-message"
+            />
+          </div>
           <Button
             onClick={handleSend}
             disabled={!newMessage.trim() || sendMessage.isPending}
-            size="icon"
+            className="rounded-full px-6"
             data-testid="button-send"
           >
-            <Send className="h-4 w-4" />
+            Send
           </Button>
         </div>
       </div>
