@@ -69,10 +69,10 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
           data-testid={`img-deal-${deal.id}`}
         />
         {deal.savings > 0 && (
-          <div className="absolute bottom-2 left-2">
+          <div className="absolute bottom-1.5 left-1.5">
             <Badge 
               variant="outline" 
-              className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+              className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
               data-testid={`badge-savings-${deal.id}`}
             >
               Save ${deal.savings}
@@ -80,17 +80,17 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
           </div>
         )}
         {deal.memberOnly && (
-          <div className="absolute top-2 left-2">
-            <Badge variant="default" className="text-[10px] px-1.5 py-0.5 bg-primary">
-              Member Only
+          <div className="absolute top-1.5 left-1.5">
+            <Badge variant="default" className="text-[9px] px-1 py-0.5 bg-primary">
+              Member
             </Badge>
           </div>
         )}
         {deal.isFictitious && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-1.5 right-1.5">
             <Badge 
               variant="outline" 
-              className="text-[9px] px-1.5 py-0.5 bg-amber-100 border-amber-300 text-amber-700"
+              className="text-[8px] px-1 py-0.5 bg-amber-100 border-amber-300 text-amber-700"
             >
               Sample
             </Badge>
@@ -98,45 +98,34 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
         )}
       </div>
       
-      <CardContent className={`p-3 ${isLocked ? 'blur-[2px]' : ''}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold text-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
-            {deal.vendorName}
-          </span>
-          {deal.vendorCategory && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex-shrink-0">
-              {deal.vendorCategory}
-            </Badge>
-          )}
-        </div>
-        <h3 className="text-sm text-muted-foreground line-clamp-2 mb-2" data-testid={`deal-title-${deal.id}`}>
+      <CardContent className={`p-2 ${isLocked ? 'blur-[2px]' : ''}`}>
+        <p className="text-xs font-semibold text-foreground truncate mb-0.5" data-testid={`deal-vendor-${deal.id}`}>
+          {deal.vendorName}
+        </p>
+        <h3 className="text-xs text-muted-foreground line-clamp-2 mb-1.5" data-testid={`deal-title-${deal.id}`}>
           {deal.title}
         </h3>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-0.5">
+            <MapPin className="w-2.5 h-2.5" />
             {deal.distance}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            Redeem today
           </span>
         </div>
       </CardContent>
       
       {isLocked && (
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-10">
-          <Lock className="w-6 h-6 text-primary mb-2" />
-          <p className="text-xs text-center text-foreground font-medium mb-2">
-            Unlock with Rise Local Pass
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-2 z-10">
+          <Lock className="w-5 h-5 text-primary mb-1" />
+          <p className="text-[10px] text-center text-foreground font-medium mb-1.5">
+            Rise Local Pass
           </p>
           <Button 
             size="sm" 
-            className="text-xs h-7" 
+            className="text-[10px] h-6 px-2" 
             onClick={handleUnlockClick}
             data-testid={`button-unlock-${deal.id}`}
           >
-            Join Now
+            Join
           </Button>
         </div>
       )}

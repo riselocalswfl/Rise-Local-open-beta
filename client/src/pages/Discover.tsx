@@ -537,7 +537,7 @@ export default function Discover() {
           </Link>
         </div>
         
-        <div className="px-4 space-y-4">
+        <div className="px-4 grid grid-cols-2 gap-3">
           {deals.map((deal) => (
             <DiscoverDealCard 
               key={deal.id} 
