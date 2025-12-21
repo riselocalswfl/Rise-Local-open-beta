@@ -7,7 +7,7 @@ import { useCallback } from "react";
 export type DealType = "memberOnly" | "standard" | "bogo" | "value" | "new";
 
 export interface RiseLocalDeal {
-  id: number;
+  id: string;
   title: string;
   vendorId: string;
   vendorName: string;

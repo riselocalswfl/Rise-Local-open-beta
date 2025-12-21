@@ -98,12 +98,12 @@ type ExtendedRiseLocalDeal = RiseLocalDeal & {
 };
 
 // Filter out deals that have already been used
-function filterUsedDeals(deals: ExtendedRiseLocalDeal[], usedIds: Set<number>): ExtendedRiseLocalDeal[] {
+function filterUsedDeals(deals: ExtendedRiseLocalDeal[], usedIds: Set<string>): ExtendedRiseLocalDeal[] {
   return deals.filter(deal => !usedIds.has(deal.id));
 }
 
 // Mark deals as used (call this after slicing to only mark displayed deals)
-function markDealsAsUsed(deals: ExtendedRiseLocalDeal[], usedIds: Set<number>): void {
+function markDealsAsUsed(deals: ExtendedRiseLocalDeal[], usedIds: Set<string>): void {
   deals.forEach(deal => usedIds.add(deal.id));
 }
 
@@ -161,7 +161,7 @@ function transformDealToRiseLocal(
   const savings = computeSavings(deal);
   
   return {
-    id: parseInt(deal.id.replace(/\D/g, '').slice(0, 8)) || Math.floor(Math.random() * 1000000),
+    id: deal.id,
     title: deal.title,
     vendorId: deal.vendorId,
     vendorName: deal.vendor?.businessName || "Local Business",
@@ -369,7 +369,7 @@ export default function Discover() {
 
   // Create sections with deduplication - only mark displayed deals as used
   const { memberExclusiveDeals, useTodayDeals, newBusinessDeals, popularDeals } = useMemo(() => {
-    const usedIds = new Set<number>();
+    const usedIds = new Set<string>();
     
     // Member Exclusives Near You: member-only deals, sorted by distance then savings
     const memberExclusive = filteredDeals
