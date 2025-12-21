@@ -204,7 +204,7 @@ export default function DealDetailPage() {
             >
               <span className="flex items-center gap-2">
                 <Ticket className="w-4 h-4" />
-                Get Redemption Code
+                Redeem Now
               </span>
             </Button>
           </div>
