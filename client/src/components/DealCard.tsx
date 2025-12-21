@@ -60,6 +60,18 @@ export default function DealCard({ deal, vendor, isPremiumUser = false, distance
         </div>
       )}
 
+      {/* Deal image */}
+      {deal.imageUrl && (
+        <div className={`relative w-full aspect-[16/9] overflow-hidden ${isLocked ? "blur-sm" : ""}`}>
+          <img
+            src={deal.imageUrl}
+            alt={deal.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            data-testid={`img-deal-${deal.id}`}
+          />
+        </div>
+      )}
+
       <CardContent className={`p-4 ${isLocked ? "blur-sm" : ""}`}>
         <div className="flex items-start gap-3 mb-3">
           <Avatar className="h-12 w-12 border">

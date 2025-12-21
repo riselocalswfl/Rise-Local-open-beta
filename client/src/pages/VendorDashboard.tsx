@@ -1983,13 +1983,13 @@ function DealForm({
         <div className="space-y-2">
           <FormLabel>Deal Photo</FormLabel>
           <FormDescription>
-            Add a photo to make your deal stand out
+            Add a photo to make your deal stand out (vertical or horizontal)
           </FormDescription>
           <ImageUpload
             currentImageUrl={currentImageUrl || null}
             onUploadComplete={(url) => form.setValue("imageUrl", url)}
             onRemove={() => form.setValue("imageUrl", "")}
-            aspectRatio="landscape"
+            aspectRatio="flexible"
             maxSizeMB={5}
           />
         </div>

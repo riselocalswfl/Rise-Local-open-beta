@@ -11,7 +11,7 @@ interface ImageUploadProps {
   onUploadComplete: (imageUrl: string) => void;
   onRemove?: () => void;
   maxSizeMB?: number;
-  aspectRatio?: "square" | "landscape" | "portrait";
+  aspectRatio?: "square" | "landscape" | "portrait" | "flexible";
   disabled?: boolean;
 }
 
@@ -129,6 +129,7 @@ export function ImageUpload({
     square: "aspect-square",
     landscape: "aspect-video",
     portrait: "aspect-[3/4]",
+    flexible: "min-h-[200px]",
   }[aspectRatio];
 
   return (

@@ -102,6 +102,18 @@ export default function Favorites() {
           <div className="space-y-4">
             {favorites.map((deal) => (
               <Card key={deal.id} className="overflow-hidden" data-testid={`card-favorite-deal-${deal.id}`}>
+                {deal.imageUrl && (
+                  <Link href={`/deals/${deal.id}`}>
+                    <div className="relative w-full aspect-[16/9] overflow-hidden">
+                      <img
+                        src={deal.imageUrl}
+                        alt={deal.title}
+                        className="w-full h-full object-cover"
+                        data-testid={`img-favorite-deal-${deal.id}`}
+                      />
+                    </div>
+                  </Link>
+                )}
                 <CardContent className="p-4">
                   <div className="flex gap-4">
                     <Avatar className="h-14 w-14 border shrink-0">
