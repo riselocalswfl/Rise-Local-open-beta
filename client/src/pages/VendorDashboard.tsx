@@ -533,7 +533,7 @@ export default function VendorDashboard() {
 
   const updateDealMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<z.infer<typeof dealFormSchema>> }) => {
-      return await apiRequest("PUT", `/api/vendor/deals/${id}`, data);
+      return await apiRequest("PATCH", `/api/vendor/deals/${id}`, data);
     },
     onSuccess: () => {
       invalidateAllDealQueries();
