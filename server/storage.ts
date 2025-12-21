@@ -1568,8 +1568,15 @@ export class DbStorage implements IStorage {
       const vendorLat = row.vendorLatitude ? parseFloat(row.vendorLatitude) : null;
       const vendorLng = row.vendorLongitude ? parseFloat(row.vendorLongitude) : null;
 
-      // Skip vendors without coordinates in "Near Me" mode
+      // Include vendors without coordinates (show at end with null distance)
+      // This ensures SWFL regional vendors appear even without exact GPS
       if (vendorLat === null || vendorLng === null) {
+        dealsWithDistance.push({
+          ...row.deal,
+          distanceMiles: null, // No distance available - will show as "SWFL"
+          vendorLatitude: row.vendorLatitude,
+          vendorLongitude: row.vendorLongitude
+        });
         continue;
       }
 
@@ -1591,8 +1598,13 @@ export class DbStorage implements IStorage {
       }
     }
 
-    // Sort by distance (closest first)
-    dealsWithDistance.sort((a, b) => (a.distanceMiles || 0) - (b.distanceMiles || 0));
+    // Sort by distance (closest first, null distances at end)
+    dealsWithDistance.sort((a, b) => {
+      if (a.distanceMiles === null && b.distanceMiles === null) return 0;
+      if (a.distanceMiles === null) return 1; // null goes to end
+      if (b.distanceMiles === null) return -1;
+      return a.distanceMiles - b.distanceMiles;
+    });
 
     return dealsWithDistance;
   }
