@@ -164,6 +164,9 @@ export default function VendorDashboard() {
   const [serviceDialogOpen, setServiceDialogOpen] = useState(false);
   const [dealDialogOpen, setDealDialogOpen] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingMenuItem, setEditingMenuItem] = useState<any>(null);
+  const [editingService, setEditingService] = useState<any>(null);
   const [showSaved, setShowSaved] = useState(false);
   const [profileDirty, setProfileDirty] = useState(false);
 
@@ -284,6 +287,8 @@ export default function VendorDashboard() {
           return typeof key === 'string' && key.startsWith('/api/products');
         }
       });
+      setProductDialogOpen(false);
+      setEditingProduct(null);
       toast({ title: "Product updated successfully" });
     },
   });
@@ -390,6 +395,8 @@ export default function VendorDashboard() {
           return typeof key === 'string' && key.startsWith('/api/menu-items');
         }
       });
+      setMenuItemDialogOpen(false);
+      setEditingMenuItem(null);
       toast({ title: "Menu item updated successfully" });
     },
   });
@@ -452,6 +459,8 @@ export default function VendorDashboard() {
           );
         }
       });
+      setServiceDialogOpen(false);
+      setEditingService(null);
       toast({ title: "Service updated successfully" });
     },
     onError: (error: any) => {
@@ -812,7 +821,10 @@ export default function VendorDashboard() {
                   <CardTitle>Menu Items</CardTitle>
                   <CardDescription>Manage your menu items and pricing</CardDescription>
                 </div>
-                <Dialog open={menuItemDialogOpen} onOpenChange={setMenuItemDialogOpen}>
+                <Dialog open={menuItemDialogOpen} onOpenChange={(open) => {
+                  setMenuItemDialogOpen(open);
+                  if (!open) setEditingMenuItem(null);
+                }}>
                   <DialogTrigger asChild>
                     <Button size="sm" data-testid="button-add-menu-item">
                       <Plus className="w-4 h-4 mr-1" />
@@ -821,11 +833,20 @@ export default function VendorDashboard() {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-white text-[#222]">
                     <DialogHeader>
-                      <DialogTitle className="text-[#222]">Add New Menu Item</DialogTitle>
+                      <DialogTitle className="text-[#222]">
+                        {editingMenuItem ? "Edit Menu Item" : "Add New Menu Item"}
+                      </DialogTitle>
                     </DialogHeader>
                     <AddMenuItemForm 
-                      onSubmit={createMenuItemMutation.mutate}
-                      isPending={createMenuItemMutation.isPending}
+                      onSubmit={(data) => {
+                        if (editingMenuItem) {
+                          updateMenuItemMutation.mutate({ id: editingMenuItem.id, data });
+                        } else {
+                          createMenuItemMutation.mutate(data);
+                        }
+                      }}
+                      isPending={createMenuItemMutation.isPending || updateMenuItemMutation.isPending}
+                      defaultValues={editingMenuItem || undefined}
                     />
                   </DialogContent>
                 </Dialog>
@@ -892,6 +913,10 @@ export default function VendorDashboard() {
                               variant="outline" 
                               size="sm" 
                               className="flex-1"
+                              onClick={() => {
+                                setEditingMenuItem(item);
+                                setMenuItemDialogOpen(true);
+                              }}
                               data-testid={`button-edit-menu-item-${item.id}`}
                             >
                               <Edit className="w-3 h-3 mr-1" />
@@ -1411,31 +1436,39 @@ function AddProductForm({
   onSubmit, 
   isPending, 
   onPreview,
+  defaultValues,
 }: { 
   onSubmit: (data: any) => void; 
   isPending: boolean; 
   onPreview: (data: any) => void;
+  defaultValues?: any;
 }) {
-  const [productTags, setProductTags] = useState<string[]>([]);
+  const [productTags, setProductTags] = useState<string[]>(defaultValues?.valueTags || []);
   
   const form = useForm<z.infer<typeof productFormSchema>>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
-      name: "",
-      price: 0,
-      stock: 0,
-      description: "",
-      imageUrl: "",
-      unitType: "per item",
-      status: "active",
-      isFeatured: false,
-      valueTags: [],
-      sourceFarm: "",
-      harvestDate: "",
-      leadTimeDays: 0,
-      inventoryStatus: "in_stock",
+      name: defaultValues?.name || "",
+      price: defaultValues?.priceCents ? defaultValues.priceCents / 100 : 0,
+      stock: defaultValues?.stock || 0,
+      description: defaultValues?.description || "",
+      imageUrl: defaultValues?.imageUrl || "",
+      unitType: defaultValues?.unitType || "per item",
+      status: defaultValues?.status || "active",
+      isFeatured: defaultValues?.isFeatured ?? false,
+      valueTags: defaultValues?.valueTags || [],
+      sourceFarm: defaultValues?.sourceFarm || "",
+      harvestDate: defaultValues?.harvestDate || "",
+      leadTimeDays: defaultValues?.leadTimeDays || 0,
+      inventoryStatus: defaultValues?.inventoryStatus || "in_stock",
     },
   });
+
+  useEffect(() => {
+    if (defaultValues) {
+      setProductTags(defaultValues.valueTags || []);
+    }
+  }, [defaultValues]);
 
   const handleSubmit = (data: z.infer<typeof productFormSchema>) => {
     const { price, ...rest } = data;
@@ -1661,7 +1694,7 @@ function AddProductForm({
             Preview
           </Button>
           <Button type="submit" disabled={isPending} data-testid="button-submit-product">
-            {isPending ? "Creating..." : "Create Product"}
+            {isPending ? "Saving..." : defaultValues ? "Update Product" : "Create Product"}
           </Button>
         </div>
       </form>
@@ -2253,29 +2286,37 @@ function DealForm({
   );
 }
 
-function AddMenuItemForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
-  const [dietaryTags, setDietaryTags] = useState<string[]>([]);
-  const [valueTags, setValueTags] = useState<string[]>([]);
-  const [allergens, setAllergens] = useState<string[]>([]);
+function AddMenuItemForm({ onSubmit, isPending, defaultValues }: { onSubmit: (data: any) => void; isPending: boolean; defaultValues?: any }) {
+  const [dietaryTags, setDietaryTags] = useState<string[]>(defaultValues?.dietaryTags || []);
+  const [valueTags, setValueTags] = useState<string[]>(defaultValues?.valueTags || []);
+  const [allergens, setAllergens] = useState<string[]>(defaultValues?.allergens || []);
   
   const form = useForm<z.infer<typeof menuItemFormSchema>>({
     resolver: zodResolver(menuItemFormSchema),
     defaultValues: {
-      name: "",
-      price: 0,
-      description: "",
-      category: "",
-      imageUrl: "",
-      isAvailable: true,
-      isFeatured: false,
-      dietaryTags: [],
-      valueTags: [],
-      ingredients: "",
-      allergens: [],
-      isLocallySourced: false,
-      sourceFarm: "",
+      name: defaultValues?.name || "",
+      price: defaultValues?.priceCents ? defaultValues.priceCents / 100 : 0,
+      description: defaultValues?.description || "",
+      category: defaultValues?.category || "",
+      imageUrl: defaultValues?.imageUrl || "",
+      isAvailable: defaultValues?.isAvailable ?? true,
+      isFeatured: defaultValues?.isFeatured ?? false,
+      dietaryTags: defaultValues?.dietaryTags || [],
+      valueTags: defaultValues?.valueTags || [],
+      ingredients: defaultValues?.ingredients || "",
+      allergens: defaultValues?.allergens || [],
+      isLocallySourced: defaultValues?.isLocallySourced ?? false,
+      sourceFarm: defaultValues?.sourceFarm || "",
     },
   });
+
+  useEffect(() => {
+    if (defaultValues) {
+      setDietaryTags(defaultValues.dietaryTags || []);
+      setValueTags(defaultValues.valueTags || []);
+      setAllergens(defaultValues.allergens || []);
+    }
+  }, [defaultValues]);
 
   const handleSubmit = (data: z.infer<typeof menuItemFormSchema>) => {
     const { price, ...rest } = data;
@@ -2457,7 +2498,7 @@ function AddMenuItemForm({ onSubmit, isPending }: { onSubmit: (data: any) => voi
 
         <div className="flex justify-end gap-2 pt-4">
           <Button type="submit" disabled={isPending} data-testid="button-submit-menu-item">
-            {isPending ? "Creating..." : "Create Menu Item"}
+            {isPending ? "Saving..." : defaultValues ? "Update Menu Item" : "Create Menu Item"}
           </Button>
         </div>
       </form>
@@ -2465,25 +2506,31 @@ function AddMenuItemForm({ onSubmit, isPending }: { onSubmit: (data: any) => voi
   );
 }
 
-function AddServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; isPending: boolean }) {
-  const [serviceTags, setServiceTags] = useState<string[]>([]);
+function AddServiceForm({ onSubmit, isPending, defaultValues }: { onSubmit: (data: any) => void; isPending: boolean; defaultValues?: any }) {
+  const [serviceTags, setServiceTags] = useState<string[]>(defaultValues?.tags || []);
   
   const form = useForm<z.infer<typeof serviceFormSchema>>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: {
-      offeringName: "",
-      description: "",
-      pricingModel: "fixed",
-      price: 0,
-      hourlyRate: 0,
-      durationMinutes: 0,
-      tags: [],
-      requirements: "",
-      includes: "",
-      isActive: true,
-      isFeatured: false,
+      offeringName: defaultValues?.offeringName || "",
+      description: defaultValues?.description || "",
+      pricingModel: defaultValues?.pricingModel || "fixed",
+      price: defaultValues?.fixedPriceCents ? defaultValues.fixedPriceCents / 100 : 0,
+      hourlyRate: defaultValues?.hourlyRateCents ? defaultValues.hourlyRateCents / 100 : 0,
+      durationMinutes: defaultValues?.durationMinutes || 0,
+      tags: defaultValues?.tags || [],
+      requirements: defaultValues?.requirements || "",
+      includes: defaultValues?.includes || "",
+      isActive: defaultValues?.isActive ?? true,
+      isFeatured: defaultValues?.isFeatured ?? false,
     },
   });
+
+  useEffect(() => {
+    if (defaultValues) {
+      setServiceTags(defaultValues.tags || []);
+    }
+  }, [defaultValues]);
 
   const pricingModel = form.watch("pricingModel");
 
@@ -2734,7 +2781,7 @@ function AddServiceForm({ onSubmit, isPending }: { onSubmit: (data: any) => void
 
         <div className="flex justify-end gap-2 pt-4">
           <Button type="submit" disabled={isPending} data-testid="button-submit-service">
-            {isPending ? "Creating..." : "Create Service"}
+            {isPending ? "Saving..." : defaultValues ? "Update Service" : "Create Service"}
           </Button>
         </div>
       </form>
