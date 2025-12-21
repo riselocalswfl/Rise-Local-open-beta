@@ -710,17 +710,17 @@ export default function Discover() {
       {!dealsLoading && (
         <>
           <DealSection 
-            title="Member Exclusives Near You" 
-            deals={memberExclusiveDeals} 
-            sectionKey="memberExclusives"
-            testId="member-exclusives"
-          />
-
-          <DealSection 
             title="Use Today" 
             deals={useTodayDeals} 
             sectionKey="useToday"
             testId="use-today"
+          />
+
+          <DealSection 
+            title="Member Exclusives Near You" 
+            deals={memberExclusiveDeals} 
+            sectionKey="memberExclusives"
+            testId="member-exclusives"
           />
 
           {/* Membership Banner */}
