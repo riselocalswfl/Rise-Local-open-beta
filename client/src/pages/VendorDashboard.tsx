@@ -113,6 +113,10 @@ const dealFormSchema = z.object({
   description: z.string().min(1, "Description is required"),
   finePrint: z.string().optional(),
   valueLabel: z.string().optional(),
+  savingsAmount: z.preprocess(
+    (val) => val === "" || val === undefined || val === null ? undefined : Number(val),
+    z.number().int().min(0).optional()
+  ),
   category: z.string().optional(),
   city: z.string().default("Fort Myers"),
   tier: z.enum(["standard", "member"]).default("standard"),
@@ -1955,6 +1959,7 @@ function DealForm({
       dealType: defaultDealType,
       discountType: defaultDiscountType,
       discountValue: defaultValues?.discountValue || undefined,
+      savingsAmount: defaultValues?.savingsAmount || undefined,
       redemptionMethod: defaultRedemptionMethod,
       maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
       cooldownHours: defaultValues?.cooldownHours || undefined,
@@ -2041,14 +2046,21 @@ function DealForm({
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="valueLabel"
+            name="savingsAmount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Value Label</FormLabel>
+                <FormLabel>Savings Amount ($)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Save $10, 50% Off" {...field} data-testid="input-deal-value-label" />
+                  <Input 
+                    type="number" 
+                    placeholder="e.g., 10" 
+                    {...field} 
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value))}
+                    data-testid="input-deal-savings-amount" 
+                  />
                 </FormControl>
-                <FormDescription>Shown on the deal card</FormDescription>
+                <FormDescription>Dollar value shown on deal cards (e.g., 10 = "Save $10")</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

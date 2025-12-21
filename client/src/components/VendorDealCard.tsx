@@ -66,7 +66,10 @@ export function VendorDealCard({
   };
 
   const metadataItems = [
-    deal.valueLabel && { value: deal.valueLabel, highlight: true },
+    // Show savingsAmount first if available, otherwise fall back to valueLabel
+    deal.savingsAmount && deal.savingsAmount > 0 
+      ? { value: `$${deal.savingsAmount}`, highlight: true }
+      : deal.valueLabel && { value: deal.valueLabel, highlight: true },
     deal.category,
     deal.city,
   ].filter((item): item is { value: string; highlight: boolean } | string => Boolean(item));
