@@ -23,7 +23,7 @@
   --secondary-foreground: 0 0% 18%;
   
   --muted: 40 20% 94%;
-  --muted-foreground: 0 0% 45%;
+  --muted-foreground: 0 0% 25%;
   
   --accent: 20 74% 56%;
   --accent-foreground: 0 0% 100%;
@@ -108,22 +108,26 @@ body,
     @apply text-sm font-semibold leading-snug;
   }
   
-  /* Body text - comfortable for mobile reading */
+  /* Body text - comfortable for mobile reading (15px) */
   .text-body {
-    @apply text-sm font-normal leading-relaxed;
+    @apply font-normal leading-relaxed;
+    font-size: 0.9375rem;
   }
   
   .text-body-emphasis {
-    @apply text-sm font-medium leading-relaxed;
+    @apply font-medium leading-relaxed;
+    font-size: 0.9375rem;
   }
   
-  /* Metadata - reduced emphasis without reducing contrast */
+  /* Metadata - reduced emphasis without reducing contrast (13px) */
   .text-meta {
-    @apply text-xs font-normal leading-normal;
+    @apply font-normal leading-normal;
+    font-size: 0.8125rem;
   }
   
   .text-meta-emphasis {
-    @apply text-xs font-medium leading-normal;
+    @apply font-medium leading-normal;
+    font-size: 0.8125rem;
   }
   
   /* Labels & form elements */
