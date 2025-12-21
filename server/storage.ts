@@ -27,10 +27,11 @@ import {
   type SenderRole,
   type Notification, type InsertNotification,
   type Category,
+  type Favorite, type InsertFavorite,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
-  conversations, conversationMessages, notifications, categories,
+  conversations, conversationMessages, notifications, categories, favorites,
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
@@ -318,6 +319,13 @@ export interface IStorage {
   recordPlacementImpression(placementId: string, userId?: string, sessionId?: string): Promise<PlacementImpression>;
   recordPlacementClick(placementId: string, userId?: string): Promise<PlacementClick>;
   pauseOtherSpotlights(excludePlacementId: string): Promise<void>;
+
+  // Favorites operations
+  addFavorite(userId: string, dealId: string): Promise<Favorite>;
+  removeFavorite(userId: string, dealId: string): Promise<void>;
+  getUserFavorites(userId: string): Promise<Favorite[]>;
+  isFavorite(userId: string, dealId: string): Promise<boolean>;
+  getUserFavoriteDeals(userId: string): Promise<Deal[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -2035,6 +2043,57 @@ export class DbStorage implements IStorage {
         eq(preferredPlacements.status, "active"),
         sql`${preferredPlacements.id} != ${excludePlacementId}`
       ));
+  }
+
+  // Favorites operations
+  async addFavorite(userId: string, dealId: string): Promise<Favorite> {
+    // Check if already favorited
+    const existing = await db
+      .select()
+      .from(favorites)
+      .where(and(eq(favorites.userId, userId), eq(favorites.dealId, dealId)));
+    
+    if (existing.length > 0) {
+      return existing[0];
+    }
+    
+    const result = await db.insert(favorites).values({ userId, dealId }).returning();
+    return result[0];
+  }
+
+  async removeFavorite(userId: string, dealId: string): Promise<void> {
+    await db.delete(favorites).where(
+      and(eq(favorites.userId, userId), eq(favorites.dealId, dealId))
+    );
+  }
+
+  async getUserFavorites(userId: string): Promise<Favorite[]> {
+    return await db
+      .select()
+      .from(favorites)
+      .where(eq(favorites.userId, userId))
+      .orderBy(desc(favorites.createdAt));
+  }
+
+  async isFavorite(userId: string, dealId: string): Promise<boolean> {
+    const result = await db
+      .select()
+      .from(favorites)
+      .where(and(eq(favorites.userId, userId), eq(favorites.dealId, dealId)));
+    return result.length > 0;
+  }
+
+  async getUserFavoriteDeals(userId: string): Promise<Deal[]> {
+    const userFavorites = await this.getUserFavorites(userId);
+    if (userFavorites.length === 0) return [];
+    
+    const dealIds = userFavorites.map(f => f.dealId);
+    const result = await db
+      .select()
+      .from(deals)
+      .where(sql`${deals.id} IN ${dealIds}`);
+    
+    return result;
   }
 }
 
