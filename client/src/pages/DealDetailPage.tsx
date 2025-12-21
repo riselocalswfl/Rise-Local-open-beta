@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Clock } from "lucide-react";
+import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Clock, Heart } from "lucide-react";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import RedeemCodeModal from "@/components/RedeemCodeModal";
 import type { Deal, Vendor } from "@shared/schema";
 
@@ -40,6 +40,43 @@ export default function DealDetailPage() {
   });
   
   const vendor = vendorData?.vendor;
+
+  const { data: favoriteData } = useQuery<{ isFavorite: boolean }>({
+    queryKey: ["/api/favorites", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/favorites/${id}`);
+      if (!res.ok) return { isFavorite: false };
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  const toggleFavorite = useMutation({
+    mutationFn: async () => {
+      if (favoriteData?.isFavorite) {
+        await apiRequest("DELETE", `/api/favorites/${id}`);
+      } else {
+        await apiRequest("POST", `/api/favorites/${id}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites", id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+      toast({
+        title: favoriteData?.isFavorite ? "Removed from favorites" : "Added to favorites",
+        description: favoriteData?.isFavorite 
+          ? "This deal has been removed from your saved deals."
+          : "This deal has been saved to your favorites.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Something went wrong",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const startConversation = useMutation({
     mutationFn: async () => {
@@ -127,6 +164,21 @@ export default function DealDetailPage() {
                 </p>
                 <CardTitle className="text-2xl md:text-3xl">{deal.title}</CardTitle>
               </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => toggleFavorite.mutate()}
+                disabled={toggleFavorite.isPending}
+                data-testid="button-toggle-favorite"
+              >
+                <Heart 
+                  className={`w-6 h-6 transition-colors ${
+                    favoriteData?.isFavorite 
+                      ? "fill-red-500 text-red-500" 
+                      : "text-muted-foreground"
+                  }`} 
+                />
+              </Button>
             </div>
           </CardHeader>
 
