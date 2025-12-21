@@ -11,6 +11,18 @@ Preferred communication style: Simple, everyday language.
 ### UI/UX
 The frontend is developed using React 18, TypeScript, and Vite. It leverages Radix UI and shadcn/ui (new-york preset) for UI components, styled with Tailwind CSS. The design prioritizes a mobile-first approach, with a primary focus on iPhone/Android and secondary consideration for desktop. Key branding elements include a forest green primary color, brand-specific accent colors (Wheat, Clay, Ink, Paper), and distinct fonts (Playfair Display, Work Sans, JetBrains Mono). A consistent `BrandLogo` component links to the home page (`/discover`) from all screens. The authentication page's hero section is optimized for mobile, featuring a concise layout, a 6-word headline ("Shop local. Sell local."), a single-line subheadline, and two prominent CTAs ("Shop Local," "Sell With Us") positioned above the fold with 56px touch targets on a clean white background. The application uses a light-only theme, with no dark mode styling, and implements semantic CSS variables with Tailwind CSS.
 
+**Typography System**: A comprehensive typography utility class system is defined in `client/src/index.css` for consistent hierarchy across all pages:
+- `text-page-title`: Large page headers (1.5rem, weight 600)
+- `text-section-header`: Card/section titles (1.125rem, weight 600)
+- `text-deal-title`: Deal/item names (0.9375rem, weight 600)
+- `text-business-name`: Business/vendor names (0.9375rem, weight 500)
+- `text-body`: Body copy and descriptions (0.875rem, weight 400)
+- `text-meta`: Metadata, timestamps, secondary info (0.75rem, weight 400)
+- `text-label`: Form labels (0.875rem, weight 500)
+- `text-input`: Form input text (0.875rem, weight 400)
+- `text-button`: Button text (0.875rem, weight 500)
+- `text-meta-emphasis`: Emphasized metadata (0.75rem, weight 500)
+
 ### Technical Implementations
 - **Frontend State Management**: TanStack Query manages server-side state, while React hooks handle local UI state. Wouter is used for client-side routing.
 - **Backend**: An Express.js server with TypeScript provides a RESTful API.
