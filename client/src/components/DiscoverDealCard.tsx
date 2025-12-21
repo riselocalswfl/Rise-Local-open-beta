@@ -79,13 +79,6 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
             </Badge>
           </div>
         )}
-        {deal.memberOnly && (
-          <div className="absolute top-1.5 left-1.5">
-            <Badge variant="default" className="text-[9px] px-1 py-0.5 bg-primary">
-              Member
-            </Badge>
-          </div>
-        )}
         {deal.isFictitious && (
           <div className="absolute top-1.5 right-1.5">
             <Badge 
