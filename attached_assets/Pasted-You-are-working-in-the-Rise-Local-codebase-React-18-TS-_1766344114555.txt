@@ -1,0 +1,73 @@
+You are working in the Rise Local codebase (React 18 + TS + Vite + Tailwind + shadcn/ui, Express + TS backend, Drizzle ORM, Postgres).
+
+Goal
+	1.	Make the Browse deal cards render in the same visual style as the third screenshot (image-first card with “Save $X” pill + business name + deal title + region + “Redeem today” meta).
+	2.	Fix why deal photos are not loading (currently showing icon/blank), and ensure the same image appears consistently on:
+
+	•	Discover page deal modules
+	•	Browse All Deals list
+	•	Business Profile → Deals list
+	•	Deal Detail page (when clicking a deal)
+
+Requirements
+	•	Each deal must have an image that reliably loads.
+	•	If a deal doesn’t have an image, fallback in this order:
+	1.	deal.imageUrl
+	2.	vendor.bannerUrl
+	3.	vendor.profileImageUrl
+	4.	a local placeholder asset (e.g. /assets/deal-placeholder.jpg)
+	•	Cards must be responsive/mobile-first and match the third screenshot style:
+	•	top image with fixed aspect ratio (e.g. aspect-[16/9] or aspect-video)
+	•	image uses object-cover, rounded corners
+	•	overlay pill “Save $10” (or computed savings label) on the image
+	•	title + category chip + business name + location meta line
+
+Step-by-step tasks to implement
+	1.	Audit & standardize data model
+	•	Ensure deals table includes a nullable imageUrl (string).
+	•	Ensure vendors table includes bannerUrl and profileImageUrl.
+	•	Add Drizzle migration if fields are missing.
+	•	Update create/edit deal flow in vendor dashboard to allow saving imageUrl.
+	2.	Ensure backend returns the correct URLs
+	•	Update all deal-related API responses to include:
+	•	deal.imageUrl
+	•	vendor.bannerUrl
+	•	vendor.profileImageUrl
+	•	vendor.name
+	•	vendor.location (city/area)
+	•	deal.category
+	•	deal.savingsLabel (or enough fields to compute it)
+	•	If images are stored as relative paths, convert to absolute URLs in API (based on request origin) so the mobile webview can load them reliably.
+	3.	Fix image hosting/loading
+	•	Identify why images fail:
+	•	broken/relative URL
+	•	blocked by CORS
+	•	mixed-content http vs https
+	•	missing static serving for uploads
+	•	Implement a robust approach:
+	•	If using local uploads: serve /uploads/* via Express static middleware and confirm Vite proxy config.
+	•	If using external storage: ensure URLs are https and publicly accessible.
+	•	Add defensive UI handling:
+	•	use onError to swap to fallback image
+	•	add a skeleton loader while the image loads
+	4.	Create one shared DealCard component
+	•	Create client/src/components/DealCard.tsx used by Discover, Browse, and Business Profile.
+	•	Component props should accept the deal + vendor fields and internally resolve displayImageUrl using the fallback order.
+	•	Style the card to match the third screenshot.
+	5.	Unify rendering across pages
+	•	Replace any old deal list UI in:
+	•	Discover modules
+	•	Browse list
+	•	Business Profile deals section
+	•	All should use the same <DealCard /> component.
+	6.	Verify click-through
+	•	Clicking any deal card navigates to /deal/:id (or your existing route) and the detail page also shows the same resolved image at top.
+
+Acceptance tests
+	•	A deal with a valid imageUrl shows that image on all pages.
+	•	A deal without imageUrl shows vendor banner/profile/placeholder.
+	•	No broken image icons.
+	•	Cards look like the third screenshot on mobile width.
+	•	Works on HTTPS Replit deployment.
+
+Now implement these changes in code: migrations, API payloads, shared DealCard component, and page refactors. After implementation, list the exact files changed and what was changed in each.
