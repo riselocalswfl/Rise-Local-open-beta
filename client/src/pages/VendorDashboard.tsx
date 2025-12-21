@@ -619,13 +619,13 @@ export default function VendorDashboard() {
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <Card className="max-w-lg">
           <CardHeader>
-            <CardTitle>Setting Up Your Profile</CardTitle>
+            <CardTitle className="text-section-header">Setting Up Your Profile</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-body text-muted-foreground mb-4">
               Loading your business profile...
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               If this persists, please contact support or complete the business onboarding process.
             </p>
           </CardContent>
@@ -640,8 +640,8 @@ export default function VendorDashboard() {
       <div className="min-h-screen bg-bg">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2" data-testid="heading-dashboard">Business Dashboard</h1>
-            <p className="text-muted-foreground">{vendor.businessName}</p>
+            <h1 className="text-page-title text-2xl md:text-3xl mb-2" data-testid="heading-dashboard">Business Dashboard</h1>
+            <p className="text-body text-muted-foreground">{vendor.businessName}</p>
           </div>
 
 
@@ -773,7 +773,7 @@ export default function VendorDashboard() {
             {vendor.vendorType === "dine" && (
               <Card className="mt-4">
                 <CardHeader>
-                  <CardTitle className="text-base">Menu Options</CardTitle>
+                  <CardTitle className="text-section-header">Menu Options</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -818,8 +818,8 @@ export default function VendorDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Menu Items</CardTitle>
-                  <CardDescription>Manage your menu items and pricing</CardDescription>
+                  <CardTitle className="text-section-header">Menu Items</CardTitle>
+                  <CardDescription className="text-body">Manage your menu items and pricing</CardDescription>
                 </div>
                 <Dialog open={menuItemDialogOpen} onOpenChange={(open) => {
                   setMenuItemDialogOpen(open);
@@ -864,7 +864,7 @@ export default function VendorDashboard() {
                         <CardContent className="p-4 space-y-3">
                           <div className="space-y-1">
                             <div className="flex items-start justify-between gap-2">
-                              <h3 className="font-semibold line-clamp-1">{item.name}</h3>
+                              <h3 className="text-deal-title line-clamp-1">{item.name}</h3>
                               {item.isFeatured && (
                                 <Badge variant="default" className="shrink-0">Featured</Badge>
                               )}
@@ -873,12 +873,12 @@ export default function VendorDashboard() {
                               <Badge variant="outline" className="text-xs">{item.category}</Badge>
                             )}
                             {item.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                              <p className="text-body text-muted-foreground line-clamp-2">{item.description}</p>
                             )}
                           </div>
                           
                           <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-bold" data-testid={`menu-item-price-${item.id}`}>
+                            <span className="text-base font-semibold" data-testid={`menu-item-price-${item.id}`}>
                               ${((item.priceCents || 0) / 100).toFixed(2)}
                             </span>
                           </div>
@@ -945,8 +945,8 @@ export default function VendorDashboard() {
             <Card className="overflow-x-hidden">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Manage Deals</CardTitle>
-                  <CardDescription>Create and manage special offers for your customers</CardDescription>
+                  <CardTitle className="text-section-header">Manage Deals</CardTitle>
+                  <CardDescription className="text-body">Create and manage special offers for your customers</CardDescription>
                 </div>
                 <Dialog open={dealDialogOpen} onOpenChange={(open) => {
                   setDealDialogOpen(open);
@@ -1012,7 +1012,7 @@ export default function VendorDashboard() {
           <TabsContent value="faqs">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Manage FAQs</CardTitle>
+                <CardTitle className="text-section-header">Manage FAQs</CardTitle>
                 <Dialog open={faqDialogOpen} onOpenChange={setFaqDialogOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" data-testid="button-add-faq">
@@ -1043,8 +1043,8 @@ export default function VendorDashboard() {
                       <div key={faq.id} className="border rounded-md p-4" data-testid={`faq-${faq.id}`}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold mb-2">{faq.question}</h3>
-                            <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                            <h3 className="text-deal-title mb-2">{faq.question}</h3>
+                            <p className="text-body text-muted-foreground">{faq.answer}</p>
                           </div>
                           <div className="flex gap-2">
                             <Button variant="outline" size="sm" data-testid={`button-edit-faq-${faq.id}`}>Edit</Button>
@@ -1070,12 +1070,12 @@ export default function VendorDashboard() {
           <TabsContent value="settings">
             <Card>
               <CardHeader>
-                <CardTitle>Settings</CardTitle>
+                <CardTitle className="text-section-header">Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="vendorType">Business Type</Label>
-                  <p className="text-xs text-muted-foreground mb-2">
+                  <Label htmlFor="vendorType" className="text-label">Business Type</Label>
+                  <p className="text-meta text-muted-foreground mb-2">
                     This determines how your business is categorized in the app
                   </p>
                   <Select
@@ -1178,14 +1178,14 @@ export default function VendorDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Business Features</CardTitle>
-                <CardDescription>Enable or disable features for your business</CardDescription>
+                <CardTitle className="text-section-header">Business Features</CardTitle>
+                <CardDescription className="text-body">Enable or disable features for your business</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
                   <div className="space-y-1 flex-1">
-                    <Label htmlFor="services-capability" className="text-base font-semibold">Services</Label>
-                    <p className="text-sm text-[#747474]">
+                    <Label htmlFor="services-capability" className="text-label">Services</Label>
+                    <p className="text-body text-muted-foreground">
                       Offer services with booking, pricing models, and scheduling
                     </p>
                   </div>
@@ -1207,8 +1207,8 @@ export default function VendorDashboard() {
 
                 <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
                   <div className="space-y-1 flex-1">
-                    <Label htmlFor="menu-capability" className="text-base font-semibold">Menu</Label>
-                    <p className="text-sm text-[#747474]">
+                    <Label htmlFor="menu-capability" className="text-label">Menu</Label>
+                    <p className="text-body text-muted-foreground">
                       Display menu items with categories, dietary info, and pricing
                     </p>
                   </div>
@@ -1246,15 +1246,15 @@ export default function VendorDashboard() {
             {vendor.vendorType === "dine" && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Restaurant Settings</CardTitle>
-                  <CardDescription>Configure reservations and deals for your restaurant</CardDescription>
+                  <CardTitle className="text-section-header">Restaurant Settings</CardTitle>
+                  <CardDescription className="text-body">Configure reservations and deals for your restaurant</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Accept Reservations Toggle */}
                   <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
                     <div className="space-y-1 flex-1">
-                      <Label htmlFor="accept-reservations" className="text-base font-semibold">Accept Reservations through Rise Local</Label>
-                      <p className="text-sm text-[#747474]">
+                      <Label htmlFor="accept-reservations" className="text-label">Accept Reservations through Rise Local</Label>
+                      <p className="text-body text-muted-foreground">
                         When enabled, customers can see reservation options on your profile
                       </p>
                     </div>
@@ -1341,8 +1341,8 @@ export default function VendorDashboard() {
                   {/* Offer Deals Toggle */}
                   <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
                     <div className="space-y-1 flex-1">
-                      <Label htmlFor="offer-deals" className="text-base font-semibold">Offer Rise Local Deals</Label>
-                      <p className="text-sm text-[#747474]">
+                      <Label htmlFor="offer-deals" className="text-label">Offer Rise Local Deals</Label>
+                      <p className="text-body text-muted-foreground">
                         Participate in Rise Local deals to attract more customers
                       </p>
                     </div>
@@ -1369,14 +1369,14 @@ export default function VendorDashboard() {
             {/* Profile Visibility Card */}
             <Card>
               <CardHeader>
-                <CardTitle>Profile Visibility</CardTitle>
-                <CardDescription>Control whether your business is visible to the public</CardDescription>
+                <CardTitle className="text-section-header">Profile Visibility</CardTitle>
+                <CardDescription className="text-body">Control whether your business is visible to the public</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
                   <div className="space-y-1 flex-1">
-                    <Label htmlFor="profile-visibility" className="text-base font-semibold">Show Profile Publicly</Label>
-                    <p className="text-sm text-[#747474]">
+                    <Label htmlFor="profile-visibility" className="text-label">Show Profile Publicly</Label>
+                    <p className="text-body text-muted-foreground">
                       When disabled, your business profile and deals will be hidden from public listings. You can still access your dashboard and manage your business.
                     </p>
                   </div>
@@ -2968,18 +2968,18 @@ function VerifyCodeTab() {
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="text-section-header flex items-center gap-2">
           <Ticket className="w-5 h-5" />
           Verify Redemption Code
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-body">
           Enter the customer's redemption code to verify and redeem their deal
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="redemption-code">Customer Code</Label>
+            <Label htmlFor="redemption-code" className="text-label">Customer Code</Label>
             <div className="flex gap-3">
               <Input
                 id="redemption-code"
@@ -3022,22 +3022,22 @@ function VerifyCodeTab() {
                     <Ticket className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-semibold">Code Verified</p>
-                    <p className="text-sm text-muted-foreground">{result.message}</p>
+                    <p className="text-deal-title">Code Verified</p>
+                    <p className="text-body text-muted-foreground">{result.message}</p>
                   </div>
                 </div>
                 {result.deal && (
                   <div className="bg-background rounded-lg p-3">
-                    <p className="text-sm text-muted-foreground">Deal</p>
-                    <p className="font-medium">{result.deal.title}</p>
+                    <p className="text-meta text-muted-foreground">Deal</p>
+                    <p className="text-body font-medium">{result.deal.title}</p>
                   </div>
                 )}
                 {result.customer && (
                   <div className="bg-background rounded-lg p-3">
-                    <p className="text-sm text-muted-foreground">Customer</p>
-                    <p className="font-medium" data-testid="text-customer-name">{result.customer.name}</p>
+                    <p className="text-meta text-muted-foreground">Customer</p>
+                    <p className="text-body font-medium" data-testid="text-customer-name">{result.customer.name}</p>
                     {result.customer.email && (
-                      <p className="text-sm text-muted-foreground" data-testid="text-customer-email">{result.customer.email}</p>
+                      <p className="text-meta text-muted-foreground" data-testid="text-customer-email">{result.customer.email}</p>
                     )}
                   </div>
                 )}
@@ -3055,8 +3055,8 @@ function VerifyCodeTab() {
                 <div className="flex items-center gap-2 text-destructive">
                   <AlertCircle className="h-5 w-5" />
                   <div>
-                    <p className="font-semibold">Verification Failed</p>
-                    <p className="text-sm">{result.message}</p>
+                    <p className="text-deal-title">Verification Failed</p>
+                    <p className="text-body">{result.message}</p>
                   </div>
                 </div>
                 <Button
@@ -3073,8 +3073,8 @@ function VerifyCodeTab() {
         )}
 
         <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-          <p className="text-sm font-medium">How it works:</p>
-          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+          <p className="text-body font-medium">How it works:</p>
+          <ol className="text-body text-muted-foreground space-y-1 list-decimal list-inside">
             <li>Customer shows you their redemption code (format: RL-XXXXXX)</li>
             <li>Enter the code above and click "Verify"</li>
             <li>If valid, the deal is redeemed and the customer gets their discount</li>
@@ -3166,11 +3166,11 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="text-section-header flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
           Customer Messages
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-body">
           Respond to questions from customers about your deals
         </CardDescription>
       </CardHeader>
@@ -3182,8 +3182,8 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
         ) : conversations.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold mb-2">No messages yet</h3>
-            <p className="text-muted-foreground">
+            <h3 className="text-deal-title mb-2">No messages yet</h3>
+            <p className="text-body text-muted-foreground">
               When customers ask questions about your deals, they will appear here.
             </p>
           </div>
@@ -3191,7 +3191,7 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
           <div className="grid md:grid-cols-3 gap-4 min-h-[400px]">
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-muted/50 p-3 border-b">
-                <h4 className="font-medium text-sm">Conversations</h4>
+                <h4 className="text-body font-medium">Conversations</h4>
               </div>
               <div className="max-h-[400px] overflow-y-auto">
                 {conversations.map((conv) => (
