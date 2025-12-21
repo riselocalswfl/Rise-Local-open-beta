@@ -1958,7 +1958,12 @@ function DealForm({
   });
 
   const handleSubmit = (data: z.infer<typeof dealFormSchema>) => {
-    onSubmit(data);
+    // Sync isPassLocked with tier selection - member tier means pass locked
+    const syncedData = {
+      ...data,
+      isPassLocked: data.tier === "member",
+    };
+    onSubmit(syncedData);
   };
 
   return (

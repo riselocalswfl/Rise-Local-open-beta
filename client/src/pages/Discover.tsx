@@ -172,7 +172,7 @@ function transformDealToRiseLocal(
     rawDistance,
     redemptionWindow: "Redeem today",
     dealType,
-    memberOnly: deal.tier === "premium" || deal.isPassLocked === true,
+    memberOnly: deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member",
     isNew,
     isFictitious: false,
     createdAt: deal.createdAt ? new Date(deal.createdAt) : null,
@@ -193,7 +193,9 @@ export default function Discover() {
   const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if user has Rise Local Pass membership
-  const isPassMember = user?.isPassMember === true;
+  // Use centralized membership check that accounts for expiration
+  const isPassMember = user?.isPassMember === true && 
+    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
   
   // Check if user is a business owner
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";

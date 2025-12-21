@@ -22,8 +22,9 @@ interface DealCardProps {
 }
 
 export default function DealCard({ deal, vendor, isPremiumUser = false, distanceMiles }: DealCardProps) {
-  const isPremiumDeal = deal.tier === "premium";
-  const isLocked = isPremiumDeal && !isPremiumUser;
+  // Use isPassLocked as primary source of truth, with fallback to tier for legacy data
+  const isMemberOnly = deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member";
+  const isLocked = isMemberOnly && !isPremiumUser;
 
   const dealTypeLabels: Record<string, string> = {
     bogo: "Buy One Get One",
@@ -39,12 +40,23 @@ export default function DealCard({ deal, vendor, isPremiumUser = false, distance
       data-testid={`card-deal-${deal.id}`}
     >
       {isLocked && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="text-center p-4">
-            <Lock className="w-8 h-8 mx-auto mb-2 text-primary" />
-            <p className="font-medium text-sm">Premium Deal</p>
-            <p className="text-xs text-muted-foreground">Upgrade to unlock</p>
-          </div>
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm p-4">
+          <Lock className="w-6 h-6 text-primary mb-2" />
+          <p className="text-xs text-center text-foreground font-medium mb-2">
+            Unlock with Rise Local Pass
+          </p>
+          <Button 
+            size="sm" 
+            className="text-xs h-7" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.location.href = "/membership";
+            }}
+            data-testid={`button-unlock-${deal.id}`}
+          >
+            Join Now
+          </Button>
         </div>
       )}
 
@@ -94,9 +106,9 @@ export default function DealCard({ deal, vendor, isPremiumUser = false, distance
           >
             {dealTypeLabels[deal.dealType] || deal.dealType}
           </Badge>
-          {isPremiumDeal && (
-            <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
-              Premium
+          {isMemberOnly && (
+            <Badge className="text-xs bg-primary">
+              Member Only
             </Badge>
           )}
         </div>
@@ -114,23 +126,27 @@ export default function DealCard({ deal, vendor, isPremiumUser = false, distance
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Unlock Premium Deals</DialogTitle>
+            <DialogTitle>Unlock Member-Only Deals</DialogTitle>
             <DialogDescription>
-              Upgrade to Rise Local Premium to access exclusive deals from local businesses.
+              Join Rise Local Pass to access exclusive deals from local SWFL businesses.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="bg-muted/50 rounded-lg p-4">
-              <h4 className="font-semibold mb-2">Premium Benefits:</h4>
+              <h4 className="font-semibold mb-2">Rise Local Pass Benefits:</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Access to exclusive premium deals</li>
-                <li>• Early access to new vendor offers</li>
-                <li>• Special member-only discounts</li>
-                <li>• Support local small businesses</li>
+                <li>• Access exclusive member-only deals</li>
+                <li>• Early access to new offers</li>
+                <li>• Support local SWFL businesses</li>
+                <li>• Only $4.99/month</li>
               </ul>
             </div>
-            <Button className="w-full" data-testid="button-upgrade-premium">
-              Upgrade to Premium
+            <Button 
+              className="w-full" 
+              data-testid="button-join-pass"
+              onClick={() => window.location.href = "/membership"}
+            >
+              Join Rise Local Pass
             </Button>
           </div>
         </DialogContent>

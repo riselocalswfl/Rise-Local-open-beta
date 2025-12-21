@@ -43,7 +43,9 @@ export default function Browse() {
   const [showFilters, setShowFilters] = useState(false);
   
   const { user } = useAuth();
-  const isPassMember = user?.isPassMember ?? false;
+  // Use centralized membership check that accounts for expiration
+  const isPassMember = user?.isPassMember === true && 
+    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
 
   const getTitle = () => {
     switch (section) {
@@ -273,61 +275,98 @@ export default function Browse() {
               const DealIcon = getDealTypeIcon(deal.dealType);
               const businessName = deal.vendor?.businessName || "Local Business";
               const vendorType = deal.vendor?.vendorType || "shop";
+              const isLocked = deal.isPassLocked && !isPassMember;
+              
+              const cardContent = (
+                <Card className={`hover-elevate active-elevate-2 h-full relative ${isLocked ? 'overflow-hidden' : ''}`} data-testid={`card-deal-${deal.id}`}>
+                  <CardContent className={`p-4 ${isLocked ? 'blur-[2px]' : ''}`}>
+                    <div className="flex gap-3">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <DealIcon className="w-6 h-6 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-sm truncate" data-testid={`deal-title-${deal.id}`}>
+                            {deal.title}
+                          </h3>
+                          {deal.isPassLocked && (
+                            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-primary flex-shrink-0">
+                              Member Only
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2" data-testid={`deal-description-${deal.id}`}>
+                          {deal.description}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {deal.savingsAmount && deal.savingsAmount > 0 && (
+                            <Badge variant="secondary" className="text-xs" data-testid={`deal-savings-${deal.id}`}>
+                              Save ${deal.savingsAmount}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {vendorType === "shop" ? "Shop" : vendorType === "dine" ? "Dine" : "Service"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={deal.vendor?.logoUrl || undefined} alt={businessName} />
+                        <AvatarFallback className="text-xs">
+                          {businessName.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-muted-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
+                        {businessName}
+                      </span>
+                      {deal.vendor?.city && (
+                        <>
+                          <span className="text-muted-foreground">·</span>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="w-3 h-3" />
+                            <span>{deal.vendor.city}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                  
+                  {/* Lock overlay for member-only deals */}
+                  {isLocked && (
+                    <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-10">
+                      <Lock className="w-6 h-6 text-primary mb-2" />
+                      <p className="text-xs text-center text-foreground font-medium mb-2">
+                        Unlock with Rise Local Pass
+                      </p>
+                      <Button 
+                        size="sm" 
+                        className="text-xs h-7" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.location.href = "/membership";
+                        }}
+                        data-testid={`button-unlock-${deal.id}`}
+                      >
+                        Join Now
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              );
+              
+              if (isLocked) {
+                return (
+                  <div key={deal.id} className="cursor-pointer">
+                    {cardContent}
+                  </div>
+                );
+              }
               
               return (
                 <Link key={deal.id} href={`/deals/${deal.id}`}>
-                  <Card className="hover-elevate active-elevate-2 h-full" data-testid={`card-deal-${deal.id}`}>
-                    <CardContent className="p-4">
-                      <div className="flex gap-3">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <DealIcon className="w-6 h-6 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-sm truncate" data-testid={`deal-title-${deal.id}`}>
-                              {deal.title}
-                            </h3>
-                            {deal.isPassLocked && !isPassMember && (
-                              <Lock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2" data-testid={`deal-description-${deal.id}`}>
-                            {deal.description}
-                          </p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {deal.savingsAmount && deal.savingsAmount > 0 && (
-                              <Badge variant="secondary" className="text-xs" data-testid={`deal-savings-${deal.id}`}>
-                                Save ${deal.savingsAmount}
-                              </Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs">
-                              {vendorType === "shop" ? "Shop" : vendorType === "dine" ? "Dine" : "Service"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={deal.vendor?.logoUrl || undefined} alt={businessName} />
-                          <AvatarFallback className="text-xs">
-                            {businessName.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs text-muted-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
-                          {businessName}
-                        </span>
-                        {deal.vendor?.city && (
-                          <>
-                            <span className="text-muted-foreground">·</span>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <MapPin className="w-3 h-3" />
-                              <span>{deal.vendor.city}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {cardContent}
                 </Link>
               );
             })}
