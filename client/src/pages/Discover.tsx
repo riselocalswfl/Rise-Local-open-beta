@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Lock, MapPin, Navigation, Loader2, MessageSq
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import RiseLocalDealCard, { RiseLocalDeal, DealType } from "@/components/RiseLocalDealCard";
+import DiscoverDealCard, { DiscoverDeal } from "@/components/DiscoverDealCard";
 import MembershipBanner from "@/components/MembershipBanner";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -481,12 +482,30 @@ export default function Discover() {
 
   // Skeleton loader for deal cards
   const DealCardSkeleton = () => (
-    <div className="flex-shrink-0 w-[180px]">
-      <Skeleton className="aspect-[4/3] rounded-xl mb-2" />
+    <div className="w-full">
+      <Skeleton className="aspect-[16/9] rounded-xl mb-2" />
       <Skeleton className="h-4 w-24 mb-1" />
       <Skeleton className="h-3 w-32" />
     </div>
   );
+
+  // Transform ExtendedRiseLocalDeal to DiscoverDeal format
+  const toDiscoverDeal = (deal: ExtendedRiseLocalDeal): DiscoverDeal => ({
+    id: deal.id,
+    title: deal.title,
+    vendorId: deal.vendorId,
+    vendorName: deal.vendorName,
+    vendorCategory: deal.vendorCategory,
+    imageUrl: deal.imageUrl,
+    vendorBannerUrl: deal.vendorBannerUrl,
+    vendorLogoUrl: deal.vendorLogoUrl,
+    savings: deal.savings,
+    distance: deal.distance,
+    redemptionWindow: deal.redemptionWindow,
+    memberOnly: deal.memberOnly,
+    isNew: deal.isNew,
+    isFictitious: deal.isFictitious,
+  });
 
   const DealSection = ({ 
     title, 
@@ -518,14 +537,15 @@ export default function Discover() {
           </Link>
         </div>
         
-        <ScrollArea className="w-full">
-          <div className="flex gap-4 px-4 pb-4">
-            {deals.map((deal) => (
-              <RiseLocalDealCard key={deal.id} deal={deal} isMember={isPassMember} />
-            ))}
-          </div>
-          <ScrollBar orientation="horizontal" className="invisible" />
-        </ScrollArea>
+        <div className="px-4 space-y-4">
+          {deals.map((deal) => (
+            <DiscoverDealCard 
+              key={deal.id} 
+              deal={toDiscoverDeal(deal)} 
+              isMember={isPassMember} 
+            />
+          ))}
+        </div>
       </section>
     );
   };
