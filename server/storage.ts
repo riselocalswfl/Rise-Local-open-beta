@@ -1490,6 +1490,7 @@ export class DbStorage implements IStorage {
     status?: string;
     includeAll?: boolean;
     includeHiddenVendors?: boolean;
+    includeVendorsWithoutCoordinates?: boolean; // For regional apps like Rise Local (SWFL)
   }): Promise<DealWithDistance[]> {
     // Build base conditions for deals
     let conditions = [];
@@ -1568,15 +1569,18 @@ export class DbStorage implements IStorage {
       const vendorLat = row.vendorLatitude ? parseFloat(row.vendorLatitude) : null;
       const vendorLng = row.vendorLongitude ? parseFloat(row.vendorLongitude) : null;
 
-      // Include vendors without coordinates (show at end with null distance)
-      // This ensures SWFL regional vendors appear even without exact GPS
+      // Handle vendors without coordinates
+      // For regional apps (like Rise Local SWFL), include them at end of results
+      // Otherwise, skip them in radius-filtered queries
       if (vendorLat === null || vendorLng === null) {
-        dealsWithDistance.push({
-          ...row.deal,
-          distanceMiles: null, // No distance available - will show as "SWFL"
-          vendorLatitude: row.vendorLatitude,
-          vendorLongitude: row.vendorLongitude
-        });
+        if (filters.includeVendorsWithoutCoordinates) {
+          dealsWithDistance.push({
+            ...row.deal,
+            distanceMiles: undefined, // No distance available - will show as "SWFL"
+            vendorLatitude: row.vendorLatitude,
+            vendorLongitude: row.vendorLongitude
+          });
+        }
         continue;
       }
 
@@ -1598,11 +1602,11 @@ export class DbStorage implements IStorage {
       }
     }
 
-    // Sort by distance (closest first, null distances at end)
+    // Sort by distance (closest first, undefined distances at end)
     dealsWithDistance.sort((a, b) => {
-      if (a.distanceMiles === null && b.distanceMiles === null) return 0;
-      if (a.distanceMiles === null) return 1; // null goes to end
-      if (b.distanceMiles === null) return -1;
+      if (a.distanceMiles === undefined && b.distanceMiles === undefined) return 0;
+      if (a.distanceMiles === undefined) return 1; // undefined goes to end
+      if (b.distanceMiles === undefined) return -1;
       return a.distanceMiles - b.distanceMiles;
     });
 

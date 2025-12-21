@@ -4264,7 +4264,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: isActive !== undefined ? isActive === 'true' : undefined,
           vendorId: vendorId as string | undefined,
           status: status as string | undefined,
-          includeAll: includeAll === 'true'
+          includeAll: includeAll === 'true',
+          // Rise Local is a regional SWFL app - include vendors without exact GPS coordinates
+          // They appear at the end of results with "SWFL" as location
+          includeVendorsWithoutCoordinates: true
         };
         
         console.log("[DEALS API] Using location-based filtering with filters:", filters);
