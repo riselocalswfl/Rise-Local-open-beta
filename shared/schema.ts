@@ -1246,6 +1246,27 @@ export const insertDealRedemptionSchema = createInsertSchema(dealRedemptions).om
 export type InsertDealRedemption = z.infer<typeof insertDealRedemptionSchema>;
 export type DealRedemption = typeof dealRedemptions.$inferSelect;
 
+// ===== USER FAVORITES =====
+
+export const favorites = pgTable("favorites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("favorites_user_idx").on(table.userId),
+  index("favorites_deal_idx").on(table.dealId),
+  index("favorites_user_deal_idx").on(table.userId, table.dealId),
+]);
+
+export const insertFavoriteSchema = createInsertSchema(favorites).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFavorite = z.infer<typeof insertFavoriteSchema>;
+export type Favorite = typeof favorites.$inferSelect;
+
 // ===== RESTAURANT RESERVATION SYSTEM =====
 
 // Reservations - Rise Local tracking only (not inventory control)
