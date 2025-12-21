@@ -502,12 +502,12 @@ export default function Discover() {
     return (
       <section className="pt-6">
         <div className="flex items-center justify-between px-4 mb-4">
-          <h2 className="text-lg font-semibold text-foreground" data-testid={`heading-${testId}`}>
+          <h2 className="text-section-header text-foreground" data-testid={`heading-${testId}`}>
             {title}
           </h2>
           <Link href={getSectionUrl(sectionKey)}>
             <button
-              className="flex items-center gap-1 text-sm text-primary font-medium"
+              className="flex items-center gap-1 text-body-emphasis text-primary"
               data-testid={`link-see-all-${testId}`}
             >
               See all
@@ -547,11 +547,11 @@ export default function Discover() {
                   className="flex items-center gap-2"
                   data-testid="button-location"
                 >
-                  <span className="text-base font-semibold text-foreground">
+                  <span className="text-deal-title text-foreground">
                     {location.status === "requesting" ? "Getting location..." : location.displayName}
                   </span>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-primary font-medium">Change</span>
+                  <span className="text-body-emphasis text-primary">Change</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56 p-2">
@@ -676,7 +676,7 @@ export default function Discover() {
       {/* Browse by Category */}
       <section className="pt-6 pb-4">
         <div className="px-4 mb-4">
-          <h2 className="text-lg font-semibold text-foreground" data-testid="heading-categories">
+          <h2 className="text-section-header text-foreground" data-testid="heading-categories">
             Browse by Category
           </h2>
         </div>
@@ -697,7 +697,7 @@ export default function Discover() {
                   data-testid={`category-${cat.key}`}
                 >
                   <Icon className="w-6 h-6" />
-                  <span className="text-xs font-medium text-center leading-tight">{cat.label}</span>
+                  <span className="text-meta-emphasis text-center">{cat.label}</span>
                 </button>
               );
             })}

@@ -109,7 +109,7 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
           {isLocked && (
             <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-3">
               <Lock className="w-6 h-6 text-primary mb-2" />
-              <p className="text-xs text-center text-foreground font-medium mb-2">
+              <p className="text-meta-emphasis text-center text-foreground mb-2">
                 Unlock with Rise Local Pass
               </p>
               <Button 
@@ -126,7 +126,7 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
 
         <div className="space-y-1">
           <div className="flex items-center gap-1.5">
-            <h3 className="font-medium text-sm line-clamp-1 text-foreground">
+            <h3 className="text-business-name line-clamp-1 text-foreground">
               {deal.vendorName}
             </h3>
             {deal.vendorCategory && (
@@ -135,11 +135,11 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
               </Badge>
             )}
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2">
+          <p className="text-meta text-muted-foreground line-clamp-2">
             {deal.title}
           </p>
           
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-meta text-muted-foreground">
             <span className="flex items-center gap-0.5">
               <MapPin className="w-3 h-3" />
               {deal.distance}
