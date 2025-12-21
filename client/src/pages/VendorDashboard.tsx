@@ -513,6 +513,7 @@ export default function VendorDashboard() {
   const createDealMutation = useMutation({
     mutationFn: async (data: z.infer<typeof dealFormSchema>) => {
       if (!vendor?.id) throw new Error("No vendor ID");
+      console.log("[createDealMutation] Creating deal with data:", JSON.stringify(data, null, 2));
       return await apiRequest("POST", "/api/vendor/deals", data);
     },
     onSuccess: () => {
@@ -533,6 +534,7 @@ export default function VendorDashboard() {
 
   const updateDealMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<z.infer<typeof dealFormSchema>> }) => {
+      console.log("[updateDealMutation] Updating deal:", id, "with data:", JSON.stringify(data, null, 2));
       return await apiRequest("PATCH", `/api/vendor/deals/${id}`, data);
     },
     onSuccess: () => {
@@ -1966,14 +1968,14 @@ function DealForm({
     },
   });
 
-  const currentImageUrl = form.watch("imageUrl");
-
   const handleSubmit = (data: z.infer<typeof dealFormSchema>) => {
     // Sync isPassLocked with tier selection - member tier means pass locked
     const syncedData = {
       ...data,
       isPassLocked: data.tier === "member",
     };
+    console.log("[DealForm] Submitting deal with data:", JSON.stringify(syncedData, null, 2));
+    console.log("[DealForm] imageUrl value:", syncedData.imageUrl);
     onSubmit(syncedData);
   };
 
@@ -2013,19 +2015,32 @@ function DealForm({
           )}
         />
 
-        <div className="space-y-2">
-          <FormLabel>Deal Photo</FormLabel>
-          <FormDescription>
-            Add a photo to make your deal stand out (vertical or horizontal)
-          </FormDescription>
-          <ImageUpload
-            currentImageUrl={currentImageUrl || null}
-            onUploadComplete={(url) => form.setValue("imageUrl", url)}
-            onRemove={() => form.setValue("imageUrl", "")}
-            aspectRatio="flexible"
-            maxSizeMB={5}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Deal Photo</FormLabel>
+              <FormDescription>
+                Add a photo to make your deal stand out (vertical or horizontal)
+              </FormDescription>
+              <FormControl>
+                <ImageUpload
+                  currentImageUrl={field.value || null}
+                  onUploadComplete={(url) => {
+                    field.onChange(url);
+                  }}
+                  onRemove={() => {
+                    field.onChange("");
+                  }}
+                  aspectRatio="flexible"
+                  maxSizeMB={5}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
