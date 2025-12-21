@@ -60,11 +60,11 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
       className="hover-elevate active-elevate-2 h-full relative overflow-hidden" 
       data-testid={`card-deal-${deal.id}`}
     >
-      <div className={`relative w-full aspect-[16/9] overflow-hidden ${isLocked ? 'blur-[2px]' : ''}`}>
+      <div className="relative w-full aspect-[16/9] overflow-hidden">
         <img
           src={currentImage}
           alt={deal.title}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${isLocked ? 'blur-[3px]' : ''}`}
           onError={handleImageError}
           data-testid={`img-deal-${deal.id}`}
         />
@@ -96,9 +96,25 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
             </Badge>
           </div>
         )}
+        {isLocked && (
+          <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
+            <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2.5 py-1">
+              <Lock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-medium text-foreground">Rise Local Pass</span>
+              <Button 
+                size="sm" 
+                className="text-[9px] h-5 px-2 ml-0.5" 
+                onClick={handleUnlockClick}
+                data-testid={`button-unlock-${deal.id}`}
+              >
+                Join
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       
-      <CardContent className={`p-2 ${isLocked ? 'blur-[2px]' : ''}`}>
+      <CardContent className="p-2">
         <p className="text-xs font-semibold text-foreground truncate mb-0.5" data-testid={`deal-vendor-${deal.id}`}>
           {deal.vendorName}
         </p>
@@ -112,23 +128,6 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
           </span>
         </div>
       </CardContent>
-      
-      {isLocked && (
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-2 z-10">
-          <Lock className="w-5 h-5 text-primary mb-1" />
-          <p className="text-[10px] text-center text-foreground font-medium mb-1.5">
-            Rise Local Pass
-          </p>
-          <Button 
-            size="sm" 
-            className="text-[10px] h-6 px-2" 
-            onClick={handleUnlockClick}
-            data-testid={`button-unlock-${deal.id}`}
-          >
-            Join
-          </Button>
-        </div>
-      )}
     </Card>
   );
   
