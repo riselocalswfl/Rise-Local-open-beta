@@ -1,0 +1,121 @@
+I need you to audit and refactor the Rise Local deals system so that all deal attributes created on the business profile / deal creation flow are the single source of truth and are consistently respected across Business Profile, Discover, and Browse pages.
+
+Core Requirements
+
+Unify the Deals Data Model
+
+Ensure each deal has explicit, required fields:
+
+id
+
+businessId
+
+title
+
+description
+
+dealType (member_only | public)
+
+isPublished (boolean)
+
+visibilityStatus (locked | unlocked)
+
+requiresMembership (boolean, derived from dealType)
+
+location
+
+category
+
+redemptionRules
+
+expirationDate
+
+These fields must be created and stored when the deal is made in the business profile and reused everywhere else (no duplicate logic).
+
+Single Source of Truth Logic
+
+Discover and Browse pages must only consume deals from the same deals table / API used by the business profile.
+
+Eliminate any hard-coded, inferred, or duplicated “member-only” logic on the front end.
+
+Correct Member-Only vs Public Deal Handling
+
+If dealType === member_only:
+
+The deal CAN appear in Discover/Browse
+
+The deal must:
+
+Be visually blurred or muted
+
+Display a lock icon
+
+Show “Unlock with Rise Local Pass”
+
+Disable redemption actions
+
+If dealType === public:
+
+The deal displays fully with no lock UI
+
+No membership messaging appears
+
+User-Aware Rendering
+
+If a logged-in user has an active Rise Local Pass:
+
+Member-only deals should automatically render as unlocked
+
+Lock overlays and “Join Now” CTAs should be removed
+
+If the user does not have a pass:
+
+Member-only deals remain locked everywhere
+
+Discover & Browse Filtering
+
+Filters (All Deals, Member-Only, Free Deals) must:
+
+Filter by the actual dealType field
+
+Never rely on UI state or text matching
+
+Ensure private/member-only deals do NOT accidentally appear as public under “All Deals” without lock indicators
+
+Visual Consistency (Match Screenshot)
+
+Member-only cards must match this behavior:
+
+Blurred image
+
+Lock icon
+
+“Unlock with Rise Local Pass”
+
+Green “Join Now” CTA
+
+Public deals must never show these elements
+
+Fail-Safe Rules
+
+A deal cannot render as unlocked unless:
+
+dealType === public OR
+
+User has active membership
+
+If deal data is missing dealType, default to locked (secure by default).
+
+Deliverables
+
+Refactored deal schema (backend)
+
+Clean deal fetch logic reused across pages
+
+Centralized helper for canUserAccessDeal(user, deal)
+
+Updated Discover & Browse components to rely ONLY on this logic
+
+Remove any duplicated or conflicting legacy logic
+
+Do not add new features. Fix correctness, consistency, and trust in deal visibility.
