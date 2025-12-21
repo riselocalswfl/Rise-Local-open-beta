@@ -158,7 +158,7 @@ export default function BusinessProfile() {
     'byAppointment' in (vendor.hours as any) && (vendor.hours as any).byAppointment;
 
   // Helper to check if hours are set
-  const hasHours = isByAppointment || Object.values(hoursSchedule).some(v => v && v.trim());
+  const hasHours = isByAppointment || Object.values(hoursSchedule).some(v => v && typeof v === 'string' && v.trim());
 
   // Helper to check if any social links exist
   const hasSocialLinks = vendor.instagram || vendor.facebook || vendor.tiktok || 
@@ -405,7 +405,7 @@ export default function BusinessProfile() {
                 <div className="space-y-1.5 text-sm">
                   {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => {
                     const value = hoursSchedule[day];
-                    if (!value || !value.trim()) return null;
+                    if (!value || typeof value !== 'string' || !value.trim()) return null;
                     return (
                       <div key={day} className="flex justify-between gap-4" data-testid={`hours-${day}`}>
                         <span className="capitalize text-muted-foreground">{day}</span>
