@@ -30,8 +30,8 @@ export default function DetailHeader({
       className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border"
       data-testid="detail-header"
     >
-      <div className="flex items-center justify-between h-14 px-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between min-h-14 py-3 px-4 gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           {showBack && (
             <Button
               variant="ghost"
@@ -39,12 +39,13 @@ export default function DetailHeader({
               onClick={handleBack}
               aria-label="Go back"
               data-testid="button-back"
+              className="shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
           {title && (
-            <h1 className="font-heading text-xl font-bold uppercase truncate" data-testid="text-page-title">
+            <h1 className="font-heading text-base font-bold uppercase leading-tight line-clamp-2" data-testid="text-page-title">
               {title}
             </h1>
           )}
