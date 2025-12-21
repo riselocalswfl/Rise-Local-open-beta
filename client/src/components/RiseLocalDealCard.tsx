@@ -75,7 +75,7 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
           <img
             src={currentImage}
             alt={deal.title}
-            className={`w-full h-full object-cover transition-transform duration-300 ${
+            className={`w-full h-full object-contain transition-transform duration-300 ${
               isLocked ? "blur-[2px]" : "group-hover:scale-105"
             }`}
             onError={handleImageError}
