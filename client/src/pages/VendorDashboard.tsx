@@ -2862,6 +2862,11 @@ interface VerificationResult {
     status: string;
     verifiedAt: string;
   };
+  customer?: {
+    id: string;
+    name: string;
+    email: string | null;
+  };
   deal?: {
     id: string;
     title: string;
@@ -2986,6 +2991,15 @@ function VerifyCodeTab() {
                   <div className="bg-background rounded-lg p-3">
                     <p className="text-sm text-muted-foreground">Deal</p>
                     <p className="font-medium">{result.deal.title}</p>
+                  </div>
+                )}
+                {result.customer && (
+                  <div className="bg-background rounded-lg p-3">
+                    <p className="text-sm text-muted-foreground">Customer</p>
+                    <p className="font-medium" data-testid="text-customer-name">{result.customer.name}</p>
+                    {result.customer.email && (
+                      <p className="text-sm text-muted-foreground" data-testid="text-customer-email">{result.customer.email}</p>
+                    )}
                   </div>
                 )}
                 <Button
