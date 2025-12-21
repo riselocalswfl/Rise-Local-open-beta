@@ -202,7 +202,7 @@ export default function DealDetailPage() {
               onClick={() => setRedeemModalOpen(true)}
               data-testid="button-redeem-deal"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-2 uppercase font-semibold tracking-wide">
                 <Ticket className="w-4 h-4" />
                 Redeem Now
               </span>

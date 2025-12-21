@@ -44,7 +44,7 @@ export default function DetailHeader({
             </Button>
           )}
           {title && (
-            <h1 className="font-heading text-lg font-semibold truncate" data-testid="text-page-title">
+            <h1 className="font-heading text-xl font-bold uppercase truncate" data-testid="text-page-title">
               {title}
             </h1>
           )}
