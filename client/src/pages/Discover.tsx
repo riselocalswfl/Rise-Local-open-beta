@@ -57,6 +57,7 @@ type LocationState = {
 const FILTER_CHIPS = [
   { id: "all", label: "All Deals" },
   { id: "memberOnly", label: "Member-Only", icon: Lock },
+  { id: "free", label: "Free Deals" },
 ];
 
 // CATEGORY_CHIPS are now fetched from the API
@@ -169,7 +170,7 @@ function transformDealToRiseLocal(
     savings,
     distance: distanceStr,
     rawDistance,
-    redemptionWindow: "Redeem anytime",
+    redemptionWindow: "Redeem today",
     dealType,
     memberOnly: deal.tier === "premium" || deal.isPassLocked === true,
     isNew,
@@ -346,12 +347,14 @@ export default function Discover() {
     return dealsData.map(deal => transformDealToRiseLocal(deal, userCoords.lat, userCoords.lng));
   }, [dealsData, userCoords.lat, userCoords.lng]);
 
-  // Apply top filter (All, Member-Only)
+  // Apply top filter (All, Member-Only, Free)
   const filteredDeals = useMemo(() => {
     let deals = allTransformedDeals;
     
     if (selectedFilter === "memberOnly") {
       deals = deals.filter(d => d.memberOnly);
+    } else if (selectedFilter === "free") {
+      deals = deals.filter(d => !d.memberOnly);
     }
     
     // Apply category filter if selected
@@ -363,18 +366,18 @@ export default function Discover() {
   }, [allTransformedDeals, selectedFilter, selectedCategory]);
 
   // Create sections with deduplication - only mark displayed deals as used
-  const { bestValueDeals, useTodayDeals, newBusinessDeals, popularDeals } = useMemo(() => {
+  const { memberExclusiveDeals, useTodayDeals, newBusinessDeals, popularDeals } = useMemo(() => {
     const usedIds = new Set<number>();
     
-    // Best Value Near You: savings >= $5, sorted by savings desc then distance asc
-    const bestValue = filteredDeals
-      .filter(d => d.savings >= 5)
+    // Member Exclusives Near You: member-only deals, sorted by distance then savings
+    const memberExclusive = filteredDeals
+      .filter(d => d.memberOnly)
       .sort((a, b) => {
-        if (b.savings !== a.savings) return b.savings - a.savings;
-        return a.rawDistance - b.rawDistance;
+        if (a.rawDistance !== b.rawDistance) return a.rawDistance - b.rawDistance;
+        return b.savings - a.savings;
       });
-    const bestValueSliced = interleaveByVendor(bestValue).slice(0, 8);
-    markDealsAsUsed(bestValueSliced, usedIds);
+    const memberExclusiveSliced = interleaveByVendor(memberExclusive).slice(0, 8);
+    markDealsAsUsed(memberExclusiveSliced, usedIds);
     
     // Use Today: all remaining deals sorted by distance
     const useToday = filterUsedDeals(filteredDeals, usedIds)
@@ -404,7 +407,7 @@ export default function Discover() {
     markDealsAsUsed(popularSliced, usedIds);
     
     return {
-      bestValueDeals: bestValueSliced,
+      memberExclusiveDeals: memberExclusiveSliced,
       useTodayDeals: useTodaySliced,
       newBusinessDeals: newBusinessSliced,
       popularDeals: popularSliced,
@@ -473,22 +476,25 @@ export default function Discover() {
       {/* Location Bar */}
       <header className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center gap-2">
-            {location.status === "requesting" ? (
-              <Loader2 className="w-5 h-5 text-primary animate-spin" />
-            ) : (
-              <MapPin className="w-5 h-5 text-primary" />
-            )}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 p-1.5 rounded-full bg-primary/10">
+              {location.status === "requesting" ? (
+                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+              ) : (
+                <MapPin className="w-4 h-4 text-primary" />
+              )}
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-1 text-sm font-medium"
+                  className="flex items-center gap-2"
                   data-testid="button-location"
                 >
-                  <span className="text-foreground">
+                  <span className="text-base font-semibold text-foreground">
                     {location.status === "requesting" ? "Getting location..." : location.displayName}
                   </span>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-primary font-medium">Change</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
@@ -615,10 +621,10 @@ export default function Discover() {
       {!dealsLoading && (
         <>
           <DealSection 
-            title="Best Value Near You" 
-            deals={bestValueDeals} 
-            sectionKey="bestValue"
-            testId="best-value"
+            title="Member Exclusives Near You" 
+            deals={memberExclusiveDeals} 
+            sectionKey="memberExclusives"
+            testId="member-exclusives"
           />
 
           <DealSection 
