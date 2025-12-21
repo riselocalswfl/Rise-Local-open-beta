@@ -433,8 +433,8 @@ export default function DealsPage() {
         ) : (
           <div className="text-center py-16">
             <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-semibold mb-2">No deals found</h3>
-            <p className="text-muted-foreground mb-4">
+            <h3 className="text-section-header mb-2">No deals found</h3>
+            <p className="text-body text-muted-foreground mb-4">
               {nearMeEnabled
                 ? `No deals found within ${radiusMiles} miles. Try increasing the radius or switching to city-based search.`
                 : hasActiveFilters
@@ -466,8 +466,8 @@ export default function DealsPage() {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <UserPlus className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-medium text-foreground mb-1">Join Rise Local</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-deal-title text-foreground mb-1">Join Rise Local</h3>
+              <p className="text-body text-muted-foreground">
                 Get instant access to SWFL local deals
               </p>
             </div>
@@ -477,8 +477,8 @@ export default function DealsPage() {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <Ticket className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-medium text-foreground mb-1">Show the Deal</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-deal-title text-foreground mb-1">Show the Deal</h3>
+              <p className="text-body text-muted-foreground">
                 Redeem in-store or directly with the business
               </p>
             </div>
@@ -488,8 +488,8 @@ export default function DealsPage() {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <Heart className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-medium text-foreground mb-1">Feel Good Spending Local</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-deal-title text-foreground mb-1">Feel Good Spending Local</h3>
+              <p className="text-body text-muted-foreground">
                 Save money while supporting your community
               </p>
             </div>

@@ -3205,22 +3205,22 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <User className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-medium text-sm truncate">
+                      <span className="text-body font-medium truncate">
                         {conv.consumerName || `Customer #${conv.consumerId.slice(0, 6)}`}
                       </span>
                       {conv.unreadCount && conv.unreadCount > 0 && (
-                        <Badge variant="default" className="text-xs ml-auto">
+                        <Badge variant="default" className="ml-auto">
                           {conv.unreadCount}
                         </Badge>
                       )}
                     </div>
                     {conv.dealTitle && (
-                      <p className="text-xs text-muted-foreground truncate mb-1">
+                      <p className="text-meta text-muted-foreground truncate mb-1">
                         Re: {conv.dealTitle}
                       </p>
                     )}
                     {conv.lastMessage && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-meta text-muted-foreground truncate">
                         {conv.lastMessage}
                       </p>
                     )}
@@ -3234,11 +3234,11 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
                 <>
                   <div className="bg-muted/50 p-3 border-b flex items-center gap-2">
                     <User className="w-5 h-5" />
-                    <span className="font-medium">
+                    <span className="text-deal-title">
                       {selectedConversation?.consumerName || `Customer #${selectedConversation?.consumerId.slice(0, 6)}`}
                     </span>
                     {selectedConversation?.dealTitle && (
-                      <Badge variant="outline" className="ml-auto text-xs">
+                      <Badge variant="outline" className="ml-auto">
                         {selectedConversation.dealTitle}
                       </Badge>
                     )}
@@ -3250,7 +3250,7 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
                         <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
                       </div>
                     ) : messages.length === 0 ? (
-                      <p className="text-center text-muted-foreground text-sm">
+                      <p className="text-center text-body text-muted-foreground">
                         No messages yet
                       </p>
                     ) : (
@@ -3266,8 +3266,8 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
                                 : 'bg-muted'
                             }`}
                           >
-                            <p className="text-sm">{msg.content}</p>
-                            <p className={`text-xs mt-1 ${
+                            <p className="text-body">{msg.content}</p>
+                            <p className={`text-meta mt-1 ${
                               msg.senderRole === 'vendor' ? 'text-primary-foreground/70' : 'text-muted-foreground'
                             }`}>
                               {new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -3306,7 +3306,7 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
                 <div className="flex-1 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
                     <MessageSquare className="w-8 h-8 mx-auto mb-2" />
-                    <p>Select a conversation to view messages</p>
+                    <p className="text-body">Select a conversation to view messages</p>
                   </div>
                 </div>
               )}

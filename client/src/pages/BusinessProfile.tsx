@@ -509,7 +509,7 @@ export default function BusinessProfile() {
                 </div>
               )}
               {vendor.showLocalSourcing && vendor.localSourcingPercent && vendor.localSourcingPercent > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-local-sourcing">
+                <div className="flex items-center gap-2 text-body text-muted-foreground" data-testid="text-local-sourcing">
                   <Leaf className="h-4 w-4 text-primary" />
                   <span>{vendor.localSourcingPercent}% locally sourced</span>
                 </div>
@@ -534,7 +534,7 @@ export default function BusinessProfile() {
         {products && products.length > 0 && (
           <Card data-testid="card-products">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Products & Services</CardTitle>
+              <CardTitle className="text-section-header">Products & Services</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
@@ -544,15 +544,15 @@ export default function BusinessProfile() {
                     className="p-3 bg-muted/50 rounded-lg"
                     data-testid={`product-${product.id}`}
                   >
-                    <p className="font-medium text-sm truncate">{product.name}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-deal-title truncate">{product.name}</p>
+                    <p className="text-body text-muted-foreground">
                       ${(product.priceCents / 100).toFixed(2)}
                     </p>
                   </div>
                 ))}
               </div>
               {products.length > 4 && (
-                <p className="text-sm text-muted-foreground text-center mt-3">
+                <p className="text-body text-muted-foreground text-center mt-3">
                   +{products.length - 4} more items
                 </p>
               )}
