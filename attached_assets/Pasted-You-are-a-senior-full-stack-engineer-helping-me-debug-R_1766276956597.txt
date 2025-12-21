@@ -1,0 +1,80 @@
+You are a senior full-stack engineer helping me debug Rise Local.
+
+BUG:
+When a vendor publishes a deal, it shows up on the Business Profile page, but it does NOT show up on Discover or Browse pages.
+
+GOAL:
+Make newly published deals reliably appear on Discover and Browse (with correct location/category/value filtering if applicable), without breaking Business Profile.
+
+CONTEXT / STACK:
+- Frontend: React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+- Routing: wouter
+- Data fetching: TanStack Query
+- Backend: Express + TypeScript
+- DB: Postgres (Neon) via Drizzle ORM
+- Auth: Passport (Replit Auth)
+- Deals are visible on business profile, so the deal is being created in DB and at least one endpoint works.
+
+TASK:
+Do a systematic end-to-end debug, then implement the fix.
+
+STEP 1 — Reproduce + Trace (NO GUESSING)
+1) Create a deal as a vendor.
+2) Verify it exists in DB (print the deal row and key fields).
+3) Identify which API call Discover and Browse use (endpoint + query params).
+4) Compare that to the Business Profile endpoint that DOES return the deal.
+
+STEP 2 — Compare Data Shape + Filters
+Check whether Discover/Browse exclude the new deal due to:
+- status / published flag mismatch (e.g., "published" vs "active" vs boolean)
+- missing startDate/endDate validity window
+- location logic (distance filter, null lat/lng, default radius)
+- category/value tag filters (null category, default filter applied)
+- vendor role restrictions / auth guard filtering results
+- “soft delete” fields or visibility flags (isHidden, isDraft, approved, etc.)
+- server pagination (limit/offset) returning older items only
+- sorting order (createdAt vs updatedAt) causing new deal not to appear
+- timezone causing deal to be considered not active yet/expired
+- joins that fail (inner join removing rows if vendor relation missing)
+
+STEP 3 — Add Logging + Dev Tools Evidence
+- In the Express route(s) used by Discover/Browse, log:
+  - incoming query params
+  - generated SQL (or Drizzle query filters)
+  - number of deals returned
+  - example returned deal IDs
+- In the frontend pages for Discover and Browse:
+  - confirm the request is being made (network tab)
+  - log the response length + first few deal IDs
+  - confirm the deal card component is rendering list length > 0
+
+STEP 4 — Fix the Root Cause
+Implement the minimal, correct fix based on evidence. Common fixes include:
+- aligning “published/active” logic across endpoints
+- ensuring new deals have required fields set on creation (status, createdAt, publishedAt, isActive, etc.)
+- adjusting query filters to include published deals
+- changing join from innerJoin to leftJoin if missing linked rows
+- making location filter conditional when coordinates are missing
+- fixing pagination or ordering
+
+STEP 5 — Ensure Fresh Data After Publishing
+If the deal is created successfully but Discover/Browse still shows cached results:
+- In the deal publish mutation success handler, invalidate the relevant queries:
+  - queryClient.invalidateQueries({ queryKey: ['deals'] })
+  - queryClient.invalidateQueries({ queryKey: ['discoverDeals'] })
+  - queryClient.invalidateQueries({ queryKey: ['browseDeals'] })
+  - queryClient.invalidateQueries({ queryKey: ['vendorDeals', vendorId] })
+- Or update the cache optimistically so it appears instantly.
+
+STEP 6 — Acceptance Tests
+- After publishing a deal:
+  - it appears on Business Profile ✅
+  - it appears on Discover ✅
+  - it appears on Browse ✅
+  - it respects filters (if filters are enabled) ✅
+  - it persists after refresh ✅
+
+DELIVERABLES:
+- Identify root cause with proof (logs + endpoint comparisons)
+- Implement fix in both backend and/or frontend as needed
+- Show the exact files changed and explain the fix briefly
