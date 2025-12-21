@@ -1,0 +1,91 @@
+I need you to add/fix the backend + frontend routing for the Rise Local deal detail page so when a user clicks a deal card anywhere (Discover, Browse, Business Profile), it correctly opens that deal at /deals/:id and never shows “Deal Not Found” for a real published deal.
+
+1) Fix the Root Cause: Deal IDs must match everywhere
+
+Audit how deal IDs are generated/stored and how the UI builds the link.
+
+Ensure every deal card uses the real database primary key for routing: deal.id.
+
+Confirm the route param type matches the database ID type:
+
+If DB id is integer → const id = Number(params.id)
+
+If DB id is UUID/string → use params.id as string
+
+Add debug logs to verify:
+
+the ID used on the deal card link
+
+the ID read from the route param
+
+the ID used in the DB query
+
+2) Add/Fix Backend Endpoint: GET deal by id
+
+Create or fix:
+
+GET /api/deals/:id
+
+Requirements:
+
+Query the deals table by ID
+
+Return 200 with the deal if found
+
+Return 404 { message: "Deal not found" } if not found
+
+Only return isPublished = true deals unless the requester is the deal owner or admin
+
+Join/include business info needed for the detail page (business name, category, location)
+
+3) Enforce Member-Only Locking on Detail Page
+
+If deal.dealType === "member_only" and user does NOT have an active Rise Local Pass:
+
+Still return the deal so it can render a locked preview
+
+BUT hide sensitive redemption fields (redeem code, redemption instructions, etc.)
+
+Create shared helper:
+
+canUserAccessDeal(user, deal) → boolean
+
+Used everywhere (Discover/Browse/Detail)
+
+4) Frontend Routing: Ensure /deals/:id route exists and fetches backend
+
+Ensure wouter route exists: /deals/:id
+
+DealDetailPage must:
+
+read route param
+
+fetch /api/deals/:id
+
+show loading state
+
+if 404 → show “Deal Not Found” UI
+
+Deal cards everywhere must navigate to:
+
+/deals/${deal.id}
+
+5) Detail Page UI Rules
+
+If public OR user has membership:
+
+show full deal details + Redeem button
+
+If member-only and user is not a member:
+
+show lock icon + “Unlock with Rise Local Pass” + “Join Now”
+
+disable redemption actions
+
+6) Verify
+
+Confirm: any deal that appears in Discover/Browse opens in the detail page
+
+Confirm: member-only deals open but remain locked for non-members
+
+Do not add new features—just make click → open deal work consistently and securely.
