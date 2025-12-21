@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock } from "lucide-react";
+import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 import type { Deal, Vendor } from "@shared/schema";
+import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
 const DEALS_QUERY_KEY = "/api/deals";
 
@@ -31,6 +32,124 @@ const CATEGORIES = [
   { value: "dine", label: "Dine" },
   { value: "service", label: "Service" },
 ];
+
+interface BrowseDealCardProps {
+  deal: Deal & { vendor?: Vendor };
+  isPassMember: boolean;
+}
+
+function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
+  const [imageIndex, setImageIndex] = useState(0);
+  const isLocked = deal.isPassLocked && !isPassMember;
+  
+  const imageFallbackChain = [
+    deal.imageUrl,
+    deal.vendor?.bannerUrl,
+    deal.vendor?.logoUrl,
+    placeholderImage,
+  ].filter((url): url is string => Boolean(url));
+  
+  const currentImage = imageFallbackChain[imageIndex] || placeholderImage;
+  
+  const handleImageError = useCallback(() => {
+    if (imageIndex < imageFallbackChain.length - 1) {
+      setImageIndex(prev => prev + 1);
+    }
+  }, [imageIndex, imageFallbackChain.length]);
+  
+  const businessName = deal.vendor?.businessName || "Local Business";
+  const vendorType = deal.vendor?.vendorType || "shop";
+  const savings = deal.savingsAmount || 0;
+  
+  const cardContent = (
+    <Card className={`hover-elevate active-elevate-2 h-full relative overflow-hidden`} data-testid={`card-deal-${deal.id}`}>
+      <div className={`relative w-full aspect-[16/9] overflow-hidden ${isLocked ? 'blur-[2px]' : ''}`}>
+        <img
+          src={currentImage}
+          alt={deal.title}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          onError={handleImageError}
+          data-testid={`img-deal-${deal.id}`}
+        />
+        {savings > 0 && (
+          <div className="absolute bottom-2 left-2">
+            <Badge 
+              variant="outline" 
+              className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+              data-testid={`badge-savings-${deal.id}`}
+            >
+              Save ${savings}
+            </Badge>
+          </div>
+        )}
+        {deal.isPassLocked && (
+          <div className="absolute top-2 left-2">
+            <Badge variant="default" className="text-[10px] px-1.5 py-0.5 bg-primary">
+              Member Only
+            </Badge>
+          </div>
+        )}
+      </div>
+      
+      <CardContent className={`p-3 ${isLocked ? 'blur-[2px]' : ''}`}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-semibold text-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
+            {businessName}
+          </span>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex-shrink-0">
+            {vendorType === "shop" ? "Shop" : vendorType === "dine" ? "Dine" : "Service"}
+          </Badge>
+        </div>
+        <h3 className="text-sm text-muted-foreground line-clamp-2 mb-2" data-testid={`deal-title-${deal.id}`}>
+          {deal.title}
+        </h3>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {deal.vendor?.city && (
+            <span className="flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              {deal.vendor.city}
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            Redeem today
+          </span>
+        </div>
+      </CardContent>
+      
+      {isLocked && (
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-10">
+          <Lock className="w-6 h-6 text-primary mb-2" />
+          <p className="text-xs text-center text-foreground font-medium mb-2">
+            Unlock with Rise Local Pass
+          </p>
+          <Button 
+            size="sm" 
+            className="text-xs h-7" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.location.href = "/membership";
+            }}
+            data-testid={`button-unlock-${deal.id}`}
+          >
+            Join Now
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+  
+  if (isLocked) {
+    return cardContent;
+  }
+  
+  return (
+    <Link href={`/deals/${deal.id}`} data-testid={`link-deal-${deal.id}`}>
+      {cardContent}
+    </Link>
+  );
+}
 
 export default function Browse() {
   const [pathLocation] = useLocation();
@@ -243,10 +362,11 @@ export default function Browse() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <Skeleton className="h-32 rounded-lg mb-3" />
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="w-full aspect-[16/9]" />
+                <CardContent className="p-3">
                   <Skeleton className="h-4 w-3/4 mb-2" />
+                  <Skeleton className="h-3 w-full mb-2" />
                   <Skeleton className="h-3 w-1/2" />
                 </CardContent>
               </Card>
@@ -271,105 +391,9 @@ export default function Browse() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {filteredDeals.map((deal) => {
-              const DealIcon = getDealTypeIcon(deal.dealType);
-              const businessName = deal.vendor?.businessName || "Local Business";
-              const vendorType = deal.vendor?.vendorType || "shop";
-              const isLocked = deal.isPassLocked && !isPassMember;
-              
-              const cardContent = (
-                <Card className={`hover-elevate active-elevate-2 h-full relative ${isLocked ? 'overflow-hidden' : ''}`} data-testid={`card-deal-${deal.id}`}>
-                  <CardContent className={`p-4 ${isLocked ? 'blur-[2px]' : ''}`}>
-                    <div className="flex gap-3">
-                      <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <DealIcon className="w-6 h-6 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-sm truncate" data-testid={`deal-title-${deal.id}`}>
-                            {deal.title}
-                          </h3>
-                          {deal.isPassLocked && (
-                            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-primary flex-shrink-0">
-                              Member Only
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2" data-testid={`deal-description-${deal.id}`}>
-                          {deal.description}
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {deal.savingsAmount && deal.savingsAmount > 0 && (
-                            <Badge variant="secondary" className="text-xs" data-testid={`deal-savings-${deal.id}`}>
-                              Save ${deal.savingsAmount}
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="text-xs">
-                            {vendorType === "shop" ? "Shop" : vendorType === "dine" ? "Dine" : "Service"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={deal.vendor?.logoUrl || undefined} alt={businessName} />
-                        <AvatarFallback className="text-xs">
-                          {businessName.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs text-muted-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
-                        {businessName}
-                      </span>
-                      {deal.vendor?.city && (
-                        <>
-                          <span className="text-muted-foreground">·</span>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <MapPin className="w-3 h-3" />
-                            <span>{deal.vendor.city}</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                  
-                  {/* Lock overlay for member-only deals */}
-                  {isLocked && (
-                    <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-10">
-                      <Lock className="w-6 h-6 text-primary mb-2" />
-                      <p className="text-xs text-center text-foreground font-medium mb-2">
-                        Unlock with Rise Local Pass
-                      </p>
-                      <Button 
-                        size="sm" 
-                        className="text-xs h-7" 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          window.location.href = "/membership";
-                        }}
-                        data-testid={`button-unlock-${deal.id}`}
-                      >
-                        Join Now
-                      </Button>
-                    </div>
-                  )}
-                </Card>
-              );
-              
-              if (isLocked) {
-                return (
-                  <div key={deal.id} className="cursor-pointer">
-                    {cardContent}
-                  </div>
-                );
-              }
-              
-              return (
-                <Link key={deal.id} href={`/deals/${deal.id}`}>
-                  {cardContent}
-                </Link>
-              );
-            })}
+            {filteredDeals.map((deal) => (
+              <BrowseDealCard key={deal.id} deal={deal} isPassMember={isPassMember} />
+            ))}
           </div>
         )}
         

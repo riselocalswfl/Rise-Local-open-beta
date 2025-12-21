@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Link } from "wouter";
@@ -13,6 +14,76 @@ import { Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Vendor, Product, VendorDeal } from "@shared/schema";
+import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
+
+interface ProfileDealCardProps {
+  deal: VendorDeal & { imageUrl?: string | null };
+  vendor: VendorWithDetails;
+}
+
+function ProfileDealCard({ deal, vendor }: ProfileDealCardProps) {
+  const imageFallbackChain = [
+    deal.imageUrl ?? undefined,
+    vendor.bannerUrl,
+    vendor.logoUrl,
+    placeholderImage,
+  ].filter((url): url is string => Boolean(url));
+  
+  const [imageIndex, setImageIndex] = useState(0);
+  const currentImage = imageFallbackChain[imageIndex] || placeholderImage;
+  
+  const handleImageError = useCallback(() => {
+    if (imageIndex < imageFallbackChain.length - 1) {
+      setImageIndex(prev => prev + 1);
+    }
+  }, [imageIndex, imageFallbackChain.length]);
+  
+  const savings = deal.savingsAmount || 0;
+  
+  return (
+    <Link href={`/deals/${deal.id}`}>
+      <div 
+        className="rounded-lg overflow-hidden bg-card border hover-elevate active-elevate-2 cursor-pointer"
+        data-testid={`deal-${deal.id}`}
+      >
+        <div className="relative w-full aspect-[16/9] overflow-hidden">
+          <img
+            src={currentImage}
+            alt={deal.title}
+            className="w-full h-full object-cover"
+            onError={handleImageError}
+            data-testid={`img-deal-${deal.id}`}
+          />
+          {savings > 0 && (
+            <div className="absolute bottom-2 left-2">
+              <Badge 
+                variant="outline" 
+                className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+              >
+                Save ${savings}
+              </Badge>
+            </div>
+          )}
+          {deal.isPassLocked && (
+            <div className="absolute top-2 left-2">
+              <Badge variant="default" className="text-[10px] px-1.5 py-0.5 bg-primary">
+                Member Only
+              </Badge>
+            </div>
+          )}
+        </div>
+        <div className="p-3">
+          <h4 className="text-deal-title truncate" data-testid={`deal-title-${deal.id}`}>
+            {deal.title}
+          </h4>
+          <p className="text-meta text-muted-foreground line-clamp-2 mt-1" data-testid={`deal-description-${deal.id}`}>
+            {deal.description}
+          </p>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 interface VendorWithDetails extends Omit<Vendor, 'contactEmail' | 'contactPhone'> {
   products?: Product[];
@@ -286,42 +357,10 @@ export default function BusinessProfile() {
             <CardHeader className="pb-2">
               <CardTitle className="text-section-header">Deals</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {deals.map((deal) => {
-                const DealIcon = getDealTypeIcon(deal.dealType);
-                return (
-                  <Link key={deal.id} href={`/deals/${deal.id}`}>
-                    <div 
-                      className="p-3 bg-muted/50 rounded-lg hover-elevate active-elevate-2 cursor-pointer"
-                      data-testid={`deal-${deal.id}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <DealIcon className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-deal-title truncate" data-testid={`deal-title-${deal.id}`}>
-                              {deal.title}
-                            </h4>
-                            {deal.isPassLocked && (
-                              <Lock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-meta text-muted-foreground line-clamp-2" data-testid={`deal-description-${deal.id}`}>
-                            {deal.description}
-                          </p>
-                          {deal.savingsAmount && deal.savingsAmount > 0 && (
-                            <Badge variant="secondary" className="mt-2 text-xs" data-testid={`deal-savings-${deal.id}`}>
-                              Save ${deal.savingsAmount}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {deals.map((deal) => (
+                <ProfileDealCard key={deal.id} deal={deal} vendor={vendor} />
+              ))}
             </CardContent>
           </Card>
         ) : (

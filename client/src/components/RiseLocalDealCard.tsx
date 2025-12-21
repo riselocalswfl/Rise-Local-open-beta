@@ -2,7 +2,8 @@ import { useLocation } from "wouter";
 import { MapPin, Clock, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
 export type DealType = "memberOnly" | "standard" | "bogo" | "value" | "new";
 
@@ -13,6 +14,8 @@ export interface RiseLocalDeal {
   vendorName: string;
   vendorCategory?: string;
   imageUrl?: string;
+  vendorBannerUrl?: string;
+  vendorLogoUrl?: string;
   savings: number;
   distance: string;
   redemptionWindow?: string;
@@ -30,6 +33,23 @@ interface RiseLocalDealCardProps {
 export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalDealCardProps) {
   const [, setLocation] = useLocation();
   const isLocked = deal.memberOnly && !isMember;
+
+  // Build fallback chain: deal image -> vendor banner -> vendor logo -> placeholder
+  const imageFallbackChain = [
+    deal.imageUrl,
+    deal.vendorBannerUrl,
+    deal.vendorLogoUrl,
+    placeholderImage,
+  ].filter((url): url is string => Boolean(url));
+  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const currentImage = imageFallbackChain[currentImageIndex] || placeholderImage;
+
+  const handleImageError = useCallback(() => {
+    if (currentImageIndex < imageFallbackChain.length - 1) {
+      setCurrentImageIndex(prev => prev + 1);
+    }
+  }, [currentImageIndex, imageFallbackChain.length]);
 
   const handleCardClick = useCallback(() => {
     if (!isLocked) {
@@ -52,21 +72,15 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
       onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(); }}
     >
         <div className="relative rounded-xl overflow-hidden bg-muted aspect-[4/3] mb-2">
-          {deal.imageUrl ? (
-            <img
-              src={deal.imageUrl}
-              alt={deal.title}
-              className={`w-full h-full object-cover transition-transform duration-300 ${
-                isLocked ? "blur-[2px]" : "group-hover:scale-105"
-              }`}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10">
-              <span className="text-4xl font-bold text-primary/30">
-                {deal.vendorName[0]}
-              </span>
-            </div>
-          )}
+          <img
+            src={currentImage}
+            alt={deal.title}
+            className={`w-full h-full object-cover transition-transform duration-300 ${
+              isLocked ? "blur-[2px]" : "group-hover:scale-105"
+            }`}
+            onError={handleImageError}
+            data-testid={`img-deal-${deal.id}`}
+          />
           
           {/* Top badges */}
           <div className="absolute top-2 left-2 flex flex-wrap gap-1">

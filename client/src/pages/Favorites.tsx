@@ -1,8 +1,8 @@
-import { Heart, Tag, MapPin, Store, Trash2 } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Heart, MapPin, Store, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,10 +10,109 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Deal } from "@shared/schema";
+import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
 interface FavoriteDeal extends Deal {
   vendorName: string | null;
   vendorLogoUrl: string | null;
+  vendorBannerUrl?: string | null;
+}
+
+interface FavoriteCardProps {
+  deal: FavoriteDeal;
+  onRemove: (id: string) => void;
+  isRemoving: boolean;
+}
+
+function FavoriteCard({ deal, onRemove, isRemoving }: FavoriteCardProps) {
+  const imageFallbackChain = [
+    deal.imageUrl,
+    deal.vendorBannerUrl,
+    deal.vendorLogoUrl,
+    placeholderImage,
+  ].filter((url): url is string => Boolean(url));
+  
+  const [imageIndex, setImageIndex] = useState(0);
+  const currentImage = imageFallbackChain[imageIndex] || placeholderImage;
+  
+  const handleImageError = useCallback(() => {
+    if (imageIndex < imageFallbackChain.length - 1) {
+      setImageIndex(prev => prev + 1);
+    }
+  }, [imageIndex, imageFallbackChain.length]);
+  
+  const savings = deal.savingsAmount || 0;
+  
+  return (
+    <Card className="overflow-hidden" data-testid={`card-favorite-deal-${deal.id}`}>
+      <Link href={`/deals/${deal.id}`}>
+        <div className="relative w-full aspect-[16/9] overflow-hidden">
+          <img
+            src={currentImage}
+            alt={deal.title}
+            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+            onError={handleImageError}
+            data-testid={`img-favorite-deal-${deal.id}`}
+          />
+          {savings > 0 && (
+            <div className="absolute bottom-2 left-2">
+              <Badge 
+                variant="outline" 
+                className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+              >
+                Save ${savings}
+              </Badge>
+            </div>
+          )}
+          {deal.isPassLocked && (
+            <div className="absolute top-2 left-2">
+              <Badge variant="default" className="text-[10px] px-1.5 py-0.5 bg-primary">
+                Member Only
+              </Badge>
+            </div>
+          )}
+        </div>
+      </Link>
+      <CardContent className="p-3">
+        <div className="flex gap-3">
+          <div className="flex-1 min-w-0">
+            <Link href={`/deals/${deal.id}`}>
+              <h3 className="font-semibold text-foreground hover:text-primary transition-colors line-clamp-1" data-testid={`link-deal-${deal.id}`}>
+                {deal.title}
+              </h3>
+            </Link>
+            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+              <Store className="w-3 h-3" />
+              {deal.vendorName || "Local Business"}
+            </p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+              {deal.city && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {deal.city}
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Redeem today
+              </span>
+            </div>
+          </div>
+
+          <Button
+            size="icon"
+            variant="ghost"
+            className="shrink-0 text-muted-foreground hover:text-red-500"
+            onClick={() => onRemove(deal.id)}
+            disabled={isRemoving}
+            data-testid={`button-remove-favorite-${deal.id}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function Favorites() {
@@ -99,73 +198,14 @@ export default function Favorites() {
             ))}
           </div>
         ) : favorites && favorites.length > 0 ? (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {favorites.map((deal) => (
-              <Card key={deal.id} className="overflow-hidden" data-testid={`card-favorite-deal-${deal.id}`}>
-                {deal.imageUrl && (
-                  <Link href={`/deals/${deal.id}`}>
-                    <div className="relative w-full aspect-[16/9] overflow-hidden">
-                      <img
-                        src={deal.imageUrl}
-                        alt={deal.title}
-                        className="w-full h-full object-cover"
-                        data-testid={`img-favorite-deal-${deal.id}`}
-                      />
-                    </div>
-                  </Link>
-                )}
-                <CardContent className="p-4">
-                  <div className="flex gap-4">
-                    <Avatar className="h-14 w-14 border shrink-0">
-                      <AvatarImage src={deal.vendorLogoUrl || ""} alt={deal.vendorName || "Business"} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {(deal.vendorName || "V")[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/deals/${deal.id}`}>
-                        <h3 className="font-semibold text-foreground hover:text-primary transition-colors line-clamp-1" data-testid={`link-deal-${deal.id}`}>
-                          {deal.title}
-                        </h3>
-                      </Link>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Store className="w-3 h-3" />
-                        {deal.vendorName || "Local Business"}
-                      </p>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                        {deal.description}
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {deal.category && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Tag className="w-2.5 h-2.5 mr-1" />
-                            {deal.category}
-                          </Badge>
-                        )}
-                        {deal.city && (
-                          <Badge variant="outline" className="text-xs">
-                            <MapPin className="w-2.5 h-2.5 mr-1" />
-                            {deal.city}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="shrink-0 text-muted-foreground hover:text-red-500"
-                      onClick={() => removeFavorite.mutate(deal.id)}
-                      disabled={removeFavorite.isPending}
-                      data-testid={`button-remove-favorite-${deal.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <FavoriteCard 
+                key={deal.id} 
+                deal={deal} 
+                onRemove={(id) => removeFavorite.mutate(id)}
+                isRemoving={removeFavorite.isPending}
+              />
             ))}
           </div>
         ) : (

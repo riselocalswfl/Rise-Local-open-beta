@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Clock, Heart } from "lucide-react";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import RedeemCodeModal from "@/components/RedeemCodeModal";
 import type { Deal, Vendor } from "@shared/schema";
+import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -142,13 +143,57 @@ export default function DealDetailPage() {
     );
   }
 
+  // Build image fallback chain
+  const imageFallbackChain = [
+    deal.imageUrl,
+    vendor?.bannerUrl,
+    vendor?.logoUrl,
+    placeholderImage,
+  ].filter((url): url is string => Boolean(url));
+  
+  const [imageIndex, setImageIndex] = useState(0);
+  const currentImage = imageFallbackChain[imageIndex] || placeholderImage;
+  
+  const handleImageError = useCallback(() => {
+    if (imageIndex < imageFallbackChain.length - 1) {
+      setImageIndex(prev => prev + 1);
+    }
+  }, [imageIndex, imageFallbackChain.length]);
+
   return (
     <div className="min-h-screen bg-background">
       <DetailHeader title={deal.title} backHref="/discover" />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
 
-        <Card>
+        <Card className="overflow-hidden">
+          <div className="relative w-full aspect-[16/9] overflow-hidden">
+            <img
+              src={currentImage}
+              alt={deal.title}
+              className="w-full h-full object-cover"
+              onError={handleImageError}
+              data-testid="img-deal-hero"
+            />
+            {deal.savingsAmount && deal.savingsAmount > 0 && (
+              <div className="absolute bottom-3 left-3">
+                <Badge 
+                  variant="outline" 
+                  className="text-sm px-3 py-1 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+                >
+                  Save ${deal.savingsAmount}
+                </Badge>
+              </div>
+            )}
+            {(deal.isPassLocked || deal.tier === "premium" || deal.tier === "member") && (
+              <div className="absolute top-3 left-3">
+                <Badge variant="default" className="text-xs px-2 py-0.5 bg-primary">
+                  Member Only
+                </Badge>
+              </div>
+            )}
+          </div>
+          
           <CardHeader className="pb-4">
             <div className="flex items-start gap-4">
               <Avatar className="h-16 w-16 border">
