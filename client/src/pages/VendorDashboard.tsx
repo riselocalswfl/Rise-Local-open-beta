@@ -513,7 +513,6 @@ export default function VendorDashboard() {
   const createDealMutation = useMutation({
     mutationFn: async (data: z.infer<typeof dealFormSchema>) => {
       if (!vendor?.id) throw new Error("No vendor ID");
-      console.log("[createDealMutation] Creating deal with data:", JSON.stringify(data, null, 2));
       return await apiRequest("POST", "/api/vendor/deals", data);
     },
     onSuccess: () => {
@@ -534,7 +533,6 @@ export default function VendorDashboard() {
 
   const updateDealMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<z.infer<typeof dealFormSchema>> }) => {
-      console.log("[updateDealMutation] Updating deal:", id, "with data:", JSON.stringify(data, null, 2));
       return await apiRequest("PATCH", `/api/vendor/deals/${id}`, data);
     },
     onSuccess: () => {
@@ -1974,8 +1972,6 @@ function DealForm({
       ...data,
       isPassLocked: data.tier === "member",
     };
-    console.log("[DealForm] Submitting deal with data:", JSON.stringify(syncedData, null, 2));
-    console.log("[DealForm] imageUrl value:", syncedData.imageUrl);
     onSubmit(syncedData);
   };
 

@@ -4704,7 +4704,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/vendor/deals", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      console.log("[VENDOR DEALS] Create deal request body:", JSON.stringify(req.body, null, 2));
 
       // Verify user is a vendor
       const vendor = await storage.getVendorByOwnerId(userId);
@@ -4720,14 +4719,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startsAt: req.body.startsAt ? new Date(req.body.startsAt) : undefined,
         endsAt: req.body.endsAt ? new Date(req.body.endsAt) : undefined,
       };
-      console.log("[VENDOR DEALS] Body with dates including imageUrl:", bodyWithDates.imageUrl);
 
       // Validate request body
       const dealData = insertDealSchema.parse(bodyWithDates);
-      console.log("[VENDOR DEALS] Parsed deal data imageUrl:", dealData.imageUrl);
 
       const deal = await storage.createDeal(dealData);
-      console.log("[VENDOR DEALS] Deal created:", deal.id, "by vendor:", vendor.id, "imageUrl:", deal.imageUrl);
+      console.log("[VENDOR DEALS] Deal created:", deal.id, "by vendor:", vendor.id);
       res.status(201).json(deal);
     } catch (error) {
       console.error("Error creating deal:", error);
@@ -4757,8 +4754,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Don't allow changing vendorId
       const { vendorId, ...updateData } = req.body;
-      console.log("[VENDOR DEALS] PATCH update data received:", JSON.stringify(updateData, null, 2));
-      console.log("[VENDOR DEALS] PATCH imageUrl value:", updateData.imageUrl);
       
       // Convert date strings to Date objects if provided
       if (updateData.startsAt) {
@@ -4770,7 +4765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedDeal = await storage.updateDeal(dealId, updateData);
 
-      console.log("[VENDOR DEALS] Deal updated:", dealId, "by vendor:", vendor.id, "new imageUrl:", updatedDeal.imageUrl);
+      console.log("[VENDOR DEALS] Deal updated:", dealId, "by vendor:", vendor.id);
       res.json(updatedDeal);
     } catch (error) {
       console.error("Error updating deal:", error);
