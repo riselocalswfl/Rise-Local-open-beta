@@ -124,7 +124,7 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="flex items-center gap-0.5">
             <MapPin className="w-2.5 h-2.5" />
-            {deal.distance}
+            {deal.city || deal.distance}
           </span>
         </div>
       </CardContent>

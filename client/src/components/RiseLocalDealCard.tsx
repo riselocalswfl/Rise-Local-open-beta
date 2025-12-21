@@ -18,6 +18,7 @@ export interface RiseLocalDeal {
   vendorLogoUrl?: string;
   savings: number;
   distance: string;
+  city?: string;
   redemptionWindow?: string;
   dealType: DealType;
   memberOnly: boolean;
@@ -156,7 +157,7 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
           <div className="flex items-center gap-2 text-meta text-muted-foreground">
             <span className="flex items-center gap-0.5">
               <MapPin className="w-3 h-3" />
-              {deal.distance}
+              {deal.city || deal.distance}
             </span>
             {deal.redemptionWindow && (
               <span className="flex items-center gap-0.5">

@@ -80,11 +80,13 @@ function calculateDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: 
   return R * c;
 }
 
-// Compute savings for a deal
+// Compute savings for a deal - use savingsAmount directly if it exists (even if 0)
 function computeSavings(deal: Deal): number {
-  if (deal.savingsAmount && deal.savingsAmount > 0) {
+  // Check for explicit savingsAmount first (null/undefined means not set)
+  if (deal.savingsAmount !== null && deal.savingsAmount !== undefined && deal.savingsAmount > 0) {
     return deal.savingsAmount;
   }
+  // Only use fallback logic if savingsAmount wasn't explicitly set
   if (deal.discountType === "PERCENT" && deal.discountValue) {
     return Math.round(deal.discountValue / 10);
   }
@@ -94,7 +96,7 @@ function computeSavings(deal: Deal): number {
   if (deal.tier === "premium") {
     return 15;
   }
-  return 5;
+  return 0; // Return 0 instead of default value to avoid showing incorrect savings
 }
 
 type ExtendedRiseLocalDeal = RiseLocalDeal & { 
@@ -126,6 +128,7 @@ function toDiscoverDeal(deal: ExtendedRiseLocalDeal): DiscoverDeal {
     vendorLogoUrl: deal.vendorLogoUrl,
     savings: deal.savings,
     distance: deal.distance,
+    city: deal.city,
     redemptionWindow: deal.redemptionWindow,
     memberOnly: deal.memberOnly,
     isNew: deal.isNew,
@@ -186,6 +189,9 @@ function transformDealToRiseLocal(
   
   const savings = computeSavings(deal);
   
+  // Get city from vendor, fallback to "SWFL" 
+  const city = deal.vendor?.city || "SWFL";
+  
   return {
     id: deal.id,
     title: deal.title,
@@ -197,6 +203,7 @@ function transformDealToRiseLocal(
     vendorLogoUrl: deal.vendor?.logoUrl || undefined,
     savings,
     distance: distanceStr,
+    city,
     rawDistance,
     redemptionWindow: "Redeem today",
     dealType,
