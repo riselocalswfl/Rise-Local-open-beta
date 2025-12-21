@@ -142,14 +142,6 @@ const dealFormSchema = z.object({
 const DEAL_CATEGORIES = ["Food & Drink", "Retail", "Beauty", "Fitness", "Services", "Experiences"];
 const DEAL_CITIES = ["Fort Myers", "Cape Coral", "Bonita Springs", "Estero", "Naples"];
 
-const REDEMPTION_METHODS = [
-  { value: "qr_code", label: "QR Code Scan" },
-  { value: "claim_button", label: "Claim Button" },
-  { value: "numeric_pin", label: "Numeric PIN" },
-  { value: "unique_code", label: "Unique Code" },
-  { value: "staff_toggle", label: "Staff Toggle" },
-];
-
 export default function VendorDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
@@ -2109,52 +2101,27 @@ function DealForm({
           )}
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="tier"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tier</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-deal-tier">
-                      <SelectValue placeholder="Select tier" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="standard">Available to All</SelectItem>
-                    <SelectItem value="member">Members Only</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="redemptionMethod"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Redemption Method</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-redemption-method">
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {REDEMPTION_METHODS.map((method) => (
-                      <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="tier"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tier</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger data-testid="select-deal-tier">
+                    <SelectValue placeholder="Select tier" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="standard">Available to All</SelectItem>
+                  <SelectItem value="member">Members Only</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <Separator />
 
