@@ -84,3 +84,72 @@ body,
     @apply bg-muted;
   }
 }
+
+/* Rise Local Typography System
+   Warm, local, friendly, modern - calm but confident
+   Uses font weight and size to establish hierarchy, not color */
+
+@layer components {
+  /* Page titles & section headers - clear visual anchor */
+  .text-page-title {
+    @apply text-2xl font-semibold leading-tight tracking-tight;
+  }
+  
+  .text-section-header {
+    @apply text-lg font-semibold leading-snug;
+  }
+  
+  /* Deal titles & business names - prominent but friendly */
+  .text-deal-title {
+    @apply text-base font-semibold leading-snug;
+  }
+  
+  .text-business-name {
+    @apply text-sm font-semibold leading-snug;
+  }
+  
+  /* Body text - comfortable for mobile reading */
+  .text-body {
+    @apply text-sm font-normal leading-relaxed;
+  }
+  
+  .text-body-emphasis {
+    @apply text-sm font-medium leading-relaxed;
+  }
+  
+  /* Metadata - reduced emphasis without reducing contrast */
+  .text-meta {
+    @apply text-xs font-normal leading-normal;
+  }
+  
+  .text-meta-emphasis {
+    @apply text-xs font-medium leading-normal;
+  }
+  
+  /* Labels & form elements */
+  .text-label {
+    @apply text-sm font-medium leading-none;
+  }
+  
+  .text-input {
+    @apply text-sm font-normal leading-normal;
+  }
+  
+  /* Button text - friendly, readable */
+  .text-button {
+    @apply text-sm font-medium leading-none;
+  }
+  
+  .text-button-sm {
+    @apply text-xs font-medium leading-none;
+  }
+  
+  /* Card headers in dashboard/settings */
+  .text-card-title {
+    @apply text-base font-semibold leading-snug;
+  }
+  
+  .text-card-description {
+    @apply text-sm font-normal leading-relaxed text-muted-foreground;
+  }
+}
