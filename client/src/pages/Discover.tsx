@@ -14,9 +14,9 @@ import LocalSpotlight from "@/components/LocalSpotlight";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Deal, Vendor, Category } from "@shared/schema";
 import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
 
@@ -40,7 +40,6 @@ type LocationOption = {
 
 const LOCATION_OPTIONS: LocationOption[] = [
   { id: "current", label: "Use My Location", isGPS: true },
-  { id: "swfl", label: "SWFL", coords: { lat: 26.6406, lng: -81.8723 } },
   { id: "fort-myers", label: "Fort Myers", coords: { lat: 26.6406, lng: -81.8723 } },
   { id: "cape-coral", label: "Cape Coral", coords: { lat: 26.5629, lng: -81.9495 } },
   { id: "bonita-springs", label: "Bonita Springs", coords: { lat: 26.3398, lng: -81.7787 } },
@@ -48,10 +47,15 @@ const LOCATION_OPTIONS: LocationOption[] = [
   { id: "naples", label: "Naples", coords: { lat: 26.1420, lng: -81.7948 } },
 ];
 
+// Get all city location IDs (excluding GPS)
+const ALL_CITY_IDS = LOCATION_OPTIONS.filter(o => !o.isGPS).map(o => o.id);
+
 type LocationState = {
   status: "idle" | "requesting" | "granted";
   coords: { lat: number; lng: number } | null;
   displayName: string;
+  selectedIds: string[]; // Array of selected location IDs for multi-select
+  isGPS?: boolean; // True when using GPS location
 };
 
 const FILTER_CHIPS = [
@@ -188,7 +192,9 @@ export default function Discover() {
   const [location, setLocation] = useState<LocationState>({
     status: "idle",
     coords: SWFL_DEFAULT,
-    displayName: "SWFL",
+    displayName: "All Areas",
+    selectedIds: ALL_CITY_IDS, // Start with all cities selected
+    isGPS: false,
   });
   const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -212,7 +218,7 @@ export default function Discover() {
     if (!navigator.geolocation) {
       toast({
         title: "Location unavailable",
-        description: "Using SWFL as default location.",
+        description: "Using all areas as default.",
       });
       return;
     }
@@ -223,13 +229,15 @@ export default function Discover() {
       setLocation(prev => {
         if (prev.status === "requesting") {
           toast({
-            title: "Using SWFL area",
+            title: "Using all areas",
             description: "Couldn't get your exact location.",
           });
           return {
             status: "granted",
             coords: SWFL_DEFAULT,
-            displayName: "SWFL",
+            displayName: "All Areas",
+            selectedIds: ALL_CITY_IDS,
+            isGPS: false,
           };
         }
         return prev;
@@ -249,6 +257,8 @@ export default function Discover() {
             lng: position.coords.longitude,
           },
           displayName: "Current Location",
+          selectedIds: [],
+          isGPS: true,
         });
         toast({
           title: "Location found",
@@ -263,10 +273,12 @@ export default function Discover() {
         setLocation({
           status: "granted",
           coords: SWFL_DEFAULT,
-          displayName: "SWFL",
+          displayName: "All Areas",
+          selectedIds: ALL_CITY_IDS,
+          isGPS: false,
         });
         toast({
-          title: "Using SWFL area",
+          title: "Using all areas",
           description: error.code === 1 
             ? "Location access denied." 
             : "Couldn't get your location.",
@@ -276,23 +288,65 @@ export default function Discover() {
     );
   };
 
-  const handleLocationSelect = (optionId: string) => {
+  // Toggle a location in multi-select
+  const handleLocationToggle = (optionId: string) => {
     if (optionId === "current") {
       requestGPSLocation();
-    } else {
-      const option = LOCATION_OPTIONS.find(o => o.id === optionId);
-      if (option && option.coords) {
-        setLocation({
-          status: "granted",
-          coords: option.coords,
-          displayName: option.label,
-        });
-        toast({
-          title: `Location set to ${option.label}`,
-          description: "Showing nearby deals",
-        });
-      }
+      return;
     }
+    
+    setLocation(prev => {
+      const isSelected = prev.selectedIds.includes(optionId);
+      let newSelectedIds: string[];
+      
+      if (isSelected) {
+        // Remove from selection (but keep at least one)
+        newSelectedIds = prev.selectedIds.filter(id => id !== optionId);
+        if (newSelectedIds.length === 0) {
+          // If removing would result in empty, select all instead
+          newSelectedIds = ALL_CITY_IDS;
+        }
+      } else {
+        // Add to selection, disable GPS mode
+        newSelectedIds = [...prev.selectedIds, optionId];
+      }
+      
+      // Calculate display name
+      let displayName: string;
+      if (newSelectedIds.length === ALL_CITY_IDS.length) {
+        displayName = "All Areas";
+      } else if (newSelectedIds.length === 1) {
+        const opt = LOCATION_OPTIONS.find(o => o.id === newSelectedIds[0]);
+        displayName = opt?.label || "Selected Area";
+      } else if (newSelectedIds.length <= 2) {
+        displayName = newSelectedIds.map(id => {
+          const opt = LOCATION_OPTIONS.find(o => o.id === id);
+          return opt?.label || id;
+        }).join(", ");
+      } else {
+        displayName = `${newSelectedIds.length} Areas`;
+      }
+      
+      // Use center point of SWFL for multiple selections
+      return {
+        status: "granted",
+        coords: SWFL_DEFAULT,
+        displayName,
+        selectedIds: newSelectedIds,
+        isGPS: false,
+      };
+    });
+  };
+
+  // Select all locations
+  const handleSelectAll = () => {
+    setLocation({
+      status: "granted",
+      coords: SWFL_DEFAULT,
+      displayName: "All Areas",
+      selectedIds: ALL_CITY_IDS,
+      isGPS: false,
+    });
   };
 
   const getUserInitials = () => {
@@ -499,20 +553,52 @@ export default function Discover() {
                   <span className="text-sm text-primary font-medium">Change</span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                {LOCATION_OPTIONS.map((option) => (
-                  <DropdownMenuItem
+              <DropdownMenuContent align="start" className="w-56 p-2">
+                {/* GPS Option */}
+                <div
+                  className="flex items-center gap-3 px-2 py-2 rounded-md cursor-pointer hover:bg-muted"
+                  onClick={() => handleLocationToggle("current")}
+                  data-testid="menu-item-location-current"
+                >
+                  <Navigation className="w-4 h-4 text-primary" />
+                  <span className={`text-sm font-medium ${location.isGPS ? "text-primary" : ""}`}>
+                    Use My Location
+                  </span>
+                  {location.isGPS && (
+                    <span className="ml-auto text-xs text-primary">Active</span>
+                  )}
+                </div>
+                
+                <div className="border-t border-border my-2" />
+                
+                {/* Select All */}
+                <div
+                  className="flex items-center gap-3 px-2 py-2 rounded-md cursor-pointer hover:bg-muted"
+                  onClick={handleSelectAll}
+                  data-testid="menu-item-location-all"
+                >
+                  <Checkbox 
+                    checked={location.selectedIds.length === ALL_CITY_IDS.length && !location.isGPS}
+                    className="pointer-events-none"
+                  />
+                  <span className="text-sm font-medium">All Areas</span>
+                </div>
+                
+                {/* Individual Cities */}
+                {LOCATION_OPTIONS.filter(o => !o.isGPS).map((option) => (
+                  <div
                     key={option.id}
-                    onClick={() => handleLocationSelect(option.id)}
+                    className="flex items-center gap-3 px-2 py-2 rounded-md cursor-pointer hover:bg-muted"
+                    onClick={() => handleLocationToggle(option.id)}
                     data-testid={`menu-item-location-${option.id}`}
                   >
-                    {option.isGPS ? (
-                      <Navigation className="w-4 h-4 mr-2" />
-                    ) : (
-                      <MapPin className="w-4 h-4 mr-2" />
-                    )}
-                    {option.label}
-                  </DropdownMenuItem>
+                    <Checkbox 
+                      checked={location.selectedIds.includes(option.id) && !location.isGPS}
+                      className="pointer-events-none"
+                    />
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">{option.label}</span>
+                  </div>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
