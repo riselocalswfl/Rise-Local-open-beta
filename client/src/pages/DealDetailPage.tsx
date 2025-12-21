@@ -193,8 +193,23 @@ export default function DealDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Centered redemption button under photo */}
+          <div className="px-4 py-4 flex justify-center">
+            <Button
+              size="lg"
+              className="w-full max-w-sm"
+              onClick={() => setRedeemModalOpen(true)}
+              data-testid="button-redeem-deal"
+            >
+              <span className="flex items-center gap-2">
+                <Ticket className="w-4 h-4" />
+                Get Redemption Code
+              </span>
+            </Button>
+          </div>
           
-          <CardHeader className="pb-4">
+          <CardHeader className="pb-4 pt-0">
             <div className="flex items-start gap-4">
               <Avatar className="h-16 w-16 border">
                 <AvatarImage src={vendor?.logoUrl || ""} alt={vendor?.businessName || "Business"} />
@@ -277,30 +292,17 @@ export default function DealDetailPage() {
               </Link>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                size="lg"
-                className="flex-1"
-                onClick={() => setRedeemModalOpen(true)}
-                data-testid="button-redeem-deal"
-              >
-                <span className="flex items-center gap-2">
-                  <Ticket className="w-4 h-4" />
-                  Get Redemption Code
-                </span>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="flex-1"
-                onClick={() => startConversation.mutate()}
-                disabled={startConversation.isPending || !deal?.vendorId}
-                data-testid="button-message-business"
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                {startConversation.isPending ? "Starting..." : "Ask a Question"}
-              </Button>
-            </div>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full"
+              onClick={() => startConversation.mutate()}
+              disabled={startConversation.isPending || !deal?.vendorId}
+              data-testid="button-message-business"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              {startConversation.isPending ? "Starting..." : "Ask a Question"}
+            </Button>
 
             <div className="bg-primary/5 rounded-lg p-4 flex items-start gap-3">
               <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
