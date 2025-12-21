@@ -4546,12 +4546,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get deal info for the response
       const deal = result.redemption ? await storage.getDealById(result.redemption.dealId) : null;
 
-      console.log("[VENDOR] Code verified:", code, "vendor:", vendor.id, "deal:", result.redemption?.dealId);
+      // Get customer info for the response
+      let customer = null;
+      if (result.redemption?.userId) {
+        const customerUser = await storage.getUser(result.redemption.userId);
+        if (customerUser) {
+          customer = {
+            id: customerUser.id,
+            name: customerUser.firstName && customerUser.lastName 
+              ? `${customerUser.firstName} ${customerUser.lastName}`.trim()
+              : customerUser.username || "Customer",
+            email: customerUser.email,
+          };
+        }
+      }
+
+      console.log("[VENDOR] Code verified:", code, "vendor:", vendor.id, "deal:", result.redemption?.dealId, "customer:", customer?.name);
       res.json({
         success: true,
         message: result.message,
         redemption: result.redemption,
         deal: deal ? { id: deal.id, title: deal.title } : null,
+        customer,
       });
     } catch (error) {
       console.error("Error verifying redemption code:", error);
@@ -5075,8 +5091,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // === CLAIM LIMIT ENFORCEMENT ===
       
-      // Count redeemed redemptions for this user+deal
-      const redeemedCount = await storage.getUserRedeemedCountForDeal(userId, dealId);
+      // Count verified (redeemed) redemptions for this user+deal
+      const redeemedCount = await storage.getUserVerifiedCountForDeal(userId, dealId);
       const maxPerUser = deal.maxRedemptionsPerUser || 1;
       
       if (redeemedCount >= maxPerUser) {
@@ -5089,7 +5105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check cooldown period if set
       const cooldownHours = deal.cooldownHours || 168; // Default 1 week
       if (cooldownHours > 0) {
-        const lastRedemption = await storage.getLastRedemptionForUserDeal(userId, dealId);
+        const lastRedemption = await storage.getLastVerifiedRedemptionForUserDeal(userId, dealId);
         if (lastRedemption && lastRedemption.redeemedAt) {
           const cooldownEnd = new Date(lastRedemption.redeemedAt);
           cooldownEnd.setHours(cooldownEnd.getHours() + cooldownHours);
@@ -5107,7 +5123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check global redemption limit
       if (deal.maxRedemptionsTotal && deal.maxRedemptionsTotal > 0) {
-        const totalRedeemed = await storage.getTotalRedeemedCountForDeal(dealId);
+        const totalRedeemed = await storage.getTotalVerifiedCountForDeal(dealId);
         
         if (totalRedeemed >= deal.maxRedemptionsTotal) {
           return res.status(403).json({ 
@@ -5123,20 +5139,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Vendor not found" });
       }
 
-      // Claim the deal (generates time-locked code)
-      const result = await storage.claimDeal(dealId, userId, vendor.ownerId);
+      // Issue the deal code (generates time-locked code)
+      const result = await storage.issueDealCode(dealId, vendor.id, userId);
 
       if (!result.success) {
         return res.status(400).json({ error: result.message });
       }
 
       res.json({
-        redemptionId: result.redemptionId,
+        redemptionId: result.redemption?.id,
         dealId: dealId,
-        redemptionCode: result.redemptionCode,
+        redemptionCode: result.code,
         status: 'claimed',
         claimedAt: result.redemption?.claimedAt,
-        claimExpiresAt: result.claimExpiresAt,
+        claimExpiresAt: result.expiresAt,
       });
     } catch (error) {
       console.error("Error claiming deal:", error);
@@ -5206,7 +5222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if expired
-      const isExpired = new Date(redemption.claimExpiresAt) < new Date() && redemption.status === 'claimed';
+      const isExpired = redemption.claimExpiresAt ? new Date(redemption.claimExpiresAt) < new Date() && redemption.status === 'claimed' : false;
 
       res.json({
         ...redemption,
@@ -5349,6 +5365,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating placement status:", error);
       res.status(500).json({ error: "Failed to update placement status" });
+    }
+  });
+
+  // ===== FAVORITES =====
+  
+  // GET /api/favorites - Get user's favorite deals
+  app.get('/api/favorites', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const favoriteDeals = await storage.getUserFavoriteDeals(userId);
+      
+      // Enrich with vendor info
+      const enrichedDeals = await Promise.all(
+        favoriteDeals.map(async (deal) => {
+          const vendor = await storage.getVendor(deal.vendorId);
+          return {
+            ...deal,
+            vendorName: vendor?.businessName || vendor?.displayName || null,
+            vendorLogoUrl: vendor?.logoUrl || null,
+          };
+        })
+      );
+      
+      res.json(enrichedDeals);
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+      res.status(500).json({ error: "Failed to fetch favorites" });
+    }
+  });
+
+  // GET /api/favorites/:dealId - Check if deal is favorited
+  app.get('/api/favorites/:dealId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.dealId;
+      
+      const isFavorite = await storage.isFavorite(userId, dealId);
+      res.json({ isFavorite });
+    } catch (error) {
+      console.error("Error checking favorite status:", error);
+      res.status(500).json({ error: "Failed to check favorite status" });
+    }
+  });
+
+  // POST /api/favorites/:dealId - Add deal to favorites
+  app.post('/api/favorites/:dealId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.dealId;
+      
+      // Verify deal exists
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+      
+      const favorite = await storage.addFavorite(userId, dealId);
+      res.json({ success: true, favorite });
+    } catch (error) {
+      console.error("Error adding favorite:", error);
+      res.status(500).json({ error: "Failed to add favorite" });
+    }
+  });
+
+  // DELETE /api/favorites/:dealId - Remove deal from favorites
+  app.delete('/api/favorites/:dealId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const dealId = req.params.dealId;
+      
+      await storage.removeFavorite(userId, dealId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+      res.status(500).json({ error: "Failed to remove favorite" });
     }
   });
 
