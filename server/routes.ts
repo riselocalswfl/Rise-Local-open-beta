@@ -4108,21 +4108,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine sender role
       const senderRole = isConsumer ? 'consumer' : 'vendor';
 
-      // For vendors, check if they are subscribed (premium feature)
-      if (senderRole === 'vendor') {
-        const vendorOwner = await storage.getUser(userId);
-        const isSubscribed = vendorOwner?.isPassMember && 
-          (!vendorOwner.passExpiresAt || new Date(vendorOwner.passExpiresAt) > new Date());
-        
-        if (!isSubscribed) {
-          return res.status(403).json({ 
-            error: "Premium feature",
-            code: "SUBSCRIPTION_REQUIRED",
-            message: "Messaging customers requires an active Rise Local subscription"
-          });
-        }
-      }
-
       // Create message
       const message = await storage.createConversationMessage({
         conversationId,
