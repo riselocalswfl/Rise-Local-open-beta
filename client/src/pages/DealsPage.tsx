@@ -265,10 +265,10 @@ export default function DealsPage() {
           <div className="flex justify-center mb-4">
             <Sparkles className="w-12 h-12 text-white/90" />
           </div>
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold text-white mb-4 [text-wrap:balance]">
+          <h1 className="text-2xl md:text-4xl lg:text-5xl font-heading font-semibold text-white mb-4 [text-wrap:balance]">
             Shop Local. Save Money. Strengthen Your Community.
           </h1>
-          <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto mb-8">
+          <p className="text-base md:text-lg text-white/90 max-w-2xl mx-auto mb-8 leading-relaxed">
             Exclusive deals and perks from trusted Southwest Florida small businesses — all in one place.
           </p>
           
@@ -297,7 +297,7 @@ export default function DealsPage() {
           )}
           
           {/* Trust Line */}
-          <p className="text-sm text-white/70 mt-4">
+          <p className="text-meta text-white/70 mt-4">
             Supporting SWFL businesses
           </p>
         </div>
@@ -306,10 +306,10 @@ export default function DealsPage() {
       {/* Social Proof Section */}
       <section className="py-6 bg-background border-b">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm text-muted-foreground mb-3">
+          <p className="text-body text-muted-foreground mb-3">
             Supporting 50+ local businesses across Southwest Florida
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-2 text-xs text-muted-foreground/80">
+          <div className="flex flex-wrap justify-center items-center gap-2 text-meta text-muted-foreground/80">
             <span className="px-3 py-1 rounded-full bg-muted">Food</span>
             <span className="text-muted-foreground/50">•</span>
             <span className="px-3 py-1 rounded-full bg-muted">Shopping</span>

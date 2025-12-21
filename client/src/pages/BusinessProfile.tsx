@@ -112,8 +112,8 @@ export default function BusinessProfile() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
               <Clock className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h2 className="text-lg font-semibold mb-2" data-testid="text-business-unavailable">Business Temporarily Unavailable</h2>
-            <p className="text-muted-foreground mb-6" data-testid="text-unavailable-message">
+            <h2 className="text-section-header mb-2" data-testid="text-business-unavailable">Business Temporarily Unavailable</h2>
+            <p className="text-body text-muted-foreground mb-6" data-testid="text-unavailable-message">
               {hiddenMessage || "This business is currently not accepting visitors."}
             </p>
             <Link href="/discover">
@@ -245,7 +245,7 @@ export default function BusinessProfile() {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h1 className="text-xl font-semibold" data-testid="text-business-name">
+                        <h1 className="text-page-title" data-testid="text-business-name">
                           {vendor.businessName || "Business"}
                         </h1>
                         {vendor.isVerified && (
@@ -258,7 +258,7 @@ export default function BusinessProfile() {
                     </div>
                   </div>
                   {vendor.tagline && (
-                    <p className="text-sm text-muted-foreground italic" data-testid="text-tagline">
+                    <p className="text-body text-muted-foreground italic" data-testid="text-tagline">
                       {vendor.tagline}
                     </p>
                   )}
@@ -270,10 +270,10 @@ export default function BusinessProfile() {
         {vendor.bio && (
           <Card data-testid="card-about">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">About</CardTitle>
+              <CardTitle className="text-section-header">About</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground" data-testid="text-bio">
+              <p className="text-body text-muted-foreground" data-testid="text-bio">
                 {vendor.bio}
               </p>
             </CardContent>
@@ -284,7 +284,7 @@ export default function BusinessProfile() {
         {deals.length > 0 ? (
           <Card data-testid="card-deals">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Deals</CardTitle>
+              <CardTitle className="text-section-header">Deals</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {deals.map((deal) => {
@@ -301,14 +301,14 @@ export default function BusinessProfile() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium text-sm truncate" data-testid={`deal-title-${deal.id}`}>
+                            <h4 className="text-deal-title truncate" data-testid={`deal-title-${deal.id}`}>
                               {deal.title}
                             </h4>
                             {deal.isPassLocked && (
                               <Lock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2" data-testid={`deal-description-${deal.id}`}>
+                          <p className="text-meta text-muted-foreground line-clamp-2" data-testid={`deal-description-${deal.id}`}>
                             {deal.description}
                           </p>
                           {deal.savingsAmount && deal.savingsAmount > 0 && (
@@ -328,18 +328,18 @@ export default function BusinessProfile() {
           <Card data-testid="card-no-deals">
             <CardContent className="p-6 text-center">
               <Tag className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No active deals at this time</p>
+              <p className="text-body text-muted-foreground">No active deals at this time</p>
             </CardContent>
           </Card>
         )}
 
         <Card data-testid="card-contact">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Contact & Location</CardTitle>
+            <CardTitle className="text-section-header">Contact & Location</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {addressParts.length > 0 && (
-              <div className="flex items-start gap-3 text-sm">
+              <div className="flex items-start gap-3 text-body">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div data-testid="text-location">
                   {addressParts.map((line, i) => (
@@ -349,7 +349,7 @@ export default function BusinessProfile() {
               </div>
             )}
             {vendor.contactPhone && (
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-body">
                 <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a 
                   href={`tel:${vendor.contactPhone}`} 
@@ -361,7 +361,7 @@ export default function BusinessProfile() {
               </div>
             )}
             {vendor.contactEmail && (
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-body">
                 <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a 
                   href={`mailto:${vendor.contactEmail}`} 
@@ -373,7 +373,7 @@ export default function BusinessProfile() {
               </div>
             )}
             {vendor.website && (
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-body">
                 <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <a 
                   href={vendor.website} 
@@ -393,16 +393,16 @@ export default function BusinessProfile() {
         {hasHours && (
           <Card data-testid="card-hours">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Hours</CardTitle>
+              <CardTitle className="text-section-header">Hours</CardTitle>
             </CardHeader>
             <CardContent>
               {isByAppointment ? (
-                <div className="flex items-center gap-2 text-sm" data-testid="text-by-appointment">
+                <div className="flex items-center gap-2 text-body" data-testid="text-by-appointment">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span>By Appointment Only</span>
                 </div>
               ) : (
-                <div className="space-y-1.5 text-sm">
+                <div className="space-y-1.5 text-body">
                   {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => {
                     const value = hoursSchedule[day];
                     if (!value || typeof value !== 'string' || !value.trim()) return null;
@@ -423,7 +423,7 @@ export default function BusinessProfile() {
         {hasSocialLinks && (
           <Card data-testid="card-social">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Connect</CardTitle>
+              <CardTitle className="text-section-header">Connect</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-3">
@@ -432,7 +432,7 @@ export default function BusinessProfile() {
                     href={getSocialUrl('instagram', vendor.instagram)}
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-body"
                     data-testid="link-instagram"
                   >
                     <SiInstagram className="h-4 w-4" />
@@ -444,7 +444,7 @@ export default function BusinessProfile() {
                     href={getSocialUrl('facebook', vendor.facebook)}
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-body"
                     data-testid="link-facebook"
                   >
                     <SiFacebook className="h-4 w-4" />
@@ -456,7 +456,7 @@ export default function BusinessProfile() {
                     href={getSocialUrl('tiktok', vendor.tiktok)}
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-body"
                     data-testid="link-tiktok"
                   >
                     <SiTiktok className="h-4 w-4" />
@@ -468,7 +468,7 @@ export default function BusinessProfile() {
                     href={getSocialUrl('youtube', vendor.youtube)}
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-body"
                     data-testid="link-youtube"
                   >
                     <SiYoutube className="h-4 w-4" />
@@ -480,7 +480,7 @@ export default function BusinessProfile() {
                     href={getSocialUrl('twitter', vendor.twitter)}
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-sm"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover-elevate text-body"
                     data-testid="link-twitter"
                   >
                     <Twitter className="h-4 w-4" />
@@ -496,7 +496,7 @@ export default function BusinessProfile() {
         {((vendor.values && vendor.values.length > 0) || (vendor.showLocalSourcing && vendor.localSourcingPercent)) && (
           <Card data-testid="card-values">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Our Values</CardTitle>
+              <CardTitle className="text-section-header">Our Values</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {vendor.values && vendor.values.length > 0 && (
