@@ -71,11 +71,11 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(); }}
     >
-        <div className="relative rounded-xl overflow-hidden bg-muted aspect-[16/9] mb-2">
+        <div className="relative rounded-xl overflow-hidden bg-muted aspect-square mb-2">
           <img
             src={currentImage}
             alt={deal.title}
-            className={`w-full h-full object-contain transition-transform duration-300 ${
+            className={`w-full h-full object-cover object-center transition-transform duration-300 ${
               isLocked ? "blur-[2px]" : "group-hover:scale-105"
             }`}
             onError={handleImageError}
