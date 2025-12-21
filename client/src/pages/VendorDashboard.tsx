@@ -132,6 +132,7 @@ const dealFormSchema = z.object({
   isActive: z.boolean().default(false),
   status: z.enum(["draft", "published", "paused", "expired"]).default("draft"),
   isPassLocked: z.boolean().default(false),
+  imageUrl: z.string().optional(),
 });
 
 const DEAL_CATEGORIES = ["Food & Drink", "Retail", "Beauty", "Fitness", "Services", "Experiences"];
@@ -1928,8 +1929,11 @@ function DealForm({
       isActive: defaultValues?.isActive ?? false,
       status: defaultStatus,
       isPassLocked: defaultValues?.isPassLocked ?? false,
+      imageUrl: defaultValues?.imageUrl || "",
     },
   });
+
+  const currentImageUrl = form.watch("imageUrl");
 
   const handleSubmit = (data: z.infer<typeof dealFormSchema>) => {
     // Sync isPassLocked with tier selection - member tier means pass locked
@@ -1975,6 +1979,20 @@ function DealForm({
             </FormItem>
           )}
         />
+
+        <div className="space-y-2">
+          <FormLabel>Deal Photo</FormLabel>
+          <FormDescription>
+            Add a photo to make your deal stand out
+          </FormDescription>
+          <ImageUpload
+            currentImageUrl={currentImageUrl || null}
+            onUploadComplete={(url) => form.setValue("imageUrl", url)}
+            onRemove={() => form.setValue("imageUrl", "")}
+            aspectRatio="landscape"
+            maxSizeMB={5}
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
