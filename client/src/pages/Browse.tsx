@@ -1,12 +1,11 @@
 import { useState, useMemo, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock, Clock } from "lucide-react";
+import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -39,6 +38,7 @@ interface BrowseDealCardProps {
 }
 
 function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
+  const [, setLocation] = useLocation();
   const [imageIndex, setImageIndex] = useState(0);
   const isLocked = deal.isPassLocked && !isPassMember;
   
@@ -56,87 +56,69 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
       setImageIndex(prev => prev + 1);
     }
   }, [imageIndex, imageFallbackChain.length]);
+
+  const handleUnlockClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocation("/membership");
+  }, [setLocation]);
   
   const businessName = deal.vendor?.businessName || "Local Business";
-  const vendorType = deal.vendor?.vendorType || "shop";
   const savings = deal.savingsAmount || 0;
   
   const cardContent = (
-    <Card className={`hover-elevate active-elevate-2 h-full relative overflow-hidden`} data-testid={`card-deal-${deal.id}`}>
-      <div className={`relative w-full aspect-[16/9] overflow-hidden ${isLocked ? 'blur-[2px]' : ''}`}>
+    <Card className="hover-elevate active-elevate-2 h-full relative overflow-hidden" data-testid={`card-deal-${deal.id}`}>
+      <div className="relative w-full aspect-[16/9] overflow-hidden">
         <img
           src={currentImage}
           alt={deal.title}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${isLocked ? 'blur-[3px]' : ''}`}
           onError={handleImageError}
           data-testid={`img-deal-${deal.id}`}
         />
         {savings > 0 && (
-          <div className="absolute bottom-2 left-2">
+          <div className="absolute bottom-1.5 left-1.5">
             <Badge 
               variant="outline" 
-              className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+              className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
               data-testid={`badge-savings-${deal.id}`}
             >
               Save ${savings}
             </Badge>
           </div>
         )}
-        {deal.isPassLocked && (
-          <div className="absolute top-2 left-2">
-            <Badge variant="default" className="text-[10px] px-1.5 py-0.5 bg-primary">
-              Member Only
-            </Badge>
+        {isLocked && (
+          <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
+            <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2.5 py-1">
+              <Lock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-medium text-foreground">Rise Local Pass</span>
+              <Button 
+                size="sm" 
+                className="text-[9px] h-5 px-2 ml-0.5" 
+                onClick={handleUnlockClick}
+                data-testid={`button-unlock-${deal.id}`}
+              >
+                Join
+              </Button>
+            </div>
           </div>
         )}
       </div>
       
-      <CardContent className={`p-3 ${isLocked ? 'blur-[2px]' : ''}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-semibold text-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
-            {businessName}
-          </span>
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 flex-shrink-0">
-            {vendorType === "shop" ? "Shop" : vendorType === "dine" ? "Dine" : "Service"}
-          </Badge>
-        </div>
-        <h3 className="text-sm text-muted-foreground line-clamp-2 mb-2" data-testid={`deal-title-${deal.id}`}>
+      <CardContent className="p-2">
+        <p className="text-xs font-semibold text-foreground truncate mb-0.5" data-testid={`deal-vendor-${deal.id}`}>
+          {businessName}
+        </p>
+        <h3 className="text-xs text-muted-foreground line-clamp-2 mb-1.5" data-testid={`deal-title-${deal.id}`}>
           {deal.title}
         </h3>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {deal.vendor?.city && (
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {deal.vendor.city}
-            </span>
-          )}
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            Redeem today
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-0.5">
+            <MapPin className="w-2.5 h-2.5" />
+            {deal.vendor?.city || "SWFL"}
           </span>
         </div>
       </CardContent>
-      
-      {isLocked && (
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-10">
-          <Lock className="w-6 h-6 text-primary mb-2" />
-          <p className="text-xs text-center text-foreground font-medium mb-2">
-            Unlock with Rise Local Pass
-          </p>
-          <Button 
-            size="sm" 
-            className="text-xs h-7" 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              window.location.href = "/membership";
-            }}
-            data-testid={`button-unlock-${deal.id}`}
-          >
-            Join Now
-          </Button>
-        </div>
-      )}
     </Card>
   );
   
