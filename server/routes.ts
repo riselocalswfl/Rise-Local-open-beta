@@ -122,9 +122,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { role } = req.body;
       
+      // Validate role if provided
+      const validRoles = ['buyer', 'vendor'];
+      if (role && !validRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be 'buyer' or 'vendor'" });
+      }
+      
       // Update welcomeCompleted and optionally role
       const updateData: any = { welcomeCompleted: true };
-      if (role && (role === 'buyer' || role === 'vendor')) {
+      if (role && validRoles.includes(role)) {
         updateData.role = role;
         // If consumer (buyer), also mark onboarding as complete
         if (role === 'buyer') {
