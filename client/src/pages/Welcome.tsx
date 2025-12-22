@@ -3,11 +3,12 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
 import { Loader2 } from "lucide-react";
 
-import heroImage from "@assets/stock_images/customer_shopping_fa_f2210506.jpg";
-import fallbackImage from "@assets/stock_images/customer_shopping_fa_7d466ccd.jpg";
+import heroImage from "@assets/stock_images/adult_woman_shopping_29a6f010.jpg";
+import fallbackImage from "@assets/stock_images/adult_woman_shopping_9321ca4a.jpg";
 
 interface User {
   id: string;
@@ -20,6 +21,7 @@ export default function Welcome() {
   const [, setLocation] = useLocation();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageSrc, setImageSrc] = useState(heroImage);
+  const [isNavigating, setIsNavigating] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: user, isLoading: userLoading } = useQuery<User | null>({
@@ -41,6 +43,7 @@ export default function Welcome() {
       return;
     }
 
+    setIsNavigating(true);
     const role = user.role;
     
     if (!user.welcomeCompleted) {
@@ -66,13 +69,11 @@ export default function Welcome() {
       setLocation("/auth");
       return;
     }
+  }, [user, userLoading, setLocation]);
 
-    const timer = setTimeout(() => {
-      navigateBasedOnRole();
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, [user, userLoading, navigateBasedOnRole, setLocation]);
+  const handleGetStarted = () => {
+    navigateBasedOnRole();
+  };
 
   const handleSkip = () => {
     navigateBasedOnRole();
@@ -116,7 +117,7 @@ export default function Welcome() {
       />
       
       <div className="relative z-10 flex-1 flex flex-col text-white">
-        <div className="flex justify-end p-4 safe-area-inset-top">
+        <div className="flex justify-end p-4 pt-[env(safe-area-inset-top,16px)]">
           <button
             onClick={handleSkip}
             className="text-sm text-white/70 hover:text-white transition-colors px-3 py-1"
@@ -139,22 +140,31 @@ export default function Welcome() {
           </h1>
           
           <p 
-            className="text-lg text-white/90 max-w-sm mb-2"
+            className="text-lg text-white/90 max-w-sm"
             data-testid="text-welcome-subhead"
           >
             Exclusive local deals, all in one place.
           </p>
-          
-          <p className="text-sm text-white/60 mb-8">
-            Loading your local offers...
-          </p>
-          
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-white/80" />
-          </div>
         </div>
         
-        <div className="h-16 safe-area-inset-bottom" />
+        <div className="px-6 pb-[calc(env(safe-area-inset-bottom,16px)+16px)]">
+          <Button
+            size="lg"
+            onClick={handleGetStarted}
+            disabled={isNavigating || completeWelcomeMutation.isPending}
+            className="w-full text-base font-semibold uppercase tracking-wide shadow-lg"
+            data-testid="button-get-started"
+          >
+            {isNavigating || completeWelcomeMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Get Started"
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
