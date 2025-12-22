@@ -189,8 +189,8 @@ function transformDealToRiseLocal(
   
   const savings = computeSavings(deal);
   
-  // Get city from vendor, fallback to "SWFL" 
-  const city = deal.vendor?.city || "SWFL";
+  // Get city from deal first, then vendor, fallback to "SWFL" 
+  const city = deal.city || deal.vendor?.city || "SWFL";
   
   return {
     id: deal.id,
