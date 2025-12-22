@@ -48,7 +48,8 @@ export const users = pgTable("users", {
   // Common fields
   role: text("role").notNull().default("buyer"), // buyer, vendor, admin (Note: vendor replaces legacy roles: restaurant, service_provider)
   phone: text("phone"),
-  onboardingComplete: boolean("onboarding_complete").default(false), // Whether user completed welcome onboarding flow
+  onboardingComplete: boolean("onboarding_complete").default(false), // Whether vendor completed business onboarding
+  welcomeCompleted: boolean("welcome_completed").default(false), // Whether user completed welcome carousel intro
   
   // Buyer-specific fields
   zipCode: text("zip_code"),
