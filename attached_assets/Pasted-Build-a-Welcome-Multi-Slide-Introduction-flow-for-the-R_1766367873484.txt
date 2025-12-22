@@ -1,0 +1,108 @@
+Build a Welcome + Multi-Slide Introduction flow for the Rise Local app that appears immediately after first install or first login, before users access Discover/Browse.
+
+1️⃣ Welcome Screen (Slide 0 – Hero)
+	•	Create a full-screen welcome page with:
+	•	Rise Local logo and brand colors (clean, warm, hyper-local feel)
+	•	A hero image showing a happy local customer supporting a small business (authentic, community-driven, non-corporate)
+	•	Headline text:
+	•	“Welcome to Rise Local”
+	•	Subheadline:
+	•	“The easiest way to support local businesses you believe in.”
+	•	Include a primary CTA button:
+	•	“Get Started”
+	•	Include a subtle secondary CTA:
+	•	“I’m a Business”
+	•	Tapping either continues the onboarding flow but stores intent (userTypeIntent = consumer | business) for later personalization.
+
+⸻
+
+2️⃣ Multi-Slide Introduction (Swipeable / Carousel)
+
+Create a 4–5 slide onboarding carousel with progress dots and swipe + next buttons.
+
+Slide 1 — What Rise Local Is
+	•	Title: “What is Rise Local?”
+	•	Copy:
+	•	Rise Local connects local people with local businesses through exclusive deals, visibility, and shared values.
+	•	Visual:
+	•	Community-style illustration or photo (local shops, markets, cafés)
+
+⸻
+
+Slide 2 — How It Works for Consumers
+	•	Title: “For Locals & Shoppers”
+	•	Bullet points:
+	•	Discover nearby local businesses
+	•	Unlock exclusive local deals
+	•	Support businesses that align with your values
+	•	Emphasize:
+	•	No big corporations
+	•	No clutter
+	•	Hyper-local focus
+	•	Visual:
+	•	Happy customer browsing deals on phone
+
+⸻
+
+Slide 3 — How It Works for Businesses
+	•	Title: “For Local Businesses”
+	•	Bullet points:
+	•	Create a business profile
+	•	Post deals to attract local customers
+	•	Get discovered by people who want to shop local
+	•	Emphasize:
+	•	Simple setup
+	•	No complex ordering systems
+	•	Visibility + community support
+	•	Visual:
+	•	Small business owner welcoming customers
+
+⸻
+
+Slide 4 — The Rise Local Model
+	•	Title: “Built to Support Local”
+	•	Copy highlights:
+	•	Consumers browse & unlock deals
+	•	Businesses gain exposure and foot traffic
+	•	Rise Local stays focused on local-first commerce
+	•	Reinforce:
+	•	Deals-based marketplace
+	•	Community over corporations
+	•	Visual:
+	•	Local storefront with line out the door
+
+⸻
+
+Slide 5 — Call to Action
+	•	Title: “Join the Local Movement”
+	•	Buttons:
+	•	“Continue as a Consumer”
+	•	“Continue as a Business”
+	•	Store selection in backend:
+	•	role = buyer | vendor
+	•	Route users to:
+	•	Consumer → consumer onboarding / Discover
+	•	Business → business onboarding flow
+
+⸻
+
+3️⃣ Technical Requirements
+	•	Use existing routing (wouter) and onboarding guard logic
+	•	Persist onboarding completion:
+	•	welcomeCompleted = true
+	•	Ensure:
+	•	Welcome screens only appear once per user (unless manually reset)
+	•	Mobile-first layout
+	•	Smooth transitions (Framer Motion if already installed)
+
+⸻
+
+4️⃣ Brand Guardrails
+	•	Tone: Warm, local, modern, community-driven
+	•	Avoid:
+	•	Corporate language
+	•	Over-selling or aggressive CTAs
+	•	Keep copy:
+	•	Simple
+	•	Friendly
+	•	Value-driven
