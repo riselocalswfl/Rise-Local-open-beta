@@ -3,7 +3,7 @@ import logoImg from "@assets/Support Local Business Emblem (1)_1760548313502.png
 
 interface BrandLogoProps {
   className?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   linkDisabled?: boolean;
 }
 
@@ -11,7 +11,8 @@ export default function BrandLogo({ className = "", size = "md", linkDisabled = 
   const sizeClasses = {
     sm: "h-10",
     md: "h-14",
-    lg: "h-20"
+    lg: "h-20",
+    xl: "h-32"
   };
 
   const logoElement = (

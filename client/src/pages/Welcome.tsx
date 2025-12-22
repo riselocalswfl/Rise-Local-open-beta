@@ -128,8 +128,8 @@ export default function Welcome() {
         </div>
         
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="mb-8 [&_img]:brightness-0 [&_img]:invert">
-            <BrandLogo size="sm" />
+          <div className="mb-8">
+            <BrandLogo size="xl" linkDisabled />
           </div>
           
           <h1 
