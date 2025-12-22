@@ -546,14 +546,16 @@ export default function Discover() {
           </Link>
         </div>
         
-        <div className="px-4 grid grid-cols-2 gap-3">
+        <div className="pl-4 flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth-touch pb-2">
           {deals.map((deal) => (
-            <DiscoverDealCard 
-              key={deal.id} 
-              deal={toDiscoverDeal(deal)} 
-              isMember={isPassMember} 
-            />
+            <div key={deal.id} className="flex-shrink-0 w-[160px]">
+              <DiscoverDealCard 
+                deal={toDiscoverDeal(deal)} 
+                isMember={isPassMember} 
+              />
+            </div>
           ))}
+          <div className="flex-shrink-0 w-4" aria-hidden="true" />
         </div>
       </section>
     );

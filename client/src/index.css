@@ -83,6 +83,22 @@ body,
   .active-elevate-2:active {
     @apply bg-muted;
   }
+  
+  /* Hide scrollbar for horizontal scroll containers on mobile */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Smooth scroll behavior for touch-friendly horizontal scrolling */
+  .scroll-smooth-touch {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Rise Local Typography System

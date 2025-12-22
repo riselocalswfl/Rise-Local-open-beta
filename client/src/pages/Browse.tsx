@@ -342,9 +342,9 @@ export default function Browse() {
       {/* Content */}
       <main className="p-4">
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
             {[...Array(6)].map((_, i) => (
-              <Card key={i} className="overflow-hidden">
+              <Card key={i} className="overflow-hidden flex-shrink-0 w-[200px] sm:w-[240px]">
                 <Skeleton className="w-full aspect-[16/9]" />
                 <CardContent className="p-3">
                   <Skeleton className="h-4 w-3/4 mb-2" />
@@ -372,10 +372,13 @@ export default function Browse() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth-touch pb-2">
             {filteredDeals.map((deal) => (
-              <BrowseDealCard key={deal.id} deal={deal} isPassMember={isPassMember} />
+              <div key={deal.id} className="flex-shrink-0 w-[200px] sm:w-[240px]">
+                <BrowseDealCard deal={deal} isPassMember={isPassMember} />
+              </div>
             ))}
+            <div className="flex-shrink-0 w-4" aria-hidden="true" />
           </div>
         )}
         
