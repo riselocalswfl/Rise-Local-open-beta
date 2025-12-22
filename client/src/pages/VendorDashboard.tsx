@@ -2223,24 +2223,37 @@ function DealForm({
           <FormField
             control={form.control}
             name="city"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>City</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-deal-city">
-                      <SelectValue placeholder="Select city" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
+            render={({ field }) => {
+              const selectedCities = field.value ? field.value.split(", ").filter(Boolean) : [];
+              const toggleCity = (city: string) => {
+                const newCities = selectedCities.includes(city)
+                  ? selectedCities.filter(c => c !== city)
+                  : [...selectedCities, city];
+                field.onChange(newCities.length > 0 ? newCities.join(", ") : "");
+              };
+              return (
+                <FormItem>
+                  <FormLabel>Cities</FormLabel>
+                  <div className="grid grid-cols-1 gap-1.5 border rounded-md p-2" data-testid="city-multi-select">
                     {DEAL_CITIES.map((city) => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                      <label 
+                        key={city} 
+                        className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5"
+                      >
+                        <Checkbox
+                          checked={selectedCities.includes(city)}
+                          onCheckedChange={() => toggleCity(city)}
+                          data-testid={`checkbox-city-${city.toLowerCase().replace(/\s/g, '-')}`}
+                        />
+                        <span className="text-sm">{city}</span>
+                      </label>
                     ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
+                  </div>
+                  <FormDescription className="text-xs">Select one or more cities where this deal applies</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
         </div>
 
