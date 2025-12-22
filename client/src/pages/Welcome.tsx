@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
 import { Loader2 } from "lucide-react";
 
-import heroImage from "@assets/stock_images/adult_woman_shopping_29a6f010.jpg";
+import heroImage from "@assets/ChatGPT_Image_Dec_22,_2025,_03_15_42_PM_1766434546127.png";
 import fallbackImage from "@assets/stock_images/adult_woman_shopping_9321ca4a.jpg";
 
 interface User {
