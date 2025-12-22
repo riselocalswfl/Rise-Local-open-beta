@@ -1,0 +1,100 @@
+You are in the Rise Local codebase on Replit. I need you to FIRST inspect the project structure and then IMPLEMENT the backend for Rise Local Membership ($4.99/mo) in the CORRECT existing file paths (do not create a new “server” folder or duplicate app). 
+
+TASK A — Audit + plan (must be grounded in actual files):
+1) Identify:
+- backend framework (Express/Hono/Fastify/Next API/etc)
+- where API routes live
+- where auth middleware lives + how to access current user (ex: req.user, session, JWT, etc)
+- database layer + schema files + migration method
+- deals routes + user routes
+2) Print a short “Files I will edit” list with exact paths before changing anything.
+
+TASK B — Database changes:
+Update the existing DB schema (using the project’s current migration approach) to add:
+
+USERS:
+- stripeCustomerId (text, nullable)
+- stripeSubscriptionId (text, nullable)
+- membershipStatus (text, NOT NULL, default 'none') // none | active | trialing | past_due | canceled | unpaid
+- membershipCurrentPeriodEnd (timestamp, nullable)
+- membershipPlan (text, nullable; set 'rise_local_monthly')
+
+DEALS:
+- isMemberOnly (boolean, NOT NULL, default false)
+
+Also update any shared TypeScript types/models used by the client.
+
+TASK C — Stripe backend (subscriptions):
+Install and use Stripe server SDK in the existing backend.
+
+Add env vars (and document them in README or .env.example using the project’s existing pattern):
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+- STRIPE_RISELOCAL_MONTHLY_PRICE_ID
+- APP_BASE_URL
+
+Implement these API endpoints in the existing route style + path conventions:
+
+1) POST /api/billing/create-checkout-session
+- Auth required
+- Get current user from auth
+- Create Stripe Customer if user.stripeCustomerId missing; store it
+- Create Stripe Checkout Session with:
+  - mode: "subscription"
+  - line_items: [{ price: STRIPE_RISELOCAL_MONTHLY_PRICE_ID, quantity: 1 }]
+  - success_url: `${APP_BASE_URL}/account?checkout=success`
+  - cancel_url: `${APP_BASE_URL}/account?checkout=cancel`
+- Return JSON: { url }
+
+2) POST /api/billing/create-portal-session
+- Auth required
+- Require stripeCustomerId
+- Create Stripe Billing Portal session
+- Return JSON: { url }
+
+3) POST /api/stripe/webhook
+CRITICAL:
+- Must use RAW BODY (no JSON parser on this route)
+- Verify Stripe signature using STRIPE_WEBHOOK_SECRET
+
+Handle events at minimum:
+- checkout.session.completed
+- customer.subscription.created
+- customer.subscription.updated
+- customer.subscription.deleted
+- invoice.paid
+- invoice.payment_failed
+
+On each relevant event:
+- Find user by stripeCustomerId (subscription.customer)
+- Update users fields:
+  - membershipStatus based on subscription.status
+  - stripeSubscriptionId
+  - membershipCurrentPeriodEnd from subscription.current_period_end
+  - membershipPlan = 'rise_local_monthly' when active/trialing
+- Add safe logging (no secrets)
+
+TASK D — Membership gating (backend guard):
+Find the existing “deal detail” endpoint (the endpoint that returns full deal info / redemption details).
+Add a guard:
+- If deal.isMemberOnly === true AND user is not a member (membershipStatus not in ['active','trialing']):
+  - return 403 with { code: "MEMBERSHIP_REQUIRED" }
+
+For list endpoints (Discover/Browse), still return deals but include isMemberOnly so UI can show a lock.
+
+TASK E — Make membership visible to frontend:
+Ensure the current user endpoint (whatever the app uses for useAuth()) includes:
+- membershipStatus
+- membershipCurrentPeriodEnd
+so the frontend can render locked/unlocked states.
+
+ACCEPTANCE CHECK:
+- Non-members can see member-only deal cards but cannot access redemption details (403).
+- Buying membership via Stripe updates DB via webhook and user becomes active.
+- Billing portal endpoint works for managing/canceling.
+
+IMPORTANT RULES:
+- Use the current project’s actual file paths and patterns.
+- Do not refactor unrelated code.
+- Do not create duplicate auth systems.
+- Keep route names exactly as specified above unless the project has an established /api prefix pattern—if so, keep it consistent but expose these routes.

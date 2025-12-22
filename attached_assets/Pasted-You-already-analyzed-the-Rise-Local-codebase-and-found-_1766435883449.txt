@@ -1,0 +1,108 @@
+You already analyzed the Rise Local codebase and found:
+- users table has: isPassMember, passExpiresAt, stripeCustomerId
+- deals table has: isPassLocked (equivalent to member-only)
+- Stripe SDK is imported in routes.ts
+- isUserSubscribed() helper exists
+
+Now implement the missing backend pieces WITHOUT refactoring existing naming (keep isPassMember / passExpiresAt / isPassLocked) and using the existing routing pattern in routes.ts.
+
+GOAL:
+Implement Rise Local Pass subscription ($4.99/mo) with Stripe Checkout + Webhook + Billing Portal, and ensure locked deals are gated at the deal-detail endpoint.
+
+STEP 1 — DB schema changes (use the project’s current migration approach)
+Add these fields (do not remove existing ones):
+USERS:
+- stripeSubscriptionId TEXT nullable
+- membershipStatus TEXT NOT NULL DEFAULT 'none'  // none | active | trialing | past_due | canceled | unpaid
+- membershipPlan TEXT nullable (set to 'rise_local_monthly')
+- membershipCurrentPeriodEnd TIMESTAMP nullable
+
+Important:
+- Keep existing fields isPassMember and passExpiresAt.
+- When membership becomes active/trialing, set isPassMember=true and set passExpiresAt to membershipCurrentPeriodEnd for backwards compatibility.
+
+STEP 2 — Env vars
+Add/confirm env vars using the project’s existing env pattern (.env / Secrets / config):
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+- STRIPE_RISELOCAL_MONTHLY_PRICE_ID
+- APP_BASE_URL
+
+STEP 3 — Billing endpoints (add to routes.ts in the same style as existing routes)
+Implement:
+
+1) POST /api/billing/create-checkout-session
+- Auth required
+- Get current user
+- If user.stripeCustomerId missing, create Stripe customer and save stripeCustomerId
+- Create Stripe Checkout Session:
+  - mode: "subscription"
+  - line_items: [{ price: STRIPE_RISELOCAL_MONTHLY_PRICE_ID, quantity: 1 }]
+  - customer: user.stripeCustomerId
+  - success_url: `${APP_BASE_URL}/account?checkout=success`
+  - cancel_url: `${APP_BASE_URL}/account?checkout=cancel`
+- Return { url }
+
+2) POST /api/billing/create-portal-session
+- Auth required
+- Require stripeCustomerId
+- Create Stripe Billing Portal session
+- Return { url }
+
+STEP 4 — Stripe webhook route (critical)
+Implement: POST /api/stripe/webhook
+
+Requirements:
+- MUST use RAW BODY for signature verification (do NOT use JSON body parser on this one route)
+- Verify signature with STRIPE_WEBHOOK_SECRET
+- Handle at minimum:
+  - checkout.session.completed
+  - customer.subscription.created
+  - customer.subscription.updated
+  - customer.subscription.deleted
+  - invoice.paid
+  - invoice.payment_failed
+
+Webhook logic:
+- When receiving a subscription object, get:
+  - subscription.id
+  - subscription.status
+  - subscription.current_period_end (unix seconds)
+  - subscription.customer
+- Find user by stripeCustomerId == subscription.customer
+- Update:
+  - stripeSubscriptionId = subscription.id
+  - membershipStatus = subscription.status mapped into our allowed values (active/trialing/past_due/canceled/unpaid)
+  - membershipPlan = 'rise_local_monthly' when active or trialing
+  - membershipCurrentPeriodEnd = timestamp from current_period_end
+  - isPassMember = (status is active or trialing)
+  - passExpiresAt = membershipCurrentPeriodEnd
+- If status becomes canceled/unpaid/past_due beyond grace, set isPassMember=false (unless you are intentionally allowing grace; if so use passExpiresAt as the gate)
+
+Add safe logs (no secrets) and return 200 quickly.
+
+STEP 5 — Membership gating on deal detail endpoint
+Find the existing deal detail endpoint in routes.ts (the one used when a user clicks into a deal).
+Add enforcement:
+- If deal.isPassLocked === true AND isUserSubscribed(user) is false:
+  - return 403 with { code: "PASS_REQUIRED" }
+- List endpoints can still return locked deals, but detail must be protected.
+
+STEP 6 — Ensure auth user payload includes membership fields
+Wherever the current user is returned for the frontend (useAuth()), include:
+- isPassMember
+- passExpiresAt
+- membershipStatus
+- membershipCurrentPeriodEnd
+
+ACCEPTANCE TESTS (must verify with manual steps):
+1) Non-member can see locked deal cards but cannot open locked deal detail (403 PASS_REQUIRED).
+2) Clicking “Start Pass” hits create-checkout-session and returns a Stripe Checkout URL.
+3) Completing checkout triggers webhook and sets isPassMember=true + passExpiresAt updated.
+4) Active member can open locked deal detail successfully.
+5) “Manage Pass” returns Billing Portal URL.
+
+IMPORTANT:
+- Use existing file paths and patterns. Make changes primarily in routes.ts and existing db schema/migration files.
+- Do not rename existing columns isPassMember/passExpiresAt/isPassLocked.
+- Do not introduce a second Stripe client or duplicate route systems.
