@@ -817,6 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPassLocked: deal.isPassLocked,
         finePrint: deal.finePrint,
         valueLabel: deal.valueLabel,
+        imageUrl: deal.imageUrl,
       }));
 
       res.json({
@@ -1033,6 +1034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isPassLocked: deal.isPassLocked,
           finePrint: deal.finePrint,
           valueLabel: deal.valueLabel,
+          imageUrl: deal.imageUrl,
         }));
 
       res.json({
