@@ -681,12 +681,6 @@ export default function VendorDashboard() {
                     <span>Settings</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="messages" data-testid="select-option-messages">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Messages</span>
-                  </div>
-                </SelectItem>
                 <SelectItem value="verify" data-testid="select-option-verify">
                   <div className="flex items-center gap-2">
                     <Ticket className="w-4 h-4" />
@@ -720,10 +714,6 @@ export default function VendorDashboard() {
             <TabsTrigger value="settings" className="gap-2" data-testid="tab-settings">
               <Settings className="w-4 h-4" />
               Settings
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="gap-2" data-testid="tab-messages">
-              <MessageSquare className="w-4 h-4" />
-              Messages
             </TabsTrigger>
             <TabsTrigger value="verify" className="gap-2" data-testid="tab-verify">
               <Ticket className="w-4 h-4" />
@@ -1397,11 +1387,6 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
-          </TabsContent>
-
-          {/* Messages Tab */}
-          <TabsContent value="messages">
-            <VendorMessagesTab vendorId={vendor.id} isSubscribed={true} />
           </TabsContent>
 
           <TabsContent value="verify">
