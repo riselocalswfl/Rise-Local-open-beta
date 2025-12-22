@@ -17,7 +17,7 @@ import EventsLayout from "@/pages/EventsLayout";
 import EventDetail from "@/pages/EventDetail";
 import Spotlight from "@/pages/Spotlight";
 import Auth from "@/pages/Auth";
-import WelcomePage from "@/pages/WelcomePage";
+import Welcome from "@/pages/Welcome";
 import Admin from "@/pages/Admin";
 import VendorProfile from "@/pages/VendorProfile";
 import RestaurantProfile from "@/pages/RestaurantProfile";
@@ -141,10 +141,8 @@ function Router() {
       {/* Start - Universal gate for role-based routing */}
       <Route path="/start" component={Start} />
       
-      {/* Welcome - Legacy post-auth screen (redirects to /start) */}
-      <Route path="/welcome">
-        {() => <Redirect to="/start" />}
-      </Route>
+      {/* Welcome - Multi-slide introduction carousel for new users */}
+      <Route path="/welcome" component={Welcome} />
       {/* Legacy Products - Redirect to Discover (Rise Local is deals-focused, not marketplace) */}
       <Route path="/products">
         {() => <Redirect to="/discover" />}

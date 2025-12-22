@@ -6,6 +6,7 @@ interface User {
   id: string;
   role: string;
   onboardingComplete?: boolean;
+  welcomeCompleted?: boolean;
 }
 
 export default function Start() {
@@ -23,7 +24,7 @@ export default function Start() {
       return;
     }
 
-    const { role, onboardingComplete } = user;
+    const { role, onboardingComplete, welcomeCompleted } = user;
 
     // Read returnTo early so we can manage it properly
     const returnTo = sessionStorage.getItem("returnTo");
@@ -32,6 +33,16 @@ export default function Start() {
     // Include legacy routes that now redirect elsewhere
     const gateRoutes = ["/auth", "/start", "/onboarding", "/welcome", "/products", "/deals"];
     const isValidReturnTo = returnTo && !gateRoutes.includes(returnTo);
+
+    // First check: Has user completed the welcome carousel?
+    if (!welcomeCompleted) {
+      // Clear returnTo for new users
+      if (returnTo) {
+        sessionStorage.removeItem("returnTo");
+      }
+      setLocation("/welcome");
+      return;
+    }
 
     if (!onboardingComplete) {
       // Clear returnTo when user hasn't completed onboarding

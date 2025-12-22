@@ -116,6 +116,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete welcome carousel - mark user as having seen the intro slides
+  app.post('/api/welcome/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { role } = req.body;
+      
+      // Update welcomeCompleted and optionally role
+      const updateData: any = { welcomeCompleted: true };
+      if (role && (role === 'buyer' || role === 'vendor')) {
+        updateData.role = role;
+        // If consumer (buyer), also mark onboarding as complete
+        if (role === 'buyer') {
+          updateData.onboardingComplete = true;
+        }
+      }
+      
+      await storage.updateUser(userId, updateData);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error completing welcome:", error);
+      res.status(500).json({ message: "Failed to complete welcome" });
+    }
+  });
+
   // Public route to fetch basic user info by ID (for vendor profile role determination)
   app.get('/api/users/:id', async (req, res) => {
     try {
