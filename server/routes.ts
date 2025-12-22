@@ -1457,6 +1457,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // Rise Local Pass Billing Routes (Consumer Subscription)
+  // ============================================================================
+
+  // Create Stripe Checkout Session for Rise Local Pass subscription
+  app.post("/api/billing/create-checkout-session", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check for required environment variables
+      const priceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
+      const appBaseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000';
+      
+      if (!priceId) {
+        console.error("[Billing] Missing STRIPE_RISELOCAL_MONTHLY_PRICE_ID environment variable");
+        return res.status(500).json({ error: "Billing not configured" });
+      }
+
+      let stripeCustomerId = user.stripeCustomerId;
+
+      // Create Stripe customer if user doesn't have one
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: user.email || undefined,
+          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+          metadata: {
+            userId: user.id,
+          },
+        });
+        stripeCustomerId = customer.id;
+        
+        // Save the customer ID to the user
+        await storage.updateUser(userId, { stripeCustomerId });
+        console.log('[Billing] Created Stripe customer:', stripeCustomerId, 'for user:', userId);
+      }
+
+      // Create Checkout Session
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        customer: stripeCustomerId,
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        success_url: `${appBaseUrl}/account?checkout=success`,
+        cancel_url: `${appBaseUrl}/account?checkout=cancel`,
+        metadata: {
+          userId: user.id,
+        },
+      });
+
+      console.log('[Billing] Created checkout session:', session.id, 'for user:', userId);
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("[Billing] Error creating checkout session:", error);
+      res.status(500).json({ 
+        error: "Failed to create checkout session",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Create Stripe Billing Portal session for managing subscription
+  app.post("/api/billing/create-portal-session", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!user.stripeCustomerId) {
+        return res.status(400).json({ error: "No billing account found. Please subscribe first." });
+      }
+
+      const appBaseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000';
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: `${appBaseUrl}/account`,
+      });
+
+      console.log('[Billing] Created portal session for user:', userId);
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("[Billing] Error creating portal session:", error);
+      res.status(500).json({ 
+        error: "Failed to create billing portal session",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // ============================================================================
   // Stripe Connect Routes (Vendor Payment Setup)
   // ============================================================================
 
@@ -1701,6 +1802,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Updated Stripe onboarding status for vendor ${vendor.id}`);
         } else {
           console.warn(`No vendor found with Stripe Connect account ID ${accountId}`);
+        }
+      }
+
+      // Handle Rise Local Pass subscription events
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object as Stripe.Checkout.Session;
+        console.log('[Webhook] checkout.session.completed for customer:', session.customer);
+        
+        if (session.mode === 'subscription' && session.customer && session.subscription) {
+          // Fetch the subscription details
+          const subscriptionData = await stripe.subscriptions.retrieve(session.subscription as string) as any;
+          const customerId = session.customer as string;
+          
+          // Find user by stripeCustomerId
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (user) {
+            const periodEnd = new Date(subscriptionData.current_period_end * 1000);
+            const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
+            
+            await storage.updateUser(user.id, {
+              stripeSubscriptionId: subscriptionData.id,
+              membershipStatus: subscriptionData.status,
+              membershipPlan: 'rise_local_monthly',
+              membershipCurrentPeriodEnd: periodEnd,
+              isPassMember: isActive,
+              passExpiresAt: periodEnd,
+            });
+            console.log('[Webhook] User membership activated:', user.id, 'status:', subscriptionData.status);
+          } else {
+            console.warn('[Webhook] No user found for customer:', customerId);
+          }
+        }
+      }
+
+      if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+        const subscriptionData = event.data.object as any;
+        const customerId = subscriptionData.customer as string;
+        console.log('[Webhook]', event.type, 'for customer:', customerId);
+        
+        const user = await storage.getUserByStripeCustomerId(customerId);
+        if (user) {
+          const periodEnd = new Date(subscriptionData.current_period_end * 1000);
+          const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
+          
+          await storage.updateUser(user.id, {
+            stripeSubscriptionId: subscriptionData.id,
+            membershipStatus: subscriptionData.status,
+            membershipPlan: isActive ? 'rise_local_monthly' : user.membershipPlan,
+            membershipCurrentPeriodEnd: periodEnd,
+            isPassMember: isActive,
+            passExpiresAt: periodEnd,
+          });
+          console.log('[Webhook] User subscription updated:', user.id, 'status:', subscriptionData.status);
+        }
+      }
+
+      if (event.type === 'customer.subscription.deleted') {
+        const subscriptionData = event.data.object as any;
+        const customerId = subscriptionData.customer as string;
+        console.log('[Webhook] customer.subscription.deleted for customer:', customerId);
+        
+        const user = await storage.getUserByStripeCustomerId(customerId);
+        if (user) {
+          await storage.updateUser(user.id, {
+            stripeSubscriptionId: null,
+            membershipStatus: 'canceled',
+            membershipPlan: null,
+            isPassMember: false,
+          });
+          console.log('[Webhook] User subscription deleted:', user.id);
+        }
+      }
+
+      if (event.type === 'invoice.paid') {
+        const invoiceData = event.data.object as any;
+        const customerId = invoiceData.customer as string;
+        console.log('[Webhook] invoice.paid for customer:', customerId);
+        
+        if (invoiceData.subscription) {
+          const subscriptionData = await stripe.subscriptions.retrieve(invoiceData.subscription as string) as any;
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (user) {
+            const periodEnd = new Date(subscriptionData.current_period_end * 1000);
+            await storage.updateUser(user.id, {
+              membershipStatus: 'active',
+              membershipCurrentPeriodEnd: periodEnd,
+              isPassMember: true,
+              passExpiresAt: periodEnd,
+            });
+            console.log('[Webhook] User membership renewed:', user.id);
+          }
+        }
+      }
+
+      if (event.type === 'invoice.payment_failed') {
+        const invoiceData = event.data.object as any;
+        const customerId = invoiceData.customer as string;
+        console.log('[Webhook] invoice.payment_failed for customer:', customerId);
+        
+        const user = await storage.getUserByStripeCustomerId(customerId);
+        if (user) {
+          await storage.updateUser(user.id, {
+            membershipStatus: 'past_due',
+          });
+          console.log('[Webhook] User payment failed:', user.id);
         }
       }
 
@@ -4366,6 +4572,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "This deal is not available yet",
           startsAt: deal.startsAt
         });
+      }
+      
+      // Membership gating: Check if pass-locked deal requires subscription
+      if (deal.isPassLocked) {
+        // Try to get the authenticated user (if any)
+        const authReq = req as any;
+        const userId = authReq.user?.claims?.sub;
+        
+        const hasPass = await isUserSubscribed(userId);
+        
+        if (!hasPass) {
+          console.log("[DEALS] Pass-locked deal requires membership:", dealId);
+          return res.status(403).json({ 
+            code: "PASS_REQUIRED", 
+            message: "This deal is exclusive to Rise Local Pass members. Join now to unlock!"
+          });
+        }
       }
       
       // Get vendor information

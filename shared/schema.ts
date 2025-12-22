@@ -65,6 +65,10 @@ export const users = pgTable("users", {
   isPassMember: boolean("is_pass_member").default(false), // Active Rise Local Pass subscription
   passExpiresAt: timestamp("pass_expires_at"), // When the current subscription period ends
   stripeCustomerId: text("stripe_customer_id"), // For Stripe subscription management
+  stripeSubscriptionId: text("stripe_subscription_id"), // Stripe subscription ID
+  membershipStatus: text("membership_status").notNull().default("none"), // none | active | trialing | past_due | canceled | unpaid
+  membershipPlan: text("membership_plan"), // 'rise_local_monthly' when active
+  membershipCurrentPeriodEnd: timestamp("membership_current_period_end"), // End of current billing period
   
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
