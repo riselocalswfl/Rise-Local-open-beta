@@ -250,24 +250,12 @@ export async function setupAuth(app: Express) {
             // New vendor needs onboarding - redirectUrl already set to /onboarding
             console.log("[AUTH] New vendor redirecting to onboarding");
           } else {
-            // Check if user completed welcome onboarding - if not, auto-complete for buyers
-            const currentUser = await storage.getUser(userId);
-            if (currentUser && !currentUser.onboardingComplete) {
-              // Buyers don't need onboarding, auto-complete for them
-              if (currentUser.role === "buyer" || !currentUser.role) {
-                await storage.updateUser(userId, { onboardingComplete: true });
-                redirectUrl = "/discover";
-                console.log("[AUTH] Buyer auto-completed onboarding, redirecting to discover");
-              } else {
-                // Vendors need onboarding
-                redirectUrl = "/welcome";
-                console.log("[AUTH] Vendor needs welcome onboarding, redirecting to /welcome");
-              }
-            } else {
-              // Returning users who completed onboarding go to discover
-              redirectUrl = "/discover";
-              console.log("[AUTH] Returning user redirecting to discover");
-            }
+            // Redirect all users to /start gate which handles:
+            // - welcomeCompleted check (routes to /welcome if not completed)
+            // - onboardingComplete check (routes to /onboarding for vendors)
+            // - Role-based routing (discover for buyers, dashboard for vendors)
+            redirectUrl = "/start";
+            console.log("[AUTH] Redirecting to /start gate for welcome/onboarding checks");
           }
         } catch (error) {
           console.error("Failed to process user role:", error);
