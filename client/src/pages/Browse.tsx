@@ -113,9 +113,9 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
           {deal.title}
         </h3>
         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-0.5">
-            <MapPin className="w-2.5 h-2.5" />
-            {deal.city || deal.vendor?.city || "SWFL"}
+          <span className="flex items-center gap-0.5 max-w-full">
+            <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+            <span className="truncate">{deal.city || deal.vendor?.city || "SWFL"}</span>
           </span>
         </div>
       </CardContent>
