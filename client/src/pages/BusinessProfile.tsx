@@ -12,6 +12,7 @@ import { BadgeCheck, MapPin, Phone, Mail, Globe, Clock, MessageSquare, Tag, Lock
 import { SiInstagram, SiFacebook, SiTiktok, SiYoutube } from "react-icons/si";
 import { Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import type { Vendor, Product, VendorDeal } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
@@ -19,9 +20,13 @@ import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51
 interface ProfileDealCardProps {
   deal: VendorDeal & { imageUrl?: string | null };
   vendor: VendorWithDetails;
+  isMember?: boolean;
 }
 
-function ProfileDealCard({ deal, vendor }: ProfileDealCardProps) {
+function ProfileDealCard({ deal, vendor, isMember = false }: ProfileDealCardProps) {
+  const [, setLocation] = useLocation();
+  const isLocked = deal.isPassLocked && !isMember;
+  
   const imageFallbackChain = [
     deal.imageUrl ?? undefined,
     vendor.bannerUrl,
@@ -38,49 +43,72 @@ function ProfileDealCard({ deal, vendor }: ProfileDealCardProps) {
     }
   }, [imageIndex, imageFallbackChain.length]);
   
+  const handleUnlockClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocation("/membership");
+  }, [setLocation]);
+  
   const savings = deal.savingsAmount || 0;
+  
+  const cardContent = (
+    <div 
+      className="rounded-lg overflow-hidden bg-card border hover-elevate active-elevate-2 cursor-pointer"
+      data-testid={`deal-${deal.id}`}
+    >
+      <div className="relative w-full aspect-[16/9] overflow-hidden">
+        <img
+          src={currentImage}
+          alt={deal.title}
+          className={`w-full h-full object-cover ${isLocked ? 'blur-[3px]' : ''}`}
+          onError={handleImageError}
+          data-testid={`img-deal-${deal.id}`}
+        />
+        {savings > 0 && (
+          <div className="absolute bottom-2 left-2">
+            <Badge 
+              variant="outline" 
+              className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+            >
+              Save ${savings}
+            </Badge>
+          </div>
+        )}
+        {isLocked && (
+          <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
+            <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2.5 py-1">
+              <Lock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-medium text-foreground">Rise Local Pass</span>
+              <Button 
+                size="sm" 
+                className="text-[9px] h-5 px-2 ml-0.5" 
+                onClick={handleUnlockClick}
+                data-testid={`button-unlock-${deal.id}`}
+              >
+                Join
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="p-3">
+        <h4 className="text-deal-title truncate" data-testid={`deal-title-${deal.id}`}>
+          {deal.title}
+        </h4>
+        <p className="text-meta text-muted-foreground line-clamp-2 mt-1" data-testid={`deal-description-${deal.id}`}>
+          {deal.description}
+        </p>
+      </div>
+    </div>
+  );
+  
+  if (isLocked) {
+    return cardContent;
+  }
   
   return (
     <Link href={`/deals/${deal.id}`}>
-      <div 
-        className="rounded-lg overflow-hidden bg-card border hover-elevate active-elevate-2 cursor-pointer"
-        data-testid={`deal-${deal.id}`}
-      >
-        <div className="relative w-full aspect-[16/9] overflow-hidden">
-          <img
-            src={currentImage}
-            alt={deal.title}
-            className="w-full h-full object-cover"
-            onError={handleImageError}
-            data-testid={`img-deal-${deal.id}`}
-          />
-          {savings > 0 && (
-            <div className="absolute bottom-2 left-2">
-              <Badge 
-                variant="outline" 
-                className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
-              >
-                Save ${savings}
-              </Badge>
-            </div>
-          )}
-          {deal.isPassLocked && (
-            <div className="absolute top-2 left-2">
-              <Badge variant="default" className="text-[10px] px-1.5 py-0.5 bg-primary">
-                Member Only
-              </Badge>
-            </div>
-          )}
-        </div>
-        <div className="p-3">
-          <h4 className="text-deal-title truncate" data-testid={`deal-title-${deal.id}`}>
-            {deal.title}
-          </h4>
-          <p className="text-meta text-muted-foreground line-clamp-2 mt-1" data-testid={`deal-description-${deal.id}`}>
-            {deal.description}
-          </p>
-        </div>
-      </div>
+      {cardContent}
     </Link>
   );
 }
@@ -96,6 +124,10 @@ export default function BusinessProfile() {
   const vendorId = params?.id;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  const isPassMember = user?.isPassMember === true && 
+    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
 
   const startConversation = useMutation({
     mutationFn: async () => {
@@ -359,7 +391,7 @@ export default function BusinessProfile() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {deals.map((deal) => (
-                <ProfileDealCard key={deal.id} deal={deal} vendor={vendor} />
+                <ProfileDealCard key={deal.id} deal={deal} vendor={vendor} isMember={isPassMember} />
               ))}
             </CardContent>
           </Card>
