@@ -1,0 +1,116 @@
+Scan the entire Rise Local codebase related to messaging, notifications, and user data. Upgrade the system to support personalized in-app messaging, in-app notifications, and email re-engagement triggers using user profiles (name + photo).
+
+Follow this architecture strictly:
+
+=====================
+1) IN-APP MESSAGING (Core Chat)
+=====================
+Purpose: Contextual, detailed communication inside the app.
+
+Requirements:
+- Every message must render:
+  - Sender displayName
+  - Sender profilePhoto/avatar
+- Update ALL messaging surfaces:
+  - Conversation list (show other participant’s name + avatar + last message preview)
+  - Chat header (participant name(s) + avatar)
+  - Message bubbles (avatar + name on first message in a sequence)
+- Messages remain event-driven and visible ONLY inside the app.
+
+Data:
+- Messages table must include: id, conversationId, senderId, body, createdAt, readAt
+- Conversations must store participant userIds
+- User profiles must expose: id, displayName, profilePhotoUrl
+
+Frontend:
+- Create a reusable Avatar + Name component
+- Fallback to initials if no photo
+- Mobile-first layout consistent with Rise Local UI
+
+=====================
+2) IN-APP NOTIFICATIONS (Inside App Only)
+=====================
+Purpose: Awareness + navigation while user is active.
+
+Trigger examples:
+- New message received
+- Deal redeemed
+- Business responds to inquiry
+
+Requirements:
+- Notification text must be personalized:
+  - “Alex sent you a message”
+  - “Sunshine Café replied to your inquiry”
+- Show sender/business avatar in notification list
+- Clicking notification deep-links to the correct screen (chat, deal, profile)
+- Mark notifications as read on open
+
+Data:
+- Notifications table:
+  - id
+  - recipientId
+  - actorId (sender)
+  - type
+  - entityId (conversationId or messageId)
+  - readAt
+  - createdAt
+
+=====================
+3) EMAIL TRIGGERS (Re-engagement, NOT real-time chat)
+=====================
+Purpose: Bring users back when they are inactive.
+
+Rules:
+- Send email ONLY if:
+  - User receives a new message
+  - AND user is offline or hasn’t opened the conversation within 5 minutes
+- Rate limit:
+  - Max 1 email per conversation per 30 minutes
+- Respect user preferences:
+  - users.emailMessageNotifications (default = true)
+
+Email content:
+- Subject: “New message from {Sender Name} on Rise Local”
+- Body includes:
+  - Sender name
+  - Sender avatar (if supported)
+  - Message preview
+  - CTA button: “View Message”
+- CTA deep-links into the conversation using APP_BASE_URL
+
+Implementation:
+- Integrate a simple email provider (SendGrid or Resend)
+- Use environment variables:
+  - EMAIL_PROVIDER_API_KEY
+  - EMAIL_FROM_ADDRESS
+  - APP_BASE_URL
+- If no job queue exists:
+  - Create a lightweight email_jobs table
+  - Process safely with deduplication + rate limits
+
+=====================
+4) API + PERFORMANCE REQUIREMENTS
+=====================
+- Ensure these endpoints exist or are updated:
+  - GET /api/me
+  - GET /api/users/:id (public profile: id, displayName, profilePhotoUrl)
+  - GET /api/conversations (include participant profiles)
+  - GET /api/conversations/:id/messages
+  - POST /api/messages (creates message + notification + conditional email trigger)
+- Avoid N+1 queries:
+  - Use joins or cached profile lookups
+
+=====================
+5) DELIVERABLES
+=====================
+- Implement end-to-end:
+  - DB migrations
+  - Backend logic
+  - Frontend UI updates
+  - Email logic
+- Do NOT break existing auth
+- Use current auth user from useAuth()
+- Keep styling clean, white, mobile-first
+- After completion:
+  - Summarize changed files
+  - Provide a manual QA checklist
