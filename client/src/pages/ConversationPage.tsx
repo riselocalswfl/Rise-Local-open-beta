@@ -22,7 +22,10 @@ interface ConversationData {
   messages: ConversationMessage[];
   vendorName: string;
   vendorLogoUrl: string | null;
+  vendorOwnerId: string | null;
   consumerName: string;
+  consumerProfileImageUrl: string | null;
+  consumerId: string;
   userRole: "consumer" | "vendor";
 }
 
@@ -140,10 +143,10 @@ export default function ConversationPage() {
     );
   }
 
-  const { messages, vendorName, vendorLogoUrl, consumerName, userRole } = data;
+  const { messages, vendorName, vendorLogoUrl, consumerName, consumerProfileImageUrl, userRole } = data;
   const otherPartyName = userRole === "consumer" ? vendorName : consumerName;
   const backHref = userRole === "vendor" ? "/dashboard" : "/messages";
-  const otherPartyAvatar = userRole === "consumer" ? vendorLogoUrl : null;
+  const otherPartyAvatar = userRole === "consumer" ? vendorLogoUrl : consumerProfileImageUrl;
   const otherPartyInitial = (otherPartyName || "?")[0].toUpperCase();
 
   const formatMessageTime = (dateStr: Date | string | null) => {

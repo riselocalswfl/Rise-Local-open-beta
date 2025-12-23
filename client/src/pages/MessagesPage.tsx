@@ -20,6 +20,7 @@ interface ConversationItem {
   vendorName?: string;
   vendorLogoUrl?: string | null;
   consumerName?: string;
+  consumerProfileImageUrl?: string | null;
   lastMessage: string;
   lastMessageAt: Date | string;
   unreadCount: number;
@@ -268,7 +269,7 @@ export default function MessagesPage() {
               const displayName = userRole === "consumer" 
                 ? item.vendorName 
                 : item.consumerName;
-              const avatarUrl = userRole === "consumer" ? item.vendorLogoUrl : null;
+              const avatarUrl = userRole === "consumer" ? item.vendorLogoUrl : item.consumerProfileImageUrl;
 
               return (
                 <Link 
