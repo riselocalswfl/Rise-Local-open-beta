@@ -685,7 +685,7 @@ export default function VendorDashboard() {
                 <SelectItem value="verify" data-testid="select-option-verify">
                   <div className="flex items-center gap-2">
                     <Ticket className="w-4 h-4" />
-                    <span>Verify Code</span>
+                    <span>Redemptions</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -718,7 +718,7 @@ export default function VendorDashboard() {
             </TabsTrigger>
             <TabsTrigger value="verify" className="gap-2" data-testid="tab-verify">
               <Ticket className="w-4 h-4" />
-              Verify Code
+              Redemptions
             </TabsTrigger>
           </TabsList>
 
@@ -2887,10 +2887,12 @@ function VerifyCodeTab() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showLegacyVerify, setShowLegacyVerify] = useState(false);
 
-  const { data: redemptions = [], isLoading: redemptionsLoading } = useQuery<BusinessRedemption[]>({
+  const { data: redemptions = [], isLoading: redemptionsLoading, isError: redemptionsError } = useQuery<BusinessRedemption[]>({
     queryKey: ["/api/business/redemptions"],
     queryFn: async () => {
-      const res = await fetch("/api/business/redemptions?limit=20");
+      const res = await fetch("/api/business/redemptions?limit=20", {
+        credentials: 'include'
+      });
       if (!res.ok) throw new Error("Failed to fetch redemptions");
       return res.json();
     },
@@ -2976,6 +2978,14 @@ function VerifyCodeTab() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : redemptionsError ? (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-muted-foreground mb-2">Unable to load redemption history</p>
+              <p className="text-sm text-muted-foreground">
+                Use the Legacy Code section below to verify customer codes
+              </p>
             </div>
           ) : redemptions.length > 0 ? (
             <div className="space-y-3">

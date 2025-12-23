@@ -36,10 +36,12 @@ export default function CustomerProfile() {
   const [editedPhone, setEditedPhone] = useState("");
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
 
-  const { data: redemptions, isLoading: redemptionsLoading } = useQuery<RedemptionHistoryItem[]>({
+  const { data: redemptions, isLoading: redemptionsLoading, isError: redemptionsError } = useQuery<RedemptionHistoryItem[]>({
     queryKey: ["/api/me/redemptions"],
     queryFn: async () => {
-      const res = await fetch("/api/me/redemptions?limit=10");
+      const res = await fetch("/api/me/redemptions?limit=10", {
+        credentials: 'include'
+      });
       if (!res.ok) throw new Error("Failed to fetch redemptions");
       return res.json();
     },
@@ -298,6 +300,11 @@ export default function CustomerProfile() {
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : redemptionsError ? (
+                <div className="text-center py-8">
+                  <Ticket className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Unable to load redemptions</p>
                 </div>
               ) : redemptions && redemptions.length > 0 ? (
                 <div className="space-y-3">
