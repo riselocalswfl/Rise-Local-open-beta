@@ -4,6 +4,7 @@ import { MapPin, Clock, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
 export interface DiscoverDeal {
@@ -108,9 +109,17 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
       </div>
       
       <CardContent className="p-2">
-        <p className="text-xs font-semibold text-foreground truncate mb-0.5" data-testid={`deal-vendor-${deal.id}`}>
-          {deal.vendorName}
-        </p>
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <Avatar className="w-5 h-5 flex-shrink-0" data-testid={`avatar-vendor-${deal.id}`}>
+            <AvatarImage src={deal.vendorLogoUrl} alt={deal.vendorName} />
+            <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
+              {deal.vendorName?.charAt(0)?.toUpperCase() || "B"}
+            </AvatarFallback>
+          </Avatar>
+          <p className="text-xs font-semibold text-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
+            {deal.vendorName}
+          </p>
+        </div>
         <h3 className="text-xs text-muted-foreground line-clamp-2 mb-1.5" data-testid={`deal-title-${deal.id}`}>
           {deal.title}
         </h3>

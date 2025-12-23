@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { MapPin, Clock, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useCallback, useState } from "react";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
@@ -141,6 +142,12 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
 
         <div className="space-y-1">
           <div className="flex items-center gap-1.5">
+            <Avatar className="w-5 h-5 flex-shrink-0" data-testid={`avatar-vendor-${deal.id}`}>
+              <AvatarImage src={deal.vendorLogoUrl} alt={deal.vendorName} />
+              <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
+                {deal.vendorName?.charAt(0)?.toUpperCase() || "B"}
+              </AvatarFallback>
+            </Avatar>
             <h3 className="text-business-name line-clamp-1 text-foreground">
               {deal.vendorName}
             </h3>

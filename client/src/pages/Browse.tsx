@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
@@ -106,9 +107,17 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
       </div>
       
       <CardContent className="p-2">
-        <p className="text-xs font-semibold text-foreground truncate mb-0.5" data-testid={`deal-vendor-${deal.id}`}>
-          {businessName}
-        </p>
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <Avatar className="w-5 h-5 flex-shrink-0" data-testid={`avatar-vendor-${deal.id}`}>
+            <AvatarImage src={deal.vendor?.logoUrl || undefined} alt={businessName} />
+            <AvatarFallback className="text-[8px] bg-primary/10 text-primary font-semibold">
+              {businessName?.charAt(0)?.toUpperCase() || "B"}
+            </AvatarFallback>
+          </Avatar>
+          <p className="text-xs font-semibold text-foreground truncate" data-testid={`deal-vendor-${deal.id}`}>
+            {businessName}
+          </p>
+        </div>
         <h3 className="text-xs text-muted-foreground line-clamp-2 mb-1.5" data-testid={`deal-title-${deal.id}`}>
           {deal.title}
         </h3>
