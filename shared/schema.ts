@@ -70,6 +70,9 @@ export const users = pgTable("users", {
   membershipPlan: text("membership_plan"), // 'rise_local_monthly' when active
   membershipCurrentPeriodEnd: timestamp("membership_current_period_end"), // End of current billing period
   
+  // Email notification preferences
+  emailMessageNotifications: boolean("email_message_notifications").default(true), // Receive email when new message arrives
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1080,13 +1083,14 @@ export type InsertConversationMessage = z.infer<typeof insertConversationMessage
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 
 // Notifications - In-app notifications for users
-export const NOTIFICATION_TYPES = ["new_message", "deal_expiring", "pass_renewal", "system"] as const;
+export const NOTIFICATION_TYPES = ["new_message", "deal_redeemed", "deal_expiring", "pass_renewal", "business_reply", "system"] as const;
 export type NotificationType = typeof NOTIFICATION_TYPES[number];
 
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  type: text("type").notNull(), // "new_message" | "deal_expiring" | "pass_renewal" | "system"
+  actorId: varchar("actor_id").references(() => users.id), // The user who triggered the notification
+  type: text("type").notNull(), // "new_message" | "deal_redeemed" | "deal_expiring" | "pass_renewal" | "business_reply" | "system"
   title: text("title").notNull(),
   message: text("message").notNull(),
   referenceId: varchar("reference_id"), // Links to conversation, deal, etc.
@@ -1102,6 +1106,38 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// Email jobs - Queue for delayed email notifications
+export const EMAIL_JOB_STATUSES = ["pending", "sent", "failed", "cancelled"] as const;
+export type EmailJobStatus = typeof EMAIL_JOB_STATUSES[number];
+
+export const emailJobs = pgTable("email_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  recipientId: varchar("recipient_id").notNull().references(() => users.id),
+  recipientEmail: text("recipient_email").notNull(),
+  jobType: text("job_type").notNull(), // "new_message"
+  referenceId: varchar("reference_id"), // conversationId for message emails
+  actorId: varchar("actor_id").references(() => users.id), // sender
+  subject: text("subject").notNull(),
+  bodyPreview: text("body_preview"), // Message preview for email body
+  status: text("status").notNull().default("pending"), // pending | sent | failed | cancelled
+  scheduledFor: timestamp("scheduled_for").notNull(), // When to send (5 min delay)
+  sentAt: timestamp("sent_at"),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  attempts: integer("attempts").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertEmailJobSchema = createInsertSchema(emailJobs).omit({
+  id: true,
+  sentAt: true,
+  lastAttemptAt: true,
+  attempts: true,
+  createdAt: true,
+});
+
+export type InsertEmailJob = z.infer<typeof insertEmailJobSchema>;
+export type EmailJob = typeof emailJobs.$inferSelect;
 
 // Deal redemption status enum values (for unified code system)
 export const DEAL_REDEMPTION_STATUSES = ["issued", "verified", "voided", "expired"] as const;
