@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { validateAndFixOwnership } from "./validate-ownership";
+import { startEmailWorker } from "./emailWorker";
 
 const app = express();
 app.use(cookieParser());
@@ -78,5 +79,8 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start the email worker after server is listening
+    startEmailWorker();
   });
 })();
