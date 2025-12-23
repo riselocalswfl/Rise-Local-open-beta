@@ -5342,20 +5342,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check cooldown period if set
-      const cooldownHours = deal.cooldownHours || 168; // Default 1 week
-      if (cooldownHours > 0) {
+      // Check redemption frequency limit (weekly/monthly/unlimited)
+      const redemptionFrequency = deal.redemptionFrequency || "weekly";
+      
+      if (redemptionFrequency !== "unlimited") {
         const lastRedemption = await storage.getLastVerifiedRedemptionForUserDeal(userId, dealId);
-        if (lastRedemption && lastRedemption.redeemedAt) {
-          const cooldownEnd = new Date(lastRedemption.redeemedAt);
-          cooldownEnd.setHours(cooldownEnd.getHours() + cooldownHours);
+        if (lastRedemption && lastRedemption.verifiedAt) {
+          const lastRedemptionDate = new Date(lastRedemption.verifiedAt);
+          const now = new Date();
           
-          if (cooldownEnd > new Date()) {
-            const hoursRemaining = Math.ceil((cooldownEnd.getTime() - Date.now()) / (1000 * 60 * 60));
+          // Calculate rolling window based on frequency
+          let cooldownDays = 7; // weekly default
+          let frequencyLabel = "week";
+          
+          if (redemptionFrequency === "monthly") {
+            cooldownDays = 30;
+            frequencyLabel = "month";
+          }
+          
+          const cooldownEnd = new Date(lastRedemptionDate);
+          cooldownEnd.setDate(cooldownEnd.getDate() + cooldownDays);
+          
+          if (cooldownEnd > now) {
+            const daysRemaining = Math.ceil((cooldownEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             return res.status(403).json({ 
-              error: `Please wait ${hoursRemaining} more hour(s) before claiming this deal again`,
-              cooldownRemaining: hoursRemaining,
-              cooldownEndsAt: cooldownEnd.toISOString()
+              error: `You've already redeemed this deal this ${frequencyLabel}. Try again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.`,
+              cooldownRemaining: daysRemaining,
+              cooldownEndsAt: cooldownEnd.toISOString(),
+              frequencyLimit: redemptionFrequency
             });
           }
         }
