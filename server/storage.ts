@@ -1760,8 +1760,8 @@ export class DbStorage implements IStorage {
         success: true, 
         message: "You already have an active code for this deal",
         redemption: existingClaim,
-        code: existingClaim.code,
-        expiresAt: existingClaim.expiresAt
+        code: existingClaim.code || undefined,
+        expiresAt: existingClaim.expiresAt || undefined
       };
     }
     
@@ -1825,8 +1825,8 @@ export class DbStorage implements IStorage {
       success: true, 
       message: "Code issued successfully",
       redemption,
-      code: redemption.code,
-      expiresAt: redemption.expiresAt
+      code: redemption.code || undefined,
+      expiresAt: redemption.expiresAt || undefined
     };
   }
 
@@ -1884,7 +1884,7 @@ export class DbStorage implements IStorage {
       return { success: false, message: "This code has expired" };
     }
     
-    if (new Date(redemption.expiresAt) < new Date()) {
+    if (redemption.expiresAt && new Date(redemption.expiresAt) < new Date()) {
       // Mark as expired
       await db.update(dealRedemptions)
         .set({ status: 'expired' })
@@ -1967,6 +1967,173 @@ export class DbStorage implements IStorage {
         eq(dealRedemptions.status, 'verified')
       ));
     return Number(result[0]?.count || 0);
+  }
+
+  // ===== BUTTON-BASED REDEMPTION SYSTEM =====
+  
+  // Simple one-tap redemption - consumer clicks redeem button to record usage
+  async redeemDeal(dealId: string, userId: string, source?: string): Promise<{
+    success: boolean;
+    message: string;
+    redemption?: DealRedemption;
+  }> {
+    // Get the deal
+    const deal = await this.getDealById(dealId);
+    if (!deal) {
+      return { success: false, message: "Deal not found" };
+    }
+
+    if (!deal.isActive) {
+      return { success: false, message: "This deal is no longer active" };
+    }
+
+    // Check deal availability dates
+    const now = new Date();
+    if (deal.startsAt && new Date(deal.startsAt) > now) {
+      return { success: false, message: "This deal hasn't started yet" };
+    }
+    if (deal.endsAt && new Date(deal.endsAt) < now) {
+      return { success: false, message: "This deal has expired" };
+    }
+
+    // Check redemption frequency limits (weekly, monthly, unlimited)
+    const frequency = deal.redemptionFrequency || 'weekly';
+    if (frequency !== 'unlimited') {
+      const windowDays = frequency === 'weekly' ? 7 : 30;
+      const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+      
+      const recentRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, windowStart);
+      if (recentRedemption) {
+        const daysRemaining = Math.ceil(
+          (windowStart.getTime() + windowDays * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        const periodName = frequency === 'weekly' ? 'week' : 'month';
+        return { 
+          success: false, 
+          message: `You can redeem this deal once per ${periodName}. Try again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.` 
+        };
+      }
+    }
+
+    // Check total redemption limit for the deal
+    if (deal.maxRedemptionsTotal) {
+      const totalRedeemed = await this.getTotalRedeemedCountForDeal(dealId);
+      if (totalRedeemed >= deal.maxRedemptionsTotal) {
+        return { success: false, message: "This deal has reached its maximum redemptions" };
+      }
+    }
+
+    // Create the redemption record
+    const [redemption] = await db.insert(dealRedemptions).values({
+      dealId,
+      vendorId: deal.vendorId,
+      userId,
+      status: 'redeemed',
+      source: source || 'web',
+      pointsEarned: 0, // Points system placeholder
+      pointsStatus: null, // Not tracking points yet
+    }).returning();
+
+    return {
+      success: true,
+      message: "Deal redeemed successfully! Show this screen to the business.",
+      redemption
+    };
+  }
+
+  // Check if user has already redeemed a deal within a time window
+  async getRecentRedemptionForUserDeal(userId: string, dealId: string, since: Date): Promise<DealRedemption | undefined> {
+    const result = await db.select().from(dealRedemptions)
+      .where(and(
+        eq(dealRedemptions.userId, userId),
+        eq(dealRedemptions.dealId, dealId),
+        eq(dealRedemptions.status, 'redeemed'),
+        gte(dealRedemptions.redeemedAt, since)
+      ))
+      .orderBy(desc(dealRedemptions.redeemedAt))
+      .limit(1);
+    return result[0];
+  }
+
+  // Get total redeemed count for a deal (new button-based system)
+  async getTotalRedeemedCountForDeal(dealId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(dealRedemptions)
+      .where(and(
+        eq(dealRedemptions.dealId, dealId),
+        eq(dealRedemptions.status, 'redeemed')
+      ));
+    return Number(result[0]?.count || 0);
+  }
+
+  // Get consumer's redemption history (button-based)
+  async getConsumerRedemptionHistory(userId: string, limit?: number): Promise<DealRedemption[]> {
+    const query = db.select().from(dealRedemptions)
+      .where(and(
+        eq(dealRedemptions.userId, userId),
+        eq(dealRedemptions.status, 'redeemed')
+      ))
+      .orderBy(desc(dealRedemptions.redeemedAt));
+    
+    if (limit) {
+      return await query.limit(limit);
+    }
+    return await query;
+  }
+
+  // Get business's redemption history (button-based)
+  async getBusinessRedemptionHistory(vendorId: string, limit?: number): Promise<DealRedemption[]> {
+    const query = db.select().from(dealRedemptions)
+      .where(and(
+        eq(dealRedemptions.vendorId, vendorId),
+        eq(dealRedemptions.status, 'redeemed')
+      ))
+      .orderBy(desc(dealRedemptions.redeemedAt));
+    
+    if (limit) {
+      return await query.limit(limit);
+    }
+    return await query;
+  }
+
+  // Check if user can redeem a deal (for UI display)
+  async canUserRedeemDeal(userId: string, dealId: string): Promise<{ canRedeem: boolean; reason?: string }> {
+    const deal = await this.getDealById(dealId);
+    if (!deal) {
+      return { canRedeem: false, reason: "Deal not found" };
+    }
+
+    if (!deal.isActive) {
+      return { canRedeem: false, reason: "Deal is no longer active" };
+    }
+
+    const now = new Date();
+    if (deal.startsAt && new Date(deal.startsAt) > now) {
+      return { canRedeem: false, reason: "Deal hasn't started yet" };
+    }
+    if (deal.endsAt && new Date(deal.endsAt) < now) {
+      return { canRedeem: false, reason: "Deal has expired" };
+    }
+
+    // Check frequency limits
+    const frequency = deal.redemptionFrequency || 'weekly';
+    if (frequency !== 'unlimited') {
+      const windowDays = frequency === 'weekly' ? 7 : 30;
+      const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+      
+      const recentRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, windowStart);
+      if (recentRedemption) {
+        const daysRemaining = Math.ceil(
+          (windowStart.getTime() + windowDays * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        return { 
+          canRedeem: false, 
+          reason: `Can redeem again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}` 
+        };
+      }
+    }
+
+    return { canRedeem: true };
   }
 
   // Preferred Placement operations

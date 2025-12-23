@@ -1158,11 +1158,11 @@ export const deals = pgTable("deals", {
   
   // Vendor Deal Management
   status: varchar("status", { length: 16 }).notNull().default("draft"), // draft, published, paused
-  redemptionMethod: varchar("redemption_method", { length: 24 }).notNull().default("time_locked_code"),
   
-  // Time-Locked Code Settings
-  claimWindowMinutes: integer("claim_window_minutes").notNull().default(10), // How long the code is valid
-  codeLength: integer("code_length").notNull().default(6), // Length of redemption code
+  // Legacy fields (deprecated - kept for backward compatibility)
+  redemptionMethod: varchar("redemption_method", { length: 24 }).default("button"), // Legacy: now all deals use button redemption
+  claimWindowMinutes: integer("claim_window_minutes").default(10), // Legacy: no longer used
+  codeLength: integer("code_length").default(6), // Legacy: no longer used
   
   // Redemption Limits
   maxRedemptionsTotal: integer("max_redemptions_total"), // Total redemptions allowed for this deal
@@ -1190,6 +1190,10 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  // Legacy fields - omit from insert
+  redemptionMethod: true,
+  claimWindowMinutes: true,
+  codeLength: true,
 });
 
 export type InsertDeal = z.infer<typeof insertDealSchema>;

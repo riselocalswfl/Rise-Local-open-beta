@@ -124,7 +124,6 @@ const dealFormSchema = z.object({
   dealType: z.enum(["bogo", "percent", "addon"]),
   discountType: z.enum(["percent", "fixed", "bogo", "free_item"]).optional(),
   discountValue: z.coerce.number().optional(),
-  redemptionMethod: z.enum(["qr_code", "numeric_pin", "claim_button", "unique_code", "staff_toggle"]).default("qr_code"),
   maxRedemptionsPerUser: z.coerce.number().int().min(1).default(1),
   cooldownHours: z.preprocess(
     (val) => val === "" || val === undefined ? undefined : Number(val),
@@ -1915,11 +1914,6 @@ function DealForm({
     ? defaultValues.dealType as DealFormValues["dealType"]
     : "bogo";
 
-  const validRedemptionMethods: DealFormValues["redemptionMethod"][] = ["qr_code", "numeric_pin", "claim_button", "unique_code", "staff_toggle"];
-  const defaultRedemptionMethod: DealFormValues["redemptionMethod"] = defaultValues?.redemptionMethod && validRedemptionMethods.includes(defaultValues.redemptionMethod as any)
-    ? defaultValues.redemptionMethod as DealFormValues["redemptionMethod"]
-    : "qr_code";
-
   const validDiscountTypes: NonNullable<DealFormValues["discountType"]>[] = ["percent", "fixed", "bogo", "free_item"];
   const defaultDiscountType: DealFormValues["discountType"] = defaultValues?.discountType && validDiscountTypes.includes(defaultValues.discountType as any)
     ? defaultValues.discountType as DealFormValues["discountType"]
@@ -1939,7 +1933,6 @@ function DealForm({
       discountType: defaultDiscountType,
       discountValue: defaultValues?.discountValue || undefined,
       savingsAmount: defaultValues?.savingsAmount || undefined,
-      redemptionMethod: defaultRedemptionMethod,
       maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
       cooldownHours: defaultValues?.cooldownHours || undefined,
       maxRedemptionsTotal: defaultValues?.maxRedemptionsTotal || undefined,
