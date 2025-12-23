@@ -3152,13 +3152,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/users/:id - Public profile endpoint (limited info)
   app.get("/api/users/:id", async (req, res) => {
     try {
-      const user = await storage.getUser(req.params.id);
-      if (!user) {
+      const profile = await storage.getUserPublicProfile(req.params.id);
+      if (!profile) {
         return res.status(404).json({ error: "User not found" });
       }
-      res.json(user);
+      res.json(profile);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }
@@ -4303,12 +4304,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? `${consumer.firstName} ${consumer.lastName}`
         : consumer?.username || 'Unknown Customer';
 
+      // Cancel any pending email notifications since user is viewing the conversation
+      await storage.cancelEmailJobsForConversation(conversationId, userId);
+
       res.json({
         conversation,
         messages,
         vendorName: vendor?.businessName || 'Unknown Business',
         vendorLogoUrl: vendor?.logoUrl || null,
+        vendorOwnerId: vendor?.ownerId || null,
         consumerName,
+        consumerProfileImageUrl: consumer?.profileImageUrl || null,
+        consumerId: conversation.consumerId,
         userRole: isConsumer ? 'consumer' : 'vendor'
       });
     } catch (error) {
@@ -4358,19 +4365,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create notification for the recipient
       const recipientId = senderRole === 'consumer' ? vendor?.ownerId : conversation.consumerId;
       if (recipientId) {
+        const sender = await storage.getUser(userId);
         const senderName = senderRole === 'consumer' 
-          ? (await storage.getUser(userId))?.firstName || 'A customer'
+          ? (sender?.firstName ? `${sender.firstName}${sender.lastName ? ` ${sender.lastName}` : ''}`.trim() : 'A customer')
           : vendor?.businessName || 'A business';
         
         await storage.createNotification({
           userId: recipientId,
-          type: 'new_message',
-          title: `New message from ${senderName}`,
+          actorId: userId,
+          type: senderRole === 'consumer' ? 'new_message' : 'business_reply',
+          title: `${senderName} sent you a message`,
           message: content.trim().substring(0, 100) + (content.length > 100 ? '...' : ''),
           referenceId: conversationId,
           referenceType: 'conversation',
           isRead: false,
         });
+
+        // Schedule email notification if recipient has email notifications enabled
+        const recipient = await storage.getUser(recipientId);
+        if (recipient?.email && recipient.emailMessageNotifications !== false) {
+          await storage.scheduleEmailNotification({
+            recipientId,
+            recipientEmail: recipient.email,
+            jobType: 'new_message',
+            referenceId: conversationId,
+            actorId: userId,
+            subject: `New message from ${senderName} on Rise Local`,
+            bodyPreview: content.trim().substring(0, 200),
+            status: 'pending',
+            scheduledFor: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes delay
+          });
+        }
       }
 
       console.log("[B2C] Message sent:", {

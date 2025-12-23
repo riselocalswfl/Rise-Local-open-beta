@@ -240,6 +240,7 @@ export interface IStorage {
   getB2CConversationsForVendor(vendorId: string): Promise<Array<{
     conversation: Conversation;
     consumerName: string;
+    consumerProfileImageUrl: string | null;
     lastMessage: string;
     lastMessageAt: Date;
     unreadCount: number;
@@ -327,6 +328,42 @@ export interface IStorage {
   getUserFavorites(userId: string): Promise<Favorite[]>;
   isFavorite(userId: string, dealId: string): Promise<boolean>;
   getUserFavoriteDeals(userId: string): Promise<Deal[]>;
+
+  // Email job operations
+  scheduleEmailNotification(job: {
+    recipientId: string;
+    recipientEmail: string;
+    jobType: string;
+    referenceId?: string;
+    actorId?: string;
+    subject: string;
+    bodyPreview?: string;
+    status: string;
+    scheduledFor: Date;
+  }): Promise<void>;
+  getPendingEmailJobs(): Promise<Array<{
+    id: string;
+    recipientId: string;
+    recipientEmail: string;
+    jobType: string;
+    referenceId: string | null;
+    actorId: string | null;
+    subject: string;
+    bodyPreview: string | null;
+    scheduledFor: Date;
+  }>>;
+  markEmailJobSent(jobId: string): Promise<void>;
+  markEmailJobFailed(jobId: string): Promise<void>;
+  cancelEmailJobsForConversation(conversationId: string, recipientId: string): Promise<void>;
+
+  // User public profile
+  getUserPublicProfile(userId: string): Promise<{
+    id: string;
+    displayName: string;
+    profileImageUrl: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  } | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -1250,6 +1287,7 @@ export class DbStorage implements IStorage {
   async getB2CConversationsForVendor(vendorId: string): Promise<Array<{
     conversation: Conversation;
     consumerName: string;
+    consumerProfileImageUrl: string | null;
     lastMessage: string;
     lastMessageAt: Date;
     unreadCount: number;
@@ -1291,6 +1329,7 @@ export class DbStorage implements IStorage {
         return {
           conversation: conv,
           consumerName,
+          consumerProfileImageUrl: consumer?.profileImageUrl || null,
           lastMessage: lastMsg[0]?.content || '',
           lastMessageAt: lastMsg[0]?.createdAt || conv.createdAt || new Date(),
           unreadCount: unreadResult[0]?.count || 0,
@@ -2267,6 +2306,128 @@ export class DbStorage implements IStorage {
       .where(sql`${deals.id} IN ${dealIds}`);
     
     return result;
+  }
+
+  // Email job operations
+  async scheduleEmailNotification(job: {
+    recipientId: string;
+    recipientEmail: string;
+    jobType: string;
+    referenceId?: string;
+    actorId?: string;
+    subject: string;
+    bodyPreview?: string;
+    status: string;
+    scheduledFor: Date;
+  }): Promise<void> {
+    // Check for rate limiting - don't schedule if there's a pending job for same conversation in last 30 mins
+    if (job.referenceId && job.jobType === 'new_message') {
+      const existingJobs = await db.execute(sql`
+        SELECT id FROM email_jobs 
+        WHERE reference_id = ${job.referenceId} 
+        AND recipient_id = ${job.recipientId}
+        AND status = 'pending'
+        AND created_at > NOW() - INTERVAL '30 minutes'
+        LIMIT 1
+      `);
+      
+      if (existingJobs.rows && existingJobs.rows.length > 0) {
+        console.log('[EMAIL] Skipping duplicate email job for conversation:', job.referenceId);
+        return;
+      }
+    }
+
+    await db.execute(sql`
+      INSERT INTO email_jobs (recipient_id, recipient_email, job_type, reference_id, actor_id, subject, body_preview, status, scheduled_for)
+      VALUES (${job.recipientId}, ${job.recipientEmail}, ${job.jobType}, ${job.referenceId || null}, ${job.actorId || null}, ${job.subject}, ${job.bodyPreview || null}, ${job.status}, ${job.scheduledFor})
+    `);
+    console.log('[EMAIL] Scheduled email notification for:', job.recipientEmail, 'at:', job.scheduledFor);
+  }
+
+  async getPendingEmailJobs(): Promise<Array<{
+    id: string;
+    recipientId: string;
+    recipientEmail: string;
+    jobType: string;
+    referenceId: string | null;
+    actorId: string | null;
+    subject: string;
+    bodyPreview: string | null;
+    scheduledFor: Date;
+  }>> {
+    const result = await db.execute(sql`
+      SELECT id, recipient_id, recipient_email, job_type, reference_id, actor_id, subject, body_preview, scheduled_for
+      FROM email_jobs
+      WHERE status = 'pending'
+      AND scheduled_for <= NOW()
+      ORDER BY scheduled_for ASC
+      LIMIT 50
+    `);
+    
+    return (result.rows || []).map((row: any) => ({
+      id: row.id,
+      recipientId: row.recipient_id,
+      recipientEmail: row.recipient_email,
+      jobType: row.job_type,
+      referenceId: row.reference_id,
+      actorId: row.actor_id,
+      subject: row.subject,
+      bodyPreview: row.body_preview,
+      scheduledFor: new Date(row.scheduled_for),
+    }));
+  }
+
+  async markEmailJobSent(jobId: string): Promise<void> {
+    await db.execute(sql`
+      UPDATE email_jobs SET status = 'sent', sent_at = NOW(), attempts = attempts + 1 WHERE id = ${jobId}
+    `);
+  }
+
+  async markEmailJobFailed(jobId: string): Promise<void> {
+    await db.execute(sql`
+      UPDATE email_jobs SET status = 'failed', last_attempt_at = NOW(), attempts = attempts + 1 WHERE id = ${jobId}
+    `);
+  }
+
+  async cancelEmailJobsForConversation(conversationId: string, recipientId: string): Promise<void> {
+    await db.execute(sql`
+      UPDATE email_jobs SET status = 'cancelled' 
+      WHERE reference_id = ${conversationId} 
+      AND recipient_id = ${recipientId}
+      AND status = 'pending'
+    `);
+  }
+
+  // User public profile
+  async getUserPublicProfile(userId: string): Promise<{
+    id: string;
+    displayName: string;
+    profileImageUrl: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  } | undefined> {
+    const result = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      profileImageUrl: users.profileImageUrl,
+      username: users.username,
+    }).from(users).where(eq(users.id, userId));
+    
+    if (result.length === 0) return undefined;
+    
+    const user = result[0];
+    const displayName = user.firstName && user.lastName 
+      ? `${user.firstName} ${user.lastName}`.trim()
+      : user.firstName || user.username || 'User';
+    
+    return {
+      id: user.id,
+      displayName,
+      profileImageUrl: user.profileImageUrl,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
   }
 }
 
