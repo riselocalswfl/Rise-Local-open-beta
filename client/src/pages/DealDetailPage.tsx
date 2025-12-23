@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Clock, Heart, RefreshCw } from "lucide-react";
+import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Info, Heart, RefreshCw } from "lucide-react";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import RedeemCodeModal from "@/components/RedeemCodeModal";
+import RedeemDealModal from "@/components/RedeemDealModal";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
@@ -320,11 +320,11 @@ export default function DealDetailPage() {
             </Button>
 
             <div className="bg-primary/5 rounded-lg p-4 flex items-start gap-3">
-              <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-medium text-primary">How it works</p>
                 <p className="text-muted-foreground mt-1">
-                  Get a redemption code valid for 10 minutes. Show it to the business to redeem your savings.
+                  Tap "Redeem Now" and show your confirmation to the business. Simple as that!
                 </p>
               </div>
             </div>
@@ -332,8 +332,9 @@ export default function DealDetailPage() {
         </Card>
       </div>
 
-      <RedeemCodeModal
+      <RedeemDealModal
         deal={deal}
+        vendor={vendor}
         open={redeemModalOpen}
         onOpenChange={setRedeemModalOpen}
       />
