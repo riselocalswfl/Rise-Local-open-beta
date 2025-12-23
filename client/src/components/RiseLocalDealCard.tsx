@@ -1,10 +1,12 @@
 import { useLocation } from "wouter";
 import { MapPin, Clock, Lock, RefreshCw } from "lucide-react";
 
-function getFrequencyLabel(frequency?: "weekly" | "monthly" | "unlimited"): string | null {
+function getFrequencyLabel(frequency?: string | null, customDays?: number | null): string | null {
   switch (frequency) {
+    case "once": return "1x only";
     case "weekly": return "1x/week";
     case "monthly": return "1x/month";
+    case "custom": return customDays ? `1x/${customDays}d` : null;
     case "unlimited": return null;
     default: return null;
   }
@@ -34,7 +36,8 @@ export interface RiseLocalDeal {
   memberOnly: boolean;
   isNew?: boolean;
   isFictitious?: boolean;
-  redemptionFrequency?: "weekly" | "monthly" | "unlimited";
+  redemptionFrequency?: "once" | "weekly" | "monthly" | "unlimited" | "custom";
+  customRedemptionDays?: number;
 }
 
 interface RiseLocalDealCardProps {
@@ -191,10 +194,10 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
                 {deal.redemptionWindow}
               </span>
             )}
-            {getFrequencyLabel(deal.redemptionFrequency) && (
+            {getFrequencyLabel(deal.redemptionFrequency, deal.customRedemptionDays) && (
               <span className="flex items-center gap-0.5" data-testid={`text-frequency-${deal.id}`}>
                 <RefreshCw className="w-3 h-3" />
-                {getFrequencyLabel(deal.redemptionFrequency)}
+                {getFrequencyLabel(deal.redemptionFrequency, deal.customRedemptionDays)}
               </span>
             )}
           </div>

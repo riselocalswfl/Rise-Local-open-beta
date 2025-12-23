@@ -133,7 +133,11 @@ const dealFormSchema = z.object({
     (val) => val === "" || val === undefined ? undefined : Number(val),
     z.number().int().min(0).optional()
   ),
-  redemptionFrequency: z.enum(["weekly", "monthly", "unlimited"]).default("weekly"),
+  redemptionFrequency: z.enum(["once", "weekly", "monthly", "unlimited", "custom"]).default("weekly"),
+  customRedemptionDays: z.preprocess(
+    (val) => val === "" || val === undefined ? undefined : Number(val),
+    z.number().int().min(1).max(365).optional()
+  ),
   isActive: z.boolean().default(false),
   status: z.enum(["draft", "published", "paused", "expired"]).default("draft"),
   isPassLocked: z.boolean().default(false),
@@ -1936,7 +1940,8 @@ function DealForm({
       maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
       cooldownHours: defaultValues?.cooldownHours || undefined,
       maxRedemptionsTotal: defaultValues?.maxRedemptionsTotal || undefined,
-      redemptionFrequency: (defaultValues?.redemptionFrequency as "weekly" | "monthly" | "unlimited") || "weekly",
+      redemptionFrequency: (defaultValues?.redemptionFrequency as "once" | "weekly" | "monthly" | "unlimited" | "custom") || "weekly",
+      customRedemptionDays: defaultValues?.customRedemptionDays || undefined,
       isActive: defaultValues?.isActive ?? false,
       status: defaultStatus,
       isPassLocked: defaultValues?.isPassLocked ?? false,
@@ -2123,6 +2128,12 @@ function DealForm({
                   data-testid="radio-redemption-frequency"
                 >
                   <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="once" id="frequency-once" data-testid="radio-once" />
+                    <Label htmlFor="frequency-once" className="font-normal cursor-pointer">
+                      One time only
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0">
                     <RadioGroupItem value="weekly" id="frequency-weekly" data-testid="radio-weekly" />
                     <Label htmlFor="frequency-weekly" className="font-normal cursor-pointer">
                       Once per week
@@ -2140,12 +2151,46 @@ function DealForm({
                       Unlimited redemptions
                     </Label>
                   </div>
+                  <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="custom" id="frequency-custom" data-testid="radio-custom" />
+                    <Label htmlFor="frequency-custom" className="font-normal cursor-pointer">
+                      Other (custom days)
+                    </Label>
+                  </div>
                 </RadioGroup>
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        {form.watch("redemptionFrequency") === "custom" && (
+          <FormField
+            control={form.control}
+            name="customRedemptionDays"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Custom redemption window (days)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="365"
+                    placeholder="e.g., 14 for once every 2 weeks"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    data-testid="input-custom-redemption-days"
+                  />
+                </FormControl>
+                <FormDescription>
+                  Customer can redeem again after this many days
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <Separator />
 

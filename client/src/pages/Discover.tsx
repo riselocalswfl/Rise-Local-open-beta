@@ -213,7 +213,8 @@ function transformDealToRiseLocal(
     isFictitious: false,
     createdAt: deal.createdAt ? new Date(deal.createdAt) : null,
     vendorCreatedAt: deal.vendor?.createdAt ? new Date(deal.vendor.createdAt) : null,
-    redemptionFrequency: (deal.redemptionFrequency as "weekly" | "monthly" | "unlimited") || undefined,
+    redemptionFrequency: (deal.redemptionFrequency as "once" | "weekly" | "monthly" | "unlimited" | "custom") || undefined,
+    customRedemptionDays: deal.customRedemptionDays || undefined,
   };
 }
 

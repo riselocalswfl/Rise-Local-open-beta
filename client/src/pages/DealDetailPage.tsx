@@ -110,10 +110,12 @@ export default function DealDetailPage() {
     addon: "Free Add-on",
   };
 
-  const getFrequencyLabel = (frequency?: string | null): string | null => {
+  const getFrequencyLabel = (frequency?: string | null, customDays?: number | null): string | null => {
     switch (frequency) {
+      case "once": return "One time only";
       case "weekly": return "1x per week";
       case "monthly": return "1x per month";
+      case "custom": return customDays ? `1x per ${customDays} days` : null;
       case "unlimited": return null;
       default: return null;
     }
@@ -276,10 +278,10 @@ export default function DealDetailPage() {
                   Premium
                 </Badge>
               )}
-              {getFrequencyLabel(deal.redemptionFrequency) && (
+              {getFrequencyLabel(deal.redemptionFrequency, deal.customRedemptionDays) && (
                 <Badge variant="outline" className="text-sm" data-testid="badge-redemption-frequency">
                   <RefreshCw className="w-3 h-3 mr-1" />
-                  {getFrequencyLabel(deal.redemptionFrequency)}
+                  {getFrequencyLabel(deal.redemptionFrequency, deal.customRedemptionDays)}
                 </Badge>
               )}
             </div>

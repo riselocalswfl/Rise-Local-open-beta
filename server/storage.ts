@@ -2035,22 +2035,49 @@ export class DbStorage implements IStorage {
       return { success: false, message: "This deal has expired" };
     }
 
-    // Check redemption frequency limits (weekly, monthly, unlimited)
+    // Check redemption frequency limits (once, weekly, monthly, custom, unlimited)
     const frequency = deal.redemptionFrequency || 'weekly';
     if (frequency !== 'unlimited') {
-      const windowDays = frequency === 'weekly' ? 7 : 30;
-      const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+      // Calculate window based on frequency type
+      let windowDays: number;
+      let periodName: string;
       
-      const recentRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, windowStart);
-      if (recentRedemption) {
-        const daysRemaining = Math.ceil(
-          (windowStart.getTime() + windowDays * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
-        );
-        const periodName = frequency === 'weekly' ? 'week' : 'month';
-        return { 
-          success: false, 
-          message: `You can redeem this deal once per ${periodName}. Try again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.` 
-        };
+      if (frequency === 'once') {
+        // One-time use - check for any previous redemption ever
+        const anyPreviousRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, new Date(0));
+        if (anyPreviousRedemption) {
+          return { 
+            success: false, 
+            message: "This is a one-time use deal and you've already redeemed it." 
+          };
+        }
+      } else {
+        // Time-based limits
+        if (frequency === 'weekly') {
+          windowDays = 7;
+          periodName = 'week';
+        } else if (frequency === 'monthly') {
+          windowDays = 30;
+          periodName = 'month';
+        } else if (frequency === 'custom' && deal.customRedemptionDays) {
+          windowDays = deal.customRedemptionDays;
+          periodName = `${windowDays} days`;
+        } else {
+          windowDays = 7; // Default to weekly
+          periodName = 'week';
+        }
+        
+        const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+        const recentRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, windowStart);
+        if (recentRedemption) {
+          const daysRemaining = Math.ceil(
+            (windowStart.getTime() + windowDays * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
+          );
+          return { 
+            success: false, 
+            message: `You can redeem this deal once per ${periodName}. Try again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}.` 
+          };
+        }
       }
     }
 
@@ -2154,21 +2181,42 @@ export class DbStorage implements IStorage {
       return { canRedeem: false, reason: "Deal has expired" };
     }
 
-    // Check frequency limits
+    // Check frequency limits (once, weekly, monthly, custom, unlimited)
     const frequency = deal.redemptionFrequency || 'weekly';
     if (frequency !== 'unlimited') {
-      const windowDays = frequency === 'weekly' ? 7 : 30;
-      const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
-      
-      const recentRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, windowStart);
-      if (recentRedemption) {
-        const daysRemaining = Math.ceil(
-          (windowStart.getTime() + windowDays * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
-        );
-        return { 
-          canRedeem: false, 
-          reason: `Can redeem again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}` 
-        };
+      if (frequency === 'once') {
+        // One-time use - check for any previous redemption ever
+        const anyPreviousRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, new Date(0));
+        if (anyPreviousRedemption) {
+          return { 
+            canRedeem: false, 
+            reason: "Already redeemed (one-time use)" 
+          };
+        }
+      } else {
+        // Time-based limits
+        let windowDays: number;
+        if (frequency === 'weekly') {
+          windowDays = 7;
+        } else if (frequency === 'monthly') {
+          windowDays = 30;
+        } else if (frequency === 'custom' && deal.customRedemptionDays) {
+          windowDays = deal.customRedemptionDays;
+        } else {
+          windowDays = 7; // Default to weekly
+        }
+        
+        const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+        const recentRedemption = await this.getRecentRedemptionForUserDeal(userId, dealId, windowStart);
+        if (recentRedemption) {
+          const daysRemaining = Math.ceil(
+            (windowStart.getTime() + windowDays * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
+          );
+          return { 
+            canRedeem: false, 
+            reason: `Can redeem again in ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''}` 
+          };
+        }
       }
     }
 

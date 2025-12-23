@@ -2,10 +2,12 @@ import { useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { MapPin, Clock, Lock, RefreshCw } from "lucide-react";
 
-function getFrequencyLabel(frequency?: "weekly" | "monthly" | "unlimited"): string | null {
+function getFrequencyLabel(frequency?: string | null, customDays?: number | null): string | null {
   switch (frequency) {
+    case "once": return "1x only";
     case "weekly": return "1x/week";
     case "monthly": return "1x/month";
+    case "custom": return customDays ? `1x/${customDays}d` : null;
     case "unlimited": return null;
     default: return null;
   }
@@ -32,7 +34,8 @@ export interface DiscoverDeal {
   isNew?: boolean;
   isFictitious?: boolean;
   city?: string;
-  redemptionFrequency?: "weekly" | "monthly" | "unlimited";
+  redemptionFrequency?: "once" | "weekly" | "monthly" | "unlimited" | "custom";
+  customRedemptionDays?: number;
 }
 
 interface DiscoverDealCardProps {
@@ -147,10 +150,10 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
             <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
             <span className="truncate">{deal.city || deal.distance || "SWFL"}</span>
           </span>
-          {getFrequencyLabel(deal.redemptionFrequency) && (
+          {getFrequencyLabel(deal.redemptionFrequency, deal.customRedemptionDays) && (
             <span className="flex items-center gap-0.5" data-testid={`text-frequency-${deal.id}`}>
               <RefreshCw className="w-2.5 h-2.5 flex-shrink-0" />
-              <span>{getFrequencyLabel(deal.redemptionFrequency)}</span>
+              <span>{getFrequencyLabel(deal.redemptionFrequency, deal.customRedemptionDays)}</span>
             </span>
           )}
         </div>
