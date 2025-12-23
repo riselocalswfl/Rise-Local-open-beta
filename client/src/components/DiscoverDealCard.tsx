@@ -69,7 +69,7 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
           onError={handleImageError}
           data-testid={`img-deal-${deal.id}`}
         />
-        {deal.savings > 0 && (
+        {deal.savings > 0 && !isLocked && (
           <div className="absolute bottom-1.5 left-1.5">
             <Badge 
               variant="outline" 
@@ -91,7 +91,7 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
           </div>
         )}
         {isLocked && (
-          <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/40 flex flex-col items-center justify-between py-2">
             <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2.5 py-1">
               <Lock className="w-3.5 h-3.5 text-primary" />
               <span className="text-[10px] font-medium text-foreground">Rise Local Pass</span>
@@ -104,6 +104,15 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
                 Join
               </Button>
             </div>
+            {deal.savings > 0 && (
+              <Badge 
+                variant="outline" 
+                className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
+                data-testid={`badge-savings-locked-${deal.id}`}
+              >
+                Save ${deal.savings}
+              </Badge>
+            )}
           </div>
         )}
       </div>

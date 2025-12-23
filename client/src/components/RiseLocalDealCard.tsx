@@ -110,32 +110,41 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
             </div>
           )}
 
-          {/* Savings pill */}
-          <div className="absolute bottom-2 left-2">
-            <Badge 
-              variant="outline" 
-              className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground"
-              data-testid={`badge-savings-${deal.id}`}
-            >
-              Save ${deal.savings}
-            </Badge>
-          </div>
+          {/* Savings pill - only show when not locked */}
+          {!isLocked && (
+            <div className="absolute bottom-2 left-2">
+              <Badge 
+                variant="outline" 
+                className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground"
+                data-testid={`badge-savings-${deal.id}`}
+              >
+                Save ${deal.savings}
+              </Badge>
+            </div>
+          )}
 
           {/* Locked overlay */}
           {isLocked && (
-            <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center p-3">
-              <Lock className="w-6 h-6 text-primary mb-2" />
-              <p className="text-meta-emphasis text-center text-foreground mb-2">
-                Unlock with Rise Local Pass
-              </p>
-              <Button 
-                size="sm" 
-                className="text-xs h-7" 
-                onClick={handleUnlockClick}
-                data-testid={`button-unlock-${deal.id}`}
+            <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-between py-3 px-3">
+              <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2.5 py-1">
+                <Lock className="w-3.5 h-3.5 text-primary" />
+                <span className="text-[10px] font-medium text-foreground">Rise Local Pass</span>
+                <Button 
+                  size="sm" 
+                  className="text-[9px] h-5 px-2 ml-0.5" 
+                  onClick={handleUnlockClick}
+                  data-testid={`button-unlock-${deal.id}`}
+                >
+                  Join
+                </Button>
+              </div>
+              <Badge 
+                variant="outline" 
+                className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground"
+                data-testid={`badge-savings-locked-${deal.id}`}
               >
-                Join Now
-              </Button>
+                Save ${deal.savings}
+              </Badge>
             </div>
           )}
         </div>
