@@ -1655,7 +1655,7 @@ export class DbStorage implements IStorage {
   }
 
   // Legacy method - deprecated, use issueDealCode and verifyRedemptionCode instead
-  async redeemDeal(dealId: string, vendorPinEntered: string, userId?: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }> {
+  async redeemDealLegacy(dealId: string, vendorPinEntered: string, userId?: string): Promise<{ success: boolean; message: string; redemption?: DealRedemption }> {
     return { success: false, message: "This redemption method is deprecated. Please use the new code-based system." };
   }
 

@@ -4690,64 +4690,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/deals/:id/redeem - Issue a redemption code for a deal (customer endpoint)
+  // POST /api/deals/:id/redeem - Simple button-based deal redemption (consumer endpoint)
   app.post("/api/deals/:id/redeem", isAuthenticated, async (req: any, res) => {
     try {
       const dealId = req.params.id;
       const userId = req.user.claims.sub;
+      const source = req.body.source || 'web';
 
-      // Get the deal to find the vendorId
+      // Get the deal to check pass requirements
       const deal = await storage.getDealById(dealId);
       if (!deal) {
-        return res.status(404).json({ error: "Deal not found" });
-      }
-
-      if (!deal.isActive) {
-        return res.status(400).json({ error: "This deal is no longer active" });
+        return res.status(404).json({ success: false, error: "Deal not found" });
       }
 
       // Check if deal is pass-locked and user has pass
       if (deal.isPassLocked) {
         const user = await storage.getUser(userId);
         if (!user?.isPassMember) {
-          return res.status(403).json({ error: "This deal requires a Rise Local Pass membership" });
+          return res.status(403).json({ 
+            success: false, 
+            error: "This deal requires a Rise Local Pass membership" 
+          });
         }
       }
 
-      // Issue the redemption code
-      const result = await storage.issueDealCode(dealId, deal.vendorId, userId);
+      // Perform the redemption
+      const result = await storage.redeemDeal(dealId, userId, source);
       
       if (!result.success) {
-        return res.status(400).json({ error: result.message });
+        return res.status(400).json({ success: false, error: result.message });
       }
 
-      console.log("[DEALS] Code issued for deal:", dealId, "user:", userId, "code:", result.code);
+      // Get vendor info for the response
+      const vendor = await storage.getVendor(deal.vendorId);
+
+      console.log("[DEALS] Deal redeemed:", dealId, "user:", userId);
       res.json({
         success: true,
         message: result.message,
-        code: result.code,
-        expiresAt: result.expiresAt,
-        redemptionId: result.redemption?.id,
+        redemption: {
+          id: result.redemption?.id,
+          dealId: deal.id,
+          dealTitle: deal.title,
+          vendorName: vendor?.businessName || 'Business',
+          redeemedAt: result.redemption?.redeemedAt,
+        }
       });
     } catch (error) {
-      console.error("Error issuing redemption code:", error);
-      res.status(500).json({ error: "Failed to issue redemption code" });
+      console.error("Error redeeming deal:", error);
+      res.status(500).json({ success: false, error: "Failed to redeem deal" });
     }
   });
 
-  // GET /api/me/redemptions - Get current user's redemption history
+  // GET /api/me/redemptions - Get current user's redemption history (button-based)
   app.get("/api/me/redemptions", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const redemptions = await storage.getUserRedemptions(userId);
+      const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
+      const redemptions = await storage.getConsumerRedemptionHistory(userId, limit);
       
-      // Enrich with deal info
+      // Enrich with deal and vendor info
       const enrichedRedemptions = await Promise.all(
         redemptions.map(async (r) => {
           const deal = await storage.getDealById(r.dealId);
+          const vendor = await storage.getVendor(r.vendorId);
           return {
-            ...r,
-            deal: deal ? { id: deal.id, title: deal.title, imageUrl: deal.imageUrl || deal.heroImageUrl } : null,
+            id: r.id,
+            dealId: r.dealId,
+            dealTitle: deal?.title || 'Unknown Deal',
+            dealImage: deal?.imageUrl || deal?.heroImageUrl,
+            vendorId: r.vendorId,
+            vendorName: vendor?.businessName || 'Business',
+            vendorLogo: vendor?.logoUrl,
+            redeemedAt: r.redeemedAt,
+            status: r.status,
           };
         })
       );
@@ -4759,7 +4775,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/vendor/redemptions/verify - Vendor verifies a redemption code
+  // GET /api/deals/:id/can-redeem - Check if user can redeem a deal
+  app.get("/api/deals/:id/can-redeem", isAuthenticated, async (req: any, res) => {
+    try {
+      const dealId = req.params.id;
+      const userId = req.user.claims.sub;
+
+      const result = await storage.canUserRedeemDeal(userId, dealId);
+      
+      // Also check pass requirements
+      if (result.canRedeem) {
+        const deal = await storage.getDealById(dealId);
+        if (deal?.isPassLocked) {
+          const user = await storage.getUser(userId);
+          if (!user?.isPassMember) {
+            return res.json({ 
+              canRedeem: false, 
+              reason: "Requires Rise Local Pass" 
+            });
+          }
+        }
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error checking redemption eligibility:", error);
+      res.status(500).json({ canRedeem: false, reason: "Error checking eligibility" });
+    }
+  });
+
+  // GET /api/business/redemptions - Get business's redemption history
+  app.get("/api/business/redemptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
+
+      // Verify user is a vendor
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(403).json({ error: "Only business owners can view redemption history" });
+      }
+
+      const redemptions = await storage.getBusinessRedemptionHistory(vendor.id, limit);
+      
+      // Enrich with deal and customer info
+      const enrichedRedemptions = await Promise.all(
+        redemptions.map(async (r) => {
+          const deal = await storage.getDealById(r.dealId);
+          const customer = r.userId ? await storage.getUser(r.userId) : null;
+          return {
+            id: r.id,
+            dealId: r.dealId,
+            dealTitle: deal?.title || 'Unknown Deal',
+            customerId: r.userId,
+            customerName: customer 
+              ? (customer.firstName && customer.lastName 
+                  ? `${customer.firstName} ${customer.lastName}`.trim() 
+                  : customer.username || 'Customer')
+              : 'Anonymous',
+            customerEmail: customer?.email,
+            redeemedAt: r.redeemedAt,
+            status: r.status,
+            source: r.source,
+          };
+        })
+      );
+      
+      res.json(enrichedRedemptions);
+    } catch (error) {
+      console.error("Error fetching business redemptions:", error);
+      res.status(500).json({ error: "Failed to fetch redemptions" });
+    }
+  });
+
+  // POST /api/vendor/redemptions/verify - Vendor verifies a redemption code (legacy)
   app.post("/api/vendor/redemptions/verify", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
