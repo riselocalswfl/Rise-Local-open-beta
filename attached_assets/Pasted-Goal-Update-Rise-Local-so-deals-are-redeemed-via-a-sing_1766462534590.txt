@@ -1,0 +1,136 @@
+Goal: Update Rise Local so deals are redeemed via a single “Redeem” button (no redemption code). Every redemption must be stored in the database with who redeemed what deal + which business it belongs to + timestamp, and both consumers and businesses need a Redemption History section. Also design the system so a points/loyalty system can be added later without reworking the database.
+
+1) Remove code-based redemption
+	•	Remove any “redemption code” fields from:
+	•	Deal creation UI
+	•	Deal detail UI
+	•	Database fields related to redemption codes (if present)
+	•	Replace with a Redeem Deal button on the Deal Detail screen.
+
+2) Database: Create a deal_redemptions table (core tracking)
+
+Create a new table that records every redemption event:
+
+Table: deal_redemptions
+	•	id (pk, uuid)
+	•	deal_id (fk -> deals.id, required)
+	•	business_id (fk -> businesses.id OR vendor profile id that owns the deal, required)
+	•	consumer_user_id (fk -> users.id, required)
+	•	redeemed_at (timestamp, default now)
+	•	status (text enum: redeemed, voided default redeemed)
+	•	source (text nullable: e.g. mobile, web)
+	•	Future points support:
+	•	points_earned (int default 0)
+	•	points_status (text nullable: pending, approved, reversed)
+	•	metadata (jsonb nullable for future expansion)
+
+Indexes
+	•	index on (consumer_user_id, redeemed_at desc)
+	•	index on (business_id, redeemed_at desc)
+	•	index on (deal_id, redeemed_at desc)
+
+Important: When redeeming, store the deal owner business_id and consumer_user_id so businesses can query “who redeemed my deal”.
+
+3) Redemption rules (prevent accidental double redeems)
+
+Implement server-side logic for redemption:
+	•	Default behavior: one redemption per consumer per deal
+	•	Enforce with a unique constraint:
+	•	unique (deal_id, consumer_user_id) WHERE status = redeemed
+	•	If later we need multiple redemptions (e.g. “redeem once per day”), make it configurable via a field on deals like:
+	•	redemption_limit_type (once, daily, unlimited) – but for now implement once.
+	•	The API must be idempotent:
+	•	If user taps redeem twice, return the existing redemption record instead of creating duplicates.
+
+4) Backend API endpoints
+
+Add authenticated endpoints:
+
+POST /api/deals/:dealId/redeem
+	•	Requires logged-in user with role = consumer/buyer
+	•	Validates:
+	•	deal exists and is active/published
+	•	deal belongs to a business (resolve business_id)
+	•	user hasn’t already redeemed (unless you implement another rule later)
+	•	Creates a deal_redemptions row
+	•	Returns: redemption record + minimal deal info
+
+GET /api/me/redemptions
+	•	Consumer redemption history
+	•	Return list of redemptions joined with deal + business display info:
+	•	deal title, thumbnail, business name, redeemed_at, status
+
+GET /api/business/redemptions
+	•	For business/vendor role
+	•	Returns list of redemptions for deals owned by that business
+	•	Include who redeemed:
+	•	consumer name (or username), consumer id, redeemed_at, deal title
+	•	If privacy settings exist, respect them; otherwise show name + first initial or full name depending on current app pattern.
+
+(Optional but helpful)
+GET /api/business/redemptions/summary
+	•	totals by deal, last 7/30 days, etc. (lightweight)
+
+5) Frontend: Deal Detail “Redeem” button flow
+
+Update the Deal Detail screen:
+	•	Replace code UI with:
+	•	primary button: Redeem Deal
+	•	On tap:
+	•	call POST redeem endpoint
+	•	show confirmation state:
+	•	“Redeemed ✓” + timestamp
+	•	disable button if already redeemed (based on API response)
+	•	Add an optional “Are you with the cashier?” confirm modal to prevent accidental taps:
+	•	“Only redeem when you’re ready to use it.”
+
+6) Settings: Redemption History (Consumer)
+
+In Settings (consumer side), add a new section:
+	•	Redemption History
+	•	list view sorted newest -> oldest
+	•	each item shows:
+	•	Deal image (if exists)
+	•	Deal title
+	•	Business name
+	•	Redeemed date/time
+	•	status
+	•	Add placeholders for future points:
+	•	show “Points: Coming soon” or hide points field unless points_earned > 0.
+
+7) Settings or Business Dashboard: Redemption History (Business)
+
+For vendor/business users, add a section:
+	•	Deal Redemptions
+	•	filter: All Deals / By Deal
+	•	show:
+	•	consumer name (and maybe profile pic if available)
+	•	redeemed timestamp
+	•	deal title
+	•	This view should query /api/business/redemptions.
+
+8) Security & data integrity
+	•	Server must derive consumer_user_id from auth session (not from client request).
+	•	Server must derive business_id from the deal owner (not from client request).
+	•	Ensure role checks:
+	•	consumers can only read their own redemptions
+	•	businesses can only read redemptions for their own deals
+	•	Add tests or at minimum runtime checks for unauthorized access.
+
+9) Migration + cleanup
+	•	Add migration to create deal_redemptions
+	•	Remove any redemption-code columns (or stop using them if removal is risky)
+	•	Update any existing redemption logic to use the new table.
+	•	Confirm Discover/Browse/Business Profile deal cards still load correctly after removal of code fields.
+
+10) Future points system readiness (do not build points yet)
+	•	Keep points_earned, points_status, metadata in the redemption table
+	•	Add a TODO comment and simple UI placeholders, but don’t implement awarding logic now.
+
+Deliverables checklist
+	•	✅ Redeem button replaces code everywhere
+	•	✅ POST redeem creates redemption record (who + what + when + business owner)
+	•	✅ Consumer history page
+	•	✅ Business history page showing who redeemed
+	•	✅ Duplicate redemption prevention + idempotent behavior
+	•	✅ DB schema supports future points without rework
