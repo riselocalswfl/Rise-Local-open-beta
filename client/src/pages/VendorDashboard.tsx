@@ -20,7 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket } from "lucide-react";
+import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket, ChevronDown } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal } from "@shared/schema";
 import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
@@ -2868,11 +2868,42 @@ interface VerificationResult {
   };
 }
 
+interface BusinessRedemption {
+  id: string;
+  dealId: string;
+  dealTitle: string;
+  customerId: string | null;
+  customerName: string;
+  customerEmail?: string | null;
+  redeemedAt: string;
+  status: string;
+  source?: string | null;
+}
+
 function VerifyCodeTab() {
   const { toast } = useToast();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showLegacyVerify, setShowLegacyVerify] = useState(false);
+
+  const { data: redemptions = [], isLoading: redemptionsLoading } = useQuery<BusinessRedemption[]>({
+    queryKey: ["/api/business/redemptions"],
+    queryFn: async () => {
+      const res = await fetch("/api/business/redemptions?limit=20");
+      if (!res.ok) throw new Error("Failed to fetch redemptions");
+      return res.json();
+    },
+  });
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
 
   const verifyMutation = useMutation({
     mutationFn: async (codeInput: string): Promise<VerificationResult> => {
@@ -2922,122 +2953,199 @@ function VerifyCodeTab() {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-section-header flex items-center gap-2">
-          <Ticket className="w-5 h-5" />
-          Verify Redemption Code
-        </CardTitle>
-        <CardDescription className="text-body">
-          Enter the customer's redemption code to verify and redeem their deal
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="redemption-code" className="text-label">Customer Code</Label>
-            <div className="flex gap-3">
-              <Input
-                id="redemption-code"
-                placeholder="RL-XXXXXX"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                className="font-mono text-lg tracking-wider"
-                maxLength={9}
-                disabled={isVerifying}
-                data-testid="input-redemption-code"
-              />
-              <Button
-                type="submit"
-                disabled={isVerifying || !code.trim()}
-                data-testid="button-verify-code"
-              >
-                {isVerifying ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Verifying...
-                  </span>
-                ) : (
-                  "Verify"
-                )}
-              </Button>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-section-header flex items-center gap-2">
+            <Ticket className="w-5 h-5" />
+            Redemption History
+          </CardTitle>
+          <CardDescription className="text-body">
+            Track deals redeemed by your customers
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {redemptionsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                  <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
+                    <div className="h-3 w-1/2 bg-muted animate-pulse rounded" />
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        </form>
+          ) : redemptions.length > 0 ? (
+            <div className="space-y-3">
+              {redemptions.map((redemption) => (
+                <div
+                  key={redemption.id}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/50"
+                  data-testid={`redemption-row-${redemption.id}`}
+                >
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Ticket className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{redemption.dealTitle}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {redemption.customerName}
+                      {redemption.customerEmail && ` • ${redemption.customerEmail}`}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <Badge variant="outline" className="text-xs mb-1">
+                      {redemption.source === "web" ? "App" : redemption.source || "Used"}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(redemption.redeemedAt)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Ticket className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+              <p className="text-muted-foreground">No redemptions yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Customer redemptions will appear here
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {result && (
-          <div className={`p-4 rounded-lg border-2 ${
-            result.success
-              ? "bg-primary/5 border-primary/30"
-              : "bg-destructive/5 border-destructive/30"
-          }`}>
-            {result.success ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-primary">
-                  <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Ticket className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-deal-title">Code Verified</p>
-                    <p className="text-body text-muted-foreground">{result.message}</p>
-                  </div>
-                </div>
-                {result.deal && (
-                  <div className="bg-background rounded-lg p-3">
-                    <p className="text-meta text-muted-foreground">Deal</p>
-                    <p className="text-body font-medium">{result.deal.title}</p>
-                  </div>
-                )}
-                {result.customer && (
-                  <div className="bg-background rounded-lg p-3">
-                    <p className="text-meta text-muted-foreground">Customer</p>
-                    <p className="text-body font-medium" data-testid="text-customer-name">{result.customer.name}</p>
-                    {result.customer.email && (
-                      <p className="text-meta text-muted-foreground" data-testid="text-customer-email">{result.customer.email}</p>
+      <Card>
+        <CardHeader className="pb-4">
+          <div 
+            className="flex items-center justify-between cursor-pointer"
+            onClick={() => setShowLegacyVerify(!showLegacyVerify)}
+            data-testid="toggle-legacy-verify"
+          >
+            <div>
+              <CardTitle className="text-section-header flex items-center gap-2">
+                <Ticket className="w-5 h-5" />
+                Verify Legacy Code
+              </CardTitle>
+              <CardDescription className="text-body">
+                For customers with older RL-XXXXXX codes
+              </CardDescription>
+            </div>
+            <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${showLegacyVerify ? "rotate-180" : ""}`} />
+          </div>
+        </CardHeader>
+        {showLegacyVerify && (
+          <CardContent className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="redemption-code" className="text-label">Customer Code</Label>
+                <div className="flex gap-3">
+                  <Input
+                    id="redemption-code"
+                    placeholder="RL-XXXXXX"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    className="font-mono text-lg tracking-wider"
+                    maxLength={9}
+                    disabled={isVerifying}
+                    data-testid="input-redemption-code"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={isVerifying || !code.trim()}
+                    data-testid="button-verify-code"
+                  >
+                    {isVerifying ? (
+                      <span className="flex items-center gap-2">
+                        <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Verifying...
+                      </span>
+                    ) : (
+                      "Verify"
                     )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+
+            {result && (
+              <div className={`p-4 rounded-lg border-2 ${
+                result.success
+                  ? "bg-primary/5 border-primary/30"
+                  : "bg-destructive/5 border-destructive/30"
+              }`}>
+                {result.success ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-primary">
+                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Ticket className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-deal-title">Code Verified</p>
+                        <p className="text-body text-muted-foreground">{result.message}</p>
+                      </div>
+                    </div>
+                    {result.deal && (
+                      <div className="bg-background rounded-lg p-3">
+                        <p className="text-meta text-muted-foreground">Deal</p>
+                        <p className="text-body font-medium">{result.deal.title}</p>
+                      </div>
+                    )}
+                    {result.customer && (
+                      <div className="bg-background rounded-lg p-3">
+                        <p className="text-meta text-muted-foreground">Customer</p>
+                        <p className="text-body font-medium" data-testid="text-customer-name">{result.customer.name}</p>
+                        {result.customer.email && (
+                          <p className="text-meta text-muted-foreground" data-testid="text-customer-email">{result.customer.email}</p>
+                        )}
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={handleReset}
+                      className="w-full"
+                      data-testid="button-verify-another"
+                    >
+                      Verify Another Code
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-destructive">
+                      <AlertCircle className="h-5 w-5" />
+                      <div>
+                        <p className="text-deal-title">Verification Failed</p>
+                        <p className="text-body">{result.message}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleReset}
+                      className="w-full"
+                      data-testid="button-try-again"
+                    >
+                      Try Again
+                    </Button>
                   </div>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={handleReset}
-                  className="w-full"
-                  data-testid="button-verify-another"
-                >
-                  Verify Another Code
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-destructive">
-                  <AlertCircle className="h-5 w-5" />
-                  <div>
-                    <p className="text-deal-title">Verification Failed</p>
-                    <p className="text-body">{result.message}</p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={handleReset}
-                  className="w-full"
-                  data-testid="button-try-again"
-                >
-                  Try Again
-                </Button>
               </div>
             )}
-          </div>
-        )}
 
-        <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-          <p className="text-body font-medium">How it works:</p>
-          <ol className="text-body text-muted-foreground space-y-1 list-decimal list-inside">
-            <li>Customer shows you their redemption code (format: RL-XXXXXX)</li>
-            <li>Enter the code above and click "Verify"</li>
-            <li>If valid, the deal is redeemed and the customer gets their discount</li>
-          </ol>
-        </div>
-      </CardContent>
-    </Card>
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <p className="text-body font-medium">How it works:</p>
+              <ol className="text-body text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>Customer shows you their redemption code (format: RL-XXXXXX)</li>
+                <li>Enter the code above and click "Verify"</li>
+                <li>If valid, the deal is redeemed and the customer gets their discount</li>
+              </ol>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    </div>
   );
 }
 
