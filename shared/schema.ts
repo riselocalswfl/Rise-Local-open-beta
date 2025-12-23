@@ -1168,6 +1168,7 @@ export const deals = pgTable("deals", {
   maxRedemptionsTotal: integer("max_redemptions_total"), // Total redemptions allowed for this deal
   maxRedemptionsPerUser: integer("max_redemptions_per_user").notNull().default(1), // Per-user limit
   cooldownHours: integer("cooldown_hours").default(168), // Hours before same user can claim again (default 1 week)
+  redemptionFrequency: text("redemption_frequency").notNull().default("weekly"), // "weekly" | "monthly" | "unlimited" - user-friendly redemption limit
   
   // Availability
   startsAt: timestamp("starts_at"), // When deal becomes valid
