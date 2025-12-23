@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock } from "lucide-react";
+import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,15 @@ const CATEGORIES = [
 interface BrowseDealCardProps {
   deal: Deal & { vendor?: Vendor };
   isPassMember: boolean;
+}
+
+function getFrequencyLabel(frequency?: string | null): string | null {
+  switch (frequency) {
+    case "weekly": return "1x/week";
+    case "monthly": return "1x/month";
+    case "unlimited": return null;
+    default: return null;
+  }
 }
 
 function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
@@ -130,11 +139,17 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
         <h3 className="text-xs text-muted-foreground line-clamp-2 mb-1.5" data-testid={`deal-title-${deal.id}`}>
           {deal.title}
         </h3>
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
           <span className="flex items-center gap-0.5 max-w-full">
             <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
             <span className="truncate">{deal.city || deal.vendor?.city || "SWFL"}</span>
           </span>
+          {getFrequencyLabel(deal.redemptionFrequency) && (
+            <span className="flex items-center gap-0.5" data-testid={`text-frequency-${deal.id}`}>
+              <RefreshCw className="w-2.5 h-2.5 flex-shrink-0" />
+              <span>{getFrequencyLabel(deal.redemptionFrequency)}</span>
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>

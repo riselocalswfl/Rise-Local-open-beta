@@ -1,5 +1,14 @@
 import { useLocation } from "wouter";
-import { MapPin, Clock, Lock } from "lucide-react";
+import { MapPin, Clock, Lock, RefreshCw } from "lucide-react";
+
+function getFrequencyLabel(frequency?: "weekly" | "monthly" | "unlimited"): string | null {
+  switch (frequency) {
+    case "weekly": return "1x/week";
+    case "monthly": return "1x/month";
+    case "unlimited": return null;
+    default: return null;
+  }
+}
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -25,6 +34,7 @@ export interface RiseLocalDeal {
   memberOnly: boolean;
   isNew?: boolean;
   isFictitious?: boolean;
+  redemptionFrequency?: "weekly" | "monthly" | "unlimited";
 }
 
 interface RiseLocalDealCardProps {
@@ -170,7 +180,7 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
             {deal.title}
           </p>
           
-          <div className="flex items-center gap-2 text-meta text-muted-foreground">
+          <div className="flex items-center gap-2 text-meta text-muted-foreground flex-wrap">
             <span className="flex items-center gap-0.5">
               <MapPin className="w-3 h-3" />
               {deal.city || deal.distance}
@@ -179,6 +189,12 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
               <span className="flex items-center gap-0.5">
                 <Clock className="w-3 h-3" />
                 {deal.redemptionWindow}
+              </span>
+            )}
+            {getFrequencyLabel(deal.redemptionFrequency) && (
+              <span className="flex items-center gap-0.5" data-testid={`text-frequency-${deal.id}`}>
+                <RefreshCw className="w-3 h-3" />
+                {getFrequencyLabel(deal.redemptionFrequency)}
               </span>
             )}
           </div>

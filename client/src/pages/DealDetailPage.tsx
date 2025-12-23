@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Clock, Heart } from "lucide-react";
+import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Clock, Heart, RefreshCw } from "lucide-react";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +108,15 @@ export default function DealDetailPage() {
     bogo: "Buy One Get One",
     percent: "Percentage Off",
     addon: "Free Add-on",
+  };
+
+  const getFrequencyLabel = (frequency?: string | null): string | null => {
+    switch (frequency) {
+      case "weekly": return "1x per week";
+      case "monthly": return "1x per month";
+      case "unlimited": return null;
+      default: return null;
+    }
   };
 
   if (dealLoading) {
@@ -265,6 +274,12 @@ export default function DealDetailPage() {
                 <Badge className="text-sm bg-amber-500 hover:bg-amber-600">
                   <Lock className="w-3 h-3 mr-1" />
                   Premium
+                </Badge>
+              )}
+              {getFrequencyLabel(deal.redemptionFrequency) && (
+                <Badge variant="outline" className="text-sm" data-testid="badge-redemption-frequency">
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  {getFrequencyLabel(deal.redemptionFrequency)}
                 </Badge>
               )}
             </div>

@@ -133,6 +133,7 @@ function toDiscoverDeal(deal: ExtendedRiseLocalDeal): DiscoverDeal {
     memberOnly: deal.memberOnly,
     isNew: deal.isNew,
     isFictitious: deal.isFictitious,
+    redemptionFrequency: deal.redemptionFrequency,
   };
 }
 
@@ -212,6 +213,7 @@ function transformDealToRiseLocal(
     isFictitious: false,
     createdAt: deal.createdAt ? new Date(deal.createdAt) : null,
     vendorCreatedAt: deal.vendor?.createdAt ? new Date(deal.vendor.createdAt) : null,
+    redemptionFrequency: (deal.redemptionFrequency as "weekly" | "monthly" | "unlimited") || undefined,
   };
 }
 
