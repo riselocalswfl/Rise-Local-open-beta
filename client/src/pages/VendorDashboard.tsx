@@ -17,6 +17,7 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket } from "lucide-react";
@@ -133,6 +134,7 @@ const dealFormSchema = z.object({
     (val) => val === "" || val === undefined ? undefined : Number(val),
     z.number().int().min(0).optional()
   ),
+  redemptionFrequency: z.enum(["weekly", "monthly", "unlimited"]).default("weekly"),
   isActive: z.boolean().default(false),
   status: z.enum(["draft", "published", "paused", "expired"]).default("draft"),
   isPassLocked: z.boolean().default(false),
@@ -1941,6 +1943,7 @@ function DealForm({
       maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
       cooldownHours: defaultValues?.cooldownHours || undefined,
       maxRedemptionsTotal: defaultValues?.maxRedemptionsTotal || undefined,
+      redemptionFrequency: (defaultValues?.redemptionFrequency as "weekly" | "monthly" | "unlimited") || "weekly",
       isActive: defaultValues?.isActive ?? false,
       status: defaultStatus,
       isPassLocked: defaultValues?.isPassLocked ?? false,
@@ -2110,74 +2113,46 @@ function DealForm({
 
         <Separator />
 
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Redemption Limits</h4>
-          <div className="grid grid-cols-3 gap-4">
-            <FormField
-              control={form.control}
-              name="maxRedemptionsPerUser"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Per Person</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min={1}
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                      data-testid="input-max-per-user"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="cooldownHours"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cooldown (hrs)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min={0}
-                      placeholder="0"
-                      {...field}
-                      value={field.value || ""}
-                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                      data-testid="input-cooldown-hours"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="maxRedemptionsTotal"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Total Limit</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min={0}
-                      placeholder="Unlimited"
-                      {...field}
-                      value={field.value || ""}
-                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                      data-testid="input-max-total"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
+        <FormField
+          control={form.control}
+          name="redemptionFrequency"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Redemption Limit</FormLabel>
+              <FormDescription>
+                How often can each customer use this deal?
+              </FormDescription>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col space-y-2"
+                  data-testid="radio-redemption-frequency"
+                >
+                  <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="weekly" id="frequency-weekly" data-testid="radio-weekly" />
+                    <Label htmlFor="frequency-weekly" className="font-normal cursor-pointer">
+                      Once per week
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="monthly" id="frequency-monthly" data-testid="radio-monthly" />
+                    <Label htmlFor="frequency-monthly" className="font-normal cursor-pointer">
+                      Once per month
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0">
+                    <RadioGroupItem value="unlimited" id="frequency-unlimited" data-testid="radio-unlimited" />
+                    <Label htmlFor="frequency-unlimited" className="font-normal cursor-pointer">
+                      Unlimited redemptions
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <Separator />
 
