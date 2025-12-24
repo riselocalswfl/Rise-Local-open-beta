@@ -64,6 +64,7 @@ export default function DealDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/favorites", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites/ids"] });
       toast({
         title: favoriteData?.isFavorite ? "Removed from favorites" : "Added to favorites",
         description: favoriteData?.isFavorite 
