@@ -25,10 +25,6 @@ const FAQ_SECTIONS: FaqSection[] = [
         answer: "Yes. Any limits or availability restrictions will always be clearly stated on the deal."
       },
       {
-        question: "What happens if a deal isn't honored?",
-        answer: "If a deal is not honored due to misuse or error on the business side, members are guaranteed a refund for their Rise Local Pass."
-      },
-      {
         question: "Can I use screenshots to redeem a deal?",
         answer: "No. Deals must be redeemed live in the Rise Local app. Screenshots are not accepted."
       }
