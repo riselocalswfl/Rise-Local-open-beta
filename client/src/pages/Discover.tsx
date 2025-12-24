@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useFavorites } from "@/hooks/useFavorites";
 import LocalSpotlight from "@/components/LocalSpotlight";
 import {
   DropdownMenu,
@@ -221,8 +222,9 @@ function transformDealToRiseLocal(
 export default function Discover() {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { isFavorited, toggleFavorite } = useFavorites();
   const [location, setLocation] = useState<LocationState>({
     status: "idle",
     coords: SWFL_DEFAULT,
@@ -554,7 +556,9 @@ export default function Discover() {
             <div key={deal.id} className="flex-shrink-0 w-[160px]">
               <DiscoverDealCard 
                 deal={toDiscoverDeal(deal)} 
-                isMember={isPassMember} 
+                isMember={isPassMember}
+                isFavorited={isAuthenticated ? isFavorited(deal.id) : false}
+                onToggleFavorite={isAuthenticated ? toggleFavorite : undefined}
               />
             </div>
           ))}

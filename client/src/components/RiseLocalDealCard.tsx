@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { MapPin, Clock, Lock, RefreshCw } from "lucide-react";
+import { MapPin, Clock, Lock, RefreshCw, Heart } from "lucide-react";
 
 function getFrequencyLabel(frequency?: string | null, customDays?: number | null): string | null {
   switch (frequency) {
@@ -43,9 +43,11 @@ export interface RiseLocalDeal {
 interface RiseLocalDealCardProps {
   deal: RiseLocalDeal;
   isMember?: boolean;
+  isFavorited?: boolean;
+  onToggleFavorite?: (dealId: string) => void;
 }
 
-export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalDealCardProps) {
+export default function RiseLocalDealCard({ deal, isMember = false, isFavorited = false, onToggleFavorite }: RiseLocalDealCardProps) {
   const [, setLocation] = useLocation();
   const isLocked = deal.memberOnly && !isMember;
 
@@ -76,6 +78,14 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
     e.stopPropagation();
     setLocation("/membership");
   }, [setLocation]);
+
+  const handleFavoriteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (onToggleFavorite) {
+      onToggleFavorite(deal.id);
+    }
+  }, [onToggleFavorite, deal.id]);
 
   return (
     <div
@@ -110,9 +120,9 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
             )}
           </div>
 
-          {/* Sample Deal badge for fictitious deals */}
-          {deal.isFictitious && (
-            <div className="absolute top-2 right-2">
+          {/* Sample Deal badge for fictitious deals OR Favorite heart button */}
+          <div className="absolute top-2 right-2">
+            {deal.isFictitious ? (
               <Badge 
                 variant="outline" 
                 className="text-[9px] px-1.5 py-0.5 bg-amber-100 border-amber-300 text-amber-700"
@@ -120,8 +130,23 @@ export default function RiseLocalDealCard({ deal, isMember = false }: RiseLocalD
               >
                 Sample
               </Badge>
-            </div>
-          )}
+            ) : onToggleFavorite ? (
+              <button
+                onClick={handleFavoriteClick}
+                className="w-7 h-7 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-transform active:scale-90"
+                data-testid={`button-favorite-${deal.id}`}
+                aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Heart
+                  className={`w-4 h-4 transition-colors ${
+                    isFavorited 
+                      ? "fill-red-500 text-red-500" 
+                      : "text-muted-foreground"
+                  }`}
+                />
+              </button>
+            ) : null}
+          </div>
 
           {/* Savings pill - only show when not locked */}
           {!isLocked && (

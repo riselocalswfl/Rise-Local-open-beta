@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
-import { MapPin, Clock, Lock, RefreshCw } from "lucide-react";
+import { MapPin, Clock, Lock, RefreshCw, Heart } from "lucide-react";
 
 function getFrequencyLabel(frequency?: string | null, customDays?: number | null): string | null {
   switch (frequency) {
@@ -41,9 +41,11 @@ export interface DiscoverDeal {
 interface DiscoverDealCardProps {
   deal: DiscoverDeal;
   isMember?: boolean;
+  isFavorited?: boolean;
+  onToggleFavorite?: (dealId: string) => void;
 }
 
-export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDealCardProps) {
+export default function DiscoverDealCard({ deal, isMember = false, isFavorited = false, onToggleFavorite }: DiscoverDealCardProps) {
   const [, setLocation] = useLocation();
   const isLocked = deal.memberOnly && !isMember;
 
@@ -69,6 +71,14 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
     setLocation("/membership");
   }, [setLocation]);
 
+  const handleFavoriteClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onToggleFavorite) {
+      onToggleFavorite(deal.id);
+    }
+  }, [onToggleFavorite, deal.id]);
+
   const cardContent = (
     <Card 
       className="hover-elevate active-elevate-2 h-full relative overflow-hidden" 
@@ -93,16 +103,32 @@ export default function DiscoverDealCard({ deal, isMember = false }: DiscoverDea
             </Badge>
           </div>
         )}
-        {deal.isFictitious && (
-          <div className="absolute top-1.5 right-1.5">
+        {/* Top right: Sample badge for fictitious deals OR Favorite heart button */}
+        <div className="absolute top-1.5 right-1.5">
+          {deal.isFictitious ? (
             <Badge 
               variant="outline" 
               className="text-[8px] px-1 py-0.5 bg-amber-100 border-amber-300 text-amber-700"
             >
               Sample
             </Badge>
-          </div>
-        )}
+          ) : onToggleFavorite ? (
+            <button
+              onClick={handleFavoriteClick}
+              className="w-6 h-6 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-transform active:scale-90"
+              data-testid={`button-favorite-${deal.id}`}
+              aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Heart
+                className={`w-3.5 h-3.5 transition-colors ${
+                  isFavorited 
+                    ? "fill-red-500 text-red-500" 
+                    : "text-muted-foreground"
+                }`}
+              />
+            </button>
+          ) : null}
+        </div>
         {isLocked && (
           <div className="absolute inset-0 bg-background/40 flex flex-col items-center justify-between py-2">
             <div className="flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-full px-2.5 py-1">
