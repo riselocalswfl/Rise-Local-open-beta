@@ -1,0 +1,65 @@
+You are working on the Rise Local app (React + TS, wouter, existing vendor deal-creation flow). Change the default behavior so NEW deals automatically publish immediately upon creation, while keeping the existing “Pause/Publish” controls for later toggling.
+
+GOAL
+- When a vendor creates a deal and submits/saves it, the deal should be created in a PUBLISHED/ACTIVE state by default.
+- Vendors should still be able to pause/unpublish and re-publish the deal at any time using the existing Pause/Publish feature.
+- The deal should appear instantly on Discover/Browse and the vendor’s profile deal list after creation (subject to eligibility rules like member-only vs all-access).
+
+BACKEND CHANGES
+1) Database defaults
+- Ensure the deals table has a clear status field (e.g., status enum/string or booleans like is_published / is_paused).
+- Set DEFAULT to “published/active” for new rows:
+  - If using status: default = 'published' (or 'active')
+  - If using booleans: is_published default = true AND is_paused default = false
+
+2) Create-deal endpoint
+- In the API handler that creates deals (POST /api/deals or similar), explicitly set the published state on creation:
+  - status = 'published' (or is_published=true, is_paused=false)
+- Do NOT require a second call to publish.
+- Keep existing endpoints for toggling:
+  - PATCH /api/deals/:id/publish
+  - PATCH /api/deals/:id/pause
+  (or status update endpoint)
+- Ensure permissions: only the owning vendor can publish/pause their deal.
+
+3) Query logic used by Discover/Browse/vendor profile
+- Wherever deals are fetched for public lists, ensure the filter is consistent:
+  - Include only published/active deals (NOT paused/unpublished).
+  - Exclude drafts if they exist.
+- If “paused” is a state, make sure paused deals are excluded from public lists and labeled in vendor dashboard.
+
+FRONTEND CHANGES
+4) Deal creation UX
+- On the “Create Deal” form, remove any requirement to click “Publish” after saving.
+- After successful creation, show confirmation toast like:
+  “Deal published”
+- Redirect vendor to either:
+  A) the deal detail page, OR
+  B) the vendor’s deals manager page
+  and ensure the deal is visibly “Active” immediately.
+
+5) Keep Pause/Publish controls
+- In the vendor deal manager list and deal detail page, keep the existing toggle:
+  - If active: button “Pause Deal”
+  - If paused/unpublished: button “Publish Deal”
+- Make sure the UI reflects state correctly with a badge:
+  - Active (Published)
+  - Paused
+  - Draft (if applicable)
+
+EDGE CASES / RULES
+- If your system has an “onboardingComplete” or “vendor approval” gate, only auto-publish when the vendor is allowed to publish. If not allowed, fall back to “draft” and show a message:
+  “Complete onboarding to publish your deal.”
+- If deals require required fields (image, expiration date, terms), enforce validation BEFORE creation so auto-published deals are complete.
+
+TESTING CHECKLIST (DO THIS)
+- Create a deal → it immediately appears on Discover/Browse and vendor profile deal list.
+- Pause the deal → it disappears from Discover/Browse but remains in vendor dashboard marked “Paused.”
+- Publish again → it reappears.
+- Ensure no duplicate deals are created when toggling.
+- Ensure member-only deals still show as locked for non-members and visible for members (depending on your existing logic).
+
+DELIVERABLE
+- Update DB defaults and creation endpoint so new deals are automatically published.
+- Keep existing Pause/Publish toggles working.
+- Confirm discover/browse/profile pages update correctly after creation without requiring manual publishing.
