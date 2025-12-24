@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { Check, Sparkles, ArrowLeft, Loader2, Crown, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
 
 const BENEFITS = [
   "Save at local restaurants, shops & services",
@@ -17,17 +17,19 @@ const BENEFITS = [
   "Discover great businesses near you",
 ];
 
+type PlanType = 'monthly' | 'annual';
+
 export default function Membership() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [location] = useLocation();
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
 
   const isPassMember = user?.isPassMember === true && 
     (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
 
   const checkoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/billing/create-checkout-session");
+    mutationFn: async (plan: PlanType) => {
+      const response = await apiRequest("POST", "/api/billing/create-checkout-session", { plan });
       return response.json();
     },
     onSuccess: (data) => {
@@ -36,7 +38,7 @@ export default function Membership() {
       } else {
         toast({
           title: "Error",
-          description: "Could not start checkout. Please try again.",
+          description: data.error || "Could not start checkout. Please try again.",
           variant: "destructive",
         });
       }
@@ -97,7 +99,7 @@ export default function Membership() {
       window.location.href = '/auth?returnTo=/membership';
       return;
     }
-    checkoutMutation.mutate();
+    checkoutMutation.mutate(selectedPlan);
   };
 
   const handleManageSubscription = () => {
@@ -137,73 +139,97 @@ export default function Membership() {
             </p>
           </div>
 
-          <Card className="mb-8">
-            <CardHeader className="text-center pb-2">
-              <div className="flex items-center justify-center gap-2">
-                <CardTitle className="text-lg">Rise Local Pass</CardTitle>
-                {isPassMember && (
+          {isPassMember ? (
+            <Card className="mb-8">
+              <CardHeader className="text-center pb-2">
+                <div className="flex items-center justify-center gap-2">
+                  <CardTitle className="text-lg">Rise Local Pass</CardTitle>
                   <Badge variant="default" className="bg-primary">Active</Badge>
-                )}
+                </div>
+              </CardHeader>
+              <CardContent className="text-center">
+                <p className="text-muted-foreground mb-4" data-testid="text-member-status">
+                  Your membership is active
+                  {user?.passExpiresAt && (
+                    <span className="block text-sm mt-1">
+                      Renews: {new Date(user.passExpiresAt).toLocaleDateString()}
+                    </span>
+                  )}
+                </p>
+                <Button 
+                  className="w-full" 
+                  size="lg" 
+                  variant="outline"
+                  onClick={handleManageSubscription}
+                  disabled={portalMutation.isPending}
+                  data-testid="button-manage-subscription"
+                >
+                  {portalMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Manage Subscription
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button
+                  onClick={() => setSelectedPlan('monthly')}
+                  className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+                    selectedPlan === 'monthly'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover-elevate'
+                  }`}
+                  data-testid="plan-monthly"
+                >
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Monthly</div>
+                  <div className="text-2xl font-bold text-foreground">$4.99</div>
+                  <div className="text-sm text-muted-foreground">/month</div>
+                </button>
+                
+                <button
+                  onClick={() => setSelectedPlan('annual')}
+                  className={`relative p-4 rounded-lg border-2 transition-all text-left ${
+                    selectedPlan === 'annual'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover-elevate'
+                  }`}
+                  data-testid="plan-annual"
+                >
+                  <Badge className="absolute -top-2 right-2 bg-primary text-xs">Save 25%</Badge>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Annual</div>
+                  <div className="text-2xl font-bold text-foreground">$44.91</div>
+                  <div className="text-sm text-muted-foreground">/year</div>
+                  <div className="text-xs text-primary mt-1">$3.74/mo</div>
+                </button>
               </div>
-            </CardHeader>
-            <CardContent className="text-center">
-              {isPassMember ? (
-                <>
-                  <p className="text-muted-foreground mb-4" data-testid="text-member-status">
-                    Your membership is active
-                    {user?.passExpiresAt && (
-                      <span className="block text-sm mt-1">
-                        Renews: {new Date(user.passExpiresAt).toLocaleDateString()}
-                      </span>
-                    )}
-                  </p>
-                  <Button 
-                    className="w-full" 
-                    size="lg" 
-                    variant="outline"
-                    onClick={handleManageSubscription}
-                    disabled={portalMutation.isPending}
-                    data-testid="button-manage-subscription"
-                  >
-                    {portalMutation.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <Settings className="w-4 h-4 mr-2" />
-                        Manage Subscription
-                      </>
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-foreground" data-testid="text-price">$4.99</span>
-                    <span className="text-muted-foreground">/month</span>
-                  </div>
-                  <Button 
-                    className="w-full" 
-                    size="lg" 
-                    onClick={handleSubscribe}
-                    disabled={checkoutMutation.isPending || authLoading}
-                    data-testid="button-subscribe"
-                  >
-                    {checkoutMutation.isPending ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Starting Checkout...
-                      </>
-                    ) : (
-                      "Start Saving Today"
-                    )}
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
+
+              <Button 
+                className="w-full mb-8" 
+                size="lg" 
+                onClick={handleSubscribe}
+                disabled={checkoutMutation.isPending || authLoading}
+                data-testid="button-subscribe"
+              >
+                {checkoutMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Starting Checkout...
+                  </>
+                ) : (
+                  `Start Saving Today - ${selectedPlan === 'annual' ? '$44.91/year' : '$4.99/month'}`
+                )}
+              </Button>
+            </>
+          )}
 
           {!isPassMember && (
             <div className="mb-6" id="benefits">

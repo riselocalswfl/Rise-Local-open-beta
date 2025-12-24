@@ -1470,14 +1470,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Check for required environment variables
-      const priceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
+      // Get plan type from request body (default to monthly)
+      const { plan = 'monthly' } = req.body;
+      
+      // Check for required environment variables based on plan
+      const monthlyPriceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
+      const annualPriceId = process.env.STRIPE_RISELOCAL_ANNUAL_PRICE_ID;
       const appBaseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000';
       
-      if (!priceId) {
-        console.error("[Billing] Missing STRIPE_RISELOCAL_MONTHLY_PRICE_ID environment variable");
-        return res.status(500).json({ error: "Billing not configured" });
+      // Select price ID based on plan
+      let priceId: string | undefined;
+      if (plan === 'annual') {
+        priceId = annualPriceId;
+        if (!priceId) {
+          console.error("[Billing] Missing STRIPE_RISELOCAL_ANNUAL_PRICE_ID environment variable");
+          return res.status(500).json({ error: "Annual plan not configured yet" });
+        }
+      } else {
+        priceId = monthlyPriceId;
+        if (!priceId) {
+          console.error("[Billing] Missing STRIPE_RISELOCAL_MONTHLY_PRICE_ID environment variable");
+          return res.status(500).json({ error: "Billing not configured" });
+        }
       }
+      
+      console.log('[Billing] Creating checkout session for plan:', plan, 'priceId:', priceId);
 
       let stripeCustomerId = user.stripeCustomerId;
 
