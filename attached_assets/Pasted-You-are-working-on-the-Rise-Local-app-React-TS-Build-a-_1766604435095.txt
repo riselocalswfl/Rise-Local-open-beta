@@ -1,0 +1,69 @@
+You are working on the Rise Local app (React + TS). Build a clean, mobile-first FAQ page for the Rise Local Pass membership.
+
+GOAL
+Create a new FAQ screen at route: /membership/faq
+- Must match Rise Local UI (white background, soft cards, rounded corners, subtle borders/shadows, Rise Local green accent).
+- Mobile-first layout, max width ~680px centered, good spacing.
+- Use an accordion UI pattern (expand/collapse per question).
+- Include a simple header with a back button that returns to /membership.
+- No external UI library additions unless already used. Prefer existing components in the codebase (Button/Card/Accordion/Separator). If an Accordion component does not exist, implement a lightweight one using <button> + local state.
+
+CONTENT (Use EXACT text below)
+
+PAGE TITLE: "Rise Local Pass FAQ"
+SUBTITLE: "Quick answers about membership, deals, and redemption."
+
+SECTION 1 TITLE: "Deals & Redemption"
+Q1: Are deals ever limited to “first X users” or “while supplies last”?
+A1: Yes. Any limits or availability restrictions will always be clearly stated on the deal.
+Q2: What happens if a deal isn’t honored?
+A2: If a deal is not honored due to misuse or error on the business side, members are guaranteed a refund for their Rise Local Pass.
+Q3: Can I use screenshots to redeem a deal?
+A3: No. Deals must be redeemed live in the Rise Local app. Screenshots are not accepted.
+
+SECTION 2 TITLE: "Membership Rules"
+Q1: Is the Rise Local Pass tied to one account or device?
+A1: Your membership is tied to one account, but you can access it on any device by logging in.
+Q2: Can businesses restrict deals to in-store only or exclude online use?
+A2: Yes. Any restrictions (such as in-store only, online only, or service-specific limits) will be clearly stated on the deal.
+Q3: Do restaurant deals apply to dine-in or takeout?
+A3: It depends on the deal. Any dine-in or takeout restrictions will be clearly listed.
+
+SECTION 3 TITLE: "Billing & Plans"
+Q1: How am I billed?
+A1: All billing is handled securely through Stripe.
+Q2: What membership plans are available?
+A2: Monthly: $4.99/month. Annual: $44.91/year (25% off the monthly price).
+Q3: Is there a discounted annual plan for locals or students?
+A3: Yes. Anyone who attended high school in Lee, Charlotte, or Collier County is eligible for 50% off the annual membership with valid documentation.
+
+SECTION 4 TITLE: "Deals & Availability"
+Q1: Do deals ever change or disappear?
+A1: Yes. Deals may rotate, expire, or change based on business participation.
+Q2: Why do deals fluctuate?
+A2: Deal availability may fluctuate as new businesses are added and offers are refreshed over time.
+
+SECTION 5 TITLE: "Trust & Transparency"
+Q1: Who controls the deals?
+A1: Each business controls its own deal terms, availability, and redemption rules.
+Q2: Does Rise Local take a cut of my purchase?
+A2: No. Businesses keep 100% of your purchase.
+
+UI REQUIREMENTS
+- Each section should render as a card with the section title and a divider.
+- Each question should be an accordion row: question text left, chevron icon right that rotates when open.
+- Only one accordion item open at a time within a section (radio behavior).
+- Add a sticky bottom CTA (optional but recommended): a full-width button “View Pass Options” linking to /membership.
+- Ensure accessibility: aria-expanded, aria-controls, focus states, keyboard support (Enter/Space toggles).
+
+ENGINEERING REQUIREMENTS
+- Create a data structure for sections/questions and map render it (avoid hardcoding repeated JSX).
+- No inline styles; use existing styling approach (Tailwind or your design system).
+- Add the route to the existing wouter route tree in client/src/App.tsx (or wherever routes are defined).
+- Add a link entry from the /membership page to this FAQ page (e.g., small text link under the price card: “Read FAQ”).
+
+DELIVERABLE
+- New page component file (e.g., client/src/pages/MembershipFaq.tsx)
+- Router update to register /membership/faq
+- Membership page updated with a link/button to FAQ
+- Confirm routes compile and page renders correctly without layout overflow on mobile.
