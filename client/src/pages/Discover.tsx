@@ -63,7 +63,7 @@ type LocationState = {
 const FILTER_CHIPS = [
   { id: "all", label: "All Deals" },
   { id: "memberOnly", label: "Member-Only", icon: Lock },
-  { id: "free", label: "Free Deals" },
+  { id: "free", label: "No Pass Needed" },
 ];
 
 // CATEGORY_CHIPS are now fetched from the API
