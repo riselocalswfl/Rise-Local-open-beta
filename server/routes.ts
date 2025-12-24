@@ -4890,62 +4890,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/vendor/redemptions/verify - Vendor verifies a redemption code (legacy)
-  app.post("/api/vendor/redemptions/verify", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { code } = req.body;
-
-      if (!code) {
-        return res.json({ success: false, message: "Please enter a redemption code" });
-      }
-
-      // Verify user is a vendor
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor) {
-        return res.json({ success: false, message: "Only vendors can verify redemption codes" });
-      }
-
-      // Verify the code
-      const result = await storage.verifyRedemptionCode(code.toUpperCase(), vendor.id);
-
-      if (!result.success) {
-        console.log("[VENDOR] Failed code verification:", code, "vendor:", vendor.id, "reason:", result.message);
-        return res.json({ success: false, message: result.message });
-      }
-
-      // Get deal info for the response
-      const deal = result.redemption ? await storage.getDealById(result.redemption.dealId) : null;
-
-      // Get customer info for the response
-      let customer = null;
-      if (result.redemption?.userId) {
-        const customerUser = await storage.getUser(result.redemption.userId);
-        if (customerUser) {
-          customer = {
-            id: customerUser.id,
-            name: customerUser.firstName && customerUser.lastName 
-              ? `${customerUser.firstName} ${customerUser.lastName}`.trim()
-              : customerUser.username || "Customer",
-            email: customerUser.email,
-          };
-        }
-      }
-
-      console.log("[VENDOR] Code verified:", code, "vendor:", vendor.id, "deal:", result.redemption?.dealId, "customer:", customer?.name);
-      res.json({
-        success: true,
-        message: result.message,
-        redemption: result.redemption,
-        deal: deal ? { id: deal.id, title: deal.title } : null,
-        customer,
-      });
-    } catch (error) {
-      console.error("Error verifying redemption code:", error);
-      res.json({ success: false, message: "Failed to verify redemption code. Please try again." });
-    }
-  });
-
   // GET /api/vendor/redemptions - Get vendor's redemption history
   app.get("/api/vendor/redemptions", isAuthenticated, async (req: any, res) => {
     try {
@@ -5279,42 +5223,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error voiding redemption:", error);
       res.status(500).json({ error: "Failed to void redemption" });
-    }
-  });
-
-  // POST /api/vendor/deals/:dealId/redeem - Legacy endpoint, redirects to unified verify
-  // Use POST /api/vendor/redemptions/verify instead
-  app.post("/api/vendor/deals/:dealId/redeem", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { code } = req.body;
-
-      if (!code) {
-        return res.status(400).json({ error: "Redemption code is required" });
-      }
-
-      // Verify user is a vendor
-      const vendor = await storage.getVendorByOwnerId(userId);
-      if (!vendor) {
-        return res.status(403).json({ error: "Only vendors can verify redemption codes" });
-      }
-
-      // Use the new unified verify method
-      const result = await storage.verifyRedemptionCode(code.toUpperCase(), vendor.id);
-
-      if (!result.success) {
-        return res.status(400).json({ error: result.message });
-      }
-
-      console.log("[VENDOR DEALS] Deal verified via code:", code, "vendor:", vendor.id);
-      res.json({
-        success: true,
-        message: result.message,
-        redemption: result.redemption,
-      });
-    } catch (error) {
-      console.error("Error verifying deal:", error);
-      res.status(500).json({ error: "Failed to verify deal" });
     }
   });
 
