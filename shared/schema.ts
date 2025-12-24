@@ -1193,7 +1193,7 @@ export const deals = pgTable("deals", {
   redemptionType: text("redemption_type").default("IN_PERSON"), // How deal is redeemed
   
   // Vendor Deal Management
-  status: varchar("status", { length: 16 }).notNull().default("draft"), // draft, published, paused
+  status: varchar("status", { length: 16 }).notNull().default("published"), // published, paused, draft
   
   // Legacy fields (deprecated - kept for backward compatibility)
   redemptionMethod: varchar("redemption_method", { length: 24 }).default("button"), // Legacy: now all deals use button redemption

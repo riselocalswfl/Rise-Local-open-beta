@@ -5015,7 +5015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/vendor/deals - Create a new deal as draft
+  // POST /api/vendor/deals - Create and auto-publish a new deal
   app.post("/api/vendor/deals", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -5030,7 +5030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bodyWithDates = {
         ...req.body,
         vendorId: vendor.id,
-        status: 'draft', // Always start as draft
+        status: 'published', // Auto-publish on creation - vendors can pause later
         startsAt: req.body.startsAt ? new Date(req.body.startsAt) : undefined,
         endsAt: req.body.endsAt ? new Date(req.body.endsAt) : undefined,
       };

@@ -520,7 +520,7 @@ export default function VendorDashboard() {
       invalidateAllDealQueries();
       setDealDialogOpen(false);
       setEditingDeal(null);
-      toast({ title: "Deal created successfully" });
+      toast({ title: "Deal published!", description: "Your deal is now live and visible to shoppers" });
     },
     onError: (error: any) => {
       console.error("Deal creation error:", error);
