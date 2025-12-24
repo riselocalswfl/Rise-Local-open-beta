@@ -1,8 +1,14 @@
-import { Link } from "wouter";
-import { Check, Sparkles, ArrowLeft } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Check, Sparkles, ArrowLeft, Loader2, Crown, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import AppShell from "@/components/layout/AppShell";
+import { useAuth } from "@/hooks/useAuth";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 const BENEFITS = [
   "Save at local restaurants, shops & services",
@@ -12,10 +18,95 @@ const BENEFITS = [
 ];
 
 export default function Membership() {
+  const { user, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [location] = useLocation();
+
+  const isPassMember = user?.isPassMember === true && 
+    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
+
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/billing/create-checkout-session");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not start checkout. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Checkout Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/billing/create-portal-session");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not open billing portal. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Portal Error",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') === 'success') {
+      toast({
+        title: "Welcome to Rise Local Pass!",
+        description: "Your membership is now active. Start saving today!",
+      });
+      window.history.replaceState({}, '', '/membership');
+    } else if (params.get('checkout') === 'cancel') {
+      toast({
+        title: "Checkout Cancelled",
+        description: "No worries! Come back when you're ready.",
+      });
+      window.history.replaceState({}, '', '/membership');
+    }
+  }, [toast]);
+
+  const handleSubscribe = () => {
+    if (!user) {
+      window.location.href = '/auth?returnTo=/membership';
+      return;
+    }
+    checkoutMutation.mutate();
+  };
+
+  const handleManageSubscription = () => {
+    portalMutation.mutate();
+  };
+
   return (
     <AppShell hideTabs>
       <div className="min-h-screen bg-background">
-        {/* Header */}
         <header className="sticky top-0 z-40 bg-background border-b border-border">
           <div className="flex items-center gap-3 px-4 h-14">
             <Link href="/discover">
@@ -28,60 +119,118 @@ export default function Membership() {
         </header>
 
         <div className="p-4 max-w-lg mx-auto">
-          {/* Hero */}
           <div className="text-center py-8">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-8 h-8 text-primary" />
+              {isPassMember ? (
+                <Crown className="w-8 h-8 text-primary" />
+              ) : (
+                <Sparkles className="w-8 h-8 text-primary" />
+              )}
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-2" data-testid="heading-membership">
-              Unlock Local Savings
+              {isPassMember ? "You're a Member!" : "Unlock Local Savings"}
             </h2>
             <p className="text-muted-foreground">
-              One membership. Hundreds of exclusive deals across SWFL.
+              {isPassMember 
+                ? "Enjoy exclusive deals across SWFL." 
+                : "One membership. Hundreds of exclusive deals across SWFL."}
             </p>
           </div>
 
-          {/* Pricing Card */}
           <Card className="mb-8">
             <CardHeader className="text-center pb-2">
-              <CardTitle className="text-lg">Rise Local Pass</CardTitle>
+              <div className="flex items-center justify-center gap-2">
+                <CardTitle className="text-lg">Rise Local Pass</CardTitle>
+                {isPassMember && (
+                  <Badge variant="default" className="bg-primary">Active</Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="text-center">
-              <div className="mb-4">
-                <span className="text-4xl font-bold text-foreground" data-testid="text-price">$4.99</span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
-              <Button className="w-full" size="lg" data-testid="button-subscribe">
-                Start Saving Today
-              </Button>
+              {isPassMember ? (
+                <>
+                  <p className="text-muted-foreground mb-4" data-testid="text-member-status">
+                    Your membership is active
+                    {user?.passExpiresAt && (
+                      <span className="block text-sm mt-1">
+                        Renews: {new Date(user.passExpiresAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </p>
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    variant="outline"
+                    onClick={handleManageSubscription}
+                    disabled={portalMutation.isPending}
+                    data-testid="button-manage-subscription"
+                  >
+                    {portalMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Settings className="w-4 h-4 mr-2" />
+                        Manage Subscription
+                      </>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="mb-4">
+                    <span className="text-4xl font-bold text-foreground" data-testid="text-price">$4.99</span>
+                    <span className="text-muted-foreground">/month</span>
+                  </div>
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    onClick={handleSubscribe}
+                    disabled={checkoutMutation.isPending || authLoading}
+                    data-testid="button-subscribe"
+                  >
+                    {checkoutMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Starting Checkout...
+                      </>
+                    ) : (
+                      "Start Saving Today"
+                    )}
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
 
-          {/* Benefits */}
-          <div className="mb-6" id="benefits">
-            <h3 className="font-semibold text-foreground mb-4 text-lg" data-testid="heading-benefits">
-              Why You'll Love Rise Local
-            </h3>
-            <ul className="space-y-4">
-              {BENEFITS.map((benefit, index) => (
-                <li key={index} className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-4 h-4 text-primary" />
-                  </div>
-                  <span className="text-foreground" data-testid={`text-benefit-${index}`}>
-                    {benefit}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {!isPassMember && (
+            <div className="mb-6" id="benefits">
+              <h3 className="font-semibold text-foreground mb-4 text-lg" data-testid="heading-benefits">
+                Why You'll Love Rise Local
+              </h3>
+              <ul className="space-y-4">
+                {BENEFITS.map((benefit, index) => (
+                  <li key={index} className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="text-foreground" data-testid={`text-benefit-${index}`}>
+                      {benefit}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-          {/* Reassurance */}
-          <p className="text-center text-sm text-muted-foreground mb-8">
-            Cancel anytime &bull; No commitment
-          </p>
+          {!isPassMember && (
+            <p className="text-center text-sm text-muted-foreground mb-8">
+              Cancel anytime &bull; No commitment
+            </p>
+          )}
 
-          {/* FAQ teaser */}
           <Card className="bg-muted/50">
             <CardContent className="py-4">
               <h4 className="font-medium text-foreground mb-2">Have questions?</h4>
@@ -96,7 +245,6 @@ export default function Membership() {
             </CardContent>
           </Card>
 
-          {/* Bottom spacing */}
           <div className="h-8" />
         </div>
       </div>
