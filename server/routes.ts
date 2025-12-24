@@ -5663,6 +5663,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== FAVORITES =====
   
+  // GET /api/favorites/ids - Get just the deal IDs user has favorited (for fast checking on list pages)
+  app.get('/api/favorites/ids', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const favorites = await storage.getUserFavorites(userId);
+      const ids = favorites.map(f => f.dealId);
+      res.json(ids);
+    } catch (error) {
+      console.error("Error fetching favorite ids:", error);
+      res.status(500).json({ error: "Failed to fetch favorite ids" });
+    }
+  });
+  
   // GET /api/favorites - Get user's favorite deals
   app.get('/api/favorites', isAuthenticated, async (req: any, res) => {
     try {
