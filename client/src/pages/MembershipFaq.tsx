@@ -69,11 +69,11 @@ const FAQ_SECTIONS: FaqSection[] = [
     items: [
       {
         question: "Do deals ever change or disappear?",
-        answer: "Yes. Deals may rotate, expire, or change based on business participation."
+        answer: "Deals are managed by each business and may evolve over time. Many stay active long-term, while others rotate or conclude as businesses update their offers."
       },
       {
-        question: "Why do deals fluctuate?",
-        answer: "Deal availability may fluctuate as new businesses are added and offers are refreshed over time."
+        question: "When do deals fluctuate?",
+        answer: "Deals may change as businesses refresh their offers or as new local partners join Rise Local. This keeps the marketplace active and reflective of what's happening locally."
       }
     ]
   },
