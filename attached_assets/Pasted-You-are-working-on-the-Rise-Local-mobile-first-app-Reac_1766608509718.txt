@@ -1,0 +1,97 @@
+You are working on the Rise Local mobile-first app (React + TypeScript + wouter routing). Add a “Favorites” function for Deals end-to-end (DB + API + UI) in a clean, scalable way.
+
+GOAL
+Users can favorite/unfavorite any deal from:
+1) Deal cards on Discover/Browse pages
+2) Deal detail screen
+Then view all favorited deals in one place (Favorites screen) and optionally filter/sort.
+
+REQUIREMENTS (Behavior)
+- Favorite icon: heart outline when not favorited, solid heart when favorited.
+- Tapping heart toggles favorite instantly (optimistic UI), then persists to backend.
+- Must require login (use existing AuthBoundary/useAuth()).
+- If not logged in, tapping heart should route to /auth (or show existing login prompt pattern).
+- Favorites are per-user and persist across devices.
+- Favorites should not break deal visibility rules:
+  - If a deal becomes unavailable/unpublished/expired, it should either:
+    A) still appear in Favorites with a small “Unavailable” label, OR
+    B) be hidden (choose A by default for better UX).
+- Deduplicate: a user can favorite a deal only once.
+
+DATA MODEL (Database)
+Create a join table:
+- deal_favorites
+  - id (pk)
+  - user_id (fk -> users.id) NOT NULL
+  - deal_id (fk -> deals.id) NOT NULL
+  - created_at timestamp default now()
+Add unique constraint: UNIQUE(user_id, deal_id)
+Add indexes on user_id and deal_id.
+
+API (Server)
+Add routes:
+1) GET /api/favorites/deals
+   - Returns user’s favorited deals with deal data needed for cards (id, title, business, image, category, membershipRequired, redemptionSummary, etc.)
+   - Include a boolean “isAvailable” based on deal status (published/not expired).
+2) POST /api/favorites/deals/:dealId
+   - Adds favorite for current user (idempotent; no error if already favorited).
+3) DELETE /api/favorites/deals/:dealId
+   - Removes favorite (idempotent; no error if not favorited).
+4) (Optional but recommended) GET /api/favorites/deals/ids
+   - Returns array of dealIds the user has favorited (fast for list pages).
+
+SECURITY
+- Use the existing auth middleware/session to identify current user.
+- Never accept user_id from client.
+- Validate dealId is a real deal; if not found return 404.
+
+FRONTEND (UI)
+A) Deal Card
+- Add a heart icon button in the top-right of every deal card.
+- Ensure the favorite button does NOT trigger card navigation when pressed (stopPropagation).
+- Visual: small circular white background behind the heart for readability on images.
+
+B) Deal Detail
+- Add heart toggle in header area near share/back.
+- Display “Saved” toast/snackbar after favoriting (use existing toast system if present).
+
+C) Favorites Screen
+- Add a new screen route: /favorites
+- Add a bottom tab icon (heart) if your app uses bottom tabs; otherwise add to “My Account”.
+- Layout:
+  - Header: “Favorites”
+  - If empty: friendly empty state + button “Browse Deals” -> /discover
+  - List favorited deals as the same deal card component
+  - Show “Unavailable” badge on deals that are no longer active (but keep them listed)
+
+STATE MANAGEMENT
+- Create a hook: useFavorites()
+  - Stores a Set of favorited dealIds
+  - Methods: toggleFavorite(dealId), isFavorited(dealId)
+  - Loads initial favorite ids on app load after auth (or first time a deal list renders)
+- Implement optimistic updates with rollback on API failure.
+- Cache favorites in memory; revalidate after toggles.
+
+PERFORMANCE
+- Deal list pages should not request full favorited deals data; only need IDs.
+- Use GET /api/favorites/deals/ids to mark hearts quickly.
+- Favorites screen uses GET /api/favorites/deals for full cards.
+
+FILES / LOCATIONS (follow existing structure)
+- DB migration for deal_favorites table + constraints
+- Server routes: server/routes/favorites.ts (or existing route folder)
+- Client hook: client/src/hooks/useFavorites.ts
+- Favorites screen: client/src/pages/Favorites.tsx
+- Update DealCard component to accept isFavorited + onToggleFavorite props
+- Update router to register /favorites and add nav entry
+
+EDGE CASES
+- If user logs out, clear favorites state.
+- If user logs in, refresh favorites ids.
+- Handle rapid toggles gracefully (debounce or last-write-wins).
+
+DELIVERABLE
+- Working favorites toggle on cards + detail page
+- Favorites screen listing saved deals
+- DB + API + UI merged and tested locally (no TypeScript errors).
+- Confirm favorited state persists after refresh and on a second device login.
