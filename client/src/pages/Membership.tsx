@@ -88,9 +88,9 @@ export default function Membership() {
               <p className="text-sm text-muted-foreground mb-3">
                 Learn more about how Rise Local Pass works and the deals available near you.
               </p>
-              <Link href="/faq">
+              <Link href="/membership/faq">
                 <Button variant="outline" size="sm" data-testid="link-faq">
-                  View FAQ
+                  Read FAQ
                 </Button>
               </Link>
             </CardContent>

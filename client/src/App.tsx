@@ -48,6 +48,7 @@ import Discover from "@/pages/Discover";
 import Browse from "@/pages/Browse";
 import Favorites from "@/pages/Favorites";
 import Membership from "@/pages/Membership";
+import MembershipFaq from "@/pages/MembershipFaq";
 import Start from "@/pages/Start";
 import Businesses from "@/pages/Businesses";
 import BusinessProfile from "@/pages/BusinessProfile";
@@ -107,6 +108,7 @@ function Router() {
       </Route>
       
       <Route path="/membership" component={Membership} />
+      <Route path="/membership/faq" component={MembershipFaq} />
       
       {/* Legacy Deals Hub - Redirect to Discover */}
       <Route path="/deals">
