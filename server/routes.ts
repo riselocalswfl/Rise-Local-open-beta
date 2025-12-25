@@ -1524,8 +1524,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: 1,
           },
         ],
-        success_url: `${appBaseUrl}/account?checkout=success`,
-        cancel_url: `${appBaseUrl}/account?checkout=cancel`,
+        success_url: `${appBaseUrl}/checkout/success`,
+        cancel_url: `${appBaseUrl}/checkout/cancel`,
         metadata: {
           userId: user.id,
         },

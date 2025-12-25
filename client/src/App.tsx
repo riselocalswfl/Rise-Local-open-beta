@@ -49,6 +49,9 @@ import Browse from "@/pages/Browse";
 import Favorites from "@/pages/Favorites";
 import Membership from "@/pages/Membership";
 import MembershipFaq from "@/pages/MembershipFaq";
+import Checkout from "@/pages/Checkout";
+import CheckoutSuccess from "@/pages/CheckoutSuccess";
+import CheckoutCancel from "@/pages/CheckoutCancel";
 import Start from "@/pages/Start";
 import Businesses from "@/pages/Businesses";
 import BusinessProfile from "@/pages/BusinessProfile";
@@ -109,6 +112,11 @@ function Router() {
       
       <Route path="/membership" component={Membership} />
       <Route path="/membership/faq" component={MembershipFaq} />
+      
+      {/* Checkout - Rise Local Pass subscription purchase */}
+      <Route path="/checkout" component={Checkout} />
+      <Route path="/checkout/success" component={CheckoutSuccess} />
+      <Route path="/checkout/cancel" component={CheckoutCancel} />
       
       {/* Legacy Deals Hub - Redirect to Discover */}
       <Route path="/deals">
