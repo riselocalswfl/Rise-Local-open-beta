@@ -1,0 +1,81 @@
+Create a new mobile-first Checkout page for Rise Local.
+
+Context / constraints:
+- Tech stack: React + TypeScript
+- Router: wouter (NOT react-router)
+- Routes live in: client/src/App.tsx
+- App uses AuthBoundary and AppShell patterns already.
+- This app is deals-focused (no ordering, no services, no events).
+- Checkout is ONLY for purchasing Rise Local Pass subscriptions (monthly/yearly) or upgrading membership — not buying products from businesses.
+- Keep styling consistent with Rise Local: clean white background, modern rounded cards, strong hierarchy, accessible text.
+- Reuse existing UI components if present (buttons, inputs, cards). If none exist, implement simple components inline.
+- Add a new route: /checkout
+
+Checkout page requirements:
+1) Page layout:
+- Header: "Checkout"
+- Subtext: "Complete your Rise Local Pass purchase."
+- Order summary card showing:
+  - Selected plan name (Monthly or Yearly)
+  - Price
+  - Small line item: "Taxes: calculated at payment" (or "Taxes: $0.00" if we’re not calculating yet)
+  - Total
+- A secure payment card section:
+  - If Stripe is already installed/used in the project, implement Stripe Elements (CardElement or PaymentElement) correctly.
+  - If Stripe is not yet implemented, stub the UI with a “Payment details” card and a placeholder component, but structure it so Stripe can be dropped in.
+
+2) Plan selection:
+- The checkout page must accept a plan choice via query param or state:
+  - /checkout?plan=monthly OR /checkout?plan=yearly
+- Default to monthly if missing/invalid.
+- Show a toggle / segmented control for Monthly vs Yearly.
+- Switching updates the summary and the URL query param.
+
+3) Auth + user info:
+- Require authentication (must work with AuthBoundary).
+- Prefill customer email if available from useAuth() (user.email) and display it as read-only.
+- If user is not authenticated, they should be redirected by AuthBoundary (don’t duplicate guard logic).
+
+4) Payment flow:
+- Implement a “Pay Now” button.
+- On click:
+  - Disable while processing.
+  - Validate plan selection.
+  - Call backend endpoint to create a Stripe Checkout Session OR PaymentIntent (choose the simplest that matches existing code; if none exists, create a new backend route).
+- Preferred: Stripe Checkout Session for fastest MVP.
+  - Backend endpoint example: POST /api/billing/create-checkout-session { plan: 'monthly'|'yearly' }
+  - Backend returns { url } and frontend redirects window.location.href = url
+- Add success and cancel return URLs:
+  - /checkout/success
+  - /checkout/cancel
+
+5) Create success/cancel pages:
+- /checkout/success: confirmation UI + button “Back to Discover”
+- /checkout/cancel: “Payment canceled” UI + button “Try again”
+
+6) Database + entitlement:
+- After successful checkout, user should be marked as having an active Rise Local Pass.
+- If you already have a field like users.isSubscriber or users.subscriptionStatus, use it.
+- If not, add a simple field in users table:
+  - subscriptionStatus: 'inactive' | 'active'
+  - subscriptionPlan: 'monthly' | 'yearly' | null
+  - subscriptionUpdatedAt
+- Add a webhook handler for Stripe (if feasible) OR for MVP, add a “verify session” endpoint on success page to confirm session and update user record.
+
+7) UX details:
+- Show a lock icon + “Secure checkout” label.
+- Show small text: “Cancel anytime.”
+- Make it feel like a mobile app screen (max width, padding, bottom CTA button).
+- Ensure white background app-wide and no black text-on-black issues.
+
+Deliverables:
+- New page component(s) in client/src/pages/Checkout.tsx (and Success/Cancel pages).
+- Updated routing in client/src/App.tsx to include /checkout, /checkout/success, /checkout/cancel.
+- Any needed backend routes under server/ (create-checkout-session, optional verify-session).
+- If Stripe keys are required, read from environment variables:
+  - STRIPE_SECRET_KEY
+  - STRIPE_WEBHOOK_SECRET (if webhooks used)
+  - VITE_STRIPE_PUBLISHABLE_KEY (frontend if needed)
+- Add clear TODO comments where keys or webhook setup are needed.
+
+Do not add any marketplace ordering/cart purchasing logic. This checkout is ONLY for Rise Local Pass subscription.
