@@ -5382,7 +5382,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check redemption frequency limit (weekly/monthly/unlimited)
-      const redemptionFrequency = deal.redemptionFrequency || "weekly";
+      // Default to unlimited if no frequency is set
+      const redemptionFrequency = deal.redemptionFrequency || "unlimited";
       
       if (redemptionFrequency !== "unlimited") {
         const lastRedemption = await storage.getLastVerifiedRedemptionForUserDeal(userId, dealId);

@@ -2182,7 +2182,8 @@ export class DbStorage implements IStorage {
     }
 
     // Check frequency limits (once, weekly, monthly, custom, unlimited)
-    const frequency = deal.redemptionFrequency || 'weekly';
+    // Default to unlimited if no frequency is set
+    const frequency = deal.redemptionFrequency || 'unlimited';
     if (frequency !== 'unlimited') {
       if (frequency === 'once') {
         // One-time use - check for any previous redemption ever
