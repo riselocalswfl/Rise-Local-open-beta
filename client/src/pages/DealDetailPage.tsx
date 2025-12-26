@@ -288,51 +288,37 @@ export default function DealDetailPage() {
             </div>
 
             {vendor && (
-              vendor.website ? (
-                <a 
-                  href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-testid={`link-vendor-website-${vendor.id}`}
-                >
-                  <div className="bg-muted/50 rounded-lg p-4 hover-elevate cursor-pointer">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">About {vendor.businessName}</h4>
-                      <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {vendor.bio || vendor.tagline || "A local Southwest Florida business."}
-                    </p>
-                    {vendor.city && (
-                      <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {vendor.city}, {vendor.state || "FL"}
-                      </p>
-                    )}
-                  </div>
-                </a>
-              ) : (
-                <Link 
-                  href={`/businesses/${vendor.id}`}
-                  data-testid={`link-vendor-${vendor.id}`}
-                >
-                  <div className="bg-muted/50 rounded-lg p-4 hover-elevate cursor-pointer">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">About {vendor.businessName}</h4>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {vendor.bio || vendor.tagline || "A local Southwest Florida business."}
-                    </p>
-                    {vendor.city && (
-                      <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {vendor.city}, {vendor.state || "FL"}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              )
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">About {vendor.businessName}</h4>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-3">
+                  {vendor.bio || vendor.tagline || "A local Southwest Florida business."}
+                </p>
+                {vendor.city && (
+                  <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {vendor.city}, {vendor.state || "FL"}
+                  </p>
+                )}
+                {vendor.website && (
+                  <a
+                    href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid={`link-vendor-website-${vendor.id}`}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-3 w-full"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Visit Website
+                    </Button>
+                  </a>
+                )}
+              </div>
             )}
 
             <Button
