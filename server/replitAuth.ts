@@ -191,12 +191,22 @@ export async function setupAuth(app: Express) {
         let userRole = null;
         
         try {
-          // If an intended role was set during login, update the user's role
-          if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider")) {
+          // Get existing user info first to check if they already have a vendor role
+          const existingUser = await storage.getUser(userId);
+          const existingRole = existingUser?.role;
+          const isExistingVendor = existingRole === "vendor" || existingRole === "restaurant" || existingRole === "service_provider";
+          
+          // IMPORTANT: Never downgrade a vendor to buyer - once a business, always a business
+          // This allows vendors to click "Shop Local" and still access their business dashboard
+          if (isExistingVendor) {
+            console.log("[AUTH] User is already a vendor - preserving vendor role regardless of login button clicked");
+            userRole = existingRole;
+            // Clear the intended role since we're ignoring it
+            delete (req.session as any).intendedRole;
+            res.clearCookie("intended_role");
+          } else if (intendedRole && (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider")) {
             console.log("[AUTH] Updating user role to:", intendedRole);
             
-            // Get existing user info
-            const existingUser = await storage.getUser(userId);
             const userName = existingUser?.firstName && existingUser?.lastName 
               ? `${existingUser.firstName} ${existingUser.lastName}`
               : existingUser?.email?.split('@')[0] || "Business Owner";
@@ -232,9 +242,8 @@ export async function setupAuth(app: Express) {
             delete (req.session as any).intendedRole;
             res.clearCookie("intended_role");
           } else {
-            // Otherwise, fetch the user's existing role from the database
-            const existingUser = await storage.getUser(userId);
-            userRole = existingUser?.role;
+            // No intended role - use existing role from database
+            userRole = existingRole;
             console.log("[AUTH] Retrieved existing user role:", userRole);
           }
           
