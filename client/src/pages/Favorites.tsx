@@ -24,6 +24,13 @@ interface FavoriteCardProps {
   isRemoving: boolean;
 }
 
+function getSavingsLabel(savings: number, discountType?: string | null, discountValue?: number | null): string {
+  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+    return `Save ${Math.round(discountValue)}%`;
+  }
+  return `Save $${savings}`;
+}
+
 function FavoriteCard({ deal, onRemove, isRemoving }: FavoriteCardProps) {
   const imageFallbackChain = [
     deal.imageUrl,
@@ -60,7 +67,7 @@ function FavoriteCard({ deal, onRemove, isRemoving }: FavoriteCardProps) {
                 variant="outline" 
                 className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
               >
-                Save ${savings}
+                {getSavingsLabel(savings, deal.discountType, deal.discountValue)}
               </Badge>
             </div>
           )}

@@ -11,6 +11,13 @@ function getFrequencyLabel(frequency?: string | null, customDays?: number | null
     default: return null;
   }
 }
+
+function getSavingsLabel(savings: number, discountType?: string, discountValue?: number): string {
+  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+    return `Save ${Math.round(discountValue)}%`;
+  }
+  return `Save $${savings}`;
+}
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -29,6 +36,8 @@ export interface RiseLocalDeal {
   vendorBannerUrl?: string;
   vendorLogoUrl?: string;
   savings: number;
+  discountType?: string;
+  discountValue?: number;
   distance: string;
   city?: string;
   redemptionWindow?: string;
@@ -156,7 +165,7 @@ export default function RiseLocalDealCard({ deal, isMember = false, isFavorited 
                 className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground"
                 data-testid={`badge-savings-${deal.id}`}
               >
-                Save ${deal.savings}
+                {getSavingsLabel(deal.savings, deal.discountType, deal.discountValue)}
               </Badge>
             </div>
           )}
@@ -181,7 +190,7 @@ export default function RiseLocalDealCard({ deal, isMember = false, isFavorited 
                 className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground"
                 data-testid={`badge-savings-locked-${deal.id}`}
               >
-                Save ${deal.savings}
+                {getSavingsLabel(deal.savings, deal.discountType, deal.discountValue)}
               </Badge>
             </div>
           )}

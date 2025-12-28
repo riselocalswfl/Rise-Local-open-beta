@@ -550,7 +550,9 @@ function MyDealsTab({ vendor, deals, setLocation }: MyDealsTabProps) {
                     <div className="flex items-center gap-2 mt-2">
                       {deal.savingsAmount && (
                         <Badge variant="secondary">
-                          Save ${deal.savingsAmount}
+                          {deal.discountType === "PERCENT" && deal.discountValue && deal.discountValue > 0 
+                            ? `Save ${Math.round(deal.discountValue)}%` 
+                            : `Save $${deal.savingsAmount}`}
                         </Badge>
                       )}
                       {deal.isPassLocked && (

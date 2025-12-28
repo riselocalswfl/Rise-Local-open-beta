@@ -49,6 +49,13 @@ function getFrequencyLabel(frequency?: string | null, customDays?: number | null
   }
 }
 
+function getSavingsLabel(savings: number, discountType?: string | null, discountValue?: number | null): string {
+  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+    return `Save ${Math.round(discountValue)}%`;
+  }
+  return `Save $${savings}`;
+}
+
 function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
   const [, setLocation] = useLocation();
   const [imageIndex, setImageIndex] = useState(0);
@@ -95,7 +102,7 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
               className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
               data-testid={`badge-savings-${deal.id}`}
             >
-              Save ${savings}
+              {getSavingsLabel(savings, deal.discountType, deal.discountValue)}
             </Badge>
           </div>
         )}
@@ -119,7 +126,7 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
                 className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
                 data-testid={`badge-savings-locked-${deal.id}`}
               >
-                Save ${savings}
+                {getSavingsLabel(savings, deal.discountType, deal.discountValue)}
               </Badge>
             )}
           </div>

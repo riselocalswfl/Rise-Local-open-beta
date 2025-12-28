@@ -14,6 +14,13 @@ import RedeemDealModal from "@/components/RedeemDealModal";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
+function getSavingsLabel(savings: number, discountType?: string | null, discountValue?: number | null): string {
+  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+    return `Save ${Math.round(discountValue)}%`;
+  }
+  return `Save $${savings}`;
+}
+
 export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -193,7 +200,7 @@ export default function DealDetailPage() {
                   variant="outline" 
                   className="text-sm px-3 py-1 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
                 >
-                  Save ${deal.savingsAmount}
+                  {getSavingsLabel(deal.savingsAmount, deal.discountType, deal.discountValue)}
                 </Badge>
               </div>
             )}

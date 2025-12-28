@@ -1445,6 +1445,8 @@ export type VendorDeal = {
   category: string | null;
   isActive: boolean;
   savingsAmount: number | null;
+  discountType: string | null;
+  discountValue: number | null;
   isPassLocked: boolean | null;
   finePrint: string | null;
   valueLabel: string | null;
