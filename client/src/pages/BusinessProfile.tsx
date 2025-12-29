@@ -116,7 +116,7 @@ function ProfileDealCard({ deal, vendor, isMember = false }: ProfileDealCardProp
           {deal.title}
         </h4>
         <p className="text-meta text-muted-foreground line-clamp-2 mt-1" data-testid={`deal-description-${deal.id}`}>
-          {deal.description}
+          {isLocked ? "Join Rise Local Pass to unlock this deal" : deal.description}
         </p>
       </div>
     </div>

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import RedeemDealModal from "@/components/RedeemDealModal";
 import type { Deal, Vendor } from "@shared/schema";
@@ -39,8 +40,12 @@ export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [redeemModalOpen, setRedeemModalOpen] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  
+  const isPassMember = user?.isPassMember === true && 
+    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
 
   const { data: deal, isLoading: dealLoading } = useQuery<Deal>({
     queryKey: ["/api/deals", id],
@@ -276,7 +281,15 @@ export default function DealDetailPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            <p className="text-lg text-muted-foreground">{deal.description}</p>
+            {(() => {
+              const isMemberOnly = deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member";
+              const isLocked = isMemberOnly && !isPassMember;
+              return (
+                <p className="text-lg text-muted-foreground">
+                  {isLocked ? "Join Rise Local Pass to see the full details of this exclusive member deal." : deal.description}
+                </p>
+              );
+            })()}
 
             <div className="flex flex-wrap gap-2">
               {deal.category && (

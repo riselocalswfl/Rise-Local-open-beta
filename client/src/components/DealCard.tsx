@@ -91,7 +91,7 @@ export default function DealCard({ deal, vendor, isPremiumUser = false, distance
         </div>
 
         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-          {deal.description}
+          {isLocked ? "Join Rise Local Pass to unlock this exclusive member deal" : deal.description}
         </p>
 
         <div className="flex flex-wrap gap-2">
