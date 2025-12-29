@@ -81,15 +81,17 @@ function calculateDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: 
   return R * c;
 }
 
-// Compute savings for a deal - use savingsAmount directly if it exists (even if 0)
+// Compute savings for a deal - returns numeric value for sorting purposes
 function computeSavings(deal: Deal): number {
-  // Check for explicit savingsAmount first (null/undefined means not set)
-  if (deal.savingsAmount !== null && deal.savingsAmount !== undefined && deal.savingsAmount > 0) {
-    return deal.savingsAmount;
+  const discountType = deal.discountType?.toLowerCase();
+  
+  // Use discountValue directly for percent/dollar types
+  if ((discountType === "percent" || discountType === "dollar") && deal.discountValue) {
+    return deal.discountValue;
   }
-  // Only use fallback logic if savingsAmount wasn't explicitly set
-  if (deal.discountType === "PERCENT" && deal.discountValue) {
-    return Math.round(deal.discountValue / 10);
+  // BOGO and free_item types get a default score for sorting
+  if (discountType === "bogo" || discountType === "free_item") {
+    return 10;
   }
   if (deal.dealType === "bogo") {
     return 10;
@@ -97,7 +99,7 @@ function computeSavings(deal: Deal): number {
   if (deal.tier === "premium") {
     return 15;
   }
-  return 0; // Return 0 instead of default value to avoid showing incorrect savings
+  return 0;
 }
 
 type ExtendedRiseLocalDeal = RiseLocalDeal & { 
