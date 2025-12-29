@@ -12,11 +12,24 @@ function getFrequencyLabel(frequency?: string | null, customDays?: number | null
   }
 }
 
-function getSavingsLabel(savings: number, discountType?: string, discountValue?: number): string {
-  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+function getSavingsLabel(discountType?: string, discountValue?: number): string | null {
+  if (!discountType || discountValue === undefined || discountValue === null) {
+    return null;
+  }
+  const type = discountType.toLowerCase();
+  if (type === "percent" && discountValue > 0) {
     return `Save ${Math.round(discountValue)}%`;
   }
-  return `Save $${savings}`;
+  if (type === "dollar" && discountValue > 0) {
+    return `Save $${Math.round(discountValue)}`;
+  }
+  if (type === "bogo") {
+    return "BOGO";
+  }
+  if (type === "free_item") {
+    return "Free";
+  }
+  return null;
 }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -165,7 +178,7 @@ export default function RiseLocalDealCard({ deal, isMember = false, isFavorited 
                 className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground"
                 data-testid={`badge-savings-${deal.id}`}
               >
-                {getSavingsLabel(deal.savings, deal.discountType, deal.discountValue)}
+                {getSavingsLabel(deal.discountType, deal.discountValue)}
               </Badge>
             </div>
           )}
@@ -190,7 +203,7 @@ export default function RiseLocalDealCard({ deal, isMember = false, isFavorited 
                 className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground"
                 data-testid={`badge-savings-locked-${deal.id}`}
               >
-                {getSavingsLabel(deal.savings, deal.discountType, deal.discountValue)}
+                {getSavingsLabel(deal.discountType, deal.discountValue)}
               </Badge>
             </div>
           )}

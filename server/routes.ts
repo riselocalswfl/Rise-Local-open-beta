@@ -813,12 +813,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tier: deal.tier,
         category: deal.category,
         isActive: deal.isActive,
-        savingsAmount: deal.savingsAmount,
         discountType: deal.discountType,
         discountValue: deal.discountValue,
         isPassLocked: deal.isPassLocked,
         finePrint: deal.finePrint,
-        valueLabel: deal.valueLabel,
         imageUrl: deal.imageUrl,
       }));
 
@@ -1032,12 +1030,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tier: deal.tier,
           category: deal.category,
           isActive: deal.isActive,
-          savingsAmount: deal.savingsAmount,
           discountType: deal.discountType,
           discountValue: deal.discountValue,
           isPassLocked: deal.isPassLocked,
           finePrint: deal.finePrint,
-          valueLabel: deal.valueLabel,
           imageUrl: deal.imageUrl,
         }));
 

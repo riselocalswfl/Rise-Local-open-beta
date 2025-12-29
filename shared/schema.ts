@@ -1444,12 +1444,10 @@ export type VendorDeal = {
   tier: string;
   category: string | null;
   isActive: boolean;
-  savingsAmount: number | null;
   discountType: string | null;
   discountValue: number | null;
   isPassLocked: boolean | null;
   finePrint: string | null;
-  valueLabel: string | null;
 };
 
 // Vendor profile with all public fields

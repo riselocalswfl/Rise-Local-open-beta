@@ -65,11 +65,31 @@ export function VendorDealCard({
     setDeleteDialogOpen(false);
   };
 
+  // Generate savings label from discountType and discountValue
+  const getSavingsLabel = (): string | null => {
+    if (!deal.discountType || deal.discountValue === undefined || deal.discountValue === null) {
+      return null;
+    }
+    const type = deal.discountType.toLowerCase();
+    if (type === "percent" && deal.discountValue > 0) {
+      return `Save ${Math.round(deal.discountValue)}%`;
+    }
+    if (type === "dollar" && deal.discountValue > 0) {
+      return `Save $${Math.round(deal.discountValue)}`;
+    }
+    if (type === "bogo") {
+      return "BOGO";
+    }
+    if (type === "free_item") {
+      return "Free";
+    }
+    return null;
+  };
+  
+  const savingsLabel = getSavingsLabel();
+  
   const metadataItems = [
-    // Show savingsAmount first if available, otherwise fall back to valueLabel
-    deal.savingsAmount && deal.savingsAmount > 0 
-      ? { value: `$${deal.savingsAmount}`, highlight: true }
-      : deal.valueLabel && { value: deal.valueLabel, highlight: true },
+    savingsLabel && { value: savingsLabel, highlight: true },
     deal.category,
     deal.city,
   ].filter((item): item is { value: string; highlight: boolean } | string => Boolean(item));

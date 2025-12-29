@@ -49,11 +49,24 @@ function getFrequencyLabel(frequency?: string | null, customDays?: number | null
   }
 }
 
-function getSavingsLabel(savings: number, discountType?: string | null, discountValue?: number | null): string {
-  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+function getSavingsLabel(discountType?: string | null, discountValue?: number | null): string | null {
+  if (!discountType || discountValue === undefined || discountValue === null) {
+    return null;
+  }
+  const type = discountType.toLowerCase();
+  if (type === "percent" && discountValue > 0) {
     return `Save ${Math.round(discountValue)}%`;
   }
-  return `Save $${savings}`;
+  if (type === "dollar" && discountValue > 0) {
+    return `Save $${Math.round(discountValue)}`;
+  }
+  if (type === "bogo") {
+    return "BOGO";
+  }
+  if (type === "free_item") {
+    return "Free";
+  }
+  return null;
 }
 
 function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
@@ -83,7 +96,7 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
   }, [setLocation]);
   
   const businessName = deal.vendor?.businessName || "Local Business";
-  const savings = deal.savingsAmount || 0;
+  const savingsLabel = getSavingsLabel(deal.discountType, deal.discountValue);
   
   const cardContent = (
     <Card className="hover-elevate active-elevate-2 h-full relative overflow-hidden" data-testid={`card-deal-${deal.id}`}>
@@ -95,14 +108,14 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
           onError={handleImageError}
           data-testid={`img-deal-${deal.id}`}
         />
-        {savings > 0 && !isLocked && (
+        {savingsLabel && !isLocked && (
           <div className="absolute bottom-1.5 left-1.5">
             <Badge 
               variant="outline" 
               className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
               data-testid={`badge-savings-${deal.id}`}
             >
-              {getSavingsLabel(savings, deal.discountType, deal.discountValue)}
+              {savingsLabel}
             </Badge>
           </div>
         )}
@@ -120,13 +133,13 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
                 Join
               </Button>
             </div>
-            {savings > 0 && (
+            {savingsLabel && (
               <Badge 
                 variant="outline" 
                 className="text-[10px] px-1.5 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
                 data-testid={`badge-savings-locked-${deal.id}`}
               >
-                {getSavingsLabel(savings, deal.discountType, deal.discountValue)}
+                {savingsLabel}
               </Badge>
             )}
           </div>

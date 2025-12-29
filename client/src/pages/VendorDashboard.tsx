@@ -113,17 +113,12 @@ const dealFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
   finePrint: z.string().optional(),
-  valueLabel: z.string().optional(),
-  savingsAmount: z.preprocess(
-    (val) => val === "" || val === undefined || val === null ? undefined : Number(val),
-    z.number().int().min(0).optional()
-  ),
   category: z.string().optional(),
   city: z.string().default("Fort Myers"),
   tier: z.enum(["standard", "member"]).default("standard"),
   dealType: z.enum(["bogo", "percent", "addon"]),
-  discountType: z.enum(["percent", "fixed", "bogo", "free_item"]).optional(),
-  discountValue: z.coerce.number().optional(),
+  discountType: z.enum(["percent", "dollar", "bogo", "free_item"]),
+  discountValue: z.coerce.number().min(0).optional(),
   maxRedemptionsPerUser: z.coerce.number().int().min(1).default(1),
   cooldownHours: z.preprocess(
     (val) => val === "" || val === undefined ? undefined : Number(val),
@@ -142,7 +137,20 @@ const dealFormSchema = z.object({
   status: z.enum(["draft", "published", "paused", "expired"]).default("draft"),
   isPassLocked: z.boolean().default(false),
   imageUrl: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // Only require discountValue > 0 for percent and dollar types
+    if (data.discountType === "percent" || data.discountType === "dollar") {
+      return data.discountValue !== undefined && data.discountValue > 0;
+    }
+    // For bogo and free_item, value is not required (defaults to 0)
+    return true;
+  },
+  {
+    message: "Enter the discount amount",
+    path: ["discountValue"],
+  }
+);
 
 const DEAL_CATEGORIES = ["Food & Drink", "Retail", "Beauty", "Fitness", "Services", "Experiences"];
 const DEAL_CITIES = ["Fort Myers", "Cape Coral", "Bonita Springs", "Estero", "Naples"];
@@ -1918,10 +1926,12 @@ function DealForm({
     ? defaultValues.dealType as DealFormValues["dealType"]
     : "bogo";
 
-  const validDiscountTypes: NonNullable<DealFormValues["discountType"]>[] = ["percent", "fixed", "bogo", "free_item"];
-  const defaultDiscountType: DealFormValues["discountType"] = defaultValues?.discountType && validDiscountTypes.includes(defaultValues.discountType as any)
-    ? defaultValues.discountType as DealFormValues["discountType"]
-    : undefined;
+  const validDiscountTypes: DealFormValues["discountType"][] = ["percent", "dollar", "bogo", "free_item"];
+  // Map legacy "fixed" type to "dollar"
+  const mappedDiscountType = defaultValues?.discountType === "fixed" ? "dollar" : defaultValues?.discountType;
+  const defaultDiscountType: DealFormValues["discountType"] = mappedDiscountType && validDiscountTypes.includes(mappedDiscountType as any)
+    ? mappedDiscountType as DealFormValues["discountType"]
+    : "dollar";
 
   const form = useForm<DealFormValues>({
     resolver: zodResolver(dealFormSchema),
@@ -1929,14 +1939,12 @@ function DealForm({
       title: defaultValues?.title || "",
       description: defaultValues?.description || "",
       finePrint: defaultValues?.finePrint || "",
-      valueLabel: defaultValues?.valueLabel || "",
       category: defaultValues?.category || "",
       city: defaultValues?.city || "Fort Myers",
       tier: defaultTier,
       dealType: defaultDealType,
       discountType: defaultDiscountType,
       discountValue: defaultValues?.discountValue || undefined,
-      savingsAmount: defaultValues?.savingsAmount || undefined,
       maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
       cooldownHours: defaultValues?.cooldownHours || undefined,
       maxRedemptionsTotal: defaultValues?.maxRedemptionsTotal || undefined,
@@ -2024,21 +2032,23 @@ function DealForm({
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="savingsAmount"
+            name="discountType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Savings Amount ($)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="e.g., 10" 
-                    {...field} 
-                    value={field.value ?? ""}
-                    onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseInt(e.target.value))}
-                    data-testid="input-deal-savings-amount" 
-                  />
-                </FormControl>
-                <FormDescription>Dollar value shown on deal cards (e.g., 10 = "Save $10")</FormDescription>
+                <FormLabel>Discount Type *</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-discount-type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="percent">Percentage Off</SelectItem>
+                    <SelectItem value="dollar">Dollar Amount Off</SelectItem>
+                    <SelectItem value="bogo">Buy One Get One</SelectItem>
+                    <SelectItem value="free_item">Free Item</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -2046,27 +2056,51 @@ function DealForm({
 
           <FormField
             control={form.control}
-            name="dealType"
+            name="discountValue"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Deal Type *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-deal-type">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="bogo">Buy One Get One</SelectItem>
-                    <SelectItem value="percent">Percentage Off</SelectItem>
-                    <SelectItem value="addon">Free Add-on</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormLabel>
+                  {form.watch("discountType") === "percent" ? "Percentage Off" : "Dollar Amount"}
+                  {(form.watch("discountType") === "percent" || form.watch("discountType") === "dollar") && " *"}
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    placeholder={form.watch("discountType") === "percent" ? "e.g., 20" : "e.g., 10"}
+                    {...field} 
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                    disabled={form.watch("discountType") === "bogo" || form.watch("discountType") === "free_item"}
+                    data-testid="input-discount-value" 
+                  />
+                </FormControl>
+                <FormDescription>
+                  {form.watch("discountType") === "percent" 
+                    ? "Shows as 'Save X%' on deal cards" 
+                    : form.watch("discountType") === "dollar"
+                    ? "Shows as 'Save $X' on deal cards"
+                    : "Not applicable for this deal type"}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="dealType"
+          render={({ field }) => (
+            <FormItem className="hidden">
+              <FormControl>
+                <Input type="hidden" {...field} value={
+                  form.watch("discountType") === "bogo" ? "bogo" : 
+                  form.watch("discountType") === "percent" ? "percent" : "addon"
+                } />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

@@ -14,11 +14,24 @@ import RedeemDealModal from "@/components/RedeemDealModal";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
-function getSavingsLabel(savings: number, discountType?: string | null, discountValue?: number | null): string {
-  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+function getSavingsLabel(discountType?: string | null, discountValue?: number | null): string | null {
+  if (!discountType || discountValue === undefined || discountValue === null) {
+    return null;
+  }
+  const type = discountType.toLowerCase();
+  if (type === "percent" && discountValue > 0) {
     return `Save ${Math.round(discountValue)}%`;
   }
-  return `Save $${savings}`;
+  if (type === "dollar" && discountValue > 0) {
+    return `Save $${Math.round(discountValue)}`;
+  }
+  if (type === "bogo") {
+    return "BOGO";
+  }
+  if (type === "free_item") {
+    return "Free";
+  }
+  return null;
 }
 
 export default function DealDetailPage() {
@@ -194,13 +207,13 @@ export default function DealDetailPage() {
               onError={handleImageError}
               data-testid="img-deal-hero"
             />
-            {deal.savingsAmount && deal.savingsAmount > 0 && (
+            {getSavingsLabel(deal.discountType, deal.discountValue) && (
               <div className="absolute bottom-3 left-3">
                 <Badge 
                   variant="outline" 
                   className="text-sm px-3 py-1 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
                 >
-                  {getSavingsLabel(deal.savingsAmount, deal.discountType, deal.discountValue)}
+                  {getSavingsLabel(deal.discountType, deal.discountValue)}
                 </Badge>
               </div>
             )}

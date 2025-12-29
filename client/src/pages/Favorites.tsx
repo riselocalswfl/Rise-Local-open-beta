@@ -24,11 +24,24 @@ interface FavoriteCardProps {
   isRemoving: boolean;
 }
 
-function getSavingsLabel(savings: number, discountType?: string | null, discountValue?: number | null): string {
-  if (discountType === "PERCENT" && discountValue && discountValue > 0) {
+function getSavingsLabel(discountType?: string | null, discountValue?: number | null): string | null {
+  if (!discountType || discountValue === undefined || discountValue === null) {
+    return null;
+  }
+  const type = discountType.toLowerCase();
+  if (type === "percent" && discountValue > 0) {
     return `Save ${Math.round(discountValue)}%`;
   }
-  return `Save $${savings}`;
+  if (type === "dollar" && discountValue > 0) {
+    return `Save $${Math.round(discountValue)}`;
+  }
+  if (type === "bogo") {
+    return "BOGO";
+  }
+  if (type === "free_item") {
+    return "Free";
+  }
+  return null;
 }
 
 function FavoriteCard({ deal, onRemove, isRemoving }: FavoriteCardProps) {
@@ -48,7 +61,7 @@ function FavoriteCard({ deal, onRemove, isRemoving }: FavoriteCardProps) {
     }
   }, [imageIndex, imageFallbackChain.length]);
   
-  const savings = deal.savingsAmount || 0;
+  const savingsLabel = getSavingsLabel(deal.discountType, deal.discountValue);
   
   return (
     <Card className="overflow-hidden" data-testid={`card-favorite-deal-${deal.id}`}>
@@ -61,13 +74,13 @@ function FavoriteCard({ deal, onRemove, isRemoving }: FavoriteCardProps) {
             onError={handleImageError}
             data-testid={`img-favorite-deal-${deal.id}`}
           />
-          {savings > 0 && (
+          {savingsLabel && (
             <div className="absolute bottom-2 left-2">
               <Badge 
                 variant="outline" 
                 className="text-xs px-2 py-0.5 bg-background/90 backdrop-blur-sm border-primary/20 text-foreground font-semibold"
               >
-                {getSavingsLabel(savings, deal.discountType, deal.discountValue)}
+                {savingsLabel}
               </Badge>
             </div>
           )}
