@@ -58,8 +58,12 @@ type LocationState = {
 };
 
 export default function DealsPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
+  
+  // Check if user has active Rise Local Pass membership
+  const isPassMember = user?.isPassMember === true && 
+    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
   const [category, setCategory] = useState("all");
   const [city, setCity] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -425,7 +429,7 @@ export default function DealsPage() {
                 key={deal.id}
                 deal={deal}
                 vendor={vendorMap[deal.vendorId]}
-                isPremiumUser={false}
+                isPremiumUser={isPassMember}
                 distanceMiles={deal.distanceMiles}
               />
             ))}
