@@ -411,18 +411,34 @@ export class DbStorage implements IStorage {
 
     if (existing.length > 0) {
       // Update existing user (exclude id to prevent FK violations)
-      const { id, ...updateData } = userData;
+      // IMPORTANT: Preserve user-edited firstName/lastName - only update from OIDC if not already set
+      const { id, firstName, lastName, ...updateData } = userData;
+      
+      // Only include firstName/lastName in update if user doesn't already have them set
+      const finalUpdateData: any = {
+        ...updateData,
+        updatedAt: new Date(),
+      };
+      
+      // Preserve user-edited names: only set from OIDC if the existing values are null/empty
+      if (!existing[0].firstName && firstName) {
+        finalUpdateData.firstName = firstName;
+      }
+      if (!existing[0].lastName && lastName) {
+        finalUpdateData.lastName = lastName;
+      }
+      
+      // Always update profileImageUrl from OIDC (this is managed by Replit, not user-editable)
+      // profileImageUrl is already in updateData
+      
       const [user] = await db
         .update(users)
-        .set({
-          ...updateData,
-          updatedAt: new Date(),
-        })
+        .set(finalUpdateData)
         .where(eq(users.id, existing[0].id))
         .returning();
       return user;
     } else {
-      // Insert new user
+      // Insert new user - use all OIDC data for new users
       const [user] = await db
         .insert(users)
         .values(userData)
