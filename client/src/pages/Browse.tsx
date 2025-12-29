@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock, RefreshCw } from "lucide-react";
+import { Search, Filter, X, Tag, MapPin, Percent, DollarSign, Gift, Lock, RefreshCw, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { useFavorites } from "@/hooks/useFavorites";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
@@ -36,6 +37,8 @@ const CATEGORIES = [
 interface BrowseDealCardProps {
   deal: Deal & { vendor?: Vendor };
   isPassMember: boolean;
+  isFavorited?: boolean;
+  onToggleFavorite?: (dealId: string) => void;
 }
 
 function getFrequencyLabel(frequency?: string | null, customDays?: number | null): string | null {
@@ -69,7 +72,7 @@ function getSavingsLabel(discountType?: string | null, discountValue?: number | 
   return null;
 }
 
-function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
+function BrowseDealCard({ deal, isPassMember, isFavorited = false, onToggleFavorite }: BrowseDealCardProps) {
   const [, setLocation] = useLocation();
   const [imageIndex, setImageIndex] = useState(0);
   const isLocked = deal.isPassLocked && !isPassMember;
@@ -94,6 +97,14 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
     e.stopPropagation();
     setLocation("/membership");
   }, [setLocation]);
+
+  const handleFavoriteClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onToggleFavorite) {
+      onToggleFavorite(deal.id);
+    }
+  }, [onToggleFavorite, deal.id]);
   
   const businessName = deal.vendor?.businessName || "Local Business";
   const savingsLabel = getSavingsLabel(deal.discountType, deal.discountValue);
@@ -117,6 +128,24 @@ function BrowseDealCard({ deal, isPassMember }: BrowseDealCardProps) {
             >
               {savingsLabel}
             </Badge>
+          </div>
+        )}
+        {onToggleFavorite && (
+          <div className="absolute top-1.5 right-1.5 z-10">
+            <button
+              onClick={handleFavoriteClick}
+              className="w-6 h-6 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-transform active:scale-90"
+              data-testid={`button-favorite-${deal.id}`}
+              aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Heart
+                className={`w-3.5 h-3.5 transition-colors ${
+                  isFavorited 
+                    ? "fill-red-500 text-red-500" 
+                    : "text-muted-foreground"
+                }`}
+              />
+            </button>
           </div>
         )}
         {isLocked && (
@@ -198,7 +227,8 @@ export default function Browse() {
   const [selectedDealType, setSelectedDealType] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { isFavorited, toggleFavorite } = useFavorites();
   // Use centralized membership check that accounts for expiration
   const isPassMember = user?.isPassMember === true && 
     (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
@@ -429,7 +459,13 @@ export default function Browse() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredDeals.map((deal) => (
-              <BrowseDealCard key={deal.id} deal={deal} isPassMember={isPassMember} />
+              <BrowseDealCard 
+                key={deal.id} 
+                deal={deal} 
+                isPassMember={isPassMember}
+                isFavorited={isAuthenticated ? isFavorited(deal.id) : false}
+                onToggleFavorite={isAuthenticated ? toggleFavorite : undefined}
+              />
             ))}
           </div>
         )}
