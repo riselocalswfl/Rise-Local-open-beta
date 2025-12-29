@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Info, Heart, RefreshCw, ExternalLink } from "lucide-react";
+import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Info, Heart, RefreshCw, ExternalLink, Phone, Mail, Globe } from "lucide-react";
+import { SiInstagram, SiFacebook, SiTiktok, SiYoutube, SiX } from "react-icons/si";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -308,36 +309,143 @@ export default function DealDetailPage() {
             </div>
 
             {vendor && (
-              <div className="bg-muted/50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">About {vendor.businessName}</h4>
-                </div>
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {vendor.bio || vendor.tagline || "A local Southwest Florida business."}
-                </p>
-                {vendor.city && (
-                  <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {vendor.city}, {vendor.state || "FL"}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">About {vendor.businessName}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {vendor.bio || vendor.tagline || "A local Southwest Florida business."}
                   </p>
+                </div>
+
+                {/* Location */}
+                {(vendor.address || vendor.city) && (
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-muted-foreground">
+                      {vendor.address && <p>{vendor.address}</p>}
+                      <p>{[vendor.city, vendor.state || "FL"].filter(Boolean).join(", ")} {vendor.zipCode}</p>
+                    </div>
+                  </div>
                 )}
-                {vendor.website && (
-                  <a
-                    href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid={`link-vendor-website-${vendor.id}`}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="mt-3 w-full"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Visit Website
-                    </Button>
-                  </a>
+
+                {/* Contact Methods */}
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium">Contact</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {vendor.phone && (
+                      <a href={`tel:${vendor.phone}`} data-testid="link-vendor-phone">
+                        <Button size="sm" variant="outline" className="gap-2">
+                          <Phone className="w-4 h-4" />
+                          Call
+                        </Button>
+                      </a>
+                    )}
+                    {vendor.contactEmail && (
+                      <a href={`mailto:${vendor.contactEmail}`} data-testid="link-vendor-email">
+                        <Button size="sm" variant="outline" className="gap-2">
+                          <Mail className="w-4 h-4" />
+                          Email
+                        </Button>
+                      </a>
+                    )}
+                    {vendor.website && (
+                      <a
+                        href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid="link-vendor-website"
+                      >
+                        <Button size="sm" variant="outline" className="gap-2">
+                          <Globe className="w-4 h-4" />
+                          Website
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Social Media Links */}
+                {(vendor.instagram || vendor.facebook || vendor.tiktok || vendor.youtube || vendor.twitter) && (
+                  <div className="space-y-2">
+                    <h5 className="text-sm font-medium">Follow</h5>
+                    <div className="flex flex-wrap gap-2">
+                      {vendor.instagram && (
+                        <a
+                          href={vendor.instagram.startsWith('http') ? vendor.instagram : `https://instagram.com/${vendor.instagram.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid="link-vendor-instagram"
+                          aria-label={`Follow ${vendor.businessName} on Instagram`}
+                        >
+                          <Button size="icon" variant="outline" aria-label="Instagram">
+                            <SiInstagram className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
+                      {vendor.facebook && (
+                        <a
+                          href={vendor.facebook.startsWith('http') ? vendor.facebook : `https://facebook.com/${vendor.facebook}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid="link-vendor-facebook"
+                          aria-label={`Follow ${vendor.businessName} on Facebook`}
+                        >
+                          <Button size="icon" variant="outline" aria-label="Facebook">
+                            <SiFacebook className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
+                      {vendor.tiktok && (
+                        <a
+                          href={vendor.tiktok.startsWith('http') ? vendor.tiktok : `https://tiktok.com/@${vendor.tiktok.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid="link-vendor-tiktok"
+                          aria-label={`Follow ${vendor.businessName} on TikTok`}
+                        >
+                          <Button size="icon" variant="outline" aria-label="TikTok">
+                            <SiTiktok className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
+                      {vendor.youtube && (
+                        <a
+                          href={vendor.youtube.startsWith('http') ? vendor.youtube : `https://youtube.com/${vendor.youtube}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid="link-vendor-youtube"
+                          aria-label={`Subscribe to ${vendor.businessName} on YouTube`}
+                        >
+                          <Button size="icon" variant="outline" aria-label="YouTube">
+                            <SiYoutube className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
+                      {vendor.twitter && (
+                        <a
+                          href={vendor.twitter.startsWith('http') ? vendor.twitter : `https://x.com/${vendor.twitter.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid="link-vendor-twitter"
+                          aria-label={`Follow ${vendor.businessName} on X`}
+                        >
+                          <Button size="icon" variant="outline" aria-label="X (Twitter)">
+                            <SiX className="w-4 h-4" />
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 )}
+
+                {/* View Full Profile Link */}
+                <Link href={`/businesses/${vendor.id}`} data-testid="link-vendor-profile">
+                  <Button variant="outline" size="sm" className="w-full mt-2 gap-2">
+                    <Store className="w-4 h-4" />
+                    View Full Business Profile
+                    <ChevronRight className="w-4 h-4 ml-auto" />
+                  </Button>
+                </Link>
               </div>
             )}
 
