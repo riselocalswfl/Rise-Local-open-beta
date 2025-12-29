@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
-import { CheckCircle, ArrowRight, Loader2 } from "lucide-react";
+import { useLocation } from "wouter";
+import { CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AppShell from "@/components/layout/AppShell";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
+const REDIRECT_DELAY_SECONDS = 3;
+
 export default function CheckoutSuccess() {
   const [isRefreshing, setIsRefreshing] = useState(true);
+  const [countdown, setCountdown] = useState(REDIRECT_DELAY_SECONDS);
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     // Refresh user data from the server to get updated membership status
@@ -26,6 +30,24 @@ export default function CheckoutSuccess() {
 
     refreshUserData();
   }, []);
+
+  // Countdown and auto-redirect after data is refreshed
+  useEffect(() => {
+    if (isRefreshing) return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setLocation("/discover");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isRefreshing, setLocation]);
 
   // Show loading state while refreshing user data
   if (isRefreshing) {
@@ -78,12 +100,20 @@ export default function CheckoutSuccess() {
               </Card>
             )}
 
-            <Link href="/discover">
-              <Button size="lg" className="w-full" data-testid="button-back-to-discover">
-                Start Exploring Deals
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
+            <Button 
+              size="lg" 
+              className="w-full" 
+              onClick={() => setLocation("/discover")}
+              data-testid="button-back-to-discover"
+            >
+              {countdown > 0 
+                ? `Redirecting in ${countdown}...` 
+                : "Start Exploring Deals"}
+            </Button>
+            
+            <p className="text-xs text-muted-foreground mt-3">
+              Taking you to discover deals automatically
+            </p>
           </div>
         </div>
       </div>
