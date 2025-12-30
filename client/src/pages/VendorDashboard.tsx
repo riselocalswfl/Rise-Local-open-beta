@@ -647,56 +647,56 @@ export default function VendorDashboard() {
     <>
       <Header />
       <div className="min-h-screen bg-bg">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-page-title text-2xl md:text-3xl mb-2" data-testid="heading-dashboard">Business Dashboard</h1>
-            <p className="text-body text-muted-foreground">{vendor.businessName}</p>
-          </div>
-
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Mobile Select Dropdown */}
-          <div className="md:hidden">
+        <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
+          {/* Mobile sticky header - title + dropdown */}
+          <div className="md:hidden sticky top-0 z-40 bg-bg pt-2 pb-4 -mx-4 px-4 border-b border-border">
+            <div className="mb-3">
+              <h1 className="text-page-title text-xl mb-1" data-testid="heading-dashboard">Business Dashboard</h1>
+              <p className="text-body text-muted-foreground text-sm">{vendor.businessName}</p>
+            </div>
             <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full" data-testid="select-dashboard-section">
+              <SelectTrigger 
+                className="w-full min-h-12 py-3 px-4 rounded-lg text-base font-medium [&>svg]:h-5 [&>svg]:w-5" 
+                data-testid="select-dashboard-section"
+              >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="profile" data-testid="select-option-profile">
-                  <div className="flex items-center gap-2">
-                    <Store className="w-4 h-4" />
+              <SelectContent className="w-[var(--radix-select-trigger-width)] max-h-[60vh] overflow-y-auto">
+                <SelectItem value="profile" className="min-h-12 py-3 text-base" data-testid="select-option-profile">
+                  <div className="flex items-center gap-3">
+                    <Store className="w-5 h-5" />
                     <span>Profile</span>
                   </div>
                 </SelectItem>
                 {(vendor.capabilities as any)?.menu && (
-                  <SelectItem value="menu" data-testid="select-option-menu">
-                    <div className="flex items-center gap-2">
-                      <UtensilsCrossed className="w-4 h-4" />
+                  <SelectItem value="menu" className="min-h-12 py-3 text-base" data-testid="select-option-menu">
+                    <div className="flex items-center gap-3">
+                      <UtensilsCrossed className="w-5 h-5" />
                       <span>Menu ({menuItems.length})</span>
                     </div>
                   </SelectItem>
                 )}
-                <SelectItem value="deals" data-testid="select-option-deals">
-                  <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4" />
+                <SelectItem value="deals" className="min-h-12 py-3 text-base" data-testid="select-option-deals">
+                  <div className="flex items-center gap-3">
+                    <Tag className="w-5 h-5" />
                     <span>Deals ({deals.length})</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="faqs" data-testid="select-option-faqs">
-                  <div className="flex items-center gap-2">
-                    <HelpCircle className="w-4 h-4" />
+                <SelectItem value="faqs" className="min-h-12 py-3 text-base" data-testid="select-option-faqs">
+                  <div className="flex items-center gap-3">
+                    <HelpCircle className="w-5 h-5" />
                     <span>FAQs ({faqs.length})</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="settings" data-testid="select-option-settings">
-                  <div className="flex items-center gap-2">
-                    <Settings className="w-4 h-4" />
+                <SelectItem value="settings" className="min-h-12 py-3 text-base" data-testid="select-option-settings">
+                  <div className="flex items-center gap-3">
+                    <Settings className="w-5 h-5" />
                     <span>Settings</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="verify" data-testid="select-option-verify">
-                  <div className="flex items-center gap-2">
-                    <Ticket className="w-4 h-4" />
+                <SelectItem value="verify" className="min-h-12 py-3 text-base" data-testid="select-option-verify">
+                  <div className="flex items-center gap-3">
+                    <Ticket className="w-5 h-5" />
                     <span>Redemptions</span>
                   </div>
                 </SelectItem>
@@ -704,6 +704,14 @@ export default function VendorDashboard() {
             </Select>
           </div>
 
+          {/* Desktop header */}
+          <div className="hidden md:block mb-8">
+            <h1 className="text-page-title text-2xl md:text-3xl mb-2" data-testid="heading-dashboard-desktop">Business Dashboard</h1>
+            <p className="text-body text-muted-foreground">{vendor.businessName}</p>
+          </div>
+
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 mt-4 md:mt-0">
           {/* Desktop TabsList */}
           <TabsList className="hidden md:inline-flex w-full">
             <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
