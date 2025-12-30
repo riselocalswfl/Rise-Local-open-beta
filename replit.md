@@ -24,7 +24,7 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 - **Rise Local Pass Membership**: Subscription model ($4.99/month or $44.91/year) with `isPassMember`, `passExpiresAt`, and Stripe-related fields in the `users` table for management.
 - **Stripe Webhook Integration**: Handles Stripe events (`checkout.session.completed`, `customer.subscription.*`, `invoice.*`) with user lookup fallbacks and logs membership state changes to an `membership_events` audit table.
 - **CheckoutSuccess Retry Logic**: Implements retry logic for webhook processing delays on the `/checkout/success` page.
-- **Unified Vendor Dashboard**: A single, capability-aware `/dashboard` dynamically adjusts tabs for all vendor types.
+- **Unified Vendor Dashboard**: A single, capability-aware `/dashboard` dynamically adjusts tabs for all vendor types. Mobile view features a sticky header with dropdown navigation (48px touch targets), full-width dropdown menu with 60vh max-height scrolling, and iOS zoom prevention (16px font on inputs).
 - **Mobile-First Profile Accordion Editor**: Business Dashboard profile editor with collapsible sections for Basics, Contact, Location, Social Links, Hours, Branding, and Values, featuring auto-save and image uploads.
 - **Public Business Profile Parity**: Public `/businesses/:id` pages display comprehensive business information, including hours, social links, and values.
 - **Unified Category System**: `categories` database table provides a single source of truth for business categories.
