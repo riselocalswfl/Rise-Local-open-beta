@@ -772,14 +772,14 @@ export default function UnifiedOnboarding() {
                         <FormLabel>Business Type</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-vendor-type">
+                            <SelectTrigger className="min-h-12 py-3 px-4 text-base [&>svg]:h-5 [&>svg]:w-5" data-testid="select-vendor-type">
                               <SelectValue placeholder="Select your business type" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="shop" data-testid="option-shop">Shop (Products & Goods)</SelectItem>
-                            <SelectItem value="dine" data-testid="option-dine">Dine (Restaurant & Food)</SelectItem>
-                            <SelectItem value="service" data-testid="option-service">Services (Professional Services)</SelectItem>
+                          <SelectContent className="z-50">
+                            <SelectItem value="shop" className="min-h-12 py-3 text-base" data-testid="option-shop">Shop (Products & Goods)</SelectItem>
+                            <SelectItem value="dine" className="min-h-12 py-3 text-base" data-testid="option-dine">Dine (Restaurant & Food)</SelectItem>
+                            <SelectItem value="service" className="min-h-12 py-3 text-base" data-testid="option-service">Services (Professional Services)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>
@@ -798,13 +798,13 @@ export default function UnifiedOnboarding() {
                         <FormLabel>Business Category</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-category">
+                            <SelectTrigger className="min-h-12 py-3 px-4 text-base [&>svg]:h-5 [&>svg]:w-5" data-testid="select-category">
                               <SelectValue placeholder="Select a category" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="z-50">
                             {(categoriesData || []).map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id} data-testid={`option-category-${cat.key}`}>
+                              <SelectItem key={cat.id} value={cat.id} className="min-h-12 py-3 text-base" data-testid={`option-category-${cat.key}`}>
                                 {cat.label}
                               </SelectItem>
                             ))}
