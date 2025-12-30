@@ -86,7 +86,7 @@ export default function Messages() {
       vendor.displayName?.toLowerCase().includes(query) ||
       vendor.tagline?.toLowerCase().includes(query) ||
       vendor.bio?.toLowerCase().includes(query) ||
-      vendor.categories?.some((cat: string) => cat.toLowerCase().includes(query)) ||
+      vendor.vendorType?.toLowerCase().includes(query) ||
       vendor.values?.some((val: string) => val.toLowerCase().includes(query))
     );
   }).slice(0, 5);
@@ -198,9 +198,9 @@ export default function Messages() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium truncate">{vendor.businessName}</h4>
-                        {vendor.categories && vendor.categories.length > 0 && (
-                          <p className="text-sm text-muted-foreground truncate">
-                            {vendor.categories.join(", ")}
+                        {vendor.vendorType && (
+                          <p className="text-sm text-muted-foreground truncate capitalize">
+                            {vendor.vendorType}
                           </p>
                         )}
                       </div>
