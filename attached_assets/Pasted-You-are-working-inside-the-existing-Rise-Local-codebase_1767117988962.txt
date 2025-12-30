@@ -1,0 +1,89 @@
+You are working inside the existing Rise Local codebase on Replit.
+
+GOAL:
+Audit and make the messaging system work reliably end-to-end (create thread, send message, receive, list threads, open thread, realtime/refresh, notifications/badges, permissions). Do NOT do a full rewrite. Fix the root causes and add minimal instrumentation.
+
+SCOPE (must):
+1) Inventory + Trace
+- Locate all messaging-related files (client + server + db).
+- List: routes/endpoints, db tables/columns, client pages/components/hooks, and any websocket/realtime logic.
+- Create a single “Message Flow Map” in a comment or markdown file: UI action -> client call -> server handler -> db write/read -> response -> UI state update.
+
+2) Database + Schema Validation
+- Confirm the schema for: conversations/threads, participants, messages, read receipts/unread counts.
+- Ensure FK relationships + indexes exist (thread_id, sender_id, recipient_id, created_at).
+- Verify timestamps are consistent (UTC) and ordering is correct.
+
+3) Auth + Permissions (critical)
+- Ensure ONLY participants can:
+  a) see a thread
+  b) read messages in it
+  c) send to it
+- Validate role-based rules (buyer/vendor) if relevant.
+- Prevent sending messages to yourself (if not allowed) and prevent spoofing senderId from the client.
+
+4) API Contract + Consistency
+- Standardize endpoints and payloads. Implement or fix these (or align to existing ones):
+  - GET /api/messages/threads         -> list threads with lastMessage + unreadCount
+  - POST /api/messages/threads        -> create/find thread by participant(s)
+  - GET /api/messages/threads/:id     -> thread metadata + participants
+  - GET /api/messages/threads/:id/messages?cursor= -> paginated messages
+  - POST /api/messages/threads/:id/messages -> send message
+  - POST /api/messages/threads/:id/read     -> mark read / update unread
+- Make client use ONE source of truth for these routes (single api file).
+- Ensure errors return useful status codes + messages.
+
+5) UI/State Audit
+- Check that the Inbox/Threads list updates after sending a message.
+- Check that opening a thread loads messages reliably.
+- Fix any state bugs: stale caches, wrong dependencies in hooks, missing invalidate/refetch, incorrect optimistic updates, wrong keys.
+- Make sure “unread” badge logic matches server truth.
+
+6) Realtime or Refresh Strategy
+- If websockets are implemented: verify subscription, event names, room join/leave, and message broadcast.
+- If not: add a simple polling/refetch-on-focus strategy (minimal) so new messages appear without manual refresh.
+
+7) Add Debug Instrumentation (must)
+Add a toggleable debug mode:
+- Server: log request id, user id, thread id, and query timings for all message endpoints.
+- Client: log API calls + responses for messaging only (not global).
+- Provide an easy way to enable/disable (env var or config flag).
+
+8) Build a “Messaging Diagnostics” Admin/Dev Page
+Create a hidden route: /dev/messaging
+It should allow:
+- Pick two user IDs (or current user + another)
+- Create/find thread
+- Send test message
+- View raw JSON responses for:
+  threads list, thread details, messages list, unread counts
+- Display the latest 20 server logs related to messaging (if available) OR show client debug output.
+
+9) Testing Checklist (must)
+Create a checklist doc and verify:
+- buyer -> vendor message sends and appears in both inboxes
+- vendor -> buyer reply works
+- refresh/reopen thread preserves order
+- unread increments for recipient, clears on open
+- unauthorized user cannot access another thread
+- pagination works (load older messages)
+- empty state handling (no threads / no messages) is clean
+
+CONSTRAINTS:
+- Keep existing routing library (wouter) and existing auth hook/useAuth.
+- Do not add new major frameworks.
+- Prefer minimal changes with clear diffs.
+- If you find duplicate/old messaging routes/components, consolidate to one and delete or fully deprecate the rest (no “half used” codepaths).
+
+DELIVERABLES:
+- A short summary in comments: “What was broken” + “What I changed”
+- The Message Flow Map file
+- The /dev/messaging diagnostics route
+- All endpoints working and wired to the client
+- Unread counts correct and secure
+
+Start by scanning the codebase and telling me:
+- Which files you found for messaging
+- What the current data model is
+- The top 3 likely breakpoints (based on the current code)
+Then implement fixes step-by-step with small commits/diffs.

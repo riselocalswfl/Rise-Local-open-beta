@@ -11,6 +11,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import { checkIsPassMember } from "@/lib/authUtils";
 import { useFavorites } from "@/hooks/useFavorites";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
@@ -229,9 +230,7 @@ export default function Browse() {
   
   const { user, isAuthenticated } = useAuth();
   const { isFavorited, toggleFavorite } = useFavorites();
-  // Use centralized membership check that accounts for expiration
-  const isPassMember = user?.isPassMember === true && 
-    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
+  const isPassMember = checkIsPassMember(user);
 
   const getTitle = () => {
     switch (section) {

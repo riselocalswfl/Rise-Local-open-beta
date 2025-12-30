@@ -10,6 +10,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { checkIsPassMember } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useFavorites } from "@/hooks/useFavorites";
 import LocalSpotlight from "@/components/LocalSpotlight";
@@ -241,9 +242,7 @@ export default function Discover() {
   const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if user has Rise Local Pass membership
-  // Use centralized membership check that accounts for expiration
-  const isPassMember = user?.isPassMember === true && 
-    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
+  const isPassMember = checkIsPassMember(user);
   
   // Check if user is a business owner
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";

@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import type { Deal, Vendor } from "@shared/schema";
 import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
+import { checkIsPassMember } from "@/lib/authUtils";
 
 const SWFL_DEFAULT = { lat: 26.6406, lng: -81.8723 };
 
@@ -62,8 +63,7 @@ export default function DealsPage() {
   const { toast } = useToast();
   
   // Check if user has active Rise Local Pass membership
-  const isPassMember = user?.isPassMember === true && 
-    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
+  const isPassMember = checkIsPassMember(user);
   const [category, setCategory] = useState("all");
   const [city, setCity] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");

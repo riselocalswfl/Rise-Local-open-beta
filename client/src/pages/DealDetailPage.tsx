@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { checkIsPassMember } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import RedeemDealModal from "@/components/RedeemDealModal";
 import type { Deal, Vendor } from "@shared/schema";
@@ -44,8 +45,7 @@ export default function DealDetailPage() {
   const [redeemModalOpen, setRedeemModalOpen] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   
-  const isPassMember = user?.isPassMember === true && 
-    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
+  const isPassMember = checkIsPassMember(user);
 
   const { data: deal, isLoading: dealLoading } = useQuery<Deal>({
     queryKey: ["/api/deals", id],

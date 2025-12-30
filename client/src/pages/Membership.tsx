@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
+import { checkIsPassMember } from "@/lib/authUtils";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -24,8 +25,7 @@ export default function Membership() {
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('monthly');
 
-  const isPassMember = user?.isPassMember === true && 
-    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
+  const isPassMember = checkIsPassMember(user);
 
   const checkoutMutation = useMutation({
     mutationFn: async (plan: PlanType) => {

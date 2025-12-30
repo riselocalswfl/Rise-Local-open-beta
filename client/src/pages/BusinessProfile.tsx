@@ -13,6 +13,7 @@ import { SiInstagram, SiFacebook, SiTiktok, SiYoutube } from "react-icons/si";
 import { Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { checkIsPassMember } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import type { Vendor, Product, VendorDeal } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
@@ -146,8 +147,7 @@ export default function BusinessProfile() {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  const isPassMember = user?.isPassMember === true && 
-    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
+  const isPassMember = checkIsPassMember(user);
 
   const startConversation = useMutation({
     mutationFn: async () => {
