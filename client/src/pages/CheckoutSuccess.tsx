@@ -1,35 +1,56 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AppShell from "@/components/layout/AppShell";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { checkIsPassMember } from "@/lib/authUtils";
 
 const REDIRECT_DELAY_SECONDS = 3;
+const MAX_RETRY_ATTEMPTS = 6; // Retry for up to 30 seconds (6 attempts x 5 seconds)
+const RETRY_INTERVAL_MS = 5000;
 
 export default function CheckoutSuccess() {
   const [isRefreshing, setIsRefreshing] = useState(true);
   const [countdown, setCountdown] = useState(REDIRECT_DELAY_SECONDS);
+  const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  
+  const isMemberActive = checkIsPassMember(user);
+
+  const refreshUserData = useCallback(async () => {
+    try {
+      // Refetch user data to get the latest membership status
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  }, []);
 
   useEffect(() => {
-    // Refresh user data from the server to get updated membership status
-    const refreshUserData = async () => {
-      try {
-        // Refetch user data to get the latest membership status
-        await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
-      } catch (error) {
-        console.error("Failed to refresh user data:", error);
-      } finally {
-        setIsRefreshing(false);
-      }
-    };
-
+    // Initial refresh
     refreshUserData();
-  }, []);
+  }, [refreshUserData]);
+
+  // Retry logic if membership isn't active yet (webhook delay)
+  useEffect(() => {
+    // If already active or max retries reached, stop retrying
+    if (isMemberActive || retryCount >= MAX_RETRY_ATTEMPTS) {
+      setIsRefreshing(false);
+      return;
+    }
+
+    const retryTimer = setTimeout(async () => {
+      console.log(`[CheckoutSuccess] Retry ${retryCount + 1}/${MAX_RETRY_ATTEMPTS} - checking membership status`);
+      await refreshUserData();
+      setRetryCount(prev => prev + 1);
+    }, RETRY_INTERVAL_MS);
+
+    return () => clearTimeout(retryTimer);
+  }, [isMemberActive, retryCount, refreshUserData]);
 
   // Countdown and auto-redirect after data is refreshed
   useEffect(() => {
@@ -58,15 +79,17 @@ export default function CheckoutSuccess() {
             <div className="text-center">
               <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
               <p className="text-muted-foreground">Activating your membership...</p>
+              {retryCount > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Checking status... ({retryCount}/{MAX_RETRY_ATTEMPTS})
+                </p>
+              )}
             </div>
           </div>
         </div>
       </AppShell>
     );
   }
-
-  const isMemberActive = user?.isPassMember === true && 
-    (!user?.passExpiresAt || new Date(user.passExpiresAt) > new Date());
 
   return (
     <AppShell hideTabs>
@@ -87,7 +110,7 @@ export default function CheckoutSuccess() {
                 : "Your payment was successful! Your membership will be activated shortly."}
             </p>
 
-            {isMemberActive && (
+            {isMemberActive ? (
               <Card className="mb-6">
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-foreground mb-2">What's next?</h3>
@@ -98,6 +121,17 @@ export default function CheckoutSuccess() {
                   </ul>
                 </CardContent>
               </Card>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mb-6"
+                onClick={refreshUserData}
+                data-testid="button-refresh-status"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Check membership status
+              </Button>
             )}
 
             <Button 

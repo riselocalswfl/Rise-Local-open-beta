@@ -28,10 +28,11 @@ import {
   type Notification, type InsertNotification,
   type Category,
   type Favorite, type InsertFavorite,
+  type MembershipEvent, type InsertMembershipEvent,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
-  conversations, conversationMessages, notifications, categories, favorites,
+  conversations, conversationMessages, notifications, categories, favorites, membershipEvents,
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
@@ -355,6 +356,29 @@ export interface IStorage {
   markEmailJobSent(jobId: string): Promise<void>;
   markEmailJobFailed(jobId: string): Promise<void>;
   cancelEmailJobsForConversation(conversationId: string, recipientId: string): Promise<void>;
+
+  // Membership event audit log
+  logMembershipEvent(event: {
+    userId: string;
+    stripeEventId?: string;
+    eventType: string;
+    previousStatus?: string;
+    newStatus?: string;
+    previousPlan?: string;
+    newPlan?: string;
+    metadata?: string;
+  }): Promise<void>;
+  getMembershipEvents(userId: string, limit?: number): Promise<Array<{
+    id: string;
+    stripeEventId: string | null;
+    eventType: string;
+    previousStatus: string | null;
+    newStatus: string | null;
+    previousPlan: string | null;
+    newPlan: string | null;
+    metadata: string | null;
+    createdAt: Date | null;
+  }>>;
 
   // User public profile
   getUserPublicProfile(userId: string): Promise<{
@@ -2494,6 +2518,47 @@ export class DbStorage implements IStorage {
       firstName: user.firstName,
       lastName: user.lastName,
     };
+  }
+
+  // Membership event audit log
+  async logMembershipEvent(event: {
+    userId: string;
+    stripeEventId?: string;
+    eventType: string;
+    previousStatus?: string;
+    newStatus?: string;
+    previousPlan?: string;
+    newPlan?: string;
+    metadata?: string;
+  }): Promise<void> {
+    await db.insert(membershipEvents).values({
+      userId: event.userId,
+      stripeEventId: event.stripeEventId || null,
+      eventType: event.eventType,
+      previousStatus: event.previousStatus || null,
+      newStatus: event.newStatus || null,
+      previousPlan: event.previousPlan || null,
+      newPlan: event.newPlan || null,
+      metadata: event.metadata || null,
+    });
+  }
+
+  async getMembershipEvents(userId: string, limit: number = 50): Promise<Array<{
+    id: string;
+    stripeEventId: string | null;
+    eventType: string;
+    previousStatus: string | null;
+    newStatus: string | null;
+    previousPlan: string | null;
+    newPlan: string | null;
+    metadata: string | null;
+    createdAt: Date | null;
+  }>> {
+    const result = await db.select().from(membershipEvents)
+      .where(eq(membershipEvents.userId, userId))
+      .orderBy(desc(membershipEvents.createdAt))
+      .limit(limit);
+    return result;
   }
 }
 

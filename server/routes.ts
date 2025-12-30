@@ -1518,6 +1518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         customer: stripeCustomerId,
+        client_reference_id: user.id, // Backup user lookup method
         line_items: [
           {
             price: priceId,
@@ -1528,6 +1529,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancel_url: `${appBaseUrl}/checkout/cancel`,
         metadata: {
           userId: user.id,
+          plan: plan, // 'monthly' or 'annual'
+          priceId: priceId,
         },
       });
 
@@ -1825,30 +1828,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle Rise Local Pass subscription events
       if (event.type === 'checkout.session.completed') {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('[Webhook] checkout.session.completed for customer:', session.customer);
+        console.log('[Webhook] checkout.session.completed for customer:', session.customer, 'client_reference_id:', session.client_reference_id);
         
         if (session.mode === 'subscription' && session.customer && session.subscription) {
           // Fetch the subscription details
           const subscriptionData = await stripe.subscriptions.retrieve(session.subscription as string) as any;
           const customerId = session.customer as string;
           
-          // Find user by stripeCustomerId
-          const user = await storage.getUserByStripeCustomerId(customerId);
+          // Find user by stripeCustomerId first, then fall back to client_reference_id or metadata
+          let user = await storage.getUserByStripeCustomerId(customerId);
+          
+          // Fallback: use client_reference_id (userId) if customer lookup fails
+          if (!user && session.client_reference_id) {
+            user = await storage.getUser(session.client_reference_id);
+            // Update user with stripeCustomerId if found via fallback
+            if (user) {
+              await storage.updateUser(user.id, { stripeCustomerId: customerId });
+              console.log('[Webhook] Updated stripeCustomerId via fallback for user:', user.id);
+            }
+          }
+          
+          // Another fallback: use metadata.userId
+          if (!user && session.metadata?.userId) {
+            user = await storage.getUser(session.metadata.userId);
+            if (user) {
+              await storage.updateUser(user.id, { stripeCustomerId: customerId });
+              console.log('[Webhook] Updated stripeCustomerId via metadata fallback for user:', user.id);
+            }
+          }
+          
           if (user) {
             const periodEnd = new Date(subscriptionData.current_period_end * 1000);
             const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
             
+            // Determine plan type from metadata or price ID
+            const planType = session.metadata?.plan || 'monthly';
+            const membershipPlan = planType === 'annual' ? 'rise_local_annual' : 'rise_local_monthly';
+            
+            const previousStatus = user.membershipStatus;
+            const previousPlan = user.membershipPlan;
+            
             await storage.updateUser(user.id, {
               stripeSubscriptionId: subscriptionData.id,
               membershipStatus: subscriptionData.status,
-              membershipPlan: 'rise_local_monthly',
+              membershipPlan: membershipPlan,
               membershipCurrentPeriodEnd: periodEnd,
               isPassMember: isActive,
               passExpiresAt: periodEnd,
             });
-            console.log('[Webhook] User membership activated:', user.id, 'status:', subscriptionData.status);
+            
+            // Log membership event for audit
+            await storage.logMembershipEvent({
+              userId: user.id,
+              stripeEventId: event.id,
+              eventType: 'checkout.session.completed',
+              previousStatus: previousStatus || undefined,
+              newStatus: subscriptionData.status,
+              previousPlan: previousPlan || undefined,
+              newPlan: membershipPlan,
+              metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
+            });
+            
+            console.log('[Webhook] User membership activated:', user.id, 'plan:', membershipPlan, 'status:', subscriptionData.status);
           } else {
-            console.warn('[Webhook] No user found for customer:', customerId);
+            console.warn('[Webhook] No user found for customer:', customerId, 'client_ref:', session.client_reference_id, 'metadata:', session.metadata);
           }
         }
       }
@@ -1862,6 +1905,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (user) {
           const periodEnd = new Date(subscriptionData.current_period_end * 1000);
           const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
+          const previousStatus = user.membershipStatus;
+          const previousPlan = user.membershipPlan;
           
           await storage.updateUser(user.id, {
             stripeSubscriptionId: subscriptionData.id,
@@ -1871,6 +1916,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isPassMember: isActive,
             passExpiresAt: periodEnd,
           });
+          
+          // Log membership event for audit
+          await storage.logMembershipEvent({
+            userId: user.id,
+            stripeEventId: event.id,
+            eventType: event.type,
+            previousStatus: previousStatus || undefined,
+            newStatus: subscriptionData.status,
+            previousPlan: previousPlan || undefined,
+            newPlan: isActive ? 'rise_local_monthly' : user.membershipPlan || undefined,
+            metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
+          });
+          
           console.log('[Webhook] User subscription updated:', user.id, 'status:', subscriptionData.status);
         }
       }
@@ -1882,12 +1940,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const user = await storage.getUserByStripeCustomerId(customerId);
         if (user) {
+          const previousStatus = user.membershipStatus;
+          const previousPlan = user.membershipPlan;
+          
           await storage.updateUser(user.id, {
             stripeSubscriptionId: null,
             membershipStatus: 'canceled',
             membershipPlan: null,
             isPassMember: false,
           });
+          
+          // Log membership event for audit
+          await storage.logMembershipEvent({
+            userId: user.id,
+            stripeEventId: event.id,
+            eventType: 'customer.subscription.deleted',
+            previousStatus: previousStatus || undefined,
+            newStatus: 'canceled',
+            previousPlan: previousPlan || undefined,
+            newPlan: undefined,
+            metadata: JSON.stringify({ subscriptionId: subscriptionData.id }),
+          });
+          
           console.log('[Webhook] User subscription deleted:', user.id);
         }
       }
@@ -1901,6 +1975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const subscriptionData = await stripe.subscriptions.retrieve(invoiceData.subscription as string) as any;
           const user = await storage.getUserByStripeCustomerId(customerId);
           if (user) {
+            const previousStatus = user.membershipStatus;
             const periodEnd = new Date(subscriptionData.current_period_end * 1000);
             await storage.updateUser(user.id, {
               membershipStatus: 'active',
@@ -1908,6 +1983,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isPassMember: true,
               passExpiresAt: periodEnd,
             });
+            
+            // Log membership event for audit
+            await storage.logMembershipEvent({
+              userId: user.id,
+              stripeEventId: event.id,
+              eventType: 'invoice.paid',
+              previousStatus: previousStatus || undefined,
+              newStatus: 'active',
+              previousPlan: user.membershipPlan || undefined,
+              newPlan: user.membershipPlan || undefined,
+              metadata: JSON.stringify({ subscriptionId: invoiceData.subscription, invoiceId: invoiceData.id, periodEnd: periodEnd.toISOString() }),
+            });
+            
             console.log('[Webhook] User membership renewed:', user.id);
           }
         }
@@ -1920,9 +2008,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const user = await storage.getUserByStripeCustomerId(customerId);
         if (user) {
+          const previousStatus = user.membershipStatus;
           await storage.updateUser(user.id, {
             membershipStatus: 'past_due',
           });
+          
+          // Log membership event for audit
+          await storage.logMembershipEvent({
+            userId: user.id,
+            stripeEventId: event.id,
+            eventType: 'invoice.payment_failed',
+            previousStatus: previousStatus || undefined,
+            newStatus: 'past_due',
+            previousPlan: user.membershipPlan || undefined,
+            newPlan: user.membershipPlan || undefined,
+            metadata: JSON.stringify({ invoiceId: invoiceData.id }),
+          });
+          
           console.log('[Webhook] User payment failed:', user.id);
         }
       }
@@ -1931,6 +2033,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Webhook error:", error);
       res.status(400).send(`Webhook Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+
+  // Debug endpoint for membership status (admin only)
+  app.get("/api/debug/membership/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const requestingUserId = req.user.claims.sub;
+      const targetUserId = req.params.userId;
+      
+      // Only allow users to view their own membership info (or admin check could go here)
+      const requestingUser = await storage.getUser(requestingUserId);
+      if (!requestingUser) {
+        return res.status(403).json({ error: "User not found" });
+      }
+      
+      // For now, only allow self-lookup or admin role
+      if (requestingUserId !== targetUserId && requestingUser.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(targetUserId);
+      if (!user) {
+        return res.status(404).json({ error: "Target user not found" });
+      }
+      
+      // Get membership events
+      const events = await storage.getMembershipEvents(targetUserId, 20);
+      
+      res.json({
+        userId: user.id,
+        membershipStatus: {
+          isPassMember: user.isPassMember,
+          passExpiresAt: user.passExpiresAt,
+          stripeCustomerId: user.stripeCustomerId,
+          stripeSubscriptionId: user.stripeSubscriptionId,
+          membershipStatus: user.membershipStatus,
+          membershipPlan: user.membershipPlan,
+          membershipCurrentPeriodEnd: user.membershipCurrentPeriodEnd,
+        },
+        recentEvents: events,
+      });
+    } catch (error) {
+      console.error("[Debug Membership] Error:", error);
+      res.status(500).json({ error: "Failed to fetch membership debug info" });
     }
   });
 

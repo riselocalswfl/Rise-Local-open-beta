@@ -1,0 +1,110 @@
+Goal: When a user successfully pays for a Rise Local membership (monthly or yearly), their account is automatically upgraded and paid-member deals unlock immediately across Discover/Browse/Business Profile, without manual database edits.
+
+1) Audit the current flow
+	1.	Locate where membership purchase happens (Stripe Checkout or Payment Link). Identify:
+	•	Where we create the Stripe Checkout Session
+	•	What success URL / return URL is used
+	•	Whether we store stripe_customer_id on the user
+	2.	Find current gating logic for deals:
+	•	Where we decide if a deal is “locked” vs “unlocked”
+	•	Where isPaidMember (or similar) is being read from DB
+	3.	Find any current “manual unlock” fields (ex: membershipActive, plan, isPro, tier, subscriptionStatus) and document what’s used today.
+
+2) Implement the correct source of truth (Stripe → Webhook → DB)
+
+We must update the database ONLY from Stripe webhooks (not from the client success page), because success pages can be faked/skipped.
+
+Add/confirm DB fields on users table:
+	•	stripeCustomerId (text, nullable)
+	•	membershipStatus (enum/text: free | active | past_due | canceled)
+	•	membershipPlan (text: monthly | yearly | promo | none)
+	•	membershipCurrentPeriodEnd (timestamp, nullable)
+	•	membershipUpdatedAt (timestamp)
+	•	(Optional) stripeSubscriptionId (text)
+
+Create and run a migration if these don’t exist.
+
+3) Ensure Stripe Checkout Session includes the user ID
+
+When creating the checkout session, attach:
+	•	client_reference_id: user.id
+	•	metadata: { userId: user.id }
+	•	Use the correct price IDs for monthly/yearly
+
+Also ensure you save the Stripe customer ID to the user when it exists (either at checkout creation if you already have one, or from webhook once you receive it).
+
+4) Add a Stripe webhook route (server-side)
+
+Create an endpoint like:
+	•	POST /api/stripe/webhook
+
+Requirements:
+	•	Verify Stripe signature using the webhook signing secret (do not skip verification).
+	•	Parse Stripe events and update the user record based on metadata/client_reference_id.
+
+Handle these events at minimum:
+	•	checkout.session.completed
+	•	If mode is subscription OR payment indicates membership purchase:
+	•	Set membershipStatus = active
+	•	Set membershipPlan = monthly/yearly (based on the priceId or line item)
+	•	Store stripeCustomerId
+	•	Store stripeSubscriptionId (if subscription)
+	•	customer.subscription.updated
+	•	Update membershipStatus and membershipCurrentPeriodEnd
+	•	customer.subscription.deleted
+	•	Set membershipStatus = canceled, plan optional, set currentPeriodEnd
+
+Important: Webhook must be idempotent:
+	•	If the same event is sent twice, updating the same user should not break anything.
+
+5) Fix the “unlock deals” logic everywhere
+
+Make a single utility function (server-side) like:
+isPaidMember(user): boolean
+
+Rule:
+	•	Paid member if membershipStatus === "active" AND (if currentPeriodEnd exists, it’s in the future)
+	•	Otherwise free
+
+Then enforce consistently:
+	•	Discover deals query
+	•	Browse deals query
+	•	Business profile deals list
+	•	Deal detail page
+
+Paid-member-only deals should show as:
+	•	Unlocked + redeemable if paid member
+	•	Locked UI with CTA if free
+
+6) Force the client to refresh membership status after purchase
+
+After Stripe success redirect:
+	•	Client calls GET /api/me (or your auth user endpoint)
+	•	That endpoint returns up-to-date membership fields from DB
+	•	Update the auth/user state in the app so deals unlock immediately
+
+If webhook is slightly delayed, add:
+	•	“Checking your membership…” state for ~5–10 seconds with a retry (no infinite loop)
+	•	Or a “Refresh” button
+
+7) Add a simple admin-free audit log (optional but recommended)
+
+Create a membership_events table to log:
+	•	userId
+	•	stripeEventId
+	•	eventType
+	•	createdAt
+So you can see exactly what happened if someone says “I paid but it didn’t unlock”.
+
+8) Add tests / debug endpoints
+
+Add:
+	•	A server log line for each webhook event handled (event type + userId)
+	•	A protected endpoint /api/debug/membership (admin only) that returns the current membership status for the logged-in user, so I can quickly validate unlock logic without opening the DB.
+
+Acceptance criteria
+	•	When a user pays, their membershipStatus becomes active automatically via webhook.
+	•	Paid-member deals unlock automatically on Discover/Browse/Profile without manual DB edits.
+	•	Canceling/expiring a subscription relocks paid deals automatically.
+	•	All membership gating uses the same server-side truth function.
+	•	No client-side “trust me I paid” logic

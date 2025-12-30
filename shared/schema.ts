@@ -1139,6 +1139,28 @@ export const insertEmailJobSchema = createInsertSchema(emailJobs).omit({
 export type InsertEmailJob = z.infer<typeof insertEmailJobSchema>;
 export type EmailJob = typeof emailJobs.$inferSelect;
 
+// Membership Events - Audit log for subscription changes
+export const membershipEvents = pgTable("membership_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  stripeEventId: text("stripe_event_id"), // Stripe event ID for deduplication
+  eventType: text("event_type").notNull(), // checkout.session.completed, subscription.updated, etc.
+  previousStatus: text("previous_status"), // membership status before event
+  newStatus: text("new_status"), // membership status after event
+  previousPlan: text("previous_plan"),
+  newPlan: text("new_plan"),
+  metadata: text("metadata"), // JSON string for additional context
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMembershipEventSchema = createInsertSchema(membershipEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMembershipEvent = z.infer<typeof insertMembershipEventSchema>;
+export type MembershipEvent = typeof membershipEvents.$inferSelect;
+
 // Deal redemption status enum values (for unified code system)
 export const DEAL_REDEMPTION_STATUSES = ["issued", "verified", "voided", "expired"] as const;
 export type DealRedemptionStatus = typeof DEAL_REDEMPTION_STATUSES[number];
