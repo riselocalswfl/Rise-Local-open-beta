@@ -36,6 +36,8 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 - **Time-Locked Code Redemption System**: In-person deal redemption with 6-digit codes valid for 10 minutes, atomic redemption, and claim limits.
 - **Redemption Frequency Controls**: Per-deal redemption limits (once per week/month, or unlimited) with backend validation and display on deal cards.
 - **Favorites System**: Users can save and manage deals in a favorites list.
+- **Discount Codes**: Optional `discountCode` field on deals (varchar 50). Vendors can add codes in dashboard; visible to Pass members, blurred for non-members.
+- **Viewable Locked Deals**: Pass-locked deals are fully viewable by non-members to encourage conversion. Full description, images, and vendor info are shown, but redemption is locked ("Join to Unlock" button) and discount codes are hidden/blurred.
 
 ### Feature Specifications
 - **Geographic Focus**: Southwest Florida (Fort Myers, Cape Coral, Bonita Springs, Estero, Naples).
