@@ -119,6 +119,7 @@ const dealFormSchema = z.object({
   dealType: z.enum(["bogo", "percent", "addon"]),
   discountType: z.enum(["percent", "dollar", "bogo", "free_item"]),
   discountValue: z.coerce.number().min(0).optional(),
+  discountCode: z.string().max(50).optional(),
   maxRedemptionsPerUser: z.coerce.number().int().min(1).default(1),
   cooldownHours: z.preprocess(
     (val) => val === "" || val === undefined ? undefined : Number(val),
@@ -1953,6 +1954,7 @@ function DealForm({
       dealType: defaultDealType,
       discountType: defaultDiscountType,
       discountValue: defaultValues?.discountValue || undefined,
+      discountCode: (defaultValues as any)?.discountCode || "",
       maxRedemptionsPerUser: defaultValues?.maxRedemptionsPerUser || 1,
       cooldownHours: defaultValues?.cooldownHours || undefined,
       maxRedemptionsTotal: defaultValues?.maxRedemptionsTotal || undefined,
@@ -2124,6 +2126,27 @@ function DealForm({
                   data-testid="input-deal-fine-print"
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="discountCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Discount Code (Optional)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g., SAVE20, BOGO2024"
+                  {...field}
+                  data-testid="input-discount-code"
+                />
+              </FormControl>
+              <FormDescription>
+                If your deal requires a code, enter it here. It will only be visible to Rise Local Pass members.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

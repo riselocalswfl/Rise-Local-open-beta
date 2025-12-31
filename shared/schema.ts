@@ -1206,6 +1206,7 @@ export const deals = pgTable("deals", {
   savingsAmount: integer("savings_amount"), // Dollar value saved (e.g., 5 = "Save $5")
   discountType: text("discount_type").default("OTHER"), // PERCENT, AMOUNT, BOGO, OTHER
   discountValue: doublePrecision("discount_value"), // Numeric value (e.g., 20 for 20% off)
+  discountCode: varchar("discount_code", { length: 50 }), // Optional promo/discount code for the deal
   
   // Deal Classification
   tier: text("tier").notNull().default("free"), // "free" | "premium" (legacy support)

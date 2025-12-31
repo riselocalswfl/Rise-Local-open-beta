@@ -233,19 +233,47 @@ export default function DealDetailPage() {
           </div>
 
           {/* Centered redemption button under photo */}
-          <div className="px-4 py-4 flex justify-center">
-            <Button
-              size="lg"
-              className="w-full max-w-sm"
-              onClick={() => setRedeemModalOpen(true)}
-              data-testid="button-redeem-deal"
-            >
-              <span className="flex items-center gap-2 uppercase font-semibold tracking-wide">
-                <Ticket className="w-4 h-4" />
-                Redeem Now
-              </span>
-            </Button>
-          </div>
+          {(() => {
+            const isMemberOnly = deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member";
+            const isLocked = isMemberOnly && !isPassMember;
+            
+            if (isLocked) {
+              return (
+                <div className="px-4 py-4 flex flex-col items-center gap-2">
+                  <Button
+                    size="lg"
+                    className="w-full max-w-sm"
+                    onClick={() => setLocation("/membership")}
+                    data-testid="button-join-to-redeem"
+                  >
+                    <span className="flex items-center gap-2 uppercase font-semibold tracking-wide">
+                      <Lock className="w-4 h-4" />
+                      Join to Unlock
+                    </span>
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Rise Local Pass required to redeem this deal
+                  </p>
+                </div>
+              );
+            }
+            
+            return (
+              <div className="px-4 py-4 flex justify-center">
+                <Button
+                  size="lg"
+                  className="w-full max-w-sm"
+                  onClick={() => setRedeemModalOpen(true)}
+                  data-testid="button-redeem-deal"
+                >
+                  <span className="flex items-center gap-2 uppercase font-semibold tracking-wide">
+                    <Ticket className="w-4 h-4" />
+                    Redeem Now
+                  </span>
+                </Button>
+              </div>
+            );
+          })()}
           
           <CardHeader className="pb-4 pt-0">
             <div className="flex items-start gap-4">
@@ -281,13 +309,54 @@ export default function DealDetailPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* Description - always visible since user clicked to see details */}
+            <p className="text-lg text-muted-foreground" data-testid="text-deal-description">
+              {deal.description}
+            </p>
+            
+            {/* Fine Print - if available */}
+            {deal.finePrint && (
+              <div className="bg-muted/50 rounded-lg p-4">
+                <h4 className="font-medium mb-2 text-sm">Terms & Conditions</h4>
+                <p className="text-sm text-muted-foreground">{deal.finePrint}</p>
+              </div>
+            )}
+            
+            {/* Discount Code Section */}
             {(() => {
               const isMemberOnly = deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member";
               const isLocked = isMemberOnly && !isPassMember;
+              const discountCode = (deal as any).discountCode;
+              
+              if (!discountCode) return null;
+              
               return (
-                <p className="text-lg text-muted-foreground">
-                  {isLocked ? "Join Rise Local Pass to see the full details of this exclusive member deal." : deal.description}
-                </p>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
+                    <Ticket className="w-4 h-4 text-primary" />
+                    Discount Code
+                  </h4>
+                  {isLocked ? (
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-muted rounded px-4 py-2 font-mono text-lg tracking-wider text-center blur-sm select-none" data-testid="text-discount-code-hidden">
+                        HIDDEN
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLocation("/membership")}
+                        data-testid="button-unlock-code"
+                      >
+                        <Lock className="w-3 h-3 mr-1" />
+                        Unlock
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="bg-background rounded px-4 py-3 font-mono text-xl tracking-wider text-center font-bold text-primary border" data-testid="text-discount-code">
+                      {discountCode}
+                    </div>
+                  )}
+                </div>
               );
             })()}
 

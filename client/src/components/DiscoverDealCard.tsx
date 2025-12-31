@@ -209,10 +209,8 @@ export default function DiscoverDealCard({ deal, isMember = false, isFavorited =
     </Card>
   );
   
-  if (isLocked) {
-    return cardContent;
-  }
-  
+  // All deals are clickable - even locked ones navigate to detail page
+  // where users can see full details but redemption/codes are locked
   return (
     <Link href={`/deals/${deal.id}`} data-testid={`link-deal-${deal.id}`}>
       {cardContent}

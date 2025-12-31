@@ -4762,22 +4762,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Membership gating: Check if pass-locked deal requires subscription
-      if (deal.isPassLocked) {
-        // Try to get the authenticated user (if any)
-        const authReq = req as any;
-        const userId = authReq.user?.claims?.sub;
-        
-        const hasPass = await isUserSubscribed(userId);
-        
-        if (!hasPass) {
-          console.log("[DEALS] Pass-locked deal requires membership:", dealId);
-          return res.status(403).json({ 
-            code: "PASS_REQUIRED", 
-            message: "This deal is exclusive to Rise Local Pass members. Join now to unlock!"
-          });
-        }
-      }
+      // Note: Pass-locked deals are viewable by everyone, but redemption is gated on the frontend.
+      // The deal detail page shows full info but locks the "Redeem" button and hides discount codes for non-members.
       
       // Get vendor information
       const vendor = await storage.getVendor(deal.vendorId);

@@ -3,14 +3,6 @@ import { Lock, MapPin, Tag } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { Deal, Vendor } from "@shared/schema";
 
@@ -128,44 +120,8 @@ export default function DealCard({ deal, vendor, isPremiumUser = false, distance
     </Card>
   );
 
-  if (isLocked) {
-    return (
-      <Dialog>
-        <DialogTrigger asChild>
-          <button className="w-full text-left" data-testid={`button-locked-deal-${deal.id}`}>
-            {cardContent}
-          </button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unlock Member-Only Deals</DialogTitle>
-            <DialogDescription>
-              Join Rise Local Pass to access exclusive deals from local SWFL businesses.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="bg-muted/50 rounded-lg p-4">
-              <h4 className="font-semibold mb-2">Rise Local Pass Benefits:</h4>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Access exclusive member-only deals</li>
-                <li>• Early access to new offers</li>
-                <li>• Support local SWFL businesses</li>
-                <li>• Only $4.99/month</li>
-              </ul>
-            </div>
-            <Button 
-              className="w-full" 
-              data-testid="button-join-pass"
-              onClick={() => window.location.href = "/membership"}
-            >
-              Join Rise Local Pass
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
+  // All deals are clickable - even locked ones navigate to detail page
+  // where users can see full details but redemption/codes are locked
   return (
     <Link href={`/deals/${deal.id}`} data-testid={`link-deal-${deal.id}`}>
       {cardContent}
