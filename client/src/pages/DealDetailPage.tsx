@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { checkIsPassMember } from "@/lib/authUtils";
+import { hasRiseLocalPass, isMemberOnlyDeal } from "@shared/dealAccess";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import RedeemDealModal from "@/components/RedeemDealModal";
 import type { Deal, Vendor } from "@shared/schema";
@@ -45,7 +45,7 @@ export default function DealDetailPage() {
   const [redeemModalOpen, setRedeemModalOpen] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   
-  const isPassMember = checkIsPassMember(user);
+  const isPassMember = hasRiseLocalPass(user);
 
   const { data: deal, isLoading: dealLoading } = useQuery<Deal>({
     queryKey: ["/api/deals", id],
@@ -223,7 +223,7 @@ export default function DealDetailPage() {
                 </Badge>
               </div>
             )}
-            {(deal.isPassLocked || deal.tier === "premium" || deal.tier === "member") && (
+            {isMemberOnlyDeal(deal) && (
               <div className="absolute top-3 left-3">
                 <Badge variant="default" className="text-xs px-2 py-0.5 bg-primary">
                   Member Only
@@ -234,8 +234,8 @@ export default function DealDetailPage() {
 
           {/* Centered redemption button under photo */}
           {(() => {
-            const isMemberOnly = deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member";
-            const isLocked = isMemberOnly && !isPassMember;
+            const memberOnly = isMemberOnlyDeal(deal);
+            const isLocked = memberOnly && !isPassMember;
             
             if (isLocked) {
               return (
@@ -324,8 +324,8 @@ export default function DealDetailPage() {
             
             {/* Discount Code Section */}
             {(() => {
-              const isMemberOnly = deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member";
-              const isLocked = isMemberOnly && !isPassMember;
+              const memberOnly = isMemberOnlyDeal(deal);
+              const isLocked = memberOnly && !isPassMember;
               const discountCode = (deal as any).discountCode;
               
               if (!discountCode) return null;
@@ -376,7 +376,7 @@ export default function DealDetailPage() {
               <Badge variant="default" className="text-sm">
                 {dealTypeLabels[deal.dealType] || deal.dealType}
               </Badge>
-              {deal.tier === "premium" && (
+              {isMemberOnlyDeal(deal) && (
                 <Badge className="text-sm bg-amber-500 hover:bg-amber-600">
                   <Lock className="w-3 h-3 mr-1" />
                   Premium

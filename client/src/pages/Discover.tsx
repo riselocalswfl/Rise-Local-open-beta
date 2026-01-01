@@ -10,7 +10,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
-import { checkIsPassMember } from "@/lib/authUtils";
+import { hasRiseLocalPass, isMemberOnlyDeal } from "@shared/dealAccess";
 import { useToast } from "@/hooks/use-toast";
 import { useFavorites } from "@/hooks/useFavorites";
 import LocalSpotlight from "@/components/LocalSpotlight";
@@ -97,7 +97,7 @@ function computeSavings(deal: Deal): number {
   if (deal.dealType === "bogo") {
     return 10;
   }
-  if (deal.tier === "premium") {
+  if (isMemberOnlyDeal(deal)) {
     return 15;
   }
   return 0;
@@ -189,7 +189,7 @@ function transformDealToRiseLocal(
   
   let dealType: DealType = "value";
   if (deal.dealType === "bogo") dealType = "bogo";
-  else if (deal.tier === "premium") dealType = "memberOnly";
+  else if (isMemberOnlyDeal(deal)) dealType = "memberOnly";
   
   const isNew = deal.createdAt ? 
     (Date.now() - new Date(deal.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000 : false;
@@ -216,7 +216,7 @@ function transformDealToRiseLocal(
     rawDistance,
     redemptionWindow: "Redeem today",
     dealType,
-    memberOnly: deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member",
+    memberOnly: isMemberOnlyDeal(deal),
     isNew,
     isFictitious: false,
     createdAt: deal.createdAt ? new Date(deal.createdAt) : null,
@@ -241,8 +241,8 @@ export default function Discover() {
   });
   const locationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check if user has Rise Local Pass membership
-  const isPassMember = checkIsPassMember(user);
+  // Check if user has Rise Local Pass membership - single source of truth
+  const isPassMember = hasRiseLocalPass(user);
   
   // Check if user is a business owner
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";

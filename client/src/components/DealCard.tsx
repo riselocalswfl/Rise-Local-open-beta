@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { Deal, Vendor } from "@shared/schema";
+import { isMemberOnlyDeal } from "@shared/dealAccess";
 
 interface DealCardProps {
   deal: Deal;
@@ -14,8 +15,7 @@ interface DealCardProps {
 }
 
 export default function DealCard({ deal, vendor, isPremiumUser = false, distanceMiles }: DealCardProps) {
-  // Use isPassLocked as primary source of truth, with fallback to tier for legacy data
-  const isMemberOnly = deal.isPassLocked === true || deal.tier === "premium" || deal.tier === "member";
+  const isMemberOnly = isMemberOnlyDeal(deal);
   const isLocked = isMemberOnly && !isPremiumUser;
 
   const dealTypeLabels: Record<string, string> = {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { checkIsPassMember } from "@/lib/authUtils";
+import { hasRiseLocalPass } from "@shared/dealAccess";
 import { Link, useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -591,7 +591,7 @@ interface SettingsTabProps {
 function SettingsTab({ vendor, user, updateVendorMutation, handleLogout }: SettingsTabProps) {
   const { toast } = useToast();
   
-  const isPassMember = checkIsPassMember(user);
+  const isPassMember = hasRiseLocalPass(user);
 
   const checkoutMutation = useMutation({
     mutationFn: async (plan: 'monthly' | 'annual') => {

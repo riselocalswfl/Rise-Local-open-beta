@@ -11,7 +11,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { checkIsPassMember } from "@/lib/authUtils";
+import { hasRiseLocalPass, isMemberOnlyDeal } from "@shared/dealAccess";
 import { useFavorites } from "@/hooks/useFavorites";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
@@ -76,7 +76,8 @@ function getSavingsLabel(discountType?: string | null, discountValue?: number | 
 function BrowseDealCard({ deal, isPassMember, isFavorited = false, onToggleFavorite }: BrowseDealCardProps) {
   const [, setLocation] = useLocation();
   const [imageIndex, setImageIndex] = useState(0);
-  const isLocked = deal.isPassLocked && !isPassMember;
+  const memberOnly = isMemberOnlyDeal(deal);
+  const isLocked = memberOnly && !isPassMember;
   
   const imageFallbackChain = [
     deal.imageUrl,
@@ -230,7 +231,7 @@ export default function Browse() {
   
   const { user, isAuthenticated } = useAuth();
   const { isFavorited, toggleFavorite } = useFavorites();
-  const isPassMember = checkIsPassMember(user);
+  const isPassMember = hasRiseLocalPass(user);
 
   const getTitle = () => {
     switch (section) {

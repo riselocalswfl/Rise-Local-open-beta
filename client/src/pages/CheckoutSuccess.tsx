@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import AppShell from "@/components/layout/AppShell";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { checkIsPassMember } from "@/lib/authUtils";
+import { hasRiseLocalPass } from "@shared/dealAccess";
 
 const REDIRECT_DELAY_SECONDS = 3;
 const MAX_RETRY_ATTEMPTS = 6; // Retry for up to 30 seconds (6 attempts x 5 seconds)
@@ -19,7 +19,7 @@ export default function CheckoutSuccess() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   
-  const isMemberActive = checkIsPassMember(user);
+  const isMemberActive = hasRiseLocalPass(user);
 
   const refreshUserData = useCallback(async () => {
     try {

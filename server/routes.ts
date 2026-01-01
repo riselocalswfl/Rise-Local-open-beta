@@ -60,6 +60,7 @@ function deriveServiceOptions(fulfillment: FulfillmentOptions): string[] {
 }
 
 // Helper function to check if user has active Rise Local Pass membership
+// SINGLE SOURCE OF TRUTH - aligned with shared/dealAccess.ts logic
 async function isUserSubscribed(userId: string | undefined): Promise<boolean> {
   if (!userId) return false;
   
@@ -67,14 +68,19 @@ async function isUserSubscribed(userId: string | undefined): Promise<boolean> {
   if (!user) return false;
   
   // Check if user has active pass membership
-  if (!user.isPassMember) return false;
+  if (user.isPassMember !== true) return false;
   
-  // Check if subscription hasn't expired
-  if (user.passExpiresAt && new Date(user.passExpiresAt) < new Date()) {
-    return false;
-  }
+  // Require valid passExpiresAt - prevents stale data from granting access
+  if (!user.passExpiresAt) return false;
   
-  return true;
+  const expiresAt = new Date(user.passExpiresAt);
+  const expiresTime = expiresAt.getTime();
+  
+  // If date is invalid, deny access (safe default)
+  if (Number.isNaN(expiresTime)) return false;
+  
+  // Only grant access if expiration is in the future
+  return expiresTime > Date.now();
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {

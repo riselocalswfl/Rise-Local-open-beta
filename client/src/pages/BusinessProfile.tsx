@@ -13,7 +13,7 @@ import { SiInstagram, SiFacebook, SiTiktok, SiYoutube } from "react-icons/si";
 import { Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { checkIsPassMember } from "@/lib/authUtils";
+import { hasRiseLocalPass, isMemberOnlyDeal } from "@shared/dealAccess";
 import { apiRequest } from "@/lib/queryClient";
 import type { Vendor, Product, VendorDeal } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
@@ -46,7 +46,8 @@ function getSavingsLabel(discountType?: string | null, discountValue?: number | 
 
 function ProfileDealCard({ deal, vendor, isMember = false }: ProfileDealCardProps) {
   const [, setLocation] = useLocation();
-  const isLocked = deal.isPassLocked && !isMember;
+  const memberOnly = isMemberOnlyDeal(deal);
+  const isLocked = memberOnly && !isMember;
   
   const imageFallbackChain = [
     deal.imageUrl ?? undefined,
@@ -147,7 +148,7 @@ export default function BusinessProfile() {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  const isPassMember = checkIsPassMember(user);
+  const isPassMember = hasRiseLocalPass(user);
 
   const startConversation = useMutation({
     mutationFn: async () => {
