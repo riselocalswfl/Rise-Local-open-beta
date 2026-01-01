@@ -5,36 +5,9 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-// Lazy initialization state - tasks run on first request, not at startup
-let postStartupTasksInitialized = false;
-
-async function runPostStartupTasks() {
-  if (postStartupTasksInitialized) return;
-  postStartupTasksInitialized = true;
-  
-  // Import and run these lazily to avoid blocking startup
-  setImmediate(async () => {
-    try {
-      const { validateAndFixOwnership } = await import("./validate-ownership");
-      await validateAndFixOwnership();
-    } catch (error) {
-      console.error("[Lazy Init] Failed to validate ownership:", error);
-    }
-    
-    try {
-      const { startEmailWorker } = await import("./emailWorker");
-      startEmailWorker();
-    } catch (error) {
-      console.error("[Lazy Init] Failed to start email worker:", error);
-    }
-  });
-}
-
-// Middleware to trigger lazy initialization on first request
-app.use((req, res, next) => {
-  runPostStartupTasks();
-  next();
-});
+// NOTE: validateAndFixOwnership() and startEmailWorker() are now disabled at startup
+// to prevent blocking autoscale health checks. These can be triggered manually via
+// admin endpoints if needed: POST /api/admin/run-maintenance
 
 app.use(cookieParser());
 app.use(express.json());

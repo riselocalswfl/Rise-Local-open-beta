@@ -492,6 +492,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin maintenance endpoint - manually trigger startup tasks that were deferred
+  // This allows running ownership validation and email worker on-demand
+  app.post("/api/admin/run-maintenance", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const results: { task: string; status: string; error?: string }[] = [];
+
+      // Run ownership validation (fire-and-forget)
+      try {
+        const { validateAndFixOwnership } = await import("./validate-ownership");
+        // Don't await - let it run in background
+        validateAndFixOwnership().catch((err) => {
+          console.error("[Maintenance] Ownership validation failed:", err);
+        });
+        results.push({ task: "ownershipValidation", status: "started" });
+      } catch (err: any) {
+        results.push({ task: "ownershipValidation", status: "failed", error: err.message });
+      }
+
+      // Start email worker
+      try {
+        const { startEmailWorker } = await import("./emailWorker");
+        startEmailWorker();
+        results.push({ task: "emailWorker", status: "started" });
+      } catch (err: any) {
+        results.push({ task: "emailWorker", status: "failed", error: err.message });
+      }
+
+      res.json({ 
+        message: "Maintenance tasks triggered (running in background)",
+        results 
+      });
+    } catch (error) {
+      console.error("Error running maintenance:", error);
+      res.status(500).json({ error: "Failed to run maintenance tasks" });
+    }
+  });
+
   // Admin vendor verification endpoints
   app.patch("/api/admin/vendors/:id/verify", isAuthenticated, async (req: any, res) => {
     try {
