@@ -2,10 +2,40 @@ import express, { type Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { validateAndFixOwnership } from "./validate-ownership";
-import { startEmailWorker } from "./emailWorker";
 
 const app = express();
+
+// Lazy initialization state - tasks run on first request, not at startup
+let postStartupTasksInitialized = false;
+
+async function runPostStartupTasks() {
+  if (postStartupTasksInitialized) return;
+  postStartupTasksInitialized = true;
+  
+  // Import and run these lazily to avoid blocking startup
+  setImmediate(async () => {
+    try {
+      const { validateAndFixOwnership } = await import("./validate-ownership");
+      await validateAndFixOwnership();
+    } catch (error) {
+      console.error("[Lazy Init] Failed to validate ownership:", error);
+    }
+    
+    try {
+      const { startEmailWorker } = await import("./emailWorker");
+      startEmailWorker();
+    } catch (error) {
+      console.error("[Lazy Init] Failed to start email worker:", error);
+    }
+  });
+}
+
+// Middleware to trigger lazy initialization on first request
+app.use((req, res, next) => {
+  runPostStartupTasks();
+  next();
+});
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -72,22 +102,7 @@ app.use((req, res, next) => {
       reusePort: true,
     }, () => {
       log(`serving on port ${port}`);
-      
-      // Run deferred initialization tasks after server is listening
-      // These run in the background without blocking health checks
-      setTimeout(() => {
-        // Run ownership validation lazily (non-blocking)
-        validateAndFixOwnership().catch((error) => {
-          console.error("[Startup] Failed to validate ownership:", error);
-        });
-        
-        // Start the email worker (non-blocking)
-        try {
-          startEmailWorker();
-        } catch (error) {
-          console.error("[Startup] Failed to start email worker:", error);
-        }
-      }, 100);
+      // Post-startup tasks now run lazily on first request via middleware
     });
   } catch (error) {
     console.error("[Startup] Fatal error during initialization:", error);
