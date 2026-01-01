@@ -1,0 +1,127 @@
+Rise Local is a mobile-first local deals app. Users can purchase a Rise Local Pass (paid membership). If a user has an active Rise Local Pass, they should automatically have access to all member-only deals—no category confusion, no edge cases.
+
+Your Task
+
+Audit, debug, and simplify the Rise Local Pass access logic so it follows this single source of truth rule:
+
+If a user has an active Rise Local Pass → all member-only deals are unlocked. Period.
+
+Step 1: Audit Current Logic
+
+Inspect and clearly document:
+
+Where Rise Local Pass purchase status is stored
+(database table, Stripe webhook sync, local state, auth context, etc.)
+
+Where deal access is checked (Discover page, Browse page, Deal Detail page, Business Profile page)
+
+Any logic currently relying on:
+
+categories
+
+deal tags
+
+role-based access
+
+deal type mismatches
+
+duplicate “member” conditions
+
+Identify exactly why a paid user could still be blocked from member deals.
+
+Step 2: Define the Canonical Rule (Must Implement)
+
+Create one boolean that controls access globally:
+
+user.hasRiseLocalPass === true
+
+
+This should be:
+
+Derived from the actual purchase status
+
+Stored reliably (DB field, not just frontend state)
+
+Synced from Stripe (active, trialing, canceled, expired)
+
+No other conditions should override this.
+
+Step 3: Simplify the Backend
+
+Refactor so:
+
+Deals only have one access flag:
+
+deal.isMemberOnly: boolean
+
+
+Remove or ignore:
+
+category-based access rules
+
+role-based deal gating
+
+multiple membership tiers affecting deal access
+
+Access logic should be:
+
+if (!deal.isMemberOnly) return true
+if (deal.isMemberOnly && user.hasRiseLocalPass) return true
+return false
+
+
+This logic must be reused everywhere.
+
+Step 4: Enforce Consistency Across the App
+
+Ensure this logic is applied consistently to:
+
+Discover page
+
+Browse page
+
+Deal detail modal/page
+
+Business profile deal lists
+
+Favorites
+
+Deal redemption flow
+
+No page should invent its own rules.
+
+Step 5: Add Debug Visibility (Temporary)
+
+Add clear logging for:
+
+User ID
+
+hasRiseLocalPass value
+
+Deal ID
+
+isMemberOnly value
+
+Final access decision
+
+This should make it obvious why a deal is locked or unlocked.
+
+Step 6: Fail Safe Defaults
+
+If membership status is loading → show a loading state, not locked deals
+
+If Stripe data is missing or delayed → re-fetch before denying access
+
+Never permanently lock a deal based on stale data
+
+Final Goal
+
+By the end of this task:
+
+A user who buys Rise Local Pass immediately sees all member deals
+
+There is one source of truth
+
+No categories, tags, or roles can accidentally block access
+
+The system is simple, predictable, and scalable
