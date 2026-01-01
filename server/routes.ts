@@ -1786,24 +1786,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stripe webhook endpoint for account updates and payment processing
+  // NOTE: This endpoint receives raw body from express.raw() middleware in index.ts
   app.post("/api/stripe/webhook", async (req, res) => {
+    console.log('[Webhook] Received request');
+    
     const sig = req.headers['stripe-signature'];
     
     if (!sig) {
+      console.error('[Webhook] FAILED: Missing stripe-signature header');
       return res.status(400).send('Missing stripe-signature header');
     }
 
     let event: Stripe.Event;
 
     try {
-      // Verify webhook signature (you'll need to set STRIPE_WEBHOOK_SECRET in env)
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      if (webhookSecret) {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-      } else {
-        // For development without webhook secret
-        event = req.body as Stripe.Event;
+      
+      if (!webhookSecret) {
+        console.error('[Webhook] FAILED: STRIPE_WEBHOOK_SECRET not configured');
+        return res.status(500).send('Webhook secret not configured');
       }
+      
+      // Verify signature using raw body (Buffer from express.raw middleware)
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      console.log('[Webhook] Signature verified successfully, event type:', event.type);
 
       // Handle payment_intent.succeeded - create transfers to vendors
       if (event.type === 'payment_intent.succeeded') {
@@ -2080,10 +2086,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ received: true });
+      // Always return 200 to acknowledge receipt (Stripe best practice)
+      console.log('[Webhook] Processing complete for event:', event.type);
+      res.status(200).json({ received: true });
     } catch (error) {
-      console.error("Webhook error:", error);
-      res.status(400).send(`Webhook Error: ${error instanceof Error ? error.message : String(error)}`);
+      // Distinguish between signature errors and processing errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('signature') || errorMessage.includes('Webhook')) {
+        // Signature verification failed - return 400 so Stripe knows to retry
+        console.error('[Webhook] SIGNATURE VERIFICATION FAILED:', errorMessage);
+        return res.status(400).send(`Webhook signature verification failed: ${errorMessage}`);
+      }
+      
+      // Processing error - still return 200 to prevent retries (event was received)
+      console.error('[Webhook] PROCESSING ERROR (returning 200 anyway):', errorMessage);
+      res.status(200).json({ received: true, error: 'Processing failed but event acknowledged' });
     }
   });
 

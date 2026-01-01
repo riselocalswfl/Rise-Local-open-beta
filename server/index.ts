@@ -10,6 +10,12 @@ const app = express();
 // admin endpoints if needed: POST /api/admin/run-maintenance
 
 app.use(cookieParser());
+
+// CRITICAL: Stripe webhooks require raw body for signature verification
+// This must come BEFORE express.json() middleware
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
+// Parse JSON for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
