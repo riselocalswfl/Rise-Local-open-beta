@@ -219,10 +219,15 @@ function BrowseDealCard({ deal, isPassMember, isFavorited = false, onToggleFavor
   );
 }
 
-export default function Browse() {
+interface BrowseProps {
+  section?: string;
+}
+
+export default function Browse({ section: propSection }: BrowseProps) {
   const [pathLocation] = useLocation();
   const searchParams = new URLSearchParams(pathLocation.split("?")[1] || "");
-  const section = searchParams.get("section");
+  // Use prop section if provided (from route param), otherwise use query param
+  const section = propSection || searchParams.get("section");
   
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");

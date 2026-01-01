@@ -79,6 +79,13 @@ function Router() {
           </AppShell>
         )}
       </Route>
+      <Route path="/browse/:section">
+        {(params) => (
+          <AppShell>
+            <Browse section={params.section} />
+          </AppShell>
+        )}
+      </Route>
       <Route path="/favorites">
         {() => (
           <AppShell>
