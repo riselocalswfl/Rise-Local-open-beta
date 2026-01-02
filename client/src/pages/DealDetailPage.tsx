@@ -206,13 +206,26 @@ export default function DealDetailPage() {
 
         <Card className="overflow-hidden">
           <div className="relative w-full aspect-[16/9] overflow-hidden">
+            {/* Deal image - blurred for member-only deals when user is not subscribed */}
             <img
               src={currentImage}
               alt={deal.title}
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover transition-all ${
+                isMemberOnlyDeal(deal) && !isPassMember ? "blur-md scale-105" : ""
+              }`}
               onError={handleImageError}
               data-testid="img-deal-hero"
             />
+            
+            {/* Lock overlay for member-only deals when user is not subscribed */}
+            {isMemberOnlyDeal(deal) && !isPassMember && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <div className="bg-background/90 backdrop-blur-sm rounded-full p-4 shadow-lg">
+                  <Lock className="w-10 h-10 text-primary" />
+                </div>
+              </div>
+            )}
+            
             {getSavingsLabel(deal.discountType, deal.discountValue) && (
               <div className="absolute bottom-3 left-3">
                 <Badge 
