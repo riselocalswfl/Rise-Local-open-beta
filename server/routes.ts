@@ -1549,8 +1549,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let stripeCustomerId = user.stripeCustomerId;
 
-      // Create Stripe customer if user doesn't have one
-      if (!stripeCustomerId) {
+      // Helper function to create a new Stripe customer
+      const createStripeCustomer = async () => {
         const customer = await stripe.customers.create({
           email: user.email || undefined,
           name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
@@ -1558,32 +1558,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId: user.id,
           },
         });
-        stripeCustomerId = customer.id;
-        
         // Save the customer ID to the user
-        await storage.updateUser(userId, { stripeCustomerId });
-        console.log('[Billing] Created Stripe customer:', stripeCustomerId, 'for user:', userId);
+        await storage.updateUser(userId, { stripeCustomerId: customer.id });
+        console.log('[Billing] Created Stripe customer:', customer.id, 'for user:', userId);
+        return customer.id;
+      };
+
+      // Create Stripe customer if user doesn't have one
+      if (!stripeCustomerId) {
+        stripeCustomerId = await createStripeCustomer();
       }
 
-      // Create Checkout Session
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        customer: stripeCustomerId,
-        client_reference_id: user.id, // Backup user lookup method
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1,
+      // Create Checkout Session with retry logic for invalid customer IDs
+      let session;
+      try {
+        session = await stripe.checkout.sessions.create({
+          mode: 'subscription',
+          customer: stripeCustomerId,
+          client_reference_id: user.id, // Backup user lookup method
+          line_items: [
+            {
+              price: priceId,
+              quantity: 1,
+            },
+          ],
+          success_url: `${appBaseUrl}/checkout/success`,
+          cancel_url: `${appBaseUrl}/checkout/cancel`,
+          metadata: {
+            userId: user.id,
+            plan: plan, // 'monthly' or 'annual'
+            priceId: priceId,
           },
-        ],
-        success_url: `${appBaseUrl}/checkout/success`,
-        cancel_url: `${appBaseUrl}/checkout/cancel`,
-        metadata: {
-          userId: user.id,
-          plan: plan, // 'monthly' or 'annual'
-          priceId: priceId,
-        },
-      });
+        });
+      } catch (checkoutError: any) {
+        // Handle "No such customer" error by creating a new customer and retrying
+        if (checkoutError.message?.includes('No such customer')) {
+          console.log('[Billing] Stored customer ID invalid, creating new customer for user:', userId);
+          stripeCustomerId = await createStripeCustomer();
+          
+          // Retry checkout session creation with new customer
+          session = await stripe.checkout.sessions.create({
+            mode: 'subscription',
+            customer: stripeCustomerId,
+            client_reference_id: user.id,
+            line_items: [
+              {
+                price: priceId,
+                quantity: 1,
+              },
+            ],
+            success_url: `${appBaseUrl}/checkout/success`,
+            cancel_url: `${appBaseUrl}/checkout/cancel`,
+            metadata: {
+              userId: user.id,
+              plan: plan,
+              priceId: priceId,
+            },
+          });
+        } else {
+          throw checkoutError; // Re-throw other errors
+        }
+      }
 
       console.log('[Billing] Created checkout session:', session.id, 'for user:', userId);
       res.json({ url: session.url });
