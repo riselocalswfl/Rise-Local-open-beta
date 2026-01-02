@@ -1527,7 +1527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for required environment variables based on plan
       const monthlyPriceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
       const annualPriceId = process.env.STRIPE_RISELOCAL_ANNUAL_PRICE_ID;
-      const appBaseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000';
+      const appBaseUrl = process.env.APP_BASE_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
       
       // Select price ID based on plan
       let priceId: string | undefined;
@@ -1645,7 +1645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No billing account found. Please subscribe first." });
       }
 
-      const appBaseUrl = process.env.APP_BASE_URL || process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000';
+      const appBaseUrl = process.env.APP_BASE_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000');
 
       const session = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
