@@ -3446,22 +3446,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
-      // Whitelist only safe fields that users are allowed to update
-      const allowedFields = ['firstName', 'lastName', 'phone'];
-      const updateData: any = {};
-      
-      for (const field of allowedFields) {
-        if (req.body[field] !== undefined) {
-          updateData[field] = req.body[field];
-        }
-      }
-      
-      // Validate the whitelisted data
+      // Validate using Zod schema with explicit field picking
       const validatedData = insertUserSchema.partial().pick({
         firstName: true,
         lastName: true,
         phone: true,
-      }).parse(updateData);
+      }).parse(req.body);
       
       await storage.updateUser(userId, validatedData);
       
