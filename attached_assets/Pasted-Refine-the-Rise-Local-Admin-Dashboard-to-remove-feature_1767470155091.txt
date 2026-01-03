@@ -1,0 +1,98 @@
+Refine the Rise Local Admin Dashboard to remove features that are not currently active or relevant and replace them with metrics that directly reflect platform traction, memberships, and deal usage.
+
+Remove the following from the admin dashboard:
+
+Listings
+
+Events
+
+Orders
+
+Paid Orders
+
+Revenue metrics tied to orders
+
+These features are not currently core to Rise Local’s model and should not appear in the admin overview.
+
+Add and prioritize the following dashboard metrics:
+1. Deal Metrics (Core KPI)
+
+Total Deals Created (all active deals)
+
+Premium Deals (deals marked as Rise Local Pass–only)
+
+Free/Public Deals (non-premium)
+
+Deal Redemptions (Total)
+
+Redemptions by Type
+
+Premium deal redemptions
+
+Free/public deal redemptions
+
+Each metric should be clearly labeled and visually distinct.
+
+2. Membership Metrics (Very High Priority)
+
+Total Rise Local Pass Holders
+
+Total Non-Pass Users
+
+Conversion Rate (Pass holders ÷ total users)
+
+3. Manual Admin Controls (Critical)
+
+Add admin-only controls that allow:
+
+Manually toggling a user between:
+
+Rise Local Pass holder
+
+Non-Pass user
+
+Clearly show:
+
+Current membership status
+
+Date status was last updated
+
+Whether status was Stripe-driven or manually overridden
+
+Manual overrides should persist and not be overwritten by UI refreshes.
+
+4. Business Participation Health
+
+Total Businesses
+
+Businesses with:
+
+At least 1 active deal
+
+At least 1 premium deal
+
+Businesses with zero deals (flagged for outreach)
+
+5. Dashboard UX Improvements
+
+Reorder dashboard so Deals and Memberships appear first
+
+Remove ecommerce-style language (orders, revenue)
+
+Use simple, founder-readable labels (no corporate jargon)
+
+Optimize for fast insight over volume of stats
+
+Overall Goal:
+
+This dashboard should help the founder instantly answer:
+
+Are people buying the Rise Local Pass?
+
+Are premium deals being used?
+
+Are businesses actually participating?
+
+Keep the UI clean, mobile-friendly, and aligned with Rise Local as a local deals + membership platform, not a marketplace or ordering app.
+
+Do not add features that assume future commerce or events unless explicitly requested.
