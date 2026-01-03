@@ -815,6 +815,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // Subscription Reconciliation Admin Routes
+  // ============================================================================
+
+  // Get orphaned Stripe subscriptions (active subscriptions not linked to app users)
+  app.get("/api/admin/orphaned-subscriptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      // Get all active subscriptions from Stripe
+      const stripeSubscriptions = await stripe.subscriptions.list({
+        status: 'active',
+        limit: 100,
+      });
+
+      // Get all users with stripeSubscriptionId
+      const allUsers = await storage.getUsers();
+      const linkedSubscriptionIds = new Set(
+        allUsers
+          .filter((u: any) => u.stripeSubscriptionId)
+          .map((u: any) => u.stripeSubscriptionId)
+      );
+
+      // Find orphaned subscriptions (not linked to any app user)
+      const orphanedSubscriptions = [];
+      for (const sub of stripeSubscriptions.data) {
+        if (!linkedSubscriptionIds.has(sub.id)) {
+          // Get customer details
+          let customerEmail = '';
+          let customerName = '';
+          if (sub.customer && typeof sub.customer === 'string') {
+            try {
+              const customer = await stripe.customers.retrieve(sub.customer);
+              if (customer && !customer.deleted) {
+                customerEmail = (customer as any).email || '';
+                customerName = (customer as any).name || '';
+              }
+            } catch (e) {
+              console.error('Failed to fetch customer:', e);
+            }
+          }
+
+          orphanedSubscriptions.push({
+            subscriptionId: sub.id,
+            customerId: sub.customer as string,
+            customerEmail,
+            customerName,
+            status: sub.status,
+            currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+            created: new Date(sub.created * 1000).toISOString(),
+          });
+        }
+      }
+
+      console.log(`[Admin] Found ${orphanedSubscriptions.length} orphaned subscriptions`);
+      res.json(orphanedSubscriptions);
+    } catch (error) {
+      console.error("Error fetching orphaned subscriptions:", error);
+      res.status(500).json({ error: "Failed to fetch orphaned subscriptions" });
+    }
+  });
+
+  // Search users for linking (admin only)
+  app.get("/api/admin/users/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const query = (req.query.q as string || '').toLowerCase().trim();
+      if (!query || query.length < 2) {
+        return res.json([]);
+      }
+
+      const allUsers = await storage.getUsers();
+      const matchingUsers = allUsers
+        .filter((u: any) => {
+          const email = (u.email || '').toLowerCase();
+          const firstName = (u.firstName || '').toLowerCase();
+          const lastName = (u.lastName || '').toLowerCase();
+          const username = (u.username || '').toLowerCase();
+          return email.includes(query) || 
+                 firstName.includes(query) || 
+                 lastName.includes(query) ||
+                 username.includes(query);
+        })
+        .slice(0, 20)
+        .map((u: any) => ({
+          id: u.id,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          username: u.username,
+          isPassMember: u.isPassMember,
+          stripeCustomerId: u.stripeCustomerId,
+          stripeSubscriptionId: u.stripeSubscriptionId,
+        }));
+
+      res.json(matchingUsers);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ error: "Failed to search users" });
+    }
+  });
+
+  // Link a Stripe subscription to an app user (admin only)
+  app.post("/api/admin/link-subscription", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+      
+      if (!adminUser || adminUser.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { subscriptionId, customerId, targetUserId } = req.body;
+
+      if (!subscriptionId || !targetUserId) {
+        return res.status(400).json({ error: "subscriptionId and targetUserId are required" });
+      }
+
+      // Verify subscription exists in Stripe
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      if (!subscription || subscription.status !== 'active') {
+        return res.status(400).json({ error: "Invalid or inactive subscription" });
+      }
+
+      // Verify target user exists
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "Target user not found" });
+      }
+
+      // Update user with subscription data
+      const periodEnd = new Date(subscription.current_period_end * 1000);
+      const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+
+      await storage.updateUser(targetUserId, {
+        stripeCustomerId: customerId || (subscription.customer as string),
+        stripeSubscriptionId: subscriptionId,
+        membershipStatus: subscription.status,
+        membershipPlan: 'rise_local_monthly',
+        membershipCurrentPeriodEnd: periodEnd,
+        isPassMember: isActive,
+        passExpiresAt: periodEnd,
+      });
+
+      // Log membership event for audit
+      await storage.logMembershipEvent({
+        userId: targetUserId,
+        stripeEventId: `admin-link-${Date.now()}`,
+        eventType: 'admin_link_subscription',
+        previousStatus: targetUser.membershipStatus || undefined,
+        newStatus: subscription.status,
+        previousPlan: targetUser.membershipPlan || undefined,
+        newPlan: 'rise_local_monthly',
+        metadata: JSON.stringify({ 
+          subscriptionId, 
+          customerId: customerId || subscription.customer,
+          linkedBy: adminUserId,
+        }),
+      });
+
+      console.log(`[Admin] Linked subscription ${subscriptionId} to user ${targetUserId} by admin ${adminUserId}`);
+      
+      res.json({ 
+        success: true, 
+        message: `Subscription linked successfully. User now has Rise Local Pass.`,
+        user: {
+          id: targetUserId,
+          email: targetUser.email,
+          isPassMember: true,
+          passExpiresAt: periodEnd,
+        }
+      });
+    } catch (error) {
+      console.error("Error linking subscription:", error);
+      res.status(500).json({ error: "Failed to link subscription" });
+    }
+  });
+
   app.get("/api/vendors/values/all", async (req, res) => {
     try {
       const values = await storage.getAllVendorValues();
