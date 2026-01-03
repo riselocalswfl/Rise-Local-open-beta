@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight } from "lucide-react";
+import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -35,6 +35,7 @@ export default function CustomerProfile() {
   const [editedLastName, setEditedLastName] = useState("");
   const [editedPhone, setEditedPhone] = useState("");
   const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  const isAdmin = user?.role === "admin";
 
   const { data: redemptions, isLoading: redemptionsLoading, isError: redemptionsError } = useQuery<RedemptionHistoryItem[]>({
     queryKey: ["/api/me/redemptions"],
@@ -359,6 +360,30 @@ export default function CustomerProfile() {
               )}
             </CardContent>
           </Card>
+
+          {/* Admin Access */}
+          {isAdmin && (
+            <Card data-testid="card-admin-access">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  Admin Access
+                </CardTitle>
+                <CardDescription>Administrative tools and management</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href="/admin">
+                  <Button 
+                    data-testid="button-admin-dashboard"
+                    className="w-full sm:w-auto"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Admin Dashboard
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Account Actions */}
           <Card data-testid="card-account-actions">
