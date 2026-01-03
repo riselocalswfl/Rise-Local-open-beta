@@ -862,13 +862,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          const subData = sub as any;
           orphanedSubscriptions.push({
             subscriptionId: sub.id,
             customerId: sub.customer as string,
             customerEmail,
             customerName,
             status: sub.status,
-            currentPeriodEnd: new Date(sub.current_period_end * 1000).toISOString(),
+            currentPeriodEnd: new Date(subData.current_period_end * 1000).toISOString(),
             created: new Date(sub.created * 1000).toISOString(),
           });
         }
@@ -957,7 +958,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update user with subscription data
-      const periodEnd = new Date(subscription.current_period_end * 1000);
+      const subData = subscription as any;
+      const periodEnd = new Date(subData.current_period_end * 1000);
       const isActive = subscription.status === 'active' || subscription.status === 'trialing';
 
       await storage.updateUser(targetUserId, {

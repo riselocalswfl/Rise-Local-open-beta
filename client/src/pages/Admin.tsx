@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Calendar, DollarSign, Mail, Phone, Store, Utensils, Wrench } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Calendar, DollarSign, Mail, Phone, Store, Utensils, Wrench, CreditCard, Link2, Search, AlertTriangle } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,28 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { Input } from "@/components/ui/input";
+
+interface OrphanedSubscription {
+  subscriptionId: string;
+  customerId: string;
+  customerEmail: string;
+  customerName: string;
+  status: string;
+  currentPeriodEnd: string;
+  created: string;
+}
+
+interface SearchedUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  isPassMember: boolean;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+}
 
 interface AdminStats {
   users: {
@@ -305,6 +327,185 @@ function UserAccountsList() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function SubscriptionReconciliation() {
+  const { toast } = useToast();
+  const [selectedSub, setSelectedSub] = useState<OrphanedSubscription | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchedUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const { data: orphanedSubs, isLoading, refetch } = useQuery<OrphanedSubscription[]>({
+    queryKey: ["/api/admin/orphaned-subscriptions"],
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: async ({ subscriptionId, customerId, targetUserId }: { subscriptionId: string; customerId: string; targetUserId: string }) => {
+      return await apiRequest('POST', '/api/admin/link-subscription', { subscriptionId, customerId, targetUserId });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Subscription Linked",
+        description: data.message || "User now has Rise Local Pass access.",
+      });
+      setSelectedSub(null);
+      setSearchQuery('');
+      setSearchResults([]);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Link",
+        description: error.message || "An error occurred.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSearch = async () => {
+    if (searchQuery.length < 2) return;
+    setIsSearching(true);
+    try {
+      const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`);
+      const users = await response.json();
+      setSearchResults(users);
+    } catch (e) {
+      console.error('Search failed:', e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleLink = (user: SearchedUser) => {
+    if (!selectedSub) return;
+    linkMutation.mutate({
+      subscriptionId: selectedSub.subscriptionId,
+      customerId: selectedSub.customerId,
+      targetUserId: user.id,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
+      </div>
+    );
+  }
+
+  if (!orphanedSubs || orphanedSubs.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground" data-testid="text-no-orphaned-subscriptions">
+        <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+        All active subscriptions are linked to users
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-amber-600 mb-4">
+        <AlertTriangle className="w-5 h-5" />
+        <span className="text-sm font-medium">{orphanedSubs.length} subscription(s) need to be linked to app users</span>
+      </div>
+
+      {orphanedSubs.map((sub) => (
+        <div
+          key={sub.subscriptionId}
+          className={`p-4 border rounded-lg ${selectedSub?.subscriptionId === sub.subscriptionId ? 'ring-2 ring-primary' : ''}`}
+          data-testid={`orphaned-sub-${sub.subscriptionId}`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <CreditCard className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">{sub.customerEmail || 'No email'}</span>
+                <Badge variant="outline" className="text-green-600">{sub.status}</Badge>
+              </div>
+              <div className="text-sm text-muted-foreground space-y-1">
+                <div>Customer: {sub.customerName || 'Unknown'}</div>
+                <div>Expires: {new Date(sub.currentPeriodEnd).toLocaleDateString()}</div>
+                <div className="font-mono text-xs">{sub.subscriptionId}</div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant={selectedSub?.subscriptionId === sub.subscriptionId ? "secondary" : "outline"}
+              onClick={() => {
+                setSelectedSub(selectedSub?.subscriptionId === sub.subscriptionId ? null : sub);
+                setSearchQuery('');
+                setSearchResults([]);
+              }}
+              data-testid={`button-select-sub-${sub.subscriptionId}`}
+            >
+              {selectedSub?.subscriptionId === sub.subscriptionId ? 'Cancel' : 'Link to User'}
+            </Button>
+          </div>
+
+          {selectedSub?.subscriptionId === sub.subscriptionId && (
+            <div className="mt-4 pt-4 border-t space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search by email or name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  data-testid="input-user-search"
+                />
+                <Button
+                  onClick={handleSearch}
+                  disabled={searchQuery.length < 2 || isSearching}
+                  data-testid="button-search-users"
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {searchResults.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-2 border rounded hover-elevate"
+                      data-testid={`search-result-${user.id}`}
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">
+                          {user.firstName} {user.lastName} {user.username && `(@${user.username})`}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{user.email}</div>
+                        {user.isPassMember && (
+                          <Badge variant="secondary" className="text-xs mt-1">Already has Pass</Badge>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleLink(user)}
+                        disabled={linkMutation.isPending}
+                        data-testid={`button-link-user-${user.id}`}
+                      >
+                        <Link2 className="w-3 h-3 mr-1" />
+                        Link
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {searchQuery.length >= 2 && searchResults.length === 0 && !isSearching && (
+                <div className="text-sm text-muted-foreground text-center py-2">
+                  No users found matching "{searchQuery}"
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -663,6 +864,22 @@ export default function Admin() {
                 })}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Subscription Reconciliation */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Subscription Reconciliation
+            </CardTitle>
+            <CardDescription>
+              Link active Stripe subscriptions to app users who haven't received their Rise Local Pass
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SubscriptionReconciliation />
           </CardContent>
         </Card>
 
