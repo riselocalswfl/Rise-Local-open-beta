@@ -1545,82 +1545,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log('[Billing] Creating checkout session for plan:', plan, 'priceId:', priceId);
+      console.log('[Billing] Creating checkout session for plan:', plan, 'priceId:', priceId, 'appUserId:', userId);
 
-      let stripeCustomerId = user.stripeCustomerId;
-
-      // Helper function to create a new Stripe customer
-      const createStripeCustomer = async () => {
-        const customer = await stripe.customers.create({
-          email: user.email || undefined,
-          name: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
-          metadata: {
-            userId: user.id,
+      // Create Checkout Session without customer parameter to avoid resource_missing errors
+      // Stripe will create/link customer automatically; we use client_reference_id and metadata.appUserId for reliable user lookup
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        customer_email: user.email || undefined, // Let Stripe handle customer creation
+        client_reference_id: userId, // Primary user lookup method
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
           },
-        });
-        // Save the customer ID to the user
-        await storage.updateUser(userId, { stripeCustomerId: customer.id });
-        console.log('[Billing] Created Stripe customer:', customer.id, 'for user:', userId);
-        return customer.id;
-      };
+        ],
+        success_url: `${appBaseUrl}/checkout/success`,
+        cancel_url: `${appBaseUrl}/checkout/cancel`,
+        metadata: {
+          appUserId: userId, // Primary user lookup method (renamed from userId for clarity)
+          plan: plan, // 'monthly' or 'annual'
+          priceId: priceId,
+        },
+      });
 
-      // Create Stripe customer if user doesn't have one
-      if (!stripeCustomerId) {
-        stripeCustomerId = await createStripeCustomer();
-      }
-
-      // Create Checkout Session with retry logic for invalid customer IDs
-      let session;
-      try {
-        session = await stripe.checkout.sessions.create({
-          mode: 'subscription',
-          customer: stripeCustomerId,
-          client_reference_id: user.id, // Backup user lookup method
-          line_items: [
-            {
-              price: priceId,
-              quantity: 1,
-            },
-          ],
-          success_url: `${appBaseUrl}/checkout/success`,
-          cancel_url: `${appBaseUrl}/checkout/cancel`,
-          metadata: {
-            userId: user.id,
-            plan: plan, // 'monthly' or 'annual'
-            priceId: priceId,
-          },
-        });
-      } catch (checkoutError: any) {
-        // Handle "No such customer" error by creating a new customer and retrying
-        if (checkoutError.message?.includes('No such customer')) {
-          console.log('[Billing] Stored customer ID invalid, creating new customer for user:', userId);
-          stripeCustomerId = await createStripeCustomer();
-          
-          // Retry checkout session creation with new customer
-          session = await stripe.checkout.sessions.create({
-            mode: 'subscription',
-            customer: stripeCustomerId,
-            client_reference_id: user.id,
-            line_items: [
-              {
-                price: priceId,
-                quantity: 1,
-              },
-            ],
-            success_url: `${appBaseUrl}/checkout/success`,
-            cancel_url: `${appBaseUrl}/checkout/cancel`,
-            metadata: {
-              userId: user.id,
-              plan: plan,
-              priceId: priceId,
-            },
-          });
-        } else {
-          throw checkoutError; // Re-throw other errors
-        }
-      }
-
-      console.log('[Billing] Created checkout session:', session.id, 'for user:', userId);
+      console.log('[Billing] Created checkout session:', session.id, 'appUserId:', userId, 'customer_email:', user.email);
       res.json({ url: session.url });
     } catch (error) {
       console.error("[Billing] Error creating checkout session:", error);
@@ -1920,70 +1868,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle Rise Local Pass subscription events
       if (event.type === 'checkout.session.completed') {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log('[Webhook] checkout.session.completed for customer:', session.customer, 'client_reference_id:', session.client_reference_id);
+        // Support both new appUserId and legacy userId metadata keys
+        const appUserId = session.metadata?.appUserId || session.metadata?.userId || session.client_reference_id;
+        const customerId = session.customer as string | null;
+        const subscriptionId = session.subscription as string | null;
         
-        if (session.mode === 'subscription' && session.customer && session.subscription) {
+        console.log('[Webhook] checkout.session.completed', {
+          eventId: event.id,
+          eventType: event.type,
+          appUserId,
+          customer: customerId,
+          subscription: subscriptionId,
+          client_reference_id: session.client_reference_id,
+          metadata: session.metadata,
+        });
+        
+        if (session.mode === 'subscription' && session.subscription) {
           // Fetch the subscription details
-          const subscriptionData = await stripe.subscriptions.retrieve(session.subscription as string) as any;
-          const customerId = session.customer as string;
+          const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId as string) as any;
           
-          // Find user by stripeCustomerId first, then fall back to client_reference_id or metadata
-          let user = await storage.getUserByStripeCustomerId(customerId);
+          // Primary lookup: use metadata.appUserId, metadata.userId (legacy), or client_reference_id
+          let user = null;
+          let lookupMethod = '';
           
-          // Fallback: use client_reference_id (userId) if customer lookup fails
-          if (!user && session.client_reference_id) {
-            user = await storage.getUser(session.client_reference_id);
-            // Update user with stripeCustomerId if found via fallback
-            if (user) {
-              await storage.updateUser(user.id, { stripeCustomerId: customerId });
-              console.log('[Webhook] Updated stripeCustomerId via fallback for user:', user.id);
-            }
+          if (appUserId) {
+            user = await storage.getUser(appUserId);
+            lookupMethod = session.metadata?.appUserId ? 'metadata.appUserId' : 
+                          session.metadata?.userId ? 'metadata.userId (legacy)' : 
+                          'client_reference_id';
           }
           
-          // Another fallback: use metadata.userId
-          if (!user && session.metadata?.userId) {
-            user = await storage.getUser(session.metadata.userId);
-            if (user) {
-              await storage.updateUser(user.id, { stripeCustomerId: customerId });
-              console.log('[Webhook] Updated stripeCustomerId via metadata fallback for user:', user.id);
-            }
+          // Fallback: try stripeCustomerId if primary lookup failed
+          if (!user && customerId) {
+            user = await storage.getUserByStripeCustomerId(customerId);
+            lookupMethod = 'stripeCustomerId';
           }
           
           if (user) {
-            const periodEnd = new Date(subscriptionData.current_period_end * 1000);
-            const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
-            
-            // Determine plan type from metadata or price ID
-            const planType = session.metadata?.plan || 'monthly';
-            const membershipPlan = planType === 'annual' ? 'rise_local_annual' : 'rise_local_monthly';
-            
-            const previousStatus = user.membershipStatus;
-            const previousPlan = user.membershipPlan;
-            
-            await storage.updateUser(user.id, {
-              stripeSubscriptionId: subscriptionData.id,
-              membershipStatus: subscriptionData.status,
-              membershipPlan: membershipPlan,
-              membershipCurrentPeriodEnd: periodEnd,
-              isPassMember: isActive,
-              passExpiresAt: periodEnd,
-            });
-            
-            // Log membership event for audit
-            await storage.logMembershipEvent({
-              userId: user.id,
-              stripeEventId: event.id,
-              eventType: 'checkout.session.completed',
-              previousStatus: previousStatus || undefined,
-              newStatus: subscriptionData.status,
-              previousPlan: previousPlan || undefined,
-              newPlan: membershipPlan,
-              metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
-            });
-            
-            console.log('[Webhook] User membership activated:', user.id, 'plan:', membershipPlan, 'status:', subscriptionData.status);
+            try {
+              const periodEnd = new Date(subscriptionData.current_period_end * 1000);
+              const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
+              
+              // Determine plan type from metadata or price ID
+              const planType = session.metadata?.plan || 'monthly';
+              const membershipPlan = planType === 'annual' ? 'rise_local_annual' : 'rise_local_monthly';
+              
+              const previousStatus = user.membershipStatus;
+              const previousPlan = user.membershipPlan;
+              
+              // Update user with subscription and link stripeCustomerId if available
+              await storage.updateUser(user.id, {
+                stripeCustomerId: customerId || user.stripeCustomerId,
+                stripeSubscriptionId: subscriptionData.id,
+                membershipStatus: subscriptionData.status,
+                membershipPlan: membershipPlan,
+                membershipCurrentPeriodEnd: periodEnd,
+                isPassMember: isActive,
+                passExpiresAt: periodEnd,
+              });
+              
+              // Log membership event for audit
+              await storage.logMembershipEvent({
+                userId: user.id,
+                stripeEventId: event.id,
+                eventType: 'checkout.session.completed',
+                previousStatus: previousStatus || undefined,
+                newStatus: subscriptionData.status,
+                previousPlan: previousPlan || undefined,
+                newPlan: membershipPlan,
+                metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
+              });
+              
+              console.log('[Webhook] Pass unlock SUCCESS', {
+                eventId: event.id,
+                eventType: event.type,
+                appUserId: user.id,
+                customer: customerId,
+                subscription: subscriptionData.id,
+                plan: membershipPlan,
+                status: subscriptionData.status,
+                lookupMethod,
+              });
+            } catch (dbError) {
+              console.error('[Webhook] Pass unlock FAILED - database error', {
+                eventId: event.id,
+                eventType: event.type,
+                appUserId: user.id,
+                customer: customerId,
+                subscription: subscriptionId,
+                error: dbError instanceof Error ? dbError.message : String(dbError),
+              });
+              // Return 500 so Stripe retries
+              return res.status(500).json({ error: 'Database update failed' });
+            }
           } else {
-            console.warn('[Webhook] No user found for customer:', customerId, 'client_ref:', session.client_reference_id, 'metadata:', session.metadata);
+            console.error('[Webhook] Pass unlock FAILED - no user found', {
+              eventId: event.id,
+              eventType: event.type,
+              appUserId,
+              customer: customerId,
+              subscription: subscriptionId,
+              client_reference_id: session.client_reference_id,
+              metadata: session.metadata,
+            });
+            // Return 500 so Stripe retries - user may not exist yet
+            return res.status(500).json({ error: 'User not found for subscription' });
           }
         }
       }
