@@ -4803,7 +4803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if user is a vendor
-      const isVendorRole = ['vendor', 'restaurant', 'service_provider'].includes(user.role || '');
+      const isVendorRole = user.role === 'vendor';
       
       if (isVendorRole) {
         // Get vendor's conversations
@@ -4977,7 +4977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not found" });
       }
 
-      const isVendorRole = ['vendor', 'restaurant', 'service_provider'].includes(user.role || '');
+      const isVendorRole = user.role === 'vendor';
       
       if (isVendorRole) {
         const vendor = await storage.getVendorByOwnerId(userId);
