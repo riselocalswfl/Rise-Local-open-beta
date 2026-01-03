@@ -447,14 +447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           city: v.city,
         }));
 
-      // ===== PENDING VERIFICATIONS (kept for admin actions) =====
-      const allShopVendors = allVendors.filter((v: any) => v.vendorType === 'shop');
-      const allDineVendors = allVendors.filter((v: any) => v.vendorType === 'dine');
-      const allServiceVendors = allVendors.filter((v: any) => v.vendorType === 'service');
-      
-      const pendingVendorVerifications = allShopVendors.filter((v: any) => !v.isVerified);
-      const pendingRestaurantVerifications = allDineVendors.filter((v: any) => !v.isVerified);
-      const pendingServiceProviderVerifications = allServiceVendors.filter((v: any) => !v.isVerified);
+      // ===== PENDING VERIFICATIONS (unified - all vendor types now use 'vendor' role) =====
+      const pendingVerifications = allVendors.filter((v: any) => !v.isVerified);
 
       res.json({
         // Deal Metrics (Core KPI)
@@ -483,12 +477,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           withNoDeals: businessesWithNoDeals,
           needingOutreach: businessesNeedingOutreach,
         },
-        // Pending verifications (for action cards)
+        // Unified pending verifications (all vendor types consolidated)
         vendors: {
-          total: allShopVendors.length,
-          verified: allShopVendors.filter((v: any) => v.isVerified).length,
-          unverified: allShopVendors.filter((v: any) => !v.isVerified).length,
-          pendingVerifications: pendingVendorVerifications.map((v: any) => ({
+          total: allVendors.length,
+          verified: allVendors.filter((v: any) => v.isVerified).length,
+          unverified: allVendors.filter((v: any) => !v.isVerified).length,
+          pendingVerifications: pendingVerifications.map((v: any) => ({
             id: v.id,
             businessName: v.businessName,
             contactEmail: v.contactEmail,
@@ -496,31 +490,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'vendor' as const,
           })),
         },
-        restaurants: {
-          total: allDineVendors.length,
-          verified: allDineVendors.filter((v: any) => v.isVerified).length,
-          unverified: allDineVendors.filter((v: any) => !v.isVerified).length,
-          pendingVerifications: pendingRestaurantVerifications.map((v: any) => ({
-            id: v.id,
-            businessName: v.businessName,
-            contactEmail: v.contactEmail,
-            city: v.city,
-            type: 'restaurant' as const,
-          })),
-        },
-        serviceProviders: {
-          total: allServiceVendors.length,
-          verified: allServiceVendors.filter((v: any) => v.isVerified).length,
-          unverified: allServiceVendors.filter((v: any) => !v.isVerified).length,
-          pendingVerifications: pendingServiceProviderVerifications.map((v: any) => ({
-            id: v.id,
-            businessName: v.businessName,
-            contactEmail: v.contactEmail,
-            city: v.city,
-            type: 'service_provider' as const,
-          })),
-        },
-        // Legacy fields removed: users.total, products, menuItems, serviceOfferings, events, orders, revenue
       });
     } catch (error) {
       console.error("Error fetching admin stats:", error);

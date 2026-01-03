@@ -15,7 +15,7 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 - **Frontend State Management**: TanStack Query for server state, React hooks for UI state, and Wouter for client-side routing.
 - **Backend**: Express.js with TypeScript for a RESTful API.
 - **Data Storage**: PostgreSQL via Neon's serverless driver, utilizing Drizzle ORM.
-- **Authentication**: Replit Auth (OIDC) with PostgreSQL session storage. Supports `buyer`, `vendor`, `restaurant`, `service_provider`, and `admin` roles. All pages except `/auth` require authentication, enforced by an `AuthBoundary` component.
+- **Authentication**: Replit Auth (OIDC) with PostgreSQL session storage. Supports `buyer`, `vendor`, and `admin` roles. All pages except `/auth` require authentication, enforced by an `AuthBoundary` component. Note: `restaurant` and `service_provider` roles have been deprecated and consolidated into `vendor` - vendor types are now differentiated by the `vendorType` field (shop, dine, service) in the vendors table.
 - **Unified Vendor Architecture**: A single `vendors` table handles all vendor types using `vendorType` and `capabilities` fields.
 - **Simplified Authentication & Onboarding**: Streamlined signup routes users based on `intended_role` and directs all authenticated users to a `/start` gate for role-based routing and onboarding status checks.
 - **5-Step Vendor Onboarding Flow**: Comprehensive onboarding at `/onboarding` for vendors, covering business details, operations, hours, and images, with auto-saving and draft persistence.
