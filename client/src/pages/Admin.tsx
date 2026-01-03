@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, Utensils, Wrench, CreditCard, Link2, Search, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,30 +73,6 @@ interface AdminStats {
       contactEmail: string;
       city: string;
       type: 'vendor';
-    }>;
-  };
-  restaurants: {
-    total: number;
-    verified: number;
-    unverified: number;
-    pendingVerifications: Array<{
-      id: string;
-      businessName: string;
-      contactEmail: string;
-      city: string;
-      type: 'restaurant';
-    }>;
-  };
-  serviceProviders: {
-    total: number;
-    verified: number;
-    unverified: number;
-    pendingVerifications: Array<{
-      id: string;
-      businessName: string;
-      contactEmail: string;
-      city: string;
-      type: 'service_provider';
     }>;
   };
 }
@@ -531,14 +507,8 @@ export default function Admin() {
 
   // Verify vendor mutation
   const verifyVendorMutation = useMutation({
-    mutationFn: async ({ id, type }: { id: string; type: 'vendor' | 'restaurant' | 'service_provider' }) => {
-      const endpoint = type === 'vendor' 
-        ? `/api/admin/vendors/${id}/verify`
-        : type === 'restaurant'
-        ? `/api/admin/restaurants/${id}/verify`
-        : `/api/admin/service-providers/${id}/verify`;
-      
-      return await apiRequest('PATCH', endpoint, { isVerified: true });
+    mutationFn: async ({ id }: { id: string }) => {
+      return await apiRequest('PATCH', `/api/admin/vendors/${id}/verify`, { isVerified: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
@@ -547,22 +517,16 @@ export default function Admin() {
 
   // Reject vendor mutation
   const rejectVendorMutation = useMutation({
-    mutationFn: async ({ id, type }: { id: string; type: 'vendor' | 'restaurant' | 'service_provider' }) => {
-      const endpoint = type === 'vendor' 
-        ? `/api/admin/vendors/${id}/verify`
-        : type === 'restaurant'
-        ? `/api/admin/restaurants/${id}/verify`
-        : `/api/admin/service-providers/${id}/verify`;
-      
-      return await apiRequest('PATCH', endpoint, { isVerified: false });
+    mutationFn: async ({ id }: { id: string }) => {
+      return await apiRequest('PATCH', `/api/admin/vendors/${id}/verify`, { isVerified: false });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
     },
   });
 
-  const handleVerify = (id: string, name: string, type: 'vendor' | 'restaurant' | 'service_provider') => {
-    verifyVendorMutation.mutate({ id, type }, {
+  const handleVerify = (id: string, name: string) => {
+    verifyVendorMutation.mutate({ id }, {
       onSuccess: () => {
         toast({
           title: "Business Verified",
@@ -579,8 +543,8 @@ export default function Admin() {
     });
   };
 
-  const handleReject = (id: string, name: string, type: 'vendor' | 'restaurant' | 'service_provider') => {
-    rejectVendorMutation.mutate({ id, type }, {
+  const handleReject = (id: string, name: string) => {
+    rejectVendorMutation.mutate({ id }, {
       onSuccess: () => {
         toast({
           title: "Business Rejected",
@@ -598,34 +562,8 @@ export default function Admin() {
     });
   };
 
-  // Combine all pending verifications
-  const allPendingVerifications = [
-    ...(stats?.vendors.pendingVerifications || []),
-    ...(stats?.restaurants.pendingVerifications || []),
-    ...(stats?.serviceProviders.pendingVerifications || []),
-  ];
-
-  const getVendorTypeIcon = (type: 'vendor' | 'restaurant' | 'service_provider') => {
-    switch (type) {
-      case 'vendor':
-        return Store;
-      case 'restaurant':
-        return Utensils;
-      case 'service_provider':
-        return Wrench;
-    }
-  };
-
-  const getVendorTypeLabel = (type: 'vendor' | 'restaurant' | 'service_provider') => {
-    switch (type) {
-      case 'vendor':
-        return 'Shop';
-      case 'restaurant':
-        return 'Restaurant';
-      case 'service_provider':
-        return 'Service Provider';
-    }
-  };
+  // All pending verifications from unified vendors table
+  const allPendingVerifications = stats?.vendors.pendingVerifications || [];
 
   if (statsLoading) {
     return (
@@ -828,83 +766,31 @@ export default function Admin() {
           </CardContent>
         </Card>
 
-        {/* Business Type Breakdown */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Store className="w-4 h-4" />
-                Shops
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono font-semibold">{stats?.vendors.total || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Verified</span>
-                  <span className="font-mono font-semibold text-green-600">{stats?.vendors.verified || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pending</span>
-                  <span className="font-mono font-semibold text-amber-600">{stats?.vendors.unverified || 0}</span>
-                </div>
+        {/* Business Stats */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Store className="w-4 h-4" />
+              Business Verification Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="text-center p-3 rounded-lg bg-muted/50">
+                <div className="font-mono text-2xl font-semibold">{stats?.vendors.total || 0}</div>
+                <div className="text-muted-foreground">Total</div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Utensils className="w-4 h-4" />
-                Restaurants
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono font-semibold">{stats?.restaurants.total || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Verified</span>
-                  <span className="font-mono font-semibold text-green-600">{stats?.restaurants.verified || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pending</span>
-                  <span className="font-mono font-semibold text-amber-600">{stats?.restaurants.unverified || 0}</span>
-                </div>
+              <div className="text-center p-3 rounded-lg bg-green-50">
+                <div className="font-mono text-2xl font-semibold text-green-600">{stats?.vendors.verified || 0}</div>
+                <div className="text-muted-foreground">Verified</div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Wrench className="w-4 h-4" />
-                Service Providers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono font-semibold">{stats?.serviceProviders.total || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Verified</span>
-                  <span className="font-mono font-semibold text-green-600">{stats?.serviceProviders.verified || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pending</span>
-                  <span className="font-mono font-semibold text-amber-600">{stats?.serviceProviders.unverified || 0}</span>
-                </div>
+              <div className="text-center p-3 rounded-lg bg-amber-50">
+                <div className="font-mono text-2xl font-semibold text-amber-600">{stats?.vendors.unverified || 0}</div>
+                <div className="text-muted-foreground">Pending</div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Pending Business Verifications */}
         <Card className="mb-8">
@@ -921,50 +807,47 @@ export default function Admin() {
               </div>
             ) : (
               <div className="space-y-4">
-                {allPendingVerifications.map((business) => {
-                  const Icon = getVendorTypeIcon(business.type);
-                  return (
-                    <div
-                      key={business.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover-elevate"
-                      data-testid={`business-verification-${business.id}`}
-                    >
-                      <div className="flex items-start gap-3 flex-1">
-                        <Icon className="w-5 h-5 mt-1 text-muted-foreground" />
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium">{business.businessName}</h3>
-                            <Badge variant="outline">{getVendorTypeLabel(business.type)}</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {business.city} • {business.contactEmail}
-                          </p>
+                {allPendingVerifications.map((business) => (
+                  <div
+                    key={business.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover-elevate"
+                    data-testid={`business-verification-${business.id}`}
+                  >
+                    <div className="flex items-start gap-3 flex-1">
+                      <Store className="w-5 h-5 mt-1 text-muted-foreground" />
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium">{business.businessName}</h3>
+                          <Badge variant="outline">Business</Badge>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleVerify(business.id, business.businessName, business.type)}
-                          disabled={verifyVendorMutation.isPending}
-                          data-testid={`button-verify-${business.id}`}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Verify
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleReject(business.id, business.businessName, business.type)}
-                          disabled={rejectVendorMutation.isPending}
-                          data-testid={`button-reject-${business.id}`}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Reject
-                        </Button>
+                        <p className="text-sm text-muted-foreground">
+                          {business.city} • {business.contactEmail}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleVerify(business.id, business.businessName)}
+                        disabled={verifyVendorMutation.isPending}
+                        data-testid={`button-verify-${business.id}`}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Verify
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleReject(business.id, business.businessName)}
+                        disabled={rejectVendorMutation.isPending}
+                        data-testid={`button-reject-${business.id}`}
+                      >
+                        <XCircle className="w-4 h-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
