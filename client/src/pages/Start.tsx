@@ -44,6 +44,15 @@ export default function Start() {
       return;
     }
 
+    // Admins always go directly to admin page (bypass onboarding)
+    if (role === "admin") {
+      if (returnTo) {
+        sessionStorage.removeItem("returnTo");
+      }
+      setLocation("/admin");
+      return;
+    }
+
     if (!onboardingComplete) {
       // Clear returnTo when user hasn't completed onboarding
       // They can't access protected routes yet
@@ -51,7 +60,7 @@ export default function Start() {
         sessionStorage.removeItem("returnTo");
       }
       
-      if (role === "vendor" || role === "restaurant" || role === "service_provider") {
+      if (role === "vendor") {
         setLocation("/onboarding");
       } else {
         // Buyers don't need onboarding, mark as complete and go to discover
@@ -67,9 +76,7 @@ export default function Start() {
       return;
     }
 
-    if (role === "admin") {
-      setLocation("/admin");
-    } else if (role === "vendor" || role === "restaurant" || role === "service_provider") {
+    if (role === "vendor") {
       setLocation("/dashboard");
     } else {
       setLocation("/discover");

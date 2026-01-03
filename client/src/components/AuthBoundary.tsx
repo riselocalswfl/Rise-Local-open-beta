@@ -41,7 +41,8 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
       return;
     }
 
-    if (user && !isGateRoute && !isPublicRoute && !user.onboardingComplete) {
+    // Admins bypass onboarding requirements
+    if (user && !isGateRoute && !isPublicRoute && !user.onboardingComplete && user.role !== "admin") {
       console.log("[AuthBoundary] Authenticated but onboarding incomplete, redirecting to /start");
       setLocation("/start");
     }
@@ -66,7 +67,8 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
     return null;
   }
 
-  if (!user.onboardingComplete) {
+  // Admins bypass onboarding requirements
+  if (!user.onboardingComplete && user.role !== "admin") {
     return null;
   }
 
