@@ -106,6 +106,8 @@ function UserAccountsList() {
   const [switchDialogOpen, setSwitchDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; currentRole: string } | null>(null);
   const [targetType, setTargetType] = useState<'vendor' | 'restaurant' | 'service_provider' | null>(null);
+  const [membershipDialogOpen, setMembershipDialogOpen] = useState(false);
+  const [membershipTarget, setMembershipTarget] = useState<{ id: string; name: string; isPassMember: boolean; hasStripe: boolean } | null>(null);
 
   const { data: users, isLoading, error, isError } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -115,7 +117,7 @@ function UserAccountsList() {
     mutationFn: async ({ userId, targetType }: { userId: string; targetType: 'vendor' | 'restaurant' | 'service_provider' }) => {
       return await apiRequest('POST', `/api/admin/users/${userId}/switch-vendor-type`, { targetType });
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       toast({
@@ -133,6 +135,32 @@ function UserAccountsList() {
         variant: "destructive",
       });
       setSwitchDialogOpen(false);
+    },
+  });
+
+  const toggleMembershipMutation = useMutation({
+    mutationFn: async ({ userId, grantAccess }: { userId: string; grantAccess: boolean }) => {
+      return await apiRequest('PATCH', `/api/admin/users/${userId}/membership`, { grantAccess });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: variables.grantAccess ? "Pass Granted" : "Pass Revoked",
+        description: variables.grantAccess 
+          ? "User now has Rise Local Pass access."
+          : "Pass access has been removed.",
+      });
+      setMembershipDialogOpen(false);
+      setMembershipTarget(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Update Membership",
+        description: error.message || "An error occurred while updating membership.",
+        variant: "destructive",
+      });
+      setMembershipDialogOpen(false);
     },
   });
 
@@ -155,6 +183,29 @@ function UserAccountsList() {
       switchVendorTypeMutation.mutate({ 
         userId: selectedUser.id, 
         targetType 
+      });
+    }
+  };
+
+  const handleMembershipToggle = (user: User) => {
+    const userName = user.firstName && user.lastName 
+      ? `${user.firstName} ${user.lastName}`
+      : user.username || user.email?.split('@')[0] || 'Unknown User';
+    
+    setMembershipTarget({
+      id: user.id,
+      name: userName,
+      isPassMember: user.isPassMember || false,
+      hasStripe: !!user.stripeSubscriptionId
+    });
+    setMembershipDialogOpen(true);
+  };
+
+  const confirmMembershipToggle = () => {
+    if (membershipTarget) {
+      toggleMembershipMutation.mutate({
+        userId: membershipTarget.id,
+        grantAccess: !membershipTarget.isPassMember
       });
     }
   };
@@ -228,6 +279,17 @@ function UserAccountsList() {
                   }>
                     {user.role}
                   </Badge>
+                  {user.isPassMember && (
+                    <Badge 
+                      variant="outline" 
+                      className="text-green-600 border-green-600"
+                      data-testid={`badge-pass-member-${user.id}`}
+                    >
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      Pass Member
+                      {user.stripeSubscriptionId ? ' (Stripe)' : ' (Manual)'}
+                    </Badge>
+                  )}
                 </div>
                 <div className="space-y-1">
                   {user.email && (
@@ -247,6 +309,18 @@ function UserAccountsList() {
                       Zip: {user.zipCode}
                     </p>
                   )}
+                  {user.isPassMember && user.passExpiresAt && (
+                    <div className="text-xs space-y-0.5">
+                      <p className="text-green-600">
+                        Pass expires: {new Date(user.passExpiresAt).toLocaleDateString()}
+                      </p>
+                      {user.updatedAt && (
+                        <p className="text-muted-foreground">
+                          Last updated: {new Date(user.updatedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -254,6 +328,20 @@ function UserAccountsList() {
                 <div className="text-xs text-muted-foreground">
                   {user.createdAt && new Date(user.createdAt).toLocaleDateString()}
                 </div>
+                
+                {/* Pass Toggle Button - only show for non-vendors (buyers) */}
+                {user.role === 'buyer' && (
+                  <Button
+                    size="sm"
+                    variant={user.isPassMember ? "outline" : "default"}
+                    onClick={() => handleMembershipToggle(user)}
+                    disabled={toggleMembershipMutation.isPending}
+                    data-testid={`button-toggle-pass-${user.id}`}
+                  >
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    {user.isPassMember ? 'Revoke Pass' : 'Grant Pass'}
+                  </Button>
+                )}
                 
                 {isVendorType && (
                   <Select
@@ -325,6 +413,56 @@ function UserAccountsList() {
               disabled={switchVendorTypeMutation.isPending}
             >
               {switchVendorTypeMutation.isPending ? 'Switching...' : 'Switch Type'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={membershipDialogOpen} onOpenChange={setMembershipDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {membershipTarget?.isPassMember ? 'Revoke Pass Access?' : 'Grant Pass Access?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {membershipTarget && (
+                <>
+                  {membershipTarget.isPassMember ? (
+                    <>
+                      You are about to remove Rise Local Pass access from <strong>{membershipTarget.name}</strong>.
+                      {membershipTarget.hasStripe && (
+                        <>
+                          <br /><br />
+                          <strong className="text-amber-600">Note:</strong> This user has an active Stripe subscription. 
+                          Revoking access manually will not cancel their billing. Consider contacting them first.
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      You are about to grant Rise Local Pass access to <strong>{membershipTarget.name}</strong>.
+                      <br /><br />
+                      This will be marked as a manual override (not a Stripe subscription). 
+                      The user will have full Pass benefits for 1 year.
+                    </>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-membership">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmMembershipToggle}
+              data-testid="button-confirm-membership"
+              disabled={toggleMembershipMutation.isPending}
+              className={membershipTarget?.isPassMember ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              {toggleMembershipMutation.isPending 
+                ? 'Updating...' 
+                : membershipTarget?.isPassMember 
+                  ? 'Revoke Pass' 
+                  : 'Grant Pass'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
