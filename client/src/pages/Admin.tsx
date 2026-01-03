@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Calendar, DollarSign, Mail, Phone, Store, Utensils, Wrench, CreditCard, Link2, Search, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, Utensils, Wrench, CreditCard, Link2, Search, AlertTriangle } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,33 @@ interface SearchedUser {
 }
 
 interface AdminStats {
-  users: {
+  deals: {
     total: number;
+    premium: number;
+    free: number;
+  };
+  redemptions: {
+    total: number;
+    premium: number;
+    free: number;
+  };
+  membership: {
+    passHolders: number;
+    nonPassUsers: number;
+    totalUsers: number;
+    conversionRate: number;
+  };
+  businesses: {
+    total: number;
+    withDeals: number;
+    withPremiumDeals: number;
+    withNoDeals: number;
+    needingOutreach: Array<{
+      id: string;
+      businessName: string;
+      contactEmail: string;
+      city: string;
+    }>;
   };
   vendors: {
     total: number;
@@ -73,28 +98,6 @@ interface AdminStats {
       city: string;
       type: 'service_provider';
     }>;
-  };
-  products: {
-    total: number;
-  };
-  menuItems: {
-    total: number;
-  };
-  serviceOfferings: {
-    total: number;
-  };
-  events: {
-    total: number;
-  };
-  orders: {
-    total: number;
-    paid: number;
-    pending: number;
-  };
-  revenue: {
-    totalCents: number;
-    paidCents: number;
-    pendingCents: number;
   };
 }
 
@@ -593,31 +596,6 @@ export default function Admin() {
     ...(stats?.serviceProviders.pendingVerifications || []),
   ];
 
-  // Calculate totals
-  const totalVendorTypes = (stats?.vendors.total || 0) + (stats?.restaurants.total || 0) + (stats?.serviceProviders.total || 0);
-  const totalListings = (stats?.products.total || 0) + (stats?.menuItems.total || 0) + (stats?.serviceOfferings.total || 0);
-
-  const dashboardStats = [
-    { label: "Total Users", value: stats?.users.total || 0, icon: Users, color: "text-chart-1" },
-    { label: "All Businesses", value: totalVendorTypes, icon: Store, color: "text-chart-2" },
-    { label: "Total Listings", value: totalListings, icon: ShoppingBag, color: "text-chart-3" },
-    { label: "Events", value: stats?.events.total || 0, icon: Calendar, color: "text-chart-4" },
-    { label: "Total Orders", value: stats?.orders.total || 0, icon: ShoppingBag, color: "text-chart-1" },
-    { label: "Paid Orders", value: stats?.orders.paid || 0, icon: DollarSign, color: "text-chart-2" },
-    { 
-      label: "Total Revenue", 
-      value: `$${((stats?.revenue.totalCents || 0) / 100).toFixed(2)}`, 
-      icon: DollarSign, 
-      color: "text-chart-3" 
-    },
-    { 
-      label: "Paid Revenue", 
-      value: `$${((stats?.revenue.paidCents || 0) / 100).toFixed(2)}`, 
-      icon: DollarSign, 
-      color: "text-chart-4" 
-    },
-  ];
-
   const getVendorTypeIcon = (type: 'vendor' | 'restaurant' | 'service_provider') => {
     switch (type) {
       case 'vendor':
@@ -706,46 +684,162 @@ export default function Admin() {
           <Badge variant="destructive">Admin Access</Badge>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {dashboardStats.map((stat) => (
-            <Card key={stat.label}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold font-mono" data-testid={`stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}>
-                      {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
-                    </p>
-                  </div>
-                  <stat.icon className={`w-8 h-8 ${stat.color}`} />
+        {/* Deal Metrics - Core KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5" />
+                Active Deals
+              </CardTitle>
+              <CardDescription>Are businesses participating?</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Total Deals</span>
+                  <span className="text-3xl font-bold font-mono" data-testid="stat-total-deals">{stats?.deals.total || 0}</span>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Premium (Pass-only)</span>
+                    <span className="text-xl font-semibold font-mono text-primary" data-testid="stat-premium-deals">{stats?.deals.premium || 0}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Free (Public)</span>
+                    <span className="text-xl font-semibold font-mono" data-testid="stat-free-deals">{stats?.deals.free || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Deal Redemptions
+              </CardTitle>
+              <CardDescription>Are deals being used?</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Total Redemptions</span>
+                  <span className="text-3xl font-bold font-mono" data-testid="stat-total-redemptions">{stats?.redemptions.total || 0}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Premium Deals</span>
+                    <span className="text-xl font-semibold font-mono text-primary" data-testid="stat-premium-redemptions">{stats?.redemptions.premium || 0}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Free Deals</span>
+                    <span className="text-xl font-semibold font-mono" data-testid="stat-free-redemptions">{stats?.redemptions.free || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Business Breakdown */}
+        {/* Membership Metrics - High Priority */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Rise Local Pass Memberships
+            </CardTitle>
+            <CardDescription>Are people buying the Pass?</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Pass Holders</span>
+                <span className="text-3xl font-bold font-mono text-green-600" data-testid="stat-pass-holders">{stats?.membership.passHolders || 0}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Non-Pass Users</span>
+                <span className="text-3xl font-bold font-mono" data-testid="stat-non-pass-users">{stats?.membership.nonPassUsers || 0}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Total Users</span>
+                <span className="text-3xl font-bold font-mono" data-testid="stat-total-users">{stats?.membership.totalUsers || 0}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Conversion Rate</span>
+                <span className="text-3xl font-bold font-mono text-primary" data-testid="stat-conversion-rate">{stats?.membership.conversionRate || 0}%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Business Participation Health */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Store className="w-5 h-5" />
+              Business Participation
+            </CardTitle>
+            <CardDescription>Are businesses actually participating?</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Total Businesses</span>
+                <span className="text-2xl font-bold font-mono" data-testid="stat-total-businesses">{stats?.businesses.total || 0}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">With Active Deals</span>
+                <span className="text-2xl font-bold font-mono text-green-600" data-testid="stat-businesses-with-deals">{stats?.businesses.withDeals || 0}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">With Premium Deals</span>
+                <span className="text-2xl font-bold font-mono text-primary" data-testid="stat-businesses-with-premium">{stats?.businesses.withPremiumDeals || 0}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">No Deals (Need Outreach)</span>
+                <span className="text-2xl font-bold font-mono text-amber-600" data-testid="stat-businesses-no-deals">{stats?.businesses.withNoDeals || 0}</span>
+              </div>
+            </div>
+            
+            {(stats?.businesses.needingOutreach?.length ?? 0) > 0 && (
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium mb-3 text-amber-600">Businesses Needing Outreach</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {stats?.businesses.needingOutreach.slice(0, 6).map((business) => (
+                    <div key={business.id} className="flex items-center justify-between p-2 border rounded text-sm">
+                      <span className="font-medium">{business.businessName}</span>
+                      <span className="text-muted-foreground text-xs">{business.city}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Business Type Breakdown */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Store className="w-5 h-5" />
-                Shop Vendors
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Store className="w-4 h-4" />
+                Shops
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="text-muted-foreground">Total</span>
                   <span className="font-mono font-semibold">{stats?.vendors.total || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Verified</span>
+                  <span className="text-muted-foreground">Verified</span>
                   <span className="font-mono font-semibold text-green-600">{stats?.vendors.verified || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Pending</span>
+                  <span className="text-muted-foreground">Pending</span>
                   <span className="font-mono font-semibold text-amber-600">{stats?.vendors.unverified || 0}</span>
                 </div>
               </div>
@@ -753,24 +847,24 @@ export default function Admin() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Utensils className="w-5 h-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Utensils className="w-4 h-4" />
                 Restaurants
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="text-muted-foreground">Total</span>
                   <span className="font-mono font-semibold">{stats?.restaurants.total || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Verified</span>
+                  <span className="text-muted-foreground">Verified</span>
                   <span className="font-mono font-semibold text-green-600">{stats?.restaurants.verified || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Pending</span>
+                  <span className="text-muted-foreground">Pending</span>
                   <span className="font-mono font-semibold text-amber-600">{stats?.restaurants.unverified || 0}</span>
                 </div>
               </div>
@@ -778,24 +872,24 @@ export default function Admin() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wrench className="w-5 h-5" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Wrench className="w-4 h-4" />
                 Service Providers
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total</span>
+                  <span className="text-muted-foreground">Total</span>
                   <span className="font-mono font-semibold">{stats?.serviceProviders.total || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Verified</span>
+                  <span className="text-muted-foreground">Verified</span>
                   <span className="font-mono font-semibold text-green-600">{stats?.serviceProviders.verified || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Pending</span>
+                  <span className="text-muted-foreground">Pending</span>
                   <span className="font-mono font-semibold text-amber-600">{stats?.serviceProviders.unverified || 0}</span>
                 </div>
               </div>
