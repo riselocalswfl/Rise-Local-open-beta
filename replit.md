@@ -43,6 +43,11 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 - **Favorites System**: Users can save and manage deals in a favorites list.
 - **Discount Codes**: Optional `discountCode` field on deals (varchar 50). Vendors can add codes in dashboard; visible to Pass members, blurred for non-members.
 - **Viewable Locked Deals**: Pass-locked deals are fully viewable by non-members to encourage conversion. Full description, images, and vendor info are shown, but redemption is locked ("Join to Unlock" button) and discount codes are hidden/blurred.
+- **Admin Dashboard (Deal-Focused)**: Redesigned admin interface prioritizing founder-readable metrics:
+  - **Deal Metrics**: Total deals, premium (Pass-only) vs free deals, redemption counts by tier
+  - **Membership Metrics**: Pass holders, non-pass users, total users, conversion rate
+  - **Business Participation**: Businesses with deals, businesses with premium deals, businesses needing outreach (no deals)
+  - **Manual Membership Toggle**: Admins can grant/revoke Pass access for buyers via PATCH `/api/admin/users/:userId/membership`. Manual grants use plan name "admin_manual_grant" and are logged to `membership_events` for audit. Pass status badges show (Stripe) or (Manual) indicator with expiration and last updated timestamps.
 
 ### Feature Specifications
 - **Geographic Focus**: Southwest Florida (Fort Myers, Cape Coral, Bonita Springs, Estero, Naples).
