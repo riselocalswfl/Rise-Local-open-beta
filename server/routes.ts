@@ -631,7 +631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Switch vendor type for a user
+  // Switch vendor type for a user (DEPRECATED - only 'vendor' role is now supported)
   app.post("/api/admin/users/:userId/switch-vendor-type", isAuthenticated, async (req: any, res) => {
     try {
       const adminUserId = req.user.claims.sub;
@@ -643,10 +643,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { userId } = req.params;
-      const { targetType } = req.body; // 'vendor', 'restaurant', or 'service_provider'
+      const { targetType } = req.body;
 
-      if (!['vendor', 'restaurant', 'service_provider'].includes(targetType)) {
-        return res.status(400).json({ error: "Invalid target type. Must be 'vendor', 'restaurant', or 'service_provider'" });
+      // Only 'vendor' role is now supported - restaurant and service_provider have been consolidated
+      if (targetType !== 'vendor') {
+        return res.status(400).json({ error: "Only 'vendor' role is supported. Restaurant and service_provider roles have been consolidated into vendor." });
       }
 
       const targetUser = await storage.getUser(userId);
