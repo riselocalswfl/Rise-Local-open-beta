@@ -353,7 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin statistics endpoint
+  // Admin statistics endpoint - focused on deals, memberships, and business participation
   app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -369,68 +369,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`[/api/admin/stats] Access GRANTED - Fetching statistics`);
+      
       // Fetch all data in parallel
       const [
         allUsers,
         allVendors,
-        allProducts,
-        allMenuItems,
-        allServiceOfferings,
-        allEvents,
-        allVendorOrders,
+        allDeals,
+        allRedemptions,
       ] = await Promise.all([
         storage.getUsers(),
         storage.getVendors(),
-        storage.getProducts(),
-        storage.getMenuItems(),
-        storage.getAllServiceOfferings(),
-        storage.getEvents(),
-        storage.getAllVendorOrders(),
+        storage.getAllDeals(),
+        storage.getAllDealRedemptions(),
       ]);
 
-      // Filter vendors by type
+      // ===== MEMBERSHIP METRICS =====
+      const now = new Date();
+      const passHolders = allUsers.filter((u: any) => 
+        u.isPassMember === true && 
+        u.passExpiresAt && 
+        new Date(u.passExpiresAt) > now
+      );
+      const nonPassUsers = allUsers.filter((u: any) => 
+        !u.isPassMember || 
+        !u.passExpiresAt || 
+        new Date(u.passExpiresAt) <= now
+      );
+      const totalUsers = allUsers.length;
+      const conversionRate = totalUsers > 0 ? (passHolders.length / totalUsers * 100).toFixed(1) : '0';
+
+      // ===== DEAL METRICS =====
+      const activeDeals = allDeals.filter((d: any) => d.status === 'published' && d.isActive);
+      const premiumDeals = activeDeals.filter((d: any) => d.isPassLocked || d.tier === 'premium' || d.tier === 'member');
+      const freeDeals = activeDeals.filter((d: any) => !d.isPassLocked && d.tier !== 'premium' && d.tier !== 'member');
+      
+      // Redemption stats
+      const totalRedemptions = allRedemptions.length;
+      
+      // Create a map of deal IDs to their premium status
+      const dealPremiumMap = new Map(allDeals.map((d: any) => [
+        d.id, 
+        d.isPassLocked || d.tier === 'premium' || d.tier === 'member'
+      ]));
+      
+      const premiumRedemptions = allRedemptions.filter((r: any) => dealPremiumMap.get(r.dealId) === true).length;
+      const freeRedemptions = allRedemptions.filter((r: any) => dealPremiumMap.get(r.dealId) !== true).length;
+
+      // ===== BUSINESS PARTICIPATION =====
+      const totalBusinesses = allVendors.length;
+      
+      // Create a map of vendor IDs to their deal counts
+      const vendorDealCounts = new Map<string, { total: number; premium: number }>();
+      allDeals.forEach((d: any) => {
+        if (d.status === 'published' && d.isActive) {
+          const current = vendorDealCounts.get(d.vendorId) || { total: 0, premium: 0 };
+          current.total++;
+          if (d.isPassLocked || d.tier === 'premium' || d.tier === 'member') {
+            current.premium++;
+          }
+          vendorDealCounts.set(d.vendorId, current);
+        }
+      });
+      
+      const businessesWithDeals = vendorDealCounts.size;
+      const businessesWithPremiumDeals = Array.from(vendorDealCounts.values()).filter(v => v.premium > 0).length;
+      const businessesWithNoDeals = totalBusinesses - businessesWithDeals;
+      
+      // Get list of businesses with no deals (for outreach)
+      const vendorIdsWithDeals = new Set(vendorDealCounts.keys());
+      const businessesNeedingOutreach = allVendors
+        .filter((v: any) => !vendorIdsWithDeals.has(v.id) && v.isVerified)
+        .slice(0, 10)
+        .map((v: any) => ({
+          id: v.id,
+          businessName: v.businessName,
+          contactEmail: v.contactEmail,
+          city: v.city,
+        }));
+
+      // ===== PENDING VERIFICATIONS (kept for admin actions) =====
       const allShopVendors = allVendors.filter((v: any) => v.vendorType === 'shop');
       const allDineVendors = allVendors.filter((v: any) => v.vendorType === 'dine');
       const allServiceVendors = allVendors.filter((v: any) => v.vendorType === 'service');
-
-      // Calculate statistics
-      const totalUsers = allUsers.length;
-      const totalVendors = allShopVendors.length;
-      const totalRestaurants = allDineVendors.length;
-      const totalServiceProviders = allServiceVendors.length;
-      const totalProducts = allProducts.length;
-      const totalMenuItems = allMenuItems.length;
-      const totalServiceOfferings = allServiceOfferings.length;
-      const totalEvents = allEvents.length;
-      const totalOrders = allVendorOrders.length;
-
-      // Verified counts
-      const verifiedVendors = allShopVendors.filter((v: any) => v.isVerified).length;
-      const unverifiedVendors = allShopVendors.filter((v: any) => !v.isVerified).length;
-      const verifiedRestaurants = allDineVendors.filter((v: any) => v.isVerified).length;
-      const unverifiedRestaurants = allDineVendors.filter((v: any) => !v.isVerified).length;
-      const verifiedServiceProviders = allServiceVendors.filter((v: any) => v.isVerified).length;
-      const unverifiedServiceProviders = allServiceVendors.filter((v: any) => !v.isVerified).length;
-
-      // Revenue calculations
-      const totalRevenueCents = allVendorOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
-      const paidOrders = allVendorOrders.filter((o: any) => o.paymentStatus === 'paid');
-      const paidRevenueCents = paidOrders.reduce((sum: number, order: any) => sum + order.totalCents, 0);
-      const pendingRevenueCents = totalRevenueCents - paidRevenueCents;
-
-      // Pending verifications
+      
       const pendingVendorVerifications = allShopVendors.filter((v: any) => !v.isVerified);
       const pendingRestaurantVerifications = allDineVendors.filter((v: any) => !v.isVerified);
       const pendingServiceProviderVerifications = allServiceVendors.filter((v: any) => !v.isVerified);
 
       res.json({
-        users: {
-          total: totalUsers,
+        // Deal Metrics (Core KPI)
+        deals: {
+          total: activeDeals.length,
+          premium: premiumDeals.length,
+          free: freeDeals.length,
         },
+        redemptions: {
+          total: totalRedemptions,
+          premium: premiumRedemptions,
+          free: freeRedemptions,
+        },
+        // Membership Metrics (High Priority)
+        membership: {
+          passHolders: passHolders.length,
+          nonPassUsers: nonPassUsers.length,
+          totalUsers: totalUsers,
+          conversionRate: parseFloat(conversionRate),
+        },
+        // Business Participation Health
+        businesses: {
+          total: totalBusinesses,
+          withDeals: businessesWithDeals,
+          withPremiumDeals: businessesWithPremiumDeals,
+          withNoDeals: businessesWithNoDeals,
+          needingOutreach: businessesNeedingOutreach,
+        },
+        // Pending verifications (for action cards)
         vendors: {
-          total: totalVendors,
-          verified: verifiedVendors,
-          unverified: unverifiedVendors,
+          total: allShopVendors.length,
+          verified: allShopVendors.filter((v: any) => v.isVerified).length,
+          unverified: allShopVendors.filter((v: any) => !v.isVerified).length,
           pendingVerifications: pendingVendorVerifications.map((v: any) => ({
             id: v.id,
             businessName: v.businessName,
@@ -440,9 +497,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })),
         },
         restaurants: {
-          total: totalRestaurants,
-          verified: verifiedRestaurants,
-          unverified: unverifiedRestaurants,
+          total: allDineVendors.length,
+          verified: allDineVendors.filter((v: any) => v.isVerified).length,
+          unverified: allDineVendors.filter((v: any) => !v.isVerified).length,
           pendingVerifications: pendingRestaurantVerifications.map((v: any) => ({
             id: v.id,
             businessName: v.businessName,
@@ -452,9 +509,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })),
         },
         serviceProviders: {
-          total: totalServiceProviders,
-          verified: verifiedServiceProviders,
-          unverified: unverifiedServiceProviders,
+          total: allServiceVendors.length,
+          verified: allServiceVendors.filter((v: any) => v.isVerified).length,
+          unverified: allServiceVendors.filter((v: any) => !v.isVerified).length,
           pendingVerifications: pendingServiceProviderVerifications.map((v: any) => ({
             id: v.id,
             businessName: v.businessName,
@@ -463,28 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'service_provider' as const,
           })),
         },
-        products: {
-          total: totalProducts,
-        },
-        menuItems: {
-          total: totalMenuItems,
-        },
-        serviceOfferings: {
-          total: totalServiceOfferings,
-        },
-        events: {
-          total: totalEvents,
-        },
-        orders: {
-          total: totalOrders,
-          paid: paidOrders.length,
-          pending: totalOrders - paidOrders.length,
-        },
-        revenue: {
-          totalCents: totalRevenueCents,
-          paidCents: paidRevenueCents,
-          pendingCents: pendingRevenueCents,
-        },
+        // Legacy fields removed: users.total, products, menuItems, serviceOfferings, events, orders, revenue
       });
     } catch (error) {
       console.error("Error fetching admin stats:", error);
@@ -1003,6 +1039,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error linking subscription:", error);
       res.status(500).json({ error: "Failed to link subscription" });
+    }
+  });
+
+  // Manual membership toggle (admin only)
+  // Allows admin to grant or revoke Pass membership manually
+  app.patch("/api/admin/users/:userId/membership", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+      
+      if (!adminUser || adminUser.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { userId } = req.params;
+      const { isPassMember, passExpiresAt } = req.body;
+
+      if (typeof isPassMember !== 'boolean') {
+        return res.status(400).json({ error: "isPassMember (boolean) is required" });
+      }
+
+      // Verify target user exists
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Calculate expiration date
+      let expirationDate: Date | null = null;
+      if (isPassMember) {
+        if (passExpiresAt) {
+          expirationDate = new Date(passExpiresAt);
+        } else {
+          // Default: 1 month from now for manual grants
+          expirationDate = new Date();
+          expirationDate.setMonth(expirationDate.getMonth() + 1);
+        }
+      }
+
+      // Update user membership status
+      await storage.updateUser(userId, {
+        isPassMember: isPassMember,
+        passExpiresAt: expirationDate,
+        membershipStatus: isPassMember ? 'active' : 'none',
+        membershipPlan: isPassMember ? 'admin_manual_grant' : null,
+        membershipCurrentPeriodEnd: expirationDate,
+      });
+
+      // Log membership event for audit
+      await storage.logMembershipEvent({
+        userId: userId,
+        stripeEventId: `admin-manual-${Date.now()}`,
+        eventType: isPassMember ? 'admin_grant_pass' : 'admin_revoke_pass',
+        previousStatus: targetUser.membershipStatus || undefined,
+        newStatus: isPassMember ? 'active' : 'none',
+        previousPlan: targetUser.membershipPlan || undefined,
+        newPlan: isPassMember ? 'admin_manual_grant' : undefined,
+        metadata: JSON.stringify({ 
+          grantedBy: adminUserId,
+          expiresAt: expirationDate?.toISOString(),
+          wasStripeManaged: !!targetUser.stripeSubscriptionId,
+        }),
+      });
+
+      console.log(`[Admin] ${isPassMember ? 'Granted' : 'Revoked'} Pass for user ${userId} by admin ${adminUserId}`);
+      
+      res.json({ 
+        success: true, 
+        message: isPassMember 
+          ? `Rise Local Pass granted until ${expirationDate?.toLocaleDateString()}`
+          : 'Rise Local Pass revoked',
+        user: {
+          id: userId,
+          email: targetUser.email,
+          isPassMember: isPassMember,
+          passExpiresAt: expirationDate,
+          membershipStatus: isPassMember ? 'active' : 'none',
+          membershipPlan: isPassMember ? 'admin_manual_grant' : null,
+        }
+      });
+    } catch (error) {
+      console.error("Error updating membership:", error);
+      res.status(500).json({ error: "Failed to update membership" });
     }
   });
 

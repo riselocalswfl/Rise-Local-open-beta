@@ -315,6 +315,11 @@ export interface IStorage {
   getLastVerifiedRedemptionForUserDeal(userId: string, dealId: string): Promise<DealRedemption | undefined>;
   getTotalVerifiedCountForDeal(dealId: string): Promise<number>;
 
+  // Admin stats operations
+  getAllDeals(): Promise<Deal[]>;
+  getAllDealRedemptions(): Promise<DealRedemption[]>;
+  searchUsersByQuery(query: string): Promise<User[]>;
+
   // Preferred Placement operations
   getActiveDiscoverSpotlight(): Promise<{ placement: PreferredPlacement; vendor: Vendor; deals: Deal[] } | null>;
   createPreferredPlacement(placement: InsertPreferredPlacement): Promise<PreferredPlacement>;
@@ -2046,6 +2051,33 @@ export class DbStorage implements IStorage {
         eq(dealRedemptions.status, 'verified')
       ));
     return Number(result[0]?.count || 0);
+  }
+
+  // ===== ADMIN STATS OPERATIONS =====
+  
+  async getAllDeals(): Promise<Deal[]> {
+    return await db.select().from(deals)
+      .where(isNull(deals.deletedAt))
+      .orderBy(desc(deals.createdAt));
+  }
+
+  async getAllDealRedemptions(): Promise<DealRedemption[]> {
+    return await db.select().from(dealRedemptions)
+      .orderBy(desc(dealRedemptions.redeemedAt));
+  }
+
+  async searchUsersByQuery(query: string): Promise<User[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+    return await db.select().from(users)
+      .where(
+        or(
+          sql`LOWER(${users.email}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.firstName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.lastName}) LIKE ${searchTerm}`,
+          sql`LOWER(${users.username}) LIKE ${searchTerm}`
+        )
+      )
+      .limit(20);
   }
 
   // ===== BUTTON-BASED REDEMPTION SYSTEM =====
