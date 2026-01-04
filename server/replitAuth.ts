@@ -195,10 +195,18 @@ export async function setupAuth(app: Express) {
           const existingUser = await storage.getUser(userId);
           const existingRole = existingUser?.role;
           const isExistingVendor = existingRole === "vendor" || existingRole === "restaurant" || existingRole === "service_provider";
+          const isAdmin = existingRole === "admin";
           
+          // CRITICAL: Never overwrite admin role - admins are manually set in database
+          if (isAdmin) {
+            console.log("[AUTH] User is ADMIN - preserving admin role, ignoring any intended role");
+            userRole = "admin";
+            // Clear the intended role since we're ignoring it
+            delete (req.session as any).intendedRole;
+            res.clearCookie("intended_role");
           // IMPORTANT: Never downgrade a vendor to buyer - once a business, always a business
           // This allows vendors to click "Shop Local" and still access their business dashboard
-          if (isExistingVendor) {
+          } else if (isExistingVendor) {
             console.log("[AUTH] User is already a vendor - preserving vendor role regardless of login button clicked");
             userRole = existingRole;
             // Clear the intended role since we're ignoring it
