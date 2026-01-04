@@ -3680,6 +3680,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone: user.phone,
         zipCode: user.zipCode,
         createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        // Membership fields for admin Pass toggle
+        isPassMember: user.isPassMember,
+        passExpiresAt: user.passExpiresAt,
+        stripeSubscriptionId: user.stripeSubscriptionId,
       }));
       res.json(safeUsers);
     } catch (error) {

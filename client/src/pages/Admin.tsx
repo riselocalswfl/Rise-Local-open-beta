@@ -245,8 +245,8 @@ function UserAccountsList() {
                   {user.createdAt && new Date(user.createdAt).toLocaleDateString()}
                 </div>
                 
-                {/* Pass Toggle Button - only show for non-vendors (buyers) */}
-                {user.role === 'buyer' && (
+                {/* Pass Toggle Button - show for buyers and vendors */}
+                {(user.role === 'buyer' || user.role === 'vendor') && (
                   <Button
                     size="sm"
                     variant={user.isPassMember ? "outline" : "default"}
