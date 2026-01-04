@@ -68,13 +68,6 @@ export default function CustomerProfile() {
     }
   }, [isVendor, setLocation]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: { firstName?: string; lastName?: string; phone?: string }) => {
@@ -502,7 +495,7 @@ export default function CustomerProfile() {
                             {redemption.status === "redeemed" ? "Used" : redemption.status}
                           </Badge>
                           <p className="text-xs text-muted-foreground">
-                            {formatDate(redemption.redeemedAt)}
+                            {safeFormatDate(redemption.redeemedAt) || "Unknown"}
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
