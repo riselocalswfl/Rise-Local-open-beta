@@ -1097,13 +1097,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin endpoint to sync membership from Stripe subscription
   // Use this to fix users whose webhook failed
-  app.post("/api/admin/sync-membership", isAuthenticated, async (req: any, res) => {
+  // Protected by either: 1) ADMIN_API_KEY header, or 2) authenticated admin user
+  app.post("/api/admin/sync-membership", async (req: any, res) => {
     try {
-      const adminUserId = req.user.claims.sub;
-      const adminUser = await storage.getUser(adminUserId);
+      const adminApiKey = process.env.ADMIN_API_KEY;
+      const providedApiKey = req.headers['x-admin-api-key'] || req.headers['admin-api-key'];
       
-      if (!adminUser || adminUser.role !== 'admin') {
-        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      let adminUserId = 'api_key_auth';
+      
+      // Check API key authentication first (for external/CLI access)
+      if (providedApiKey) {
+        if (!adminApiKey) {
+          console.error('[Admin Sync] ADMIN_API_KEY env var not configured');
+          return res.status(500).json({ error: "ADMIN_API_KEY not configured on server" });
+        }
+        if (providedApiKey !== adminApiKey) {
+          console.error('[Admin Sync] Invalid API key provided');
+          return res.status(403).json({ error: "Invalid ADMIN_API_KEY" });
+        }
+        console.log('[Admin Sync] Authenticated via API key');
+      } else {
+        // Fall back to session-based admin auth
+        if (!req.user?.claims?.sub) {
+          return res.status(401).json({ error: "Authentication required - provide ADMIN_API_KEY header or sign in as admin" });
+        }
+        
+        adminUserId = req.user.claims.sub;
+        const adminUser = await storage.getUser(adminUserId);
+        
+        if (!adminUser || adminUser.role !== 'admin') {
+          return res.status(403).json({ error: "Unauthorized - Admin access required" });
+        }
+        console.log('[Admin Sync] Authenticated via admin session', { adminUserId });
       }
 
       const { email, subscriptionId } = req.body;
@@ -2221,29 +2246,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Stripe webhook endpoint for account updates and payment processing
   // NOTE: This endpoint receives raw body from express.raw() middleware in index.ts
+  // Middleware order in server/index.ts ensures express.raw() runs BEFORE express.json()
   app.post("/api/stripe/webhook", async (req, res) => {
-    console.log('[Webhook] Received request');
+    console.log('[Stripe Webhook] Received request');
     
     const sig = req.headers['stripe-signature'];
     
     if (!sig) {
-      console.error('[Webhook] FAILED: Missing stripe-signature header');
-      return res.status(400).send('Missing stripe-signature header');
+      console.error('[Stripe Webhook] FAILED: Missing stripe-signature header');
+      return res.status(400).json({ error: 'Missing stripe-signature header' });
+    }
+
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('[Stripe Webhook] FAILED: STRIPE_WEBHOOK_SECRET not configured');
+      return res.status(400).json({ error: 'Webhook secret not configured - contact support' });
     }
 
     let event: Stripe.Event;
 
+    // Signature verification - return 400 on failure, NOT 500
     try {
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      
-      if (!webhookSecret) {
-        console.error('[Webhook] FAILED: STRIPE_WEBHOOK_SECRET not configured');
-        return res.status(500).send('Webhook secret not configured');
-      }
-      
-      // Verify signature using raw body (Buffer from express.raw middleware)
       event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-      console.log('[Webhook] Signature verified successfully, event type:', event.type);
+    } catch (signatureError) {
+      console.error('[Stripe Webhook] SIGNATURE VERIFICATION FAILED', {
+        error: signatureError instanceof Error ? signatureError.message : String(signatureError),
+        signatureHeader: sig ? 'present' : 'missing',
+      });
+      return res.status(400).json({ 
+        error: 'Webhook signature verification failed',
+        details: signatureError instanceof Error ? signatureError.message : 'Invalid signature',
+      });
+    }
+
+    console.log('[Stripe Webhook] Signature verified', { eventId: event.id, eventType: event.type });
+
+    // Idempotency check - if already processed, return 200 immediately
+    try {
+      const alreadyProcessed = await storage.isWebhookEventProcessed(event.id);
+      if (alreadyProcessed) {
+        console.log('[Stripe Webhook] Event already processed, skipping', { eventId: event.id, eventType: event.type });
+        return res.status(200).json({ received: true, status: 'already_processed' });
+      }
+    } catch (idempotencyError) {
+      // If idempotency check fails, log but continue processing (better to potentially duplicate than fail)
+      console.warn('[Stripe Webhook] Idempotency check failed, continuing', { 
+        eventId: event.id, 
+        error: idempotencyError instanceof Error ? idempotencyError.message : String(idempotencyError),
+      });
+    }
+
+    try {
 
       // Handle payment_intent.succeeded - create transfers to vendors
       if (event.type === 'payment_intent.succeeded') {
@@ -2325,7 +2378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const customerId = session.customer as string | null;
           const subscriptionId = session.subscription as string | null;
           
-          console.log('[Webhook] checkout.session.completed - PROCESSING', {
+          console.log('[Stripe Webhook] checkout.session.completed - PROCESSING', {
             eventId: event.id,
             sessionMode: session.mode,
             appUserId,
@@ -2338,17 +2391,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (session.mode === 'subscription' && subscriptionId) {
             // Fetch the subscription details
-            console.log('[Webhook] Fetching subscription from Stripe:', subscriptionId);
+            console.log('[Stripe Webhook] Fetching subscription from Stripe:', subscriptionId);
             let subscriptionData: any;
             try {
               subscriptionData = await stripe.subscriptions.retrieve(subscriptionId);
-              console.log('[Webhook] Subscription retrieved:', {
+              console.log('[Stripe Webhook] Subscription retrieved:', {
                 id: subscriptionData.id,
                 status: subscriptionData.status,
                 current_period_end: subscriptionData.current_period_end,
               });
             } catch (stripeError) {
-              console.error('[Webhook] FAILED to retrieve subscription from Stripe', {
+              console.error('[Stripe Webhook] FAILED to retrieve subscription from Stripe', {
                 eventId: event.id,
                 subscriptionId,
                 error: stripeError instanceof Error ? stripeError.message : String(stripeError),
@@ -2363,29 +2416,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let user = null;
             let lookupMethod = '';
             
-            console.log('[Webhook] Looking up user with appUserId:', appUserId);
+            console.log('[Stripe Webhook] Looking up user with appUserId:', appUserId);
             if (appUserId) {
               user = await storage.getUser(appUserId);
               lookupMethod = session.metadata?.appUserId ? 'metadata.appUserId' : 
                             session.metadata?.userId ? 'metadata.userId (legacy)' : 
                             'client_reference_id';
-              console.log('[Webhook] User lookup by', lookupMethod, ':', user ? `Found user ${user.id}` : 'NOT FOUND');
+              console.log('[Stripe Webhook] User lookup by', lookupMethod, ':', user ? `Found user ${user.id}` : 'NOT FOUND');
             }
             
             // Fallback: try stripeCustomerId if primary lookup failed
             if (!user && customerId) {
-              console.log('[Webhook] Fallback: looking up user by stripeCustomerId:', customerId);
+              console.log('[Stripe Webhook] Fallback: looking up user by stripeCustomerId:', customerId);
               user = await storage.getUserByStripeCustomerId(customerId);
               lookupMethod = 'stripeCustomerId';
-              console.log('[Webhook] User lookup by stripeCustomerId:', user ? `Found user ${user.id}` : 'NOT FOUND');
+              console.log('[Stripe Webhook] User lookup by stripeCustomerId:', user ? `Found user ${user.id}` : 'NOT FOUND');
             }
             
             // Additional fallback: try customer email
             if (!user && session.customer_email) {
-              console.log('[Webhook] Fallback: looking up user by email:', session.customer_email);
+              console.log('[Stripe Webhook] Fallback: looking up user by email:', session.customer_email);
               user = await storage.getUserByEmail(session.customer_email);
               lookupMethod = 'customer_email';
-              console.log('[Webhook] User lookup by email:', user ? `Found user ${user.id}` : 'NOT FOUND');
+              console.log('[Stripe Webhook] User lookup by email:', user ? `Found user ${user.id}` : 'NOT FOUND');
             }
             
             if (user) {
@@ -2400,7 +2453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const previousStatus = user.membershipStatus;
                 const previousPlan = user.membershipPlan;
                 
-                console.log('[Webhook] Updating user membership', {
+                console.log('[Stripe Webhook] Updating user membership', {
                   userId: user.id,
                   isActive,
                   periodEnd: periodEnd.toISOString(),
@@ -2430,7 +2483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
                 });
                 
-                console.log('[Webhook] Pass unlock SUCCESS', {
+                console.log('[Stripe Webhook] Pass unlock SUCCESS', {
                   eventId: event.id,
                   userId: user.id,
                   email: user.email,
@@ -2443,7 +2496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   lookupMethod,
                 });
               } catch (dbError) {
-                console.error('[Webhook] Pass unlock FAILED - database error', {
+                console.error('[Stripe Webhook] Pass unlock FAILED - database error', {
                   eventId: event.id,
                   userId: user.id,
                   customer: customerId,
@@ -2458,38 +2511,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
               }
             } else {
-              console.error('[Webhook] Pass unlock FAILED - no user found', {
+              // NEEDS_MANUAL_SYNC: User not found, log for manual resolution but return 200 so Stripe stops retrying
+              console.error('[Stripe Webhook] NEEDS_MANUAL_SYNC - no user found', {
                 eventId: event.id,
+                sessionId: session.id,
                 appUserId,
                 customer: customerId,
                 subscription: subscriptionId,
                 client_reference_id: session.client_reference_id,
                 customer_email: session.customer_email,
                 metadata: session.metadata,
-                message: 'Could not find user by appUserId, stripeCustomerId, or email. User may need to be synced manually.',
+                action: 'Admin must use POST /api/admin/sync-membership with { subscriptionId } or { email } to activate',
               });
-              // Return 500 so Stripe retries - user may not exist yet
-              return res.status(500).json({ 
-                error: 'User not found for subscription',
-                details: `Tried: appUserId=${appUserId}, customerId=${customerId}, email=${session.customer_email}`,
+              
+              // Log NEEDS_MANUAL_SYNC event for tracking - still return 200 OK
+              try {
+                await storage.markWebhookEventProcessed(event.id, event.type, 'needs_manual_sync', JSON.stringify({
+                  sessionId: session.id,
+                  subscriptionId,
+                  customerId,
+                  customerEmail: session.customer_email,
+                  appUserId,
+                  reason: 'User not found by appUserId, stripeCustomerId, or email',
+                }));
+              } catch (logError) {
+                console.warn('[Stripe Webhook] Failed to log needs_manual_sync event', { eventId: event.id });
+              }
+              
+              // Return 200 OK so Stripe stops retrying - manual sync required
+              return res.status(200).json({ 
+                received: true,
+                status: 'needs_manual_sync',
+                message: 'User not found - admin sync required',
               });
             }
           } else {
-            console.log('[Webhook] checkout.session.completed - skipping (not a subscription)', {
+            console.log('[Stripe Webhook] checkout.session.completed - skipping (not a subscription)', {
               eventId: event.id,
+              sessionId: session.id,
               sessionMode: session.mode,
               hasSubscription: !!subscriptionId,
             });
           }
         } catch (checkoutError) {
-          console.error('[Webhook] checkout.session.completed - UNEXPECTED ERROR', {
+          console.error('[Stripe Webhook] checkout.session.completed - UNEXPECTED ERROR', {
             eventId: event.id,
             error: checkoutError instanceof Error ? checkoutError.message : String(checkoutError),
             stack: checkoutError instanceof Error ? checkoutError.stack : undefined,
           });
-          return res.status(500).json({ 
-            error: 'Unexpected error processing checkout.session.completed',
-            details: checkoutError instanceof Error ? checkoutError.message : String(checkoutError),
+          // Return 200 to prevent Stripe retries - log the failure for manual investigation
+          try {
+            await storage.markWebhookEventProcessed(event.id, event.type, 'failed', JSON.stringify({
+              error: checkoutError instanceof Error ? checkoutError.message : String(checkoutError),
+            }));
+          } catch (markError) {
+            console.warn('[Stripe Webhook] Failed to mark event as failed', { eventId: event.id });
+          }
+          return res.status(200).json({ 
+            received: true,
+            status: 'processing_failed',
+            error: checkoutError instanceof Error ? checkoutError.message : String(checkoutError),
           });
         }
       }
@@ -2497,7 +2578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
         const subscriptionData = event.data.object as any;
         const customerId = subscriptionData.customer as string;
-        console.log('[Webhook]', event.type, 'for customer:', customerId);
+        console.log('[Stripe Webhook]', event.type, 'for customer:', customerId);
         
         const user = await storage.getUserByStripeCustomerId(customerId);
         if (user) {
@@ -2527,14 +2608,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
           });
           
-          console.log('[Webhook] User subscription updated:', user.id, 'status:', subscriptionData.status);
+          console.log('[Stripe Webhook] User subscription updated:', user.id, 'status:', subscriptionData.status);
         }
       }
 
       if (event.type === 'customer.subscription.deleted') {
         const subscriptionData = event.data.object as any;
         const customerId = subscriptionData.customer as string;
-        console.log('[Webhook] customer.subscription.deleted for customer:', customerId);
+        console.log('[Stripe Webhook] customer.subscription.deleted for customer:', customerId);
         
         const user = await storage.getUserByStripeCustomerId(customerId);
         if (user) {
@@ -2560,14 +2641,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metadata: JSON.stringify({ subscriptionId: subscriptionData.id }),
           });
           
-          console.log('[Webhook] User subscription deleted:', user.id);
+          console.log('[Stripe Webhook] User subscription deleted:', user.id);
         }
       }
 
       if (event.type === 'invoice.paid') {
         const invoiceData = event.data.object as any;
         const customerId = invoiceData.customer as string;
-        console.log('[Webhook] invoice.paid for customer:', customerId);
+        console.log('[Stripe Webhook] invoice.paid for customer:', customerId);
         
         if (invoiceData.subscription) {
           const subscriptionData = await stripe.subscriptions.retrieve(invoiceData.subscription as string) as any;
@@ -2594,7 +2675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               metadata: JSON.stringify({ subscriptionId: invoiceData.subscription, invoiceId: invoiceData.id, periodEnd: periodEnd.toISOString() }),
             });
             
-            console.log('[Webhook] User membership renewed:', user.id);
+            console.log('[Stripe Webhook] User membership renewed:', user.id);
           }
         }
       }
@@ -2602,7 +2683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (event.type === 'invoice.payment_failed') {
         const invoiceData = event.data.object as any;
         const customerId = invoiceData.customer as string;
-        console.log('[Webhook] invoice.payment_failed for customer:', customerId);
+        console.log('[Stripe Webhook] invoice.payment_failed for customer:', customerId);
         
         const user = await storage.getUserByStripeCustomerId(customerId);
         if (user) {
@@ -2623,26 +2704,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metadata: JSON.stringify({ invoiceId: invoiceData.id }),
           });
           
-          console.log('[Webhook] User payment failed:', user.id);
+          console.log('[Stripe Webhook] User payment failed:', user.id);
         }
       }
 
+      // Mark event as successfully processed for idempotency
+      try {
+        await storage.markWebhookEventProcessed(event.id, event.type, 'processed');
+      } catch (markError) {
+        console.warn('[Stripe Webhook] Failed to mark event as processed', { eventId: event.id });
+      }
+
       // Always return 200 to acknowledge receipt (Stripe best practice)
-      console.log('[Webhook] Processing complete for event:', event.type);
-      res.status(200).json({ received: true });
-    } catch (error) {
-      // Distinguish between signature errors and processing errors
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log('[Stripe Webhook] Processing complete', { eventId: event.id, eventType: event.type });
+      res.status(200).json({ received: true, status: 'processed' });
+    } catch (processingError) {
+      // Processing error after signature verification - log but still return 200 to prevent infinite retries
+      const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
+      console.error('[Stripe Webhook] PROCESSING ERROR', {
+        eventId: event.id,
+        eventType: event.type,
+        error: errorMessage,
+        stack: processingError instanceof Error ? processingError.stack : undefined,
+      });
       
-      if (errorMessage.includes('signature') || errorMessage.includes('Webhook')) {
-        // Signature verification failed - return 400 so Stripe knows to retry
-        console.error('[Webhook] SIGNATURE VERIFICATION FAILED:', errorMessage);
-        return res.status(400).send(`Webhook signature verification failed: ${errorMessage}`);
+      // Try to mark as failed for tracking
+      try {
+        await storage.markWebhookEventProcessed(event.id, event.type, 'failed', JSON.stringify({ error: errorMessage }));
+      } catch (markError) {
+        console.warn('[Stripe Webhook] Failed to mark event as failed', { eventId: event.id });
       }
       
-      // Processing error - still return 200 to prevent retries (event was received)
-      console.error('[Webhook] PROCESSING ERROR (returning 200 anyway):', errorMessage);
-      res.status(200).json({ received: true, error: 'Processing failed but event acknowledged' });
+      // Return 200 to prevent Stripe retries - event was received, processing failed
+      res.status(200).json({ received: true, status: 'processing_failed', error: errorMessage });
     }
   });
 
