@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { hasRiseLocalPass } from "@shared/dealAccess";
 import { useLocation, Link } from "wouter";
 import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,9 +11,20 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight, Shield } from "lucide-react";
+import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight, Shield, Crown, Sparkles, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
+function safeFormatDate(dateValue: string | Date | null | undefined): string | null {
+  if (!dateValue) return null;
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString();
+  } catch {
+    return null;
+  }
+}
 
 interface RedemptionHistoryItem {
   id: string;
@@ -85,6 +97,58 @@ export default function CustomerProfile() {
       });
     },
   });
+
+  const checkoutMutation = useMutation({
+    mutationFn: async (plan: 'monthly' | 'annual') => {
+      const response = await apiRequest("POST", "/api/billing/create-checkout-session", { plan });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Could not start checkout. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Checkout Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/billing/create-portal-session");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not open billing portal. Please try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Portal Error",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isPassMember = hasRiseLocalPass(user);
 
   const handleStartEdit = () => {
     setEditedFirstName(user?.firstName || "");
@@ -273,6 +337,105 @@ export default function CustomerProfile() {
                   </>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Rise Local Pass Membership */}
+          <Card data-testid="card-membership">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {isPassMember ? (
+                  <Crown className="h-5 w-5 text-primary" />
+                ) : (
+                  <Sparkles className="h-5 w-5 text-primary" />
+                )}
+                Rise Local Pass
+              </CardTitle>
+              <CardDescription>
+                {isPassMember 
+                  ? "You're a member! Enjoy exclusive deals." 
+                  : "Unlock exclusive member-only deals"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isPassMember ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-primary/5">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">Active Membership</p>
+                        <Badge variant="default" className="bg-primary">Active</Badge>
+                      </div>
+                      {user?.passExpiresAt && (
+                        <p className="text-sm text-muted-foreground">
+                          Renews: {safeFormatDate(user.passExpiresAt) || "Unknown"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => portalMutation.mutate()}
+                    disabled={portalMutation.isPending}
+                    data-testid="button-manage-membership"
+                  >
+                    {portalMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Manage Subscription"
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Get access to exclusive member-only deals across SWFL.
+                    </p>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        Exclusive member-only deals
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        Save at local restaurants & shops
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                        Only $4.99/month
+                      </li>
+                    </ul>
+                  </div>
+                  <Button 
+                    className="w-full"
+                    onClick={() => checkoutMutation.mutate('monthly')}
+                    disabled={checkoutMutation.isPending}
+                    data-testid="button-subscribe-membership"
+                  >
+                    {checkoutMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Get Rise Local Pass
+                      </>
+                    )}
+                  </Button>
+                  <Link href="/membership" className="block">
+                    <Button variant="ghost" className="w-full" data-testid="link-view-membership-details">
+                      View Plan Details
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
 
