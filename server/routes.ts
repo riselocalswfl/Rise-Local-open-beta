@@ -1347,6 +1347,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk sync all users who have stripeSubscriptionId but isPassMember=false
+  // This fixes accounts where webhook processing failed
+  // Admin-only endpoint
+  app.post("/api/admin/bulk-sync-memberships", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+      
+      if (!adminUser || adminUser.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      console.log('[Bulk Sync] Starting bulk membership sync...');
+      
+      // Get all users
+      const allUsers = await storage.getUsers();
+      
+      // Find users who have a stripeSubscriptionId but isPassMember is false
+      const usersToSync = allUsers.filter((u: any) => 
+        u.stripeSubscriptionId && !u.isPassMember
+      );
+
+      console.log(`[Bulk Sync] Found ${usersToSync.length} users with subscriptions but isPassMember=false`);
+
+      const results = {
+        total: usersToSync.length,
+        synced: 0,
+        skipped: 0,
+        errors: 0,
+        details: [] as Array<{
+          userId: string;
+          email: string;
+          status: 'synced' | 'skipped' | 'error';
+          message: string;
+          plan?: string;
+        }>,
+      };
+
+      // Price IDs for plan derivation
+      const monthlyPriceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
+      const annualPriceId = process.env.STRIPE_RISELOCAL_ANNUAL_PRICE_ID;
+
+      for (const user of usersToSync) {
+        try {
+          // Skip if stripeSubscriptionId is null (shouldn't happen but TypeScript requires check)
+          if (!user.stripeSubscriptionId) {
+            continue;
+          }
+          
+          // Retrieve subscription from Stripe
+          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+          const subData = subscription as any;
+          
+          // Check if subscription is active
+          const isActive = subData.status === 'active' || subData.status === 'trialing';
+          
+          if (!isActive) {
+            results.skipped++;
+            results.details.push({
+              userId: user.id,
+              email: user.email || 'unknown',
+              status: 'skipped',
+              message: `Subscription status is ${subData.status}, not active`,
+            });
+            continue;
+          }
+
+          // Derive the correct plan from subscription price
+          const subscriptionPriceId = subData.items?.data?.[0]?.price?.id;
+          let derivedPlan = 'rise_local_monthly';
+          
+          if (subscriptionPriceId) {
+            if (annualPriceId && subscriptionPriceId === annualPriceId) {
+              derivedPlan = 'rise_local_annual';
+            } else if (monthlyPriceId && subscriptionPriceId === monthlyPriceId) {
+              derivedPlan = 'rise_local_monthly';
+            } else {
+              // Fallback: detect from subscription interval
+              const interval = subData.items?.data?.[0]?.price?.recurring?.interval;
+              derivedPlan = interval === 'year' ? 'rise_local_annual' : 'rise_local_monthly';
+            }
+          }
+
+          // Get period end safely
+          const periodEnd = stripeUnixToDateOrNull(subData.current_period_end);
+          if (!periodEnd) {
+            results.errors++;
+            results.details.push({
+              userId: user.id,
+              email: user.email || 'unknown',
+              status: 'error',
+              message: 'Invalid period_end timestamp in subscription',
+            });
+            continue;
+          }
+
+          const customerId = typeof subData.customer === 'string' 
+            ? subData.customer 
+            : subData.customer.id;
+
+          // Update user record
+          await storage.updateUser(user.id, {
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subData.id,
+            membershipStatus: subData.status,
+            membershipPlan: derivedPlan,
+            membershipCurrentPeriodEnd: periodEnd,
+            isPassMember: true,
+            passExpiresAt: periodEnd,
+          });
+
+          // Log membership event for audit
+          await storage.logMembershipEvent({
+            userId: user.id,
+            stripeEventId: `bulk-sync-${Date.now()}-${user.id}`,
+            eventType: 'admin_bulk_sync',
+            previousStatus: user.membershipStatus || undefined,
+            newStatus: subData.status,
+            previousPlan: user.membershipPlan || undefined,
+            newPlan: derivedPlan,
+            metadata: JSON.stringify({
+              syncedBy: adminUserId,
+              subscriptionId: subscription.id,
+              subscriptionPriceId,
+              derivedPlan,
+              periodEnd: safeToISOString(periodEnd),
+            }),
+          });
+
+          results.synced++;
+          results.details.push({
+            userId: user.id,
+            email: user.email || 'unknown',
+            status: 'synced',
+            message: `Pass unlocked until ${safeToISOString(periodEnd)}`,
+            plan: derivedPlan,
+          });
+
+          console.log(`[Bulk Sync] Synced user ${user.id} (${user.email}) - ${derivedPlan}`);
+        } catch (err) {
+          results.errors++;
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          results.details.push({
+            userId: user.id,
+            email: user.email || 'unknown',
+            status: 'error',
+            message: errorMessage,
+          });
+          console.error(`[Bulk Sync] Error syncing user ${user.id}:`, errorMessage);
+        }
+      }
+
+      console.log(`[Bulk Sync] Complete: ${results.synced} synced, ${results.skipped} skipped, ${results.errors} errors`);
+
+      res.json({
+        success: true,
+        message: `Bulk sync complete: ${results.synced} users synced, ${results.skipped} skipped, ${results.errors} errors`,
+        results,
+      });
+    } catch (error) {
+      console.error("[Bulk Sync] Error:", error);
+      res.status(500).json({ 
+        error: "Failed to run bulk sync",
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
   app.get("/api/vendors/values/all", async (req, res) => {
     try {
       const values = await storage.getAllVendorValues();
