@@ -88,15 +88,15 @@ function UserAccountsList() {
 
 
   const toggleMembershipMutation = useMutation({
-    mutationFn: async ({ userId, grantAccess }: { userId: string; grantAccess: boolean }) => {
-      return await apiRequest('PATCH', `/api/admin/users/${userId}/membership`, { grantAccess });
+    mutationFn: async ({ userId, isPassMember }: { userId: string; isPassMember: boolean }) => {
+      return await apiRequest('PATCH', `/api/admin/users/${userId}/membership`, { isPassMember });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       toast({
-        title: variables.grantAccess ? "Pass Granted" : "Pass Revoked",
-        description: variables.grantAccess 
+        title: variables.isPassMember ? "Pass Granted" : "Pass Revoked",
+        description: variables.isPassMember 
           ? "User now has Rise Local Pass access."
           : "Pass access has been removed.",
       });
@@ -153,7 +153,7 @@ function UserAccountsList() {
     if (membershipTarget) {
       toggleMembershipMutation.mutate({
         userId: membershipTarget.id,
-        grantAccess: !membershipTarget.isPassMember
+        isPassMember: !membershipTarget.isPassMember
       });
     }
   };
