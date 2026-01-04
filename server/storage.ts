@@ -36,7 +36,7 @@ import {
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
-import { eq, desc, and, sql, gte, lte, isNull } from "drizzle-orm";
+import { eq, desc, and, sql, gte, lte, isNull, or } from "drizzle-orm";
 import { calculateDistanceMiles } from "./geocoding";
 
 // Type for deals with distance information
@@ -1839,7 +1839,7 @@ export class DbStorage implements IStorage {
       return { success: false, message: "This deal is no longer active" };
     }
     
-    const claimWindowMinutes = deal.claimWindowMinutes || 10;
+    const claimWindowMinutes = 10; // Default 10-minute claim window
     
     // Check for existing active (issued) code for this user/deal
     const existingClaim = await this.getActiveRedemptionForUserDeal(userId, dealId);
@@ -2604,12 +2604,12 @@ export class DbStorage implements IStorage {
     return result.length > 0;
   }
 
-  async markWebhookEventProcessed(eventId: string, eventType: string, status: string, metadata?: string): Promise<void> {
+  async markWebhookEventProcessed(eventId: string, eventType: string, status: string, errorDetails?: string): Promise<void> {
     await db.insert(stripeWebhookEvents).values({
       eventId,
       eventType,
       status,
-      metadata: metadata || null,
+      errorDetails: errorDetails || null,
     }).onConflictDoNothing();
   }
 }

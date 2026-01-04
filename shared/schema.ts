@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, integer, timestamp, boolean, index, jsonb, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, integer, timestamp, boolean, index, jsonb, doublePrecision, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1163,11 +1163,13 @@ export type MembershipEvent = typeof membershipEvents.$inferSelect;
 
 // Stripe Webhook Events - Idempotency tracking for webhook processing
 export const stripeWebhookEvents = pgTable("stripe_webhook_events", {
-  eventId: varchar("event_id", { length: 255 }).primaryKey(), // Stripe event ID (e.g., evt_xxx)
-  eventType: text("event_type").notNull(), // checkout.session.completed, etc.
-  status: text("status").notNull().default("processed"), // processed, failed, needs_manual_sync
+  id: serial("id").primaryKey(),
+  eventId: varchar("event_id", { length: 255 }).notNull(), // Stripe event ID (e.g., evt_xxx)
+  eventType: varchar("event_type", { length: 255 }).notNull(), // checkout.session.completed, etc.
+  status: varchar("status", { length: 50 }).notNull().default("processed"), // processed, failed, needs_manual_sync
   processedAt: timestamp("processed_at").defaultNow(),
-  metadata: text("metadata"), // JSON string for additional context (session ID, user info, etc.)
+  errorDetails: text("error_details"), // JSON string for additional context (session ID, user info, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertStripeWebhookEventSchema = createInsertSchema(stripeWebhookEvents);
