@@ -125,6 +125,7 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 - **NEEDS_MANUAL_SYNC**: User not found during checkout - use `/api/admin/sync-membership` with `{ email }` or `{ subscriptionId }`
 - **User not getting Pass unlocked**: User can call `POST /api/entitlements/refresh` to manually trigger Stripe check
 - **Signature verification failed**: Ensure `STRIPE_WEBHOOK_SECRET` matches the endpoint's secret in Stripe Dashboard
+- **Bulk fix all broken accounts**: Admin can call `POST /api/admin/bulk-sync-memberships` to find all users with `stripeSubscriptionId` but `isPassMember=false`, check each against Stripe, and update those with active subscriptions. Returns summary with synced/skipped/error counts.
 
 ### Event Types to Enable in Stripe Webhook Settings
 - `checkout.session.completed` (primary for new subscriptions)
