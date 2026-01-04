@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket, ChevronDown } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal } from "@shared/schema";
+import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal, DealRedemption } from "@shared/schema";
 import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
 import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
@@ -248,6 +248,17 @@ export default function VendorDashboard() {
     queryFn: async () => {
       const res = await fetch(`/api/deals?vendorId=${vendor?.id}&includeAll=true`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch deals");
+      return res.json();
+    },
+    enabled: !!vendor?.id,
+  });
+
+  // Fetch vendor redemptions for stats
+  const { data: redemptions = [] } = useQuery<DealRedemption[]>({
+    queryKey: ["/api/vendor/redemptions"],
+    queryFn: async () => {
+      const res = await fetch("/api/vendor/redemptions", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch redemptions");
       return res.json();
     },
     enabled: !!vendor?.id,
@@ -1184,106 +1195,51 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-section-header">Business Features</CardTitle>
-                <CardDescription className="text-body">Enable or disable features for your business</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-6">
-                <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
-                  <div className="space-y-1 flex-1">
-                    <Label htmlFor="services-capability" className="text-label">Services</Label>
-                    <p className="text-body text-muted-foreground">
-                      Offer services with booking, pricing models, and scheduling
-                    </p>
-                  </div>
-                  <Switch
-                    id="services-capability"
-                    checked={(vendor.capabilities as any)?.services === true}
-                    onCheckedChange={(checked) => {
-                      const currentCapabilities = (vendor.capabilities || {}) as any;
-                      updateVendorMutation.mutate({ 
-                        capabilities: { 
-                          ...currentCapabilities, 
-                          services: checked 
-                        } 
-                      });
-                    }}
-                    data-testid="switch-services-capability"
-                  />
-                </div>
-
-                <div className="border border-[#E5E5E5] rounded-lg p-5 flex items-center justify-between gap-4">
-                  <div className="space-y-1 flex-1">
-                    <Label htmlFor="menu-capability" className="text-label">Menu</Label>
-                    <p className="text-body text-muted-foreground">
-                      Display menu items with categories, dietary info, and pricing
-                    </p>
-                  </div>
-                  <Switch
-                    id="menu-capability"
-                    checked={(vendor.capabilities as any)?.menu === true}
-                    onCheckedChange={(checked) => {
-                      console.log('[MENU TOGGLE] Toggling menu capability to:', checked);
-                      const currentCapabilities = (vendor.capabilities || {}) as any;
-                      console.log('[MENU TOGGLE] Current capabilities:', currentCapabilities);
-                      const newCapabilities = { 
-                        ...currentCapabilities, 
-                        menu: checked 
-                      };
-                      console.log('[MENU TOGGLE] New capabilities:', newCapabilities);
-                      updateVendorMutation.mutate({ 
-                        capabilities: newCapabilities
-                      });
-                    }}
-                    disabled={updateVendorMutation.isPending}
-                    data-testid="switch-menu-capability"
-                  />
-                </div>
-
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Toggling features will show or hide the corresponding tabs in your dashboard. Your existing content will not be deleted.
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
-
-            {/* Deals Quick Stats */}
+            {/* Deals Quick Stats - Redemption Numbers */}
             <Card data-testid="card-deals-quick-stats">
               <CardHeader>
                 <CardTitle className="text-section-header flex items-center gap-2">
                   <Tag className="h-5 w-5" />
                   Deals Quick Stats
                 </CardTitle>
-                <CardDescription className="text-body">Overview of your deal performance</CardDescription>
+                <CardDescription className="text-body">Overview of your deal redemptions</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 border rounded-lg text-center">
-                    <p className="text-2xl font-bold text-primary" data-testid="stat-total-deals">
-                      {deals.length}
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-total-redemptions">
+                      {redemptions.length}
                     </p>
-                    <p className="text-sm text-muted-foreground">Total Deals</p>
+                    <p className="text-sm text-muted-foreground">Total Redemptions</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
-                    <p className="text-2xl font-bold text-primary" data-testid="stat-active-deals">
-                      {deals.filter(d => d.isActive).length}
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-redemptions-this-month">
+                      {redemptions.filter(r => {
+                        if (!r.redeemedAt) return false;
+                        const now = new Date();
+                        const redeemed = new Date(r.redeemedAt);
+                        return redeemed.getMonth() === now.getMonth() && redeemed.getFullYear() === now.getFullYear();
+                      }).length}
                     </p>
-                    <p className="text-sm text-muted-foreground">Active</p>
+                    <p className="text-sm text-muted-foreground">This Month</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
-                    <p className="text-2xl font-bold text-primary" data-testid="stat-member-deals">
-                      {deals.filter(d => d.isPassLocked).length}
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-redemptions-this-week">
+                      {redemptions.filter(r => {
+                        if (!r.redeemedAt) return false;
+                        const now = new Date();
+                        const redeemed = new Date(r.redeemedAt);
+                        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        return redeemed >= weekAgo;
+                      }).length}
                     </p>
-                    <p className="text-sm text-muted-foreground">Member Only</p>
+                    <p className="text-sm text-muted-foreground">This Week</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
-                    <p className="text-2xl font-bold text-primary" data-testid="stat-public-deals">
-                      {deals.filter(d => !d.isPassLocked).length}
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-unique-customers">
+                      {new Set(redemptions.map(r => r.userId)).size}
                     </p>
-                    <p className="text-sm text-muted-foreground">Public</p>
+                    <p className="text-sm text-muted-foreground">Unique Customers</p>
                   </div>
                 </div>
               </CardContent>
