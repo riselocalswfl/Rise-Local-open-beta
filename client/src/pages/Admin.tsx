@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,6 +110,27 @@ function UserAccountsList() {
         variant: "destructive",
       });
       setMembershipDialogOpen(false);
+    },
+  });
+
+  const syncFromStripeMutation = useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      return await apiRequest('POST', '/api/admin/sync-membership', { email });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Synced from Stripe",
+        description: data.message || "Membership updated from Stripe subscription.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Sync from Stripe",
+        description: error.message || "Could not sync membership from Stripe.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -247,16 +268,31 @@ function UserAccountsList() {
                 
                 {/* Pass Toggle Button - show for buyers and vendors */}
                 {(user.role === 'buyer' || user.role === 'vendor') && (
-                  <Button
-                    size="sm"
-                    variant={user.isPassMember ? "outline" : "default"}
-                    onClick={() => handleMembershipToggle(user)}
-                    disabled={toggleMembershipMutation.isPending}
-                    data-testid={`button-toggle-pass-${user.id}`}
-                  >
-                    <CreditCard className="h-3 w-3 mr-1" />
-                    {user.isPassMember ? 'Revoke Pass' : 'Grant Pass'}
-                  </Button>
+                  <div className="flex gap-2">
+                    {user.stripeSubscriptionId && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => user.email && syncFromStripeMutation.mutate({ email: user.email })}
+                        disabled={syncFromStripeMutation.isPending || !user.email}
+                        data-testid={`button-sync-stripe-${user.id}`}
+                        title="Sync membership from Stripe subscription"
+                      >
+                        <RefreshCw className={`h-3 w-3 mr-1 ${syncFromStripeMutation.isPending ? 'animate-spin' : ''}`} />
+                        Sync Stripe
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant={user.isPassMember ? "outline" : "default"}
+                      onClick={() => handleMembershipToggle(user)}
+                      disabled={toggleMembershipMutation.isPending}
+                      data-testid={`button-toggle-pass-${user.id}`}
+                    >
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      {user.isPassMember ? 'Revoke Pass' : 'Grant Pass'}
+                    </Button>
+                  </div>
                 )}
                 
               </div>
@@ -290,7 +326,7 @@ function UserAccountsList() {
                       You are about to grant Rise Local Pass access to <strong>{membershipTarget.name}</strong>.
                       <br /><br />
                       This will be marked as a manual override (not a Stripe subscription). 
-                      The user will have full Pass benefits for 1 year.
+                      The user will have full Pass benefits until the end of this month.
                     </>
                   )}
                 </>
