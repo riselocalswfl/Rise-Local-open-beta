@@ -27,7 +27,15 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
   - `isMemberOnlyDeal(deal)`: Returns true if deal.isPassLocked=true OR deal.tier="premium"/"member" (legacy support)
   - Backend `isUserSubscribed()` in routes.ts mirrors frontend logic for consistency
   - Debug logging available (set DEBUG_ACCESS=true in dealAccess.ts)
-- **Stripe Webhook Integration**: Handles Stripe events (`checkout.session.completed`, `customer.subscription.*`, `invoice.*`) with user lookup fallbacks and logs membership state changes to an `membership_events` audit table.
+- **Stripe Webhook Integration**: Bulletproof webhook handler at `POST /api/stripe/webhook`:
+  - **Middleware Order**: Raw body parsing (`express.raw`) in `server/index.ts` runs BEFORE `express.json()` to preserve Stripe signature
+  - **Signature Verification**: Returns 400 on invalid signatures to allow Stripe retries
+  - **Idempotency**: `stripe_webhook_events` table tracks processed events - duplicate events return 200 immediately
+  - **Event Handling**: Processes `checkout.session.completed`, `customer.subscription.*`, `invoice.*` events
+  - **User Lookup Fallbacks**: metadata.appUserId → stripeCustomerId → customer_email
+  - **NEEDS_MANUAL_SYNC Pattern**: When user not found in checkout.session.completed, logs for admin resolution and returns 200 OK
+  - **Admin Sync Endpoint**: `POST /api/admin/sync-membership` for manual membership fixes (accepts `ADMIN_API_KEY` header or admin session)
+  - **Audit Trail**: All membership changes logged to `membership_events` table with before/after state
 - **CheckoutSuccess Retry Logic**: Implements retry logic for webhook processing delays on the `/checkout/success` page.
 - **Unified Vendor Dashboard**: A single, capability-aware `/dashboard` dynamically adjusts tabs for all vendor types. Mobile view features a sticky header with dropdown navigation (48px touch targets), full-width dropdown menu with 60vh max-height scrolling, and iOS zoom prevention (16px font on inputs).
 - **Mobile-First Profile Accordion Editor**: Business Dashboard profile editor with collapsible sections for Basics, Contact, Location, Social Links, Hours, Branding, and Values, featuring auto-save and image uploads.
