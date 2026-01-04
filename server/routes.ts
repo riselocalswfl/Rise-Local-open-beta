@@ -42,6 +42,42 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+/**
+ * Safely converts a Stripe Unix timestamp (seconds) to a JS Date.
+ * Returns null if the input is missing, not a valid number, or produces an invalid date.
+ * NEVER throws - safe to use without try/catch.
+ */
+function stripeUnixToDateOrNull(unixSeconds: number | null | undefined): Date | null {
+  if (unixSeconds === null || unixSeconds === undefined) {
+    return null;
+  }
+  if (typeof unixSeconds !== 'number' || !Number.isFinite(unixSeconds)) {
+    console.warn('[Stripe Date] Invalid unix timestamp (not a finite number):', unixSeconds);
+    return null;
+  }
+  // Stripe timestamps are in seconds, JS Date expects milliseconds
+  const date = new Date(unixSeconds * 1000);
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    console.warn('[Stripe Date] Created invalid date from unix timestamp:', unixSeconds);
+    return null;
+  }
+  return date;
+}
+
+/**
+ * Safely converts a Date to ISO string, returning null if invalid.
+ */
+function safeToISOString(date: Date | null | undefined): string | null {
+  if (!date) return null;
+  try {
+    return date.toISOString();
+  } catch {
+    console.warn('[Stripe Date] Failed to convert date to ISO string:', date);
+    return null;
+  }
+}
+
 // Helper function to derive serviceOptions from fulfillmentOptions
 function deriveServiceOptions(fulfillment: FulfillmentOptions): string[] {
   const serviceOptions: string[] = [];
@@ -1227,8 +1263,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Update the user's membership
-      const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+      // Log raw timestamp for debugging
+      console.log('[Admin Sync] Raw subscription timestamps', {
+        current_period_end: stripeSubscription.current_period_end,
+        status: stripeSubscription.status,
+      });
+
+      // Update the user's membership using safe timestamp conversion
+      const periodEnd = stripeUnixToDateOrNull(stripeSubscription.current_period_end);
+      
+      if (!periodEnd) {
+        console.error('[Admin Sync] Invalid period_end timestamp', {
+          userId: user.id,
+          raw_current_period_end: stripeSubscription.current_period_end,
+        });
+        return res.status(400).json({
+          error: "Invalid subscription data",
+          message: "Could not parse current_period_end from Stripe subscription",
+          raw_value: stripeSubscription.current_period_end,
+        });
+      }
+      
       const isActive = stripeSubscription.status === 'active' || stripeSubscription.status === 'trialing';
       const customerId = typeof stripeSubscription.customer === 'string' 
         ? stripeSubscription.customer 
@@ -1257,7 +1312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           syncedBy: adminUserId,
           subscriptionId: stripeSubscription.id,
           customerId,
-          periodEnd: periodEnd.toISOString(),
+          periodEnd: safeToISOString(periodEnd),
         }),
       });
 
@@ -1267,7 +1322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionId: stripeSubscription.id,
         status: stripeSubscription.status,
         isPassMember: isActive,
-        passExpiresAt: periodEnd.toISOString(),
+        passExpiresAt: safeToISOString(periodEnd),
       });
 
       res.json({ 
@@ -2442,8 +2497,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             if (user) {
+              // Log raw Stripe timestamp values for debugging
+              console.log('[Stripe Webhook] Raw subscription data timestamps', {
+                eventId: event.id,
+                userId: user.id,
+                current_period_end: subscriptionData.current_period_end,
+                current_period_start: subscriptionData.current_period_start,
+                trial_end: subscriptionData.trial_end,
+                created: subscriptionData.created,
+                status: subscriptionData.status,
+              });
+              
+              // Safely convert Stripe Unix timestamps to JS Dates
+              const periodEnd = stripeUnixToDateOrNull(subscriptionData.current_period_end);
+              const periodStart = stripeUnixToDateOrNull(subscriptionData.current_period_start);
+              
+              console.log('[Stripe Webhook] Converted timestamps', {
+                eventId: event.id,
+                periodEnd: safeToISOString(periodEnd),
+                periodStart: safeToISOString(periodStart),
+                periodEndValid: periodEnd !== null,
+              });
+              
+              // If period end is invalid, treat as needs_manual_sync - don't throw
+              if (!periodEnd) {
+                console.error('[Stripe Webhook] NEEDS_MANUAL_SYNC - invalid period_end timestamp', {
+                  eventId: event.id,
+                  userId: user.id,
+                  raw_current_period_end: subscriptionData.current_period_end,
+                  subscriptionId: subscriptionData.id,
+                  action: 'Admin must manually sync this membership',
+                });
+                
+                // Record as needs_manual_sync for admin follow-up
+                try {
+                  await storage.markWebhookEventProcessed(event.id, event.type, 'needs_manual_sync', JSON.stringify({
+                    userId: user.id,
+                    subscriptionId: subscriptionData.id,
+                    customerId,
+                    reason: 'Invalid current_period_end timestamp',
+                    raw_value: subscriptionData.current_period_end,
+                  }));
+                } catch (logError) {
+                  console.warn('[Stripe Webhook] Failed to log needs_manual_sync event', { eventId: event.id });
+                }
+                
+                // Return 200 OK to stop Stripe retries - manual sync required
+                return res.status(200).json({
+                  received: true,
+                  status: 'needs_manual_sync',
+                  message: 'Invalid timestamp - admin sync required',
+                });
+              }
+              
               try {
-                const periodEnd = new Date(subscriptionData.current_period_end * 1000);
                 const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
                 
                 // Determine plan type from metadata or price ID
@@ -2456,7 +2563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log('[Stripe Webhook] Updating user membership', {
                   userId: user.id,
                   isActive,
-                  periodEnd: periodEnd.toISOString(),
+                  periodEnd: safeToISOString(periodEnd),
                   membershipPlan,
                 });
                 
@@ -2480,7 +2587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   newStatus: subscriptionData.status,
                   previousPlan: previousPlan || undefined,
                   newPlan: membershipPlan,
-                  metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
+                  metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: safeToISOString(periodEnd) }),
                 });
                 
                 console.log('[Stripe Webhook] Pass unlock SUCCESS', {
@@ -2492,11 +2599,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   plan: membershipPlan,
                   status: subscriptionData.status,
                   isPassMember: isActive,
-                  passExpiresAt: periodEnd.toISOString(),
+                  passExpiresAt: safeToISOString(periodEnd),
                   lookupMethod,
                 });
               } catch (dbError) {
-                console.error('[Stripe Webhook] Pass unlock FAILED - database error', {
+                // Database error - log as needs_manual_sync and return 200 to stop Stripe retries
+                console.error('[Stripe Webhook] NEEDS_MANUAL_SYNC - database error', {
                   eventId: event.id,
                   userId: user.id,
                   customer: customerId,
@@ -2504,10 +2612,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   error: dbError instanceof Error ? dbError.message : String(dbError),
                   stack: dbError instanceof Error ? dbError.stack : undefined,
                 });
-                // Return 500 so Stripe retries
-                return res.status(500).json({ 
-                  error: 'Database update failed',
-                  details: dbError instanceof Error ? dbError.message : String(dbError),
+                
+                // Record as needs_manual_sync for admin follow-up
+                try {
+                  await storage.markWebhookEventProcessed(event.id, event.type, 'needs_manual_sync', JSON.stringify({
+                    userId: user.id,
+                    subscriptionId,
+                    customerId,
+                    reason: 'Database update failed',
+                    error: dbError instanceof Error ? dbError.message : String(dbError),
+                  }));
+                } catch (logError) {
+                  console.warn('[Stripe Webhook] Failed to log needs_manual_sync event', { eventId: event.id });
+                }
+                
+                // Return 200 OK to stop Stripe retries - manual sync required
+                return res.status(200).json({ 
+                  received: true,
+                  status: 'needs_manual_sync',
+                  message: 'Database update failed - admin sync required',
+                  error: dbError instanceof Error ? dbError.message : String(dbError),
                 });
               }
             } else {
@@ -2580,35 +2704,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const customerId = subscriptionData.customer as string;
         console.log('[Stripe Webhook]', event.type, 'for customer:', customerId);
         
+        // Log raw timestamp for debugging
+        console.log('[Stripe Webhook] Raw subscription timestamps', {
+          eventId: event.id,
+          current_period_end: subscriptionData.current_period_end,
+        });
+        
         const user = await storage.getUserByStripeCustomerId(customerId);
         if (user) {
-          const periodEnd = new Date(subscriptionData.current_period_end * 1000);
+          const periodEnd = stripeUnixToDateOrNull(subscriptionData.current_period_end);
           const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
           const previousStatus = user.membershipStatus;
           const previousPlan = user.membershipPlan;
           
-          await storage.updateUser(user.id, {
-            stripeSubscriptionId: subscriptionData.id,
-            membershipStatus: subscriptionData.status,
-            membershipPlan: isActive ? 'rise_local_monthly' : user.membershipPlan,
-            membershipCurrentPeriodEnd: periodEnd,
-            isPassMember: isActive,
-            passExpiresAt: periodEnd,
-          });
-          
-          // Log membership event for audit
-          await storage.logMembershipEvent({
-            userId: user.id,
-            stripeEventId: event.id,
-            eventType: event.type,
-            previousStatus: previousStatus || undefined,
-            newStatus: subscriptionData.status,
-            previousPlan: previousPlan || undefined,
-            newPlan: isActive ? 'rise_local_monthly' : user.membershipPlan || undefined,
-            metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
-          });
-          
-          console.log('[Stripe Webhook] User subscription updated:', user.id, 'status:', subscriptionData.status);
+          // If periodEnd is invalid, skip update but log for investigation
+          if (!periodEnd) {
+            console.error('[Stripe Webhook] NEEDS_MANUAL_SYNC - invalid period_end in subscription update', {
+              eventId: event.id,
+              userId: user.id,
+              raw_current_period_end: subscriptionData.current_period_end,
+            });
+            // Continue processing other events - don't return
+          } else {
+            await storage.updateUser(user.id, {
+              stripeSubscriptionId: subscriptionData.id,
+              membershipStatus: subscriptionData.status,
+              membershipPlan: isActive ? 'rise_local_monthly' : user.membershipPlan,
+              membershipCurrentPeriodEnd: periodEnd,
+              isPassMember: isActive,
+              passExpiresAt: periodEnd,
+            });
+            
+            // Log membership event for audit
+            await storage.logMembershipEvent({
+              userId: user.id,
+              stripeEventId: event.id,
+              eventType: event.type,
+              previousStatus: previousStatus || undefined,
+              newStatus: subscriptionData.status,
+              previousPlan: previousPlan || undefined,
+              newPlan: isActive ? 'rise_local_monthly' : user.membershipPlan || undefined,
+              metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: safeToISOString(periodEnd) }),
+            });
+            
+            console.log('[Stripe Webhook] User subscription updated:', user.id, 'status:', subscriptionData.status);
+          }
         }
       }
 
@@ -2652,30 +2792,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (invoiceData.subscription) {
           const subscriptionData = await stripe.subscriptions.retrieve(invoiceData.subscription as string) as any;
+          
+          // Log raw timestamp for debugging
+          console.log('[Stripe Webhook] Raw invoice.paid subscription timestamps', {
+            eventId: event.id,
+            current_period_end: subscriptionData.current_period_end,
+          });
+          
           const user = await storage.getUserByStripeCustomerId(customerId);
           if (user) {
             const previousStatus = user.membershipStatus;
-            const periodEnd = new Date(subscriptionData.current_period_end * 1000);
-            await storage.updateUser(user.id, {
-              membershipStatus: 'active',
-              membershipCurrentPeriodEnd: periodEnd,
-              isPassMember: true,
-              passExpiresAt: periodEnd,
-            });
+            const periodEnd = stripeUnixToDateOrNull(subscriptionData.current_period_end);
             
-            // Log membership event for audit
-            await storage.logMembershipEvent({
-              userId: user.id,
-              stripeEventId: event.id,
-              eventType: 'invoice.paid',
-              previousStatus: previousStatus || undefined,
-              newStatus: 'active',
-              previousPlan: user.membershipPlan || undefined,
-              newPlan: user.membershipPlan || undefined,
-              metadata: JSON.stringify({ subscriptionId: invoiceData.subscription, invoiceId: invoiceData.id, periodEnd: periodEnd.toISOString() }),
-            });
-            
-            console.log('[Stripe Webhook] User membership renewed:', user.id);
+            // If periodEnd is invalid, skip update but log for investigation
+            if (!periodEnd) {
+              console.error('[Stripe Webhook] NEEDS_MANUAL_SYNC - invalid period_end in invoice.paid', {
+                eventId: event.id,
+                userId: user.id,
+                raw_current_period_end: subscriptionData.current_period_end,
+              });
+              // Continue processing other events - don't return
+            } else {
+              await storage.updateUser(user.id, {
+                membershipStatus: 'active',
+                membershipCurrentPeriodEnd: periodEnd,
+                isPassMember: true,
+                passExpiresAt: periodEnd,
+              });
+              
+              // Log membership event for audit
+              await storage.logMembershipEvent({
+                userId: user.id,
+                stripeEventId: event.id,
+                eventType: 'invoice.paid',
+                previousStatus: previousStatus || undefined,
+                newStatus: 'active',
+                previousPlan: user.membershipPlan || undefined,
+                newPlan: user.membershipPlan || undefined,
+                metadata: JSON.stringify({ subscriptionId: invoiceData.subscription, invoiceId: invoiceData.id, periodEnd: safeToISOString(periodEnd) }),
+              });
+              
+              console.log('[Stripe Webhook] User membership renewed:', user.id);
+            }
           }
         }
       }
