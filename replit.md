@@ -29,12 +29,14 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
   - Debug logging available (set DEBUG_ACCESS=true in dealAccess.ts)
 - **Stripe Webhook Integration**: Bulletproof webhook handler at `POST /api/stripe/webhook`:
   - **Middleware Order**: Raw body parsing (`express.raw`) in `server/index.ts` runs BEFORE `express.json()` to preserve Stripe signature
+  - **Structured Event Logging**: Every event logs `eventId`, `eventType`, `livemode`, `created`, `customerId`, `subscriptionId`, `customerEmail`, `clientReferenceId`, and `metadata`
   - **Signature Verification**: Returns 400 on invalid signatures to allow Stripe retries
   - **Idempotency**: `stripe_webhook_events` table tracks processed events - duplicate events return 200 immediately
   - **Event Handling**: Processes `checkout.session.completed`, `customer.subscription.*`, `invoice.*` events
   - **User Lookup Fallbacks**: metadata.appUserId → stripeCustomerId → customer_email
   - **NEEDS_MANUAL_SYNC Pattern**: When user not found in checkout.session.completed, logs for admin resolution and returns 200 OK
   - **Admin Sync Endpoint**: `POST /api/admin/sync-membership` for manual membership fixes (accepts `ADMIN_API_KEY` header or admin session)
+  - **Entitlements Refresh Endpoint**: `POST /api/entitlements/refresh` allows users to manually trigger subscription status check from Stripe (safety net for webhook failures)
   - **Audit Trail**: All membership changes logged to `membership_events` table with before/after state
 - **CheckoutSuccess Retry Logic**: Implements retry logic for webhook processing delays on the `/checkout/success` page.
 - **Unified Vendor Dashboard**: A single, capability-aware `/dashboard` dynamically adjusts tabs for all vendor types. Mobile view features a sticky header with dropdown navigation (48px touch targets), full-width dropdown menu with 60vh max-height scrolling, and iOS zoom prevention (16px font on inputs).
@@ -96,3 +98,38 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 
 ### APIs
 - OpenStreetMap Nominatim API (for geocoding)
+
+## Stripe Webhook Testing Checklist
+
+### Testing Webhook Reception
+1. **Send test webhook from Stripe Dashboard**:
+   - Go to Stripe Dashboard → Developers → Webhooks → Your endpoint → Send test webhook
+   - Test with `checkout.session.completed` event first
+
+2. **Check server logs for**:
+   ```
+   [Stripe Webhook] Event received and verified { eventId, eventType, livemode, created... }
+   ```
+
+3. **Verify idempotency**: Send the same test event twice - second should log:
+   ```
+   [Stripe Webhook] Event already processed, skipping
+   ```
+
+### Expected Success Flow
+1. Event received → Signature verified → User lookup (by appUserId, stripeCustomerId, or email) → DB updated → `stripe_webhook_events` entry created
+2. Look for: `[Stripe Webhook] Pass unlock SUCCESS`
+3. User's `isPassMember` = true, `passExpiresAt` = subscription period end
+
+### Common Issues & Fixes
+- **NEEDS_MANUAL_SYNC**: User not found during checkout - use `/api/admin/sync-membership` with `{ email }` or `{ subscriptionId }`
+- **User not getting Pass unlocked**: User can call `POST /api/entitlements/refresh` to manually trigger Stripe check
+- **Signature verification failed**: Ensure `STRIPE_WEBHOOK_SECRET` matches the endpoint's secret in Stripe Dashboard
+
+### Event Types to Enable in Stripe Webhook Settings
+- `checkout.session.completed` (primary for new subscriptions)
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.paid` (for renewal payments)
+- `invoice.payment_failed`

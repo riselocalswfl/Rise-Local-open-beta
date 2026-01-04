@@ -2335,7 +2335,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
 
-    console.log('[Stripe Webhook] Signature verified', { eventId: event.id, eventType: event.type });
+    // STRUCTURED EVENT LOGGING: Log comprehensive event details for debugging
+    const eventObject = event.data.object as any;
+    console.log('[Stripe Webhook] Event received and verified', {
+      eventId: event.id,
+      eventType: event.type,
+      livemode: event.livemode,
+      created: event.created,
+      createdAt: new Date(event.created * 1000).toISOString(),
+      // Key object identifiers vary by event type
+      sessionId: eventObject.id || null,
+      customerId: eventObject.customer || null,
+      subscriptionId: eventObject.subscription || eventObject.id || null,
+      customerEmail: eventObject.customer_email || eventObject.email || null,
+      clientReferenceId: eventObject.client_reference_id || null,
+      metadata: eventObject.metadata || null,
+    });
 
     // Idempotency check - if already processed, return 200 immediately
     try {
@@ -2940,6 +2955,250 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("[Debug Membership] Error:", error);
       res.status(500).json({ error: "Failed to fetch membership debug info" });
+    }
+  });
+
+  // Safety net endpoint: Refresh entitlements from Stripe
+  // Allows users to manually trigger a check of their subscription status
+  // Useful when webhook delivery fails or membership isn't unlocked after payment
+  app.post("/api/entitlements/refresh", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { checkout_session_id } = req.body;
+      
+      console.log('[Entitlements Refresh] Starting refresh', { userId, checkout_session_id });
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      let stripeSubscription: any = null;
+      let stripeCustomer: any = null;
+      
+      // Method 1: Use checkout_session_id if provided
+      if (checkout_session_id) {
+        try {
+          const session = await stripe.checkout.sessions.retrieve(checkout_session_id, {
+            expand: ['subscription', 'customer'],
+          });
+          
+          console.log('[Entitlements Refresh] Retrieved checkout session', {
+            sessionId: session.id,
+            customer: session.customer,
+            subscription: session.subscription,
+            paymentStatus: session.payment_status,
+          });
+          
+          if (session.subscription) {
+            stripeSubscription = typeof session.subscription === 'string'
+              ? await stripe.subscriptions.retrieve(session.subscription)
+              : session.subscription;
+          }
+          if (session.customer) {
+            stripeCustomer = typeof session.customer === 'string'
+              ? await stripe.customers.retrieve(session.customer)
+              : session.customer;
+          }
+        } catch (sessionError) {
+          console.warn('[Entitlements Refresh] Failed to retrieve checkout session', {
+            checkout_session_id,
+            error: sessionError instanceof Error ? sessionError.message : String(sessionError),
+          });
+        }
+      }
+      
+      // Method 2: Use user's stripeSubscriptionId
+      if (!stripeSubscription && user.stripeSubscriptionId) {
+        try {
+          stripeSubscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+          console.log('[Entitlements Refresh] Retrieved subscription by user.stripeSubscriptionId', {
+            subscriptionId: user.stripeSubscriptionId,
+            status: stripeSubscription.status,
+          });
+        } catch (subError) {
+          console.warn('[Entitlements Refresh] Failed to retrieve subscription by stripeSubscriptionId', {
+            subscriptionId: user.stripeSubscriptionId,
+            error: subError instanceof Error ? subError.message : String(subError),
+          });
+        }
+      }
+      
+      // Method 3: Use user's stripeCustomerId to find subscriptions
+      if (!stripeSubscription && user.stripeCustomerId) {
+        try {
+          const subscriptions = await stripe.subscriptions.list({
+            customer: user.stripeCustomerId,
+            status: 'all',
+            limit: 1,
+          });
+          if (subscriptions.data.length > 0) {
+            stripeSubscription = subscriptions.data[0];
+            console.log('[Entitlements Refresh] Found subscription via customer lookup', {
+              customerId: user.stripeCustomerId,
+              subscriptionId: stripeSubscription.id,
+              status: stripeSubscription.status,
+            });
+          }
+        } catch (custError) {
+          console.warn('[Entitlements Refresh] Failed to find subscription by stripeCustomerId', {
+            customerId: user.stripeCustomerId,
+            error: custError instanceof Error ? custError.message : String(custError),
+          });
+        }
+      }
+      
+      // Method 4: Use user's email to find customer and subscription
+      if (!stripeSubscription && user.email) {
+        try {
+          const customers = await stripe.customers.list({
+            email: user.email,
+            limit: 1,
+          });
+          if (customers.data.length > 0) {
+            const customer = customers.data[0];
+            const subscriptions = await stripe.subscriptions.list({
+              customer: customer.id,
+              status: 'all',
+              limit: 1,
+            });
+            if (subscriptions.data.length > 0) {
+              stripeSubscription = subscriptions.data[0];
+              stripeCustomer = customer;
+              console.log('[Entitlements Refresh] Found subscription via email lookup', {
+                email: user.email,
+                customerId: customer.id,
+                subscriptionId: stripeSubscription.id,
+                status: stripeSubscription.status,
+              });
+            }
+          }
+        } catch (emailError) {
+          console.warn('[Entitlements Refresh] Failed to find subscription by email', {
+            email: user.email,
+            error: emailError instanceof Error ? emailError.message : String(emailError),
+          });
+        }
+      }
+      
+      // No subscription found
+      if (!stripeSubscription) {
+        console.log('[Entitlements Refresh] No subscription found', { userId, email: user.email });
+        return res.status(404).json({ 
+          error: "No subscription found",
+          message: "We couldn't find an active subscription for your account. If you recently subscribed, please wait a few minutes and try again.",
+          currentStatus: {
+            isPassMember: user.isPassMember,
+            passExpiresAt: user.passExpiresAt,
+          },
+        });
+      }
+      
+      // Update user entitlements based on subscription status
+      const isActive = stripeSubscription.status === 'active' || stripeSubscription.status === 'trialing';
+      const periodEnd = stripeUnixToDateOrNull(stripeSubscription.current_period_end);
+      
+      if (!periodEnd) {
+        console.error('[Entitlements Refresh] Invalid period_end timestamp', {
+          userId,
+          raw_current_period_end: stripeSubscription.current_period_end,
+        });
+        return res.status(500).json({ 
+          error: "Invalid subscription data",
+          message: "The subscription has an invalid expiration date. Please contact support.",
+        });
+      }
+      
+      const customerId = typeof stripeSubscription.customer === 'string' 
+        ? stripeSubscription.customer 
+        : stripeSubscription.customer?.id;
+      
+      // Derive membership plan from Stripe price ID
+      const monthlyPriceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
+      const annualPriceId = process.env.STRIPE_RISELOCAL_ANNUAL_PRICE_ID;
+      const subscriptionPriceId = stripeSubscription.items?.data?.[0]?.price?.id;
+      let derivedPlan = 'rise_local_monthly'; // Default fallback
+      
+      if (subscriptionPriceId) {
+        if (annualPriceId && subscriptionPriceId === annualPriceId) {
+          derivedPlan = 'rise_local_annual';
+        } else if (monthlyPriceId && subscriptionPriceId === monthlyPriceId) {
+          derivedPlan = 'rise_local_monthly';
+        } else {
+          // Unknown price ID - try to detect from subscription interval
+          const interval = stripeSubscription.items?.data?.[0]?.price?.recurring?.interval;
+          derivedPlan = interval === 'year' ? 'rise_local_annual' : 'rise_local_monthly';
+          console.log('[Entitlements Refresh] Derived plan from interval', { subscriptionPriceId, interval, derivedPlan });
+        }
+      }
+      
+      console.log('[Entitlements Refresh] Determined membership plan', {
+        subscriptionPriceId,
+        monthlyPriceId,
+        annualPriceId,
+        derivedPlan,
+      });
+      
+      const previousStatus = user.membershipStatus;
+      const previousPlan = user.membershipPlan;
+      
+      // Update user record
+      await storage.updateUser(userId, {
+        stripeCustomerId: customerId || user.stripeCustomerId,
+        stripeSubscriptionId: stripeSubscription.id,
+        membershipStatus: stripeSubscription.status,
+        membershipPlan: derivedPlan,
+        membershipCurrentPeriodEnd: periodEnd,
+        isPassMember: isActive,
+        passExpiresAt: periodEnd,
+      });
+      
+      // Log membership event for audit
+      await storage.logMembershipEvent({
+        userId,
+        stripeEventId: `manual_refresh_${Date.now()}`,
+        eventType: 'manual_entitlements_refresh',
+        previousStatus: previousStatus || undefined,
+        newStatus: stripeSubscription.status,
+        previousPlan: previousPlan || undefined,
+        newPlan: derivedPlan,
+        metadata: JSON.stringify({
+          source: 'entitlements_refresh_endpoint',
+          checkout_session_id,
+          subscriptionId: stripeSubscription.id,
+          subscriptionPriceId,
+          derivedPlan,
+          periodEnd: safeToISOString(periodEnd),
+        }),
+      });
+      
+      console.log('[Entitlements Refresh] SUCCESS - Membership updated', {
+        userId,
+        email: user.email,
+        subscriptionId: stripeSubscription.id,
+        status: stripeSubscription.status,
+        plan: derivedPlan,
+        isPassMember: isActive,
+        passExpiresAt: safeToISOString(periodEnd),
+      });
+      
+      res.json({
+        success: true,
+        message: isActive ? "Your Rise Local Pass is now active!" : `Subscription status: ${stripeSubscription.status}`,
+        membership: {
+          isPassMember: isActive,
+          passExpiresAt: periodEnd,
+          membershipStatus: stripeSubscription.status,
+          membershipPlan: derivedPlan,
+          subscriptionId: stripeSubscription.id,
+        },
+      });
+    } catch (error) {
+      console.error("[Entitlements Refresh] Error:", error);
+      res.status(500).json({ 
+        error: "Failed to refresh entitlements",
+        details: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
