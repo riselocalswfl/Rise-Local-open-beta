@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw, UserPlus } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OrphanedSubscription {
   subscriptionId: string;
@@ -535,10 +536,35 @@ function SubscriptionReconciliation() {
 
 export default function Admin() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
 
   // Fetch admin statistics
   const { data: stats, isLoading: statsLoading, error: statsError, isError: statsIsError } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
+  });
+
+  // Grant Pass to self mutation
+  const grantPassToSelfMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUser?.id) throw new Error("No user ID available");
+      return await apiRequest('PATCH', `/api/admin/users/${currentUser.id}/membership`, { isPassMember: true });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Pass Granted",
+        description: "You now have Rise Local Pass access.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Grant Pass",
+        description: error.message || "An error occurred.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Verify vendor mutation
@@ -729,11 +755,32 @@ export default function Admin() {
         {/* Membership Metrics - High Priority */}
         <Card className="mb-8">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Rise Local Pass Memberships
-            </CardTitle>
-            <CardDescription>Are people buying the Pass?</CardDescription>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Rise Local Pass Memberships
+                </CardTitle>
+                <CardDescription>Are people buying the Pass?</CardDescription>
+              </div>
+              {currentUser && !currentUser.isPassMember && (
+                <Button
+                  size="sm"
+                  onClick={() => grantPassToSelfMutation.mutate()}
+                  disabled={grantPassToSelfMutation.isPending}
+                  data-testid="button-grant-pass-to-me"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  {grantPassToSelfMutation.isPending ? "Granting..." : "Grant Pass to Me"}
+                </Button>
+              )}
+              {currentUser?.isPassMember && (
+                <Badge variant="secondary" data-testid="badge-admin-has-pass">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  You have the Pass
+                </Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
