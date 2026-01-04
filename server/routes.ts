@@ -1078,9 +1078,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (passExpiresAt) {
           expirationDate = new Date(passExpiresAt);
         } else {
-          // Default: 1 month from now for manual grants
+          // Default: End of current month for manual grants
           expirationDate = new Date();
-          expirationDate.setMonth(expirationDate.getMonth() + 1);
+          expirationDate.setMonth(expirationDate.getMonth() + 1, 0); // Day 0 = last day of current month
+          expirationDate.setHours(23, 59, 59, 999); // End of day
         }
       }
 
