@@ -1245,6 +1245,76 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
+            {/* Redemption History */}
+            <Card data-testid="card-redemption-history">
+              <CardHeader>
+                <CardTitle className="text-section-header flex items-center gap-2">
+                  <Ticket className="h-5 w-5" />
+                  Redemption History
+                </CardTitle>
+                <CardDescription className="text-body">Who redeemed your deals and when</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {redemptions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Ticket className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No redemptions yet</p>
+                    <p className="text-sm mt-1">When customers redeem your deals, they'll appear here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {redemptions
+                      .sort((a, b) => {
+                        const dateA = a.redeemedAt ? new Date(a.redeemedAt).getTime() : 0;
+                        const dateB = b.redeemedAt ? new Date(b.redeemedAt).getTime() : 0;
+                        return dateB - dateA;
+                      })
+                      .slice(0, 20)
+                      .map((redemption: any) => (
+                        <div 
+                          key={redemption.id} 
+                          className="flex items-center justify-between p-3 border rounded-lg"
+                          data-testid={`redemption-row-${redemption.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate" data-testid={`redemption-customer-${redemption.id}`}>
+                              {redemption.customer?.name || 'Customer'}
+                            </p>
+                            <p className="text-sm text-muted-foreground truncate" data-testid={`redemption-deal-${redemption.id}`}>
+                              {redemption.deal?.title || 'Unknown Deal'}
+                            </p>
+                          </div>
+                          <div className="text-right ml-4 flex-shrink-0">
+                            <p className="text-sm text-muted-foreground" data-testid={`redemption-date-${redemption.id}`}>
+                              {redemption.redeemedAt 
+                                ? new Date(redemption.redeemedAt).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })
+                                : 'N/A'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {redemption.redeemedAt 
+                                ? new Date(redemption.redeemedAt).toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit'
+                                  })
+                                : ''}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    {redemptions.length > 20 && (
+                      <p className="text-center text-sm text-muted-foreground pt-2">
+                        Showing most recent 20 of {redemptions.length} redemptions
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Restaurant Settings - only show for dine vendors */}
             {vendor.vendorType === "dine" && (
               <Card>

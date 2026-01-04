@@ -5893,13 +5893,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const redemptions = await storage.getVendorRedemptions(vendor.id);
       
-      // Enrich with deal info
+      // Enrich with deal and customer info
       const enrichedRedemptions = await Promise.all(
         redemptions.map(async (r) => {
           const deal = await storage.getDealById(r.dealId);
+          const customer = r.userId ? await storage.getUser(r.userId) : null;
           return {
             ...r,
             deal: deal ? { id: deal.id, title: deal.title } : null,
+            customer: customer ? {
+              id: customer.id,
+              firstName: customer.firstName,
+              lastName: customer.lastName,
+              name: customer.firstName && customer.lastName 
+                ? `${customer.firstName} ${customer.lastName}`.trim()
+                : customer.username || 'Customer'
+            } : null,
           };
         })
       );
