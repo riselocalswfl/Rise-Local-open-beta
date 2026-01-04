@@ -1161,6 +1161,19 @@ export const insertMembershipEventSchema = createInsertSchema(membershipEvents).
 export type InsertMembershipEvent = z.infer<typeof insertMembershipEventSchema>;
 export type MembershipEvent = typeof membershipEvents.$inferSelect;
 
+// Stripe Webhook Events - Idempotency tracking for webhook processing
+export const stripeWebhookEvents = pgTable("stripe_webhook_events", {
+  eventId: varchar("event_id", { length: 255 }).primaryKey(), // Stripe event ID (e.g., evt_xxx)
+  eventType: text("event_type").notNull(), // checkout.session.completed, etc.
+  status: text("status").notNull().default("processed"), // processed, failed, needs_manual_sync
+  processedAt: timestamp("processed_at").defaultNow(),
+  metadata: text("metadata"), // JSON string for additional context (session ID, user info, etc.)
+});
+
+export const insertStripeWebhookEventSchema = createInsertSchema(stripeWebhookEvents);
+export type InsertStripeWebhookEvent = z.infer<typeof insertStripeWebhookEventSchema>;
+export type StripeWebhookEvent = typeof stripeWebhookEvents.$inferSelect;
+
 // Deal redemption status enum values (for unified code system)
 export const DEAL_REDEMPTION_STATUSES = ["issued", "verified", "voided", "expired"] as const;
 export type DealRedemptionStatus = typeof DEAL_REDEMPTION_STATUSES[number];

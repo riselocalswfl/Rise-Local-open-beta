@@ -32,7 +32,7 @@ import {
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
-  conversations, conversationMessages, notifications, categories, favorites, membershipEvents,
+  conversations, conversationMessages, notifications, categories, favorites, membershipEvents, stripeWebhookEvents,
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
@@ -384,6 +384,10 @@ export interface IStorage {
     metadata: string | null;
     createdAt: Date | null;
   }>>;
+
+  // Stripe webhook idempotency
+  isWebhookEventProcessed(eventId: string): Promise<boolean>;
+  markWebhookEventProcessed(eventId: string, eventType: string, status: string, metadata?: string): Promise<void>;
 
   // User public profile
   getUserPublicProfile(userId: string): Promise<{
@@ -2591,6 +2595,22 @@ export class DbStorage implements IStorage {
       .orderBy(desc(membershipEvents.createdAt))
       .limit(limit);
     return result;
+  }
+
+  // Stripe webhook idempotency methods
+  async isWebhookEventProcessed(eventId: string): Promise<boolean> {
+    const result = await db.select().from(stripeWebhookEvents)
+      .where(eq(stripeWebhookEvents.eventId, eventId));
+    return result.length > 0;
+  }
+
+  async markWebhookEventProcessed(eventId: string, eventType: string, status: string, metadata?: string): Promise<void> {
+    await db.insert(stripeWebhookEvents).values({
+      eventId,
+      eventType,
+      status,
+      metadata: metadata || null,
+    }).onConflictDoNothing();
   }
 }
 
