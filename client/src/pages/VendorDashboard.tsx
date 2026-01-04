@@ -1250,6 +1250,45 @@ export default function VendorDashboard() {
               </CardContent>
             </Card>
 
+            {/* Deals Quick Stats */}
+            <Card data-testid="card-deals-quick-stats">
+              <CardHeader>
+                <CardTitle className="text-section-header flex items-center gap-2">
+                  <Tag className="h-5 w-5" />
+                  Deals Quick Stats
+                </CardTitle>
+                <CardDescription className="text-body">Overview of your deal performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg text-center">
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-total-deals">
+                      {deals.length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Total Deals</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-active-deals">
+                      {deals.filter(d => d.isActive).length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Active</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-member-deals">
+                      {deals.filter(d => d.isPassLocked).length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Member Only</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <p className="text-2xl font-bold text-primary" data-testid="stat-public-deals">
+                      {deals.filter(d => !d.isPassLocked).length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Public</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Restaurant Settings - only show for dine vendors */}
             {vendor.vendorType === "dine" && (
               <Card>
