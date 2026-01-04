@@ -1,0 +1,62 @@
+You are working on the Rise Local Replit codebase. Stripe payments succeed, but users are not getting the Rise Local Pass unlocked automatically.
+
+Goal: make entitlements unlock reliably and be debuggable.
+
+Tasks (do all, in order):
+
+1) Locate all Stripe integration files:
+- where Checkout Sessions are created
+- the webhook endpoint (likely /api/stripe/webhook)
+- any “unlock pass” / “membership” / “entitlements” logic
+- database user update logic
+
+2) Add true observability:
+- In the webhook handler, log a single structured line for every incoming event:
+  event.id, event.type, livemode, created, and key object identifiers (checkout.session.id, customer, subscription, customer_email).
+- Create a DB table or collection called webhook_events (or stripe_webhook_log) to store:
+  event_id (unique), event_type, received_at, processed_at, status (success/fail), error_message, related_user_id, raw_object_ids (session/customer/subscription).
+- Implement idempotency: if event_id already processed, return 200 and do nothing.
+
+3) Fix the most common webhook breakage:
+- Ensure the webhook route uses the RAW request body for Stripe signature verification.
+  For Express: use express.raw({ type: "application/json" }) ONLY on the webhook route, and do not apply express.json() to it.
+  For Next.js route: disable bodyParser and read raw stream.
+- Verify STRIPE_WEBHOOK_SECRET is used correctly and matches LIVE mode endpoint secret if livemode=true.
+
+4) Make user-mapping deterministic:
+- When creating the Checkout Session, include:
+  client_reference_id = your app’s userId
+  metadata.userId = your app’s userId
+  metadata.entitlement = "rise_local_pass"
+- In the webhook for checkout.session.completed (and also invoice.paid if subscriptions), read userId from:
+  session.client_reference_id OR session.metadata.userId
+  If missing, log a “mapping_missing” failure into webhook_events and do NOT silently fail.
+
+5) Implement reliable entitlement update:
+- Update the user record:
+  riseLocalPassActive = true
+  riseLocalPassSource = "stripe"
+  stripeCustomerId = session.customer
+  stripeSubscriptionId if present
+  passUpdatedAt = new Date() using a valid value (avoid “Invalid time value”):
+    prefer new Date(event.created * 1000) or new Date()
+- Ensure DB update errors are caught, logged, and written into webhook_events with full stack.
+
+6) Add a safety net:
+- Add an authenticated endpoint /api/entitlements/refresh that:
+  takes a checkout_session_id OR uses the logged-in user,
+  calls Stripe API to confirm payment/subscription active,
+  and then updates the user entitlement.
+- Add an admin UI toggle to manually flip pass on/off (but also show source + lastStripeSyncAt).
+
+7) Add a local/live testing checklist in README:
+- How to test webhook reception using Stripe Dashboard “Send test webhook”
+- What logs to look for
+- Example successful flow (event received → mapped userId → DB updated)
+
+Output:
+- List the exact files changed
+- Show the webhook route code after fixes
+- Show the checkout session creation code after metadata additions
+- Show the entitlement update function
+- Confirm what event types are enabled in Stripe webhook settings for subscriptions vs one-time
