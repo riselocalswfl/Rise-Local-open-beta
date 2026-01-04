@@ -1095,6 +1095,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to sync membership from Stripe subscription
+  // Use this to fix users whose webhook failed
+  app.post("/api/admin/sync-membership", isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+      
+      if (!adminUser || adminUser.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { email, subscriptionId } = req.body;
+      
+      if (!email && !subscriptionId) {
+        return res.status(400).json({ error: "Must provide either email or subscriptionId" });
+      }
+
+      console.log('[Admin Sync] Starting membership sync', { email, subscriptionId, adminUserId });
+
+      let user = null;
+      let stripeSubscription: any = null;
+      
+      // If subscriptionId provided, fetch it first and use it to find user
+      if (subscriptionId) {
+        try {
+          stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
+          console.log('[Admin Sync] Retrieved subscription from Stripe', { 
+            subscriptionId, 
+            status: stripeSubscription.status,
+            customer: stripeSubscription.customer,
+          });
+          
+          // Try to find user by various methods
+          const subCustomerId = typeof stripeSubscription.customer === 'string' 
+            ? stripeSubscription.customer 
+            : stripeSubscription.customer?.id;
+          
+          // Try by email first if provided
+          if (email) {
+            user = await storage.getUserByEmail(email);
+          }
+          
+          // Try by stripeCustomerId
+          if (!user && subCustomerId) {
+            user = await storage.getUserByStripeCustomerId(subCustomerId);
+          }
+          
+          // Try by stripeSubscriptionId (exact match in our DB)
+          if (!user) {
+            const users = await storage.getUsers();
+            user = users.find((u: any) => u.stripeSubscriptionId === subscriptionId) || null;
+          }
+          
+          // Try by customer email from Stripe
+          if (!user && stripeSubscription.customer) {
+            try {
+              const customerData = await stripe.customers.retrieve(subCustomerId);
+              if (customerData && !customerData.deleted && (customerData as any).email) {
+                user = await storage.getUserByEmail((customerData as any).email);
+              }
+            } catch (e) {
+              console.log('[Admin Sync] Could not retrieve customer from Stripe');
+            }
+          }
+        } catch (stripeError) {
+          return res.status(400).json({ 
+            error: "Could not retrieve subscription from Stripe",
+            details: stripeError instanceof Error ? stripeError.message : String(stripeError),
+          });
+        }
+      } else if (email) {
+        // No subscriptionId - find user by email and then find their subscription
+        user = await storage.getUserByEmail(email);
+        
+        if (user) {
+          // Try to find subscription by customer email in Stripe
+          const customers = await stripe.customers.list({ email: email, limit: 1 });
+          if (customers.data.length > 0) {
+            const customerId = customers.data[0].id;
+            const subscriptions = await stripe.subscriptions.list({ customer: customerId, status: 'active', limit: 1 });
+            if (subscriptions.data.length > 0) {
+              stripeSubscription = subscriptions.data[0];
+            } else {
+              // Check for any subscription including past_due, trialing, etc.
+              const allSubs = await stripe.subscriptions.list({ customer: customerId, limit: 1 });
+              if (allSubs.data.length > 0) {
+                stripeSubscription = allSubs.data[0];
+              }
+            }
+          }
+        }
+      }
+
+      if (!user) {
+        return res.status(404).json({ 
+          error: "User not found",
+          message: `Could not find user${email ? ` with email: ${email}` : ' matching the subscription'}`,
+        });
+      }
+
+      if (!stripeSubscription) {
+        return res.status(404).json({ 
+          error: "No Stripe subscription found",
+          message: "Could not find an active subscription for this user in Stripe",
+        });
+      }
+
+      // Update the user's membership
+      const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+      const isActive = stripeSubscription.status === 'active' || stripeSubscription.status === 'trialing';
+      const customerId = typeof stripeSubscription.customer === 'string' 
+        ? stripeSubscription.customer 
+        : stripeSubscription.customer.id;
+
+      await storage.updateUser(user.id, {
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: stripeSubscription.id,
+        membershipStatus: stripeSubscription.status,
+        membershipPlan: 'rise_local_monthly',
+        membershipCurrentPeriodEnd: periodEnd,
+        isPassMember: isActive,
+        passExpiresAt: periodEnd,
+      });
+
+      // Log the sync event
+      await storage.logMembershipEvent({
+        userId: user.id,
+        stripeEventId: `admin-sync-${Date.now()}`,
+        eventType: 'admin_manual_sync',
+        previousStatus: user.membershipStatus || undefined,
+        newStatus: stripeSubscription.status,
+        previousPlan: user.membershipPlan || undefined,
+        newPlan: 'rise_local_monthly',
+        metadata: JSON.stringify({ 
+          syncedBy: adminUserId,
+          subscriptionId: stripeSubscription.id,
+          customerId,
+          periodEnd: periodEnd.toISOString(),
+        }),
+      });
+
+      console.log('[Admin Sync] Membership synced successfully', {
+        userId: user.id,
+        email: user.email,
+        subscriptionId: stripeSubscription.id,
+        status: stripeSubscription.status,
+        isPassMember: isActive,
+        passExpiresAt: periodEnd.toISOString(),
+      });
+
+      res.json({ 
+        success: true,
+        message: `Membership synced successfully for ${user.email}`,
+        user: {
+          id: user.id,
+          email: user.email,
+          isPassMember: isActive,
+          passExpiresAt: periodEnd,
+          membershipStatus: stripeSubscription.status,
+          stripeSubscriptionId: stripeSubscription.id,
+        }
+      });
+    } catch (error) {
+      console.error("[Admin Sync] Error:", error);
+      res.status(500).json({ 
+        error: "Failed to sync membership",
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
   app.get("/api/vendors/values/all", async (req, res) => {
     try {
       const values = await storage.getAllVendorValues();
@@ -2147,113 +2318,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Handle Rise Local Pass subscription events
       if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as Stripe.Checkout.Session;
-        // Support both new appUserId and legacy userId metadata keys
-        const appUserId = session.metadata?.appUserId || session.metadata?.userId || session.client_reference_id;
-        const customerId = session.customer as string | null;
-        const subscriptionId = session.subscription as string | null;
-        
-        console.log('[Webhook] checkout.session.completed', {
-          eventId: event.id,
-          eventType: event.type,
-          appUserId,
-          customer: customerId,
-          subscription: subscriptionId,
-          client_reference_id: session.client_reference_id,
-          metadata: session.metadata,
-        });
-        
-        if (session.mode === 'subscription' && session.subscription) {
-          // Fetch the subscription details
-          const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId as string) as any;
+        try {
+          const session = event.data.object as Stripe.Checkout.Session;
+          // Support both new appUserId and legacy userId metadata keys
+          const appUserId = session.metadata?.appUserId || session.metadata?.userId || session.client_reference_id;
+          const customerId = session.customer as string | null;
+          const subscriptionId = session.subscription as string | null;
           
-          // Primary lookup: use metadata.appUserId, metadata.userId (legacy), or client_reference_id
-          let user = null;
-          let lookupMethod = '';
+          console.log('[Webhook] checkout.session.completed - PROCESSING', {
+            eventId: event.id,
+            sessionMode: session.mode,
+            appUserId,
+            customer: customerId,
+            subscription: subscriptionId,
+            client_reference_id: session.client_reference_id,
+            metadata: session.metadata,
+            customer_email: session.customer_email,
+          });
           
-          if (appUserId) {
-            user = await storage.getUser(appUserId);
-            lookupMethod = session.metadata?.appUserId ? 'metadata.appUserId' : 
-                          session.metadata?.userId ? 'metadata.userId (legacy)' : 
-                          'client_reference_id';
-          }
-          
-          // Fallback: try stripeCustomerId if primary lookup failed
-          if (!user && customerId) {
-            user = await storage.getUserByStripeCustomerId(customerId);
-            lookupMethod = 'stripeCustomerId';
-          }
-          
-          if (user) {
+          if (session.mode === 'subscription' && subscriptionId) {
+            // Fetch the subscription details
+            console.log('[Webhook] Fetching subscription from Stripe:', subscriptionId);
+            let subscriptionData: any;
             try {
-              const periodEnd = new Date(subscriptionData.current_period_end * 1000);
-              const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
-              
-              // Determine plan type from metadata or price ID
-              const planType = session.metadata?.plan || 'monthly';
-              const membershipPlan = planType === 'annual' ? 'rise_local_annual' : 'rise_local_monthly';
-              
-              const previousStatus = user.membershipStatus;
-              const previousPlan = user.membershipPlan;
-              
-              // Update user with subscription and link stripeCustomerId if available
-              await storage.updateUser(user.id, {
-                stripeCustomerId: customerId || user.stripeCustomerId,
-                stripeSubscriptionId: subscriptionData.id,
-                membershipStatus: subscriptionData.status,
-                membershipPlan: membershipPlan,
-                membershipCurrentPeriodEnd: periodEnd,
-                isPassMember: isActive,
-                passExpiresAt: periodEnd,
-              });
-              
-              // Log membership event for audit
-              await storage.logMembershipEvent({
-                userId: user.id,
-                stripeEventId: event.id,
-                eventType: 'checkout.session.completed',
-                previousStatus: previousStatus || undefined,
-                newStatus: subscriptionData.status,
-                previousPlan: previousPlan || undefined,
-                newPlan: membershipPlan,
-                metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
-              });
-              
-              console.log('[Webhook] Pass unlock SUCCESS', {
-                eventId: event.id,
-                eventType: event.type,
-                appUserId: user.id,
-                customer: customerId,
-                subscription: subscriptionData.id,
-                plan: membershipPlan,
+              subscriptionData = await stripe.subscriptions.retrieve(subscriptionId);
+              console.log('[Webhook] Subscription retrieved:', {
+                id: subscriptionData.id,
                 status: subscriptionData.status,
-                lookupMethod,
+                current_period_end: subscriptionData.current_period_end,
               });
-            } catch (dbError) {
-              console.error('[Webhook] Pass unlock FAILED - database error', {
+            } catch (stripeError) {
+              console.error('[Webhook] FAILED to retrieve subscription from Stripe', {
                 eventId: event.id,
-                eventType: event.type,
-                appUserId: user.id,
+                subscriptionId,
+                error: stripeError instanceof Error ? stripeError.message : String(stripeError),
+              });
+              return res.status(500).json({ 
+                error: 'Failed to retrieve subscription from Stripe',
+                details: stripeError instanceof Error ? stripeError.message : String(stripeError),
+              });
+            }
+            
+            // Primary lookup: use metadata.appUserId, metadata.userId (legacy), or client_reference_id
+            let user = null;
+            let lookupMethod = '';
+            
+            console.log('[Webhook] Looking up user with appUserId:', appUserId);
+            if (appUserId) {
+              user = await storage.getUser(appUserId);
+              lookupMethod = session.metadata?.appUserId ? 'metadata.appUserId' : 
+                            session.metadata?.userId ? 'metadata.userId (legacy)' : 
+                            'client_reference_id';
+              console.log('[Webhook] User lookup by', lookupMethod, ':', user ? `Found user ${user.id}` : 'NOT FOUND');
+            }
+            
+            // Fallback: try stripeCustomerId if primary lookup failed
+            if (!user && customerId) {
+              console.log('[Webhook] Fallback: looking up user by stripeCustomerId:', customerId);
+              user = await storage.getUserByStripeCustomerId(customerId);
+              lookupMethod = 'stripeCustomerId';
+              console.log('[Webhook] User lookup by stripeCustomerId:', user ? `Found user ${user.id}` : 'NOT FOUND');
+            }
+            
+            // Additional fallback: try customer email
+            if (!user && session.customer_email) {
+              console.log('[Webhook] Fallback: looking up user by email:', session.customer_email);
+              user = await storage.getUserByEmail(session.customer_email);
+              lookupMethod = 'customer_email';
+              console.log('[Webhook] User lookup by email:', user ? `Found user ${user.id}` : 'NOT FOUND');
+            }
+            
+            if (user) {
+              try {
+                const periodEnd = new Date(subscriptionData.current_period_end * 1000);
+                const isActive = subscriptionData.status === 'active' || subscriptionData.status === 'trialing';
+                
+                // Determine plan type from metadata or price ID
+                const planType = session.metadata?.plan || 'monthly';
+                const membershipPlan = planType === 'annual' ? 'rise_local_annual' : 'rise_local_monthly';
+                
+                const previousStatus = user.membershipStatus;
+                const previousPlan = user.membershipPlan;
+                
+                console.log('[Webhook] Updating user membership', {
+                  userId: user.id,
+                  isActive,
+                  periodEnd: periodEnd.toISOString(),
+                  membershipPlan,
+                });
+                
+                // Update user with subscription and link stripeCustomerId if available
+                await storage.updateUser(user.id, {
+                  stripeCustomerId: customerId || user.stripeCustomerId,
+                  stripeSubscriptionId: subscriptionData.id,
+                  membershipStatus: subscriptionData.status,
+                  membershipPlan: membershipPlan,
+                  membershipCurrentPeriodEnd: periodEnd,
+                  isPassMember: isActive,
+                  passExpiresAt: periodEnd,
+                });
+                
+                // Log membership event for audit
+                await storage.logMembershipEvent({
+                  userId: user.id,
+                  stripeEventId: event.id,
+                  eventType: 'checkout.session.completed',
+                  previousStatus: previousStatus || undefined,
+                  newStatus: subscriptionData.status,
+                  previousPlan: previousPlan || undefined,
+                  newPlan: membershipPlan,
+                  metadata: JSON.stringify({ subscriptionId: subscriptionData.id, periodEnd: periodEnd.toISOString() }),
+                });
+                
+                console.log('[Webhook] Pass unlock SUCCESS', {
+                  eventId: event.id,
+                  userId: user.id,
+                  email: user.email,
+                  customer: customerId,
+                  subscription: subscriptionData.id,
+                  plan: membershipPlan,
+                  status: subscriptionData.status,
+                  isPassMember: isActive,
+                  passExpiresAt: periodEnd.toISOString(),
+                  lookupMethod,
+                });
+              } catch (dbError) {
+                console.error('[Webhook] Pass unlock FAILED - database error', {
+                  eventId: event.id,
+                  userId: user.id,
+                  customer: customerId,
+                  subscription: subscriptionId,
+                  error: dbError instanceof Error ? dbError.message : String(dbError),
+                  stack: dbError instanceof Error ? dbError.stack : undefined,
+                });
+                // Return 500 so Stripe retries
+                return res.status(500).json({ 
+                  error: 'Database update failed',
+                  details: dbError instanceof Error ? dbError.message : String(dbError),
+                });
+              }
+            } else {
+              console.error('[Webhook] Pass unlock FAILED - no user found', {
+                eventId: event.id,
+                appUserId,
                 customer: customerId,
                 subscription: subscriptionId,
-                error: dbError instanceof Error ? dbError.message : String(dbError),
+                client_reference_id: session.client_reference_id,
+                customer_email: session.customer_email,
+                metadata: session.metadata,
+                message: 'Could not find user by appUserId, stripeCustomerId, or email. User may need to be synced manually.',
               });
-              // Return 500 so Stripe retries
-              return res.status(500).json({ error: 'Database update failed' });
+              // Return 500 so Stripe retries - user may not exist yet
+              return res.status(500).json({ 
+                error: 'User not found for subscription',
+                details: `Tried: appUserId=${appUserId}, customerId=${customerId}, email=${session.customer_email}`,
+              });
             }
           } else {
-            console.error('[Webhook] Pass unlock FAILED - no user found', {
+            console.log('[Webhook] checkout.session.completed - skipping (not a subscription)', {
               eventId: event.id,
-              eventType: event.type,
-              appUserId,
-              customer: customerId,
-              subscription: subscriptionId,
-              client_reference_id: session.client_reference_id,
-              metadata: session.metadata,
+              sessionMode: session.mode,
+              hasSubscription: !!subscriptionId,
             });
-            // Return 500 so Stripe retries - user may not exist yet
-            return res.status(500).json({ error: 'User not found for subscription' });
           }
+        } catch (checkoutError) {
+          console.error('[Webhook] checkout.session.completed - UNEXPECTED ERROR', {
+            eventId: event.id,
+            error: checkoutError instanceof Error ? checkoutError.message : String(checkoutError),
+            stack: checkoutError instanceof Error ? checkoutError.stack : undefined,
+          });
+          return res.status(500).json({ 
+            error: 'Unexpected error processing checkout.session.completed',
+            details: checkoutError instanceof Error ? checkoutError.message : String(checkoutError),
+          });
         }
       }
 
