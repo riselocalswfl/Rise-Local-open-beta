@@ -36,6 +36,17 @@ import { ImageUpload } from "@/components/ImageUpload";
 import type { Vendor, Deal, User } from "@shared/schema";
 import { useVendorDeals } from "@/hooks/useDeals";
 
+function safeFormatDate(dateValue: string | Date | null | undefined): string | null {
+  if (!dateValue) return null;
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString();
+  } catch {
+    return null;
+  }
+}
+
 type TabValue = "profile" | "deals" | "settings";
 
 interface AccountPageProps {
@@ -175,6 +186,7 @@ export default function AccountPage({ tab = "profile" }: AccountPageProps) {
           <SettingsTab 
             vendor={vendor}
             user={user}
+            deals={deals}
             updateVendorMutation={updateVendorMutation}
             handleLogout={handleLogout}
           />
@@ -584,11 +596,12 @@ function MyDealsTab({ vendor, deals, setLocation }: MyDealsTabProps) {
 interface SettingsTabProps {
   vendor: Vendor | undefined;
   user: User | undefined;
+  deals: Deal[];
   updateVendorMutation: ReturnType<typeof useMutation<unknown, Error, Partial<Vendor>>>;
   handleLogout: () => void;
 }
 
-function SettingsTab({ vendor, user, updateVendorMutation, handleLogout }: SettingsTabProps) {
+function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }: SettingsTabProps) {
   const { toast } = useToast();
   
   const isPassMember = hasRiseLocalPass(user);
@@ -672,7 +685,7 @@ function SettingsTab({ vendor, user, updateVendorMutation, handleLogout }: Setti
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {user?.passExpiresAt && (
-                      <>Renews: {new Date(user.passExpiresAt).toLocaleDateString()}</>
+                      <>Renews: {safeFormatDate(user.passExpiresAt) || "Unknown"}</>
                     )}
                   </p>
                 </div>
@@ -800,6 +813,46 @@ function SettingsTab({ vendor, user, updateVendorMutation, handleLogout }: Setti
                   disabled={true}
                   data-testid="switch-email-notifications"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-deals-quick-stats">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Tag className="h-5 w-5" />
+                Deals Quick Stats
+              </CardTitle>
+              <CardDescription>
+                Overview of your deal performance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 border rounded-lg text-center">
+                  <p className="text-2xl font-bold text-primary" data-testid="stat-total-deals">
+                    {deals.length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Total Deals</p>
+                </div>
+                <div className="p-4 border rounded-lg text-center">
+                  <p className="text-2xl font-bold text-primary" data-testid="stat-active-deals">
+                    {deals.filter(d => d.isActive).length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Active</p>
+                </div>
+                <div className="p-4 border rounded-lg text-center">
+                  <p className="text-2xl font-bold text-primary" data-testid="stat-member-deals">
+                    {deals.filter(d => d.isPassLocked).length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Member Only</p>
+                </div>
+                <div className="p-4 border rounded-lg text-center">
+                  <p className="text-2xl font-bold text-primary" data-testid="stat-public-deals">
+                    {deals.filter(d => !d.isPassLocked).length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Public</p>
+                </div>
               </div>
             </CardContent>
           </Card>
