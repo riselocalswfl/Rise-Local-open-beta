@@ -1,0 +1,80 @@
+Refine the Rise Local Settings page (/dashboard or /my-account > Settings). Right now it shows low-value fields like raw Logo URL / Hero Image URL placeholders and doesn’t surface essential account info.
+
+GOALS
+1) Show only settings that matter to daily use of Rise Local.
+2) Replace raw URL inputs with proper image upload + preview.
+3) Make it role-based:
+   - If the user is a CONSUMER: show Rise Local Pass status + manage subscription + preferences.
+   - If the user is a BUSINESS/VENDOR: show business profile essentials + membership/deal essentials.
+4) Keep the UI clean, mobile-friendly, and on-brand (Rise Local colors, simple sections, no clutter).
+
+CURRENT ISSUES TO FIX
+- “Logo URL” and “Hero Image URL” should not be raw text fields.
+- Website/Instagram placeholders should not override real values.
+- Missing the “essential info”: pass/membership status, plan management, profile completion, and basic contact/profile fields users actually edit.
+
+NEW SETTINGS PAGE STRUCTURE (NO EXTRA SECTIONS)
+Use 4–6 clearly labeled cards/sections max.
+
+A) Account (all users)
+- Email (read-only)
+- Display name (editable)
+- Password change link/button (if supported)
+- Log out button (keep)
+- Delete account link (confirm modal)
+
+B) Membership / Rise Local Pass (CONSUMERS)
+- Pass Status: Active / Inactive (with renewal date if active)
+- Plan: Monthly / Yearly (if active)
+- Button: “Manage Membership” (opens Stripe customer portal or internal manage page)
+- If inactive: CTA “Get Rise Local Pass” (links to checkout)
+
+C) Personalization (CONSUMERS)
+- Value selections (the values chosen at signup) editable (multi-select)
+- Toggle: Deal notifications (on/off) if notifications exist
+(If these tables/fields don’t exist yet, create minimal DB fields + API endpoints.)
+
+D) Business Profile (BUSINESSES/VENDORS)
+Show only the editable essentials:
+- Business name
+- Business type/category (dropdown) (keep this)
+- Phone
+- Address (or city/area if you don’t store full address)
+- Website
+- Instagram handle (validate: allow with/without @, store without @)
+- Profile status indicator: “Profile completeness %” (compute from filled fields)
+Do NOT show internal IDs.
+
+E) Brand Images (BUSINESSES/VENDORS)
+Replace Logo URL + Hero Image URL text inputs with:
+- Logo uploader (square crop recommended)
+- Hero uploader (wide crop recommended)
+- Preview thumbnails
+- Uses the existing upload system (/objects/uploads/...) but hides it from the user.
+Store the resulting path in the same DB fields as before (logoUrl, heroImageUrl), but only expose upload UI.
+
+F) Deals Quick Stats (BUSINESSES/VENDORS) — essential + lightweight
+- Published deals count
+- Member-only deals count
+- Total redemptions (if tracked)
+- Button: “Manage Deals” (links to deals page)
+If redemptions aren’t implemented, show only deal counts and omit redemptions.
+
+TECH REQUIREMENTS
+- Use existing auth/session logic to load current user.
+- Fetch settings on load via GET /api/me (or equivalent).
+- Update via PATCH /api/me for user fields and PATCH /api/business/me for vendor fields (or reuse your existing endpoints—just keep it clean).
+- Add server-side validation for website URL + instagram handle + phone.
+- Show success/error toasts.
+- Remove placeholder default values (no “https://example.com/hero.jpg”).
+- Ensure the page works on mobile: stacked cards, sensible spacing.
+
+DELIVERABLES
+1) Update the Settings page UI to match the structure above.
+2) Implement/adjust the API endpoints needed (GET + PATCH).
+3) Replace image URL inputs with upload components using our existing upload storage.
+4) Remove any non-essential fields currently shown.
+5) Add basic tests or at least runtime checks to prevent “Invalid time value” style bugs (guard against null/undefined date fields when displaying membership renewal date).
+
+IMPORTANT: Keep the page minimal and essential—do not add unrelated settings.
+After changes, confirm which fields are shown for consumer vs business and list the endpoints used.
