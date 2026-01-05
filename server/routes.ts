@@ -6234,6 +6234,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE /api/me/redemptions/:id - Undo (void) a consumer's own redemption
+  app.delete("/api/me/redemptions/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const redemptionId = req.params.id;
+
+      // Check if redemption exists and belongs to this user
+      const redemption = await storage.getRedemption(redemptionId);
+      if (!redemption) {
+        return res.status(404).json({ error: "Redemption not found" });
+      }
+
+      if (redemption.userId !== userId) {
+        return res.status(403).json({ error: "You can only undo your own redemptions" });
+      }
+
+      // Check if already voided
+      if (redemption.status === 'voided') {
+        return res.status(400).json({ error: "This redemption has already been undone" });
+      }
+
+      // Void the redemption
+      const voidedRedemption = await storage.voidRedemption(redemptionId, "Consumer undo");
+      
+      console.log("[REDEMPTIONS] Consumer undid redemption:", redemptionId, "user:", userId);
+      
+      res.json({ 
+        success: true, 
+        message: "Redemption undone successfully",
+        redemption: voidedRedemption 
+      });
+    } catch (error) {
+      console.error("Error undoing redemption:", error);
+      res.status(500).json({ error: "Failed to undo redemption" });
+    }
+  });
+
   // GET /api/deals/:id/can-redeem - Check if user can redeem a deal
   app.get("/api/deals/:id/can-redeem", isAuthenticated, async (req: any, res) => {
     try {
