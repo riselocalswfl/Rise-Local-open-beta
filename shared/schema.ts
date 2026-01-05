@@ -47,6 +47,11 @@ export const users = pgTable("users", {
   
   // Common fields
   role: text("role").notNull().default("buyer"), // buyer, vendor, admin (Note: vendor replaces legacy roles: restaurant, service_provider)
+  
+  // Multi-role flags - allow users to have multiple roles simultaneously
+  isAdmin: boolean("is_admin").default(false), // User has admin privileges
+  isVendor: boolean("is_vendor").default(false), // User has vendor privileges (can create deals, access vendor dashboard)
+  
   phone: text("phone"),
   onboardingComplete: boolean("onboarding_complete").default(false), // Whether vendor completed business onboarding
   welcomeCompleted: boolean("welcome_completed").default(false), // Whether user completed welcome carousel intro
