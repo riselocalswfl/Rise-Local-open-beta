@@ -63,7 +63,8 @@ export default function AccountPage({ tab = "profile" }: AccountPageProps) {
     setActiveTab(tab);
   }, [tab]);
 
-  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  // Check both isVendor flag and legacy role for backward compatibility
+  const isVendor = user?.isVendor === true || user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
 
   const { data: vendor, isLoading: vendorLoading } = useQuery<Vendor>({
     queryKey: ["/api/auth/my-vendor"],

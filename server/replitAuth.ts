@@ -194,13 +194,19 @@ export async function setupAuth(app: Express) {
           // Get existing user info first to check if they already have a vendor role
           const existingUser = await storage.getUser(userId);
           const existingRole = existingUser?.role;
-          const isExistingVendor = existingRole === "vendor" || existingRole === "restaurant" || existingRole === "service_provider";
-          const isAdmin = existingRole === "admin";
+          const isExistingVendor = existingUser?.isVendor === true || existingRole === "vendor" || existingRole === "restaurant" || existingRole === "service_provider";
+          // Check both isAdmin flag and legacy role for backward compatibility
+          const isAdmin = existingUser?.isAdmin === true || existingRole === "admin";
           
           // CRITICAL: Never overwrite admin role - admins are manually set in database
+          // Also ensure isAdmin flag is synced if user has role='admin'
           if (isAdmin) {
             console.log("[AUTH] User is ADMIN - preserving admin role, ignoring any intended role");
-            userRole = "admin";
+            userRole = existingRole || "admin";
+            // Ensure isAdmin flag is set for users with admin role
+            if (existingUser && !existingUser.isAdmin && existingRole === "admin") {
+              await storage.updateUser(userId, { isAdmin: true });
+            }
             // Clear the intended role since we're ignoring it
             delete (req.session as any).intendedRole;
             res.clearCookie("intended_role");
@@ -209,6 +215,10 @@ export async function setupAuth(app: Express) {
           } else if (isExistingVendor) {
             console.log("[AUTH] User is already a vendor - preserving vendor role regardless of login button clicked");
             userRole = existingRole;
+            // Ensure isVendor flag is set for vendor users
+            if (existingUser && !existingUser.isVendor) {
+              await storage.updateUser(userId, { isVendor: true });
+            }
             // Clear the intended role since we're ignoring it
             delete (req.session as any).intendedRole;
             res.clearCookie("intended_role");
@@ -227,14 +237,14 @@ export async function setupAuth(app: Express) {
               if (existingVendor) {
                 // Vendor profile exists - use unified "vendor" role
                 userRole = "vendor";
-                await storage.updateUser(userId, { role: "vendor" });
+                await storage.updateUser(userId, { role: "vendor", isVendor: true });
                 console.log("[AUTH] User has existing vendor profile, setting role as vendor");
               } else {
                 // No existing profile - redirect to unified onboarding
                 console.log("[AUTH] No vendor profile found, redirecting to unified onboarding");
                 // Set unified vendor role to track they're a vendor in progress
                 userRole = "vendor";
-                await storage.updateUser(userId, { role: "vendor" });
+                await storage.updateUser(userId, { role: "vendor", isVendor: true });
                 // Set onboarding flag
                 (req.session as any).needsOnboarding = true;
                 // Redirect to unified onboarding (vendor type selected in onboarding form)

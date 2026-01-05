@@ -1,4 +1,4 @@
-import { Menu, Home, Store, UtensilsCrossed, Wrench, Calendar, Heart, UserCircle, MessageSquare, LogOut } from "lucide-react";
+import { Menu, Home, Store, UtensilsCrossed, Wrench, Calendar, Heart, UserCircle, MessageSquare, LogOut, Shield } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,14 +84,19 @@ export default function NavMenu() {
   };
 
   // Determine which navigation items to show based on user role
+  // Check both isVendor flag and legacy role for backward compatibility
+  const isVendor = user?.isVendor === true || user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  const isAdmin = user?.isAdmin === true || user?.role === "admin";
+  
   let navigationItems = publicNavigationItems;
   if (user) {
-    if (user.role === "buyer") {
-      navigationItems = buyerNavigationItems;
-    } else if (user.role === "vendor") {
+    if (isVendor) {
+      // Vendors (including admin+vendor) see vendor navigation
       navigationItems = vendorNavigationItems;
-    } else if (user.role === "restaurant") {
-      navigationItems = restaurantNavigationItems;
+    } else {
+      // All other authenticated users (buyers, admins) see buyer navigation
+      // Admins get additional admin link added separately below
+      navigationItems = buyerNavigationItems;
     }
   }
 
@@ -144,6 +149,38 @@ export default function NavMenu() {
                 </li>
               );
             })}
+            
+            {/* Admin link - shown if user has admin access */}
+            {isAdmin && (
+              <li className="pt-2">
+                <Link href="/admin">
+                  <div
+                    onClick={() => handleNavigate("/admin")}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer bg-destructive text-destructive-foreground hover-elevate active-elevate-2"
+                    data-testid="link-nav-admin"
+                  >
+                    <Shield className="h-5 w-5" strokeWidth={1.75} />
+                    <span className="font-medium flex-1">Admin Dashboard</span>
+                  </div>
+                </Link>
+              </li>
+            )}
+            
+            {/* Vendor dashboard link for admins who are also vendors */}
+            {isAdmin && isVendor && (
+              <li>
+                <Link href="/dashboard">
+                  <div
+                    onClick={() => handleNavigate("/dashboard")}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-md transition-colors cursor-pointer bg-primary text-primary-foreground hover-elevate active-elevate-2"
+                    data-testid="link-nav-vendor-dashboard"
+                  >
+                    <UserCircle className="h-5 w-5" strokeWidth={1.75} />
+                    <span className="font-medium flex-1">Vendor Dashboard</span>
+                  </div>
+                </Link>
+              </li>
+            )}
             
             {isAuthenticated && (
               <>

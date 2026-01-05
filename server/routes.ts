@@ -1729,10 +1729,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update user role AND set onboardingComplete to true
       await storage.updateUser(userId, { 
         role: "vendor",
+        isVendor: true,
         onboardingComplete: true 
       });
       
-      console.log("[COMPLETE] Vendor profile completed successfully, onboardingComplete set to true");
+      console.log("[COMPLETE] Vendor profile completed successfully, onboardingComplete and isVendor set to true");
       res.json({ success: true, vendor: updatedVendor });
     } catch (error) {
       console.error("[COMPLETE ERROR]", error);
@@ -1757,7 +1758,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currentUserId = req.session?.userId || req.user?.claims?.sub;
         const currentUser = currentUserId ? await storage.getUser(currentUserId) : null;
         const isOwner = currentUserId === result.vendor.ownerId;
-        const isAdmin = currentUser?.role === "admin";
+        // Check both isAdmin flag and legacy role for backward compatibility
+        const isAdmin = currentUser?.isAdmin === true || currentUser?.role === "admin";
         
         if (!isOwner && !isAdmin) {
           // Return a special response for hidden profiles (SEO-safe, no 404)
@@ -5694,8 +5696,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not found" });
       }
 
-      // Check if user is a vendor
-      const isVendorRole = user.role === 'vendor';
+      // Check if user is a vendor (check both isVendor flag and legacy role)
+      const isVendorRole = user.isVendor === true || user.role === 'vendor' || user.role === 'restaurant' || user.role === 'service_provider';
       
       if (isVendorRole) {
         // Get vendor's conversations
@@ -5869,7 +5871,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "User not found" });
       }
 
-      const isVendorRole = user.role === 'vendor';
+      // Check if user is a vendor (check both isVendor flag and legacy role)
+      const isVendorRole = user.isVendor === true || user.role === 'vendor' || user.role === 'restaurant' || user.role === 'service_provider';
       
       if (isVendorRole) {
         const vendor = await storage.getVendorByOwnerId(userId);

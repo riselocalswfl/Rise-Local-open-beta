@@ -6,6 +6,8 @@ import { getQueryFn } from "@/lib/queryClient";
 interface User {
   id: string;
   role: string;
+  isAdmin?: boolean;
+  isVendor?: boolean;
   onboardingComplete?: boolean;
   [key: string]: unknown;
 }
@@ -41,8 +43,9 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
       return;
     }
 
-    // Admins bypass onboarding requirements
-    if (user && !isGateRoute && !isPublicRoute && !user.onboardingComplete && user.role !== "admin") {
+    // Admins bypass onboarding requirements (check both isAdmin flag and legacy role)
+    const isAdmin = user?.isAdmin === true || user?.role === "admin";
+    if (user && !isGateRoute && !isPublicRoute && !user.onboardingComplete && !isAdmin) {
       console.log("[AuthBoundary] Authenticated but onboarding incomplete, redirecting to /start");
       setLocation("/start");
     }
@@ -67,8 +70,9 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
     return null;
   }
 
-  // Admins bypass onboarding requirements
-  if (!user.onboardingComplete && user.role !== "admin") {
+  // Admins bypass onboarding requirements (check both isAdmin flag and legacy role)
+  const userIsAdmin = user.isAdmin === true || user.role === "admin";
+  if (!user.onboardingComplete && !userIsAdmin) {
     return null;
   }
 

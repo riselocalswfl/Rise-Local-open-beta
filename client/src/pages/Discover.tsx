@@ -244,8 +244,8 @@ export default function Discover() {
   // Check if user has Rise Local Pass membership - single source of truth
   const isPassMember = hasRiseLocalPass(user);
   
-  // Check if user is a business owner
-  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  // Check if user is a business owner (check both isVendor flag and legacy role)
+  const isVendor = user?.isVendor === true || user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
 
   useEffect(() => {
     return () => {

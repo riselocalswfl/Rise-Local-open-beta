@@ -46,8 +46,9 @@ export default function CustomerProfile() {
   const [editedFirstName, setEditedFirstName] = useState("");
   const [editedLastName, setEditedLastName] = useState("");
   const [editedPhone, setEditedPhone] = useState("");
-  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
-  const isAdmin = user?.role === "admin";
+  // Check both isVendor/isAdmin flags and legacy role for backward compatibility
+  const isVendor = user?.isVendor === true || user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  const isAdmin = user?.isAdmin === true || user?.role === "admin";
 
   const { data: redemptions, isLoading: redemptionsLoading, isError: redemptionsError } = useQuery<RedemptionHistoryItem[]>({
     queryKey: ["/api/me/redemptions"],

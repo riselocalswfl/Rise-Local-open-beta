@@ -34,7 +34,8 @@ export default function Messages() {
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const isVendor = user?.role === "vendor" || user?.role === "restaurant";
+  // Check both isVendor flag and legacy role for backward compatibility
+  const isVendor = user?.isVendor === true || user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
 
   // Close search results when clicking outside
   useEffect(() => {

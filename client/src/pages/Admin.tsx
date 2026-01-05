@@ -211,12 +211,17 @@ function UserAccountsList() {
                       : user.username || user.email?.split('@')[0] || 'Unknown User'}
                   </h3>
                   <Badge variant={
-                    user.role === 'admin' ? 'destructive' : 
-                    user.role === 'vendor' ? 'default' : 
+                    (user.isAdmin === true || user.role === 'admin') ? 'destructive' : 
+                    (user.isVendor === true || user.role === 'vendor') ? 'default' : 
                     'secondary'
                   }>
-                    {user.role === 'vendor' ? 'business' : user.role}
+                    {(user.isAdmin && user.isVendor) ? 'admin+vendor' : 
+                     user.isAdmin ? 'admin' : 
+                     (user.isVendor || user.role === 'vendor') ? 'business' : user.role}
                   </Badge>
+                  {user.isAdmin && user.isVendor && (
+                    <Badge variant="outline" className="text-purple-600 border-purple-600">Multi-Role</Badge>
+                  )}
                   {user.isPassMember && (
                     <Badge 
                       variant="outline" 
@@ -268,7 +273,7 @@ function UserAccountsList() {
                 </div>
                 
                 {/* Pass Toggle Button - show for buyers and vendors */}
-                {(user.role === 'buyer' || user.role === 'vendor') && (
+                {(user.role === 'buyer' || user.isVendor === true || user.role === 'vendor') && (
                   <div className="flex gap-2">
                     {user.stripeSubscriptionId && (
                       <Button

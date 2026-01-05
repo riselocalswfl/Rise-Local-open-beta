@@ -25,7 +25,9 @@ export default function Header() {
   const { user, isAuthenticated } = useAuth();
   const [signInDialogOpen, setSignInDialogOpen] = useState(false);
   
-  const isVendor = user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  // Check both isVendor flag and legacy role for backward compatibility
+  const isVendor = user?.isVendor === true || user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
+  const isAdmin = user?.isAdmin === true || user?.role === "admin";
   const accountHref = isVendor ? "/dashboard" : "/profile";
 
   const authenticatedNavigationItems = [
