@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight, Shield, Crown, Sparkles, Loader2 } from "lucide-react";
+import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight, Shield, Crown, Sparkles, Loader2, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -59,6 +59,28 @@ export default function CustomerProfile() {
       return res.json();
     },
     enabled: !!user && !isVendor,
+  });
+
+  // Undo redemption mutation
+  const undoRedemptionMutation = useMutation({
+    mutationFn: async (redemptionId: string) => {
+      const response = await apiRequest("DELETE", `/api/me/redemptions/${redemptionId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/me/redemptions"] });
+      toast({
+        title: "Redemption Undone",
+        description: "The deal has been removed from your redemption history.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Undo",
+        description: error.message || "Could not undo this redemption.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Redirect vendors to the dedicated dashboard
@@ -466,14 +488,14 @@ export default function CustomerProfile() {
               ) : redemptions && redemptions.length > 0 ? (
                 <div className="space-y-3">
                   {redemptions.map((redemption) => (
-                    <Link
+                    <div 
                       key={redemption.id}
-                      href={`/deals/${redemption.dealId}`}
-                      className="block"
+                      className="flex items-center gap-4 p-3 rounded-lg bg-muted/50"
+                      data-testid={`redemption-item-${redemption.id}`}
                     >
-                      <div 
-                        className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover-elevate cursor-pointer"
-                        data-testid={`redemption-item-${redemption.id}`}
+                      <Link
+                        href={`/deals/${redemption.dealId}`}
+                        className="flex items-center gap-4 flex-1 min-w-0 hover-elevate rounded-md cursor-pointer"
                       >
                         <Avatar className="h-12 w-12">
                           <AvatarImage src={redemption.vendorLogo || ""} alt={redemption.vendorName} />
@@ -492,15 +514,27 @@ export default function CustomerProfile() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <Badge variant="outline" className="text-xs mb-1">
-                            {redemption.status === "redeemed" ? "Used" : redemption.status}
+                            {redemption.status === "redeemed" ? "Used" : redemption.status === "voided" ? "Undone" : redemption.status}
                           </Badge>
                           <p className="text-xs text-muted-foreground">
                             {safeFormatDate(redemption.redeemedAt) || "Unknown"}
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      </div>
-                    </Link>
+                      </Link>
+                      {redemption.status === "redeemed" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => undoRedemptionMutation.mutate(redemption.id)}
+                          disabled={undoRedemptionMutation.isPending}
+                          data-testid={`button-undo-redemption-${redemption.id}`}
+                          title="Undo redemption"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : (

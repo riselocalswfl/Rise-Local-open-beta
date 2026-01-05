@@ -6250,9 +6250,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "You can only undo your own redemptions" });
       }
 
-      // Check if already voided
+      // Only allow undo for "redeemed" status (not voided, verified, expired, etc.)
       if (redemption.status === 'voided') {
         return res.status(400).json({ error: "This redemption has already been undone" });
+      }
+      
+      if (redemption.status !== 'redeemed') {
+        return res.status(400).json({ error: `Cannot undo a redemption with status: ${redemption.status}` });
       }
 
       // Void the redemption
