@@ -981,6 +981,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // Admin Deal Management Routes
+  // ============================================================================
+
+  // GET /api/admin/vendors - Get all vendors for deal creation (admin only)
+  app.get("/api/admin/vendors", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const vendors = await storage.getVendors();
+      // Return minimal vendor info for dropdown selection
+      const vendorList = vendors.map((v: any) => ({
+        id: v.id,
+        businessName: v.businessName,
+        city: v.city,
+        vendorType: v.vendorType,
+        isVerified: v.isVerified,
+      }));
+
+      res.json(vendorList);
+    } catch (error) {
+      console.error("Error fetching vendors for admin:", error);
+      res.status(500).json({ error: "Failed to fetch vendors" });
+    }
+  });
+
+  // POST /api/admin/deals - Create a deal for any vendor (admin only)
+  app.post("/api/admin/deals", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { vendorId, ...dealData } = req.body;
+
+      if (!vendorId) {
+        return res.status(400).json({ error: "vendorId is required" });
+      }
+
+      // Verify vendor exists
+      const vendor = await storage.getVendor(vendorId);
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+
+      // Convert date strings to Date objects if provided
+      const bodyWithDates = {
+        ...dealData,
+        vendorId,
+        startsAt: dealData.startsAt ? new Date(dealData.startsAt) : undefined,
+        endsAt: dealData.endsAt ? new Date(dealData.endsAt) : undefined,
+      };
+
+      // Validate and create the deal
+      const validatedData = insertDealSchema.parse(bodyWithDates);
+      const deal = await storage.createDeal(validatedData);
+      
+      console.log("[ADMIN] Deal created:", deal.id, "for vendor:", vendor.businessName, "by admin:", user.email);
+      res.status(201).json(deal);
+    } catch (error) {
+      console.error("Error creating deal (admin):", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid deal data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create deal" });
+    }
+  });
+
+  // GET /api/admin/deals - Get all deals across all vendors (admin only)
+  app.get("/api/admin/deals", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      // Get all deals with vendor info
+      const deals = await storage.listDeals({ includeAll: true });
+      
+      // Enhance with vendor names
+      const enhancedDeals = await Promise.all(
+        deals.map(async (deal: any) => {
+          const vendor = await storage.getVendor(deal.vendorId);
+          return {
+            ...deal,
+            vendorName: vendor?.businessName || 'Unknown',
+            vendorCity: vendor?.city || '',
+          };
+        })
+      );
+
+      res.json(enhancedDeals);
+    } catch (error) {
+      console.error("Error fetching deals (admin):", error);
+      res.status(500).json({ error: "Failed to fetch deals" });
+    }
+  });
+
+  // PATCH /api/admin/deals/:id - Update any deal (admin only)
+  app.patch("/api/admin/deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const dealId = req.params.id;
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Don't allow changing vendorId
+      const { vendorId, ...updateData } = req.body;
+      
+      // Convert date strings to Date objects if provided
+      if (updateData.startsAt) {
+        updateData.startsAt = new Date(updateData.startsAt);
+      }
+      if (updateData.endsAt) {
+        updateData.endsAt = new Date(updateData.endsAt);
+      }
+
+      const updatedDeal = await storage.updateDeal(dealId, updateData);
+      console.log("[ADMIN] Deal updated:", dealId, "by admin:", user.email);
+      res.json(updatedDeal);
+    } catch (error) {
+      console.error("Error updating deal (admin):", error);
+      res.status(500).json({ error: "Failed to update deal" });
+    }
+  });
+
+  // DELETE /api/admin/deals/:id - Delete any deal (admin only)
+  app.delete("/api/admin/deals/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const dealId = req.params.id;
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Soft delete by setting deletedAt
+      await storage.updateDeal(dealId, { deletedAt: new Date() });
+      console.log("[ADMIN] Deal deleted:", dealId, "by admin:", user.email);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting deal (admin):", error);
+      res.status(500).json({ error: "Failed to delete deal" });
+    }
+  });
+
   // Link a Stripe subscription to an app user (admin only)
   app.post("/api/admin/link-subscription", isAuthenticated, async (req: any, res) => {
     try {

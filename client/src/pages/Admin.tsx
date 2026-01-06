@@ -1,18 +1,22 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw, UserPlus } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw, UserPlus, Plus, Tag, Trash2, Eye, Edit } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import type { User } from "@shared/schema";
+import type { User, Deal } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 interface OrphanedSubscription {
   subscriptionId: string;
@@ -76,6 +80,412 @@ interface AdminStats {
       type: 'vendor';
     }>;
   };
+}
+
+interface AdminVendor {
+  id: string;
+  businessName: string;
+  city: string;
+  vendorType: string;
+  isVerified: boolean;
+}
+
+interface AdminDeal extends Deal {
+  vendorName: string;
+  vendorCity: string;
+}
+
+const DEAL_CATEGORIES = ["Food & Drink", "Retail", "Beauty", "Fitness", "Services", "Experiences"];
+const DEAL_CITIES = ["Fort Myers", "Cape Coral", "Bonita Springs", "Estero", "Naples"];
+
+function DealManagement() {
+  const { toast } = useToast();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [dealForm, setDealForm] = useState({
+    title: "",
+    description: "",
+    finePrint: "",
+    category: "",
+    city: "Fort Myers",
+    discountType: "percent" as "percent" | "dollar" | "bogo" | "free_item",
+    discountValue: "",
+    discountCode: "",
+    tier: "standard" as "standard" | "member",
+    isActive: true,
+    status: "published" as "draft" | "published" | "paused" | "expired",
+  });
+
+  const { data: vendors = [], isLoading: vendorsLoading } = useQuery<AdminVendor[]>({
+    queryKey: ["/api/admin/vendors"],
+  });
+
+  const { data: deals = [], isLoading: dealsLoading } = useQuery<AdminDeal[]>({
+    queryKey: ["/api/admin/deals"],
+  });
+
+  const createDealMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("POST", "/api/admin/deals", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "Deal Created", description: "The deal has been created successfully." });
+      setCreateDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Create Deal",
+        description: error.message || "An error occurred while creating the deal.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      return await apiRequest("DELETE", `/api/admin/deals/${dealId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "Deal Deleted", description: "The deal has been removed." });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Delete Deal",
+        description: error.message || "An error occurred.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setSelectedVendorId("");
+    setDealForm({
+      title: "",
+      description: "",
+      finePrint: "",
+      category: "",
+      city: "Fort Myers",
+      discountType: "percent",
+      discountValue: "",
+      discountCode: "",
+      tier: "standard",
+      isActive: true,
+      status: "published",
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVendorId) {
+      toast({ title: "Select a Business", description: "Please select a business for this deal.", variant: "destructive" });
+      return;
+    }
+    if (!dealForm.title || !dealForm.description) {
+      toast({ title: "Missing Fields", description: "Title and description are required.", variant: "destructive" });
+      return;
+    }
+
+    // For bogo/free_item, discountValue should be undefined (not required)
+    const discountValue = (dealForm.discountType === "bogo" || dealForm.discountType === "free_item")
+      ? undefined
+      : dealForm.discountValue ? parseFloat(dealForm.discountValue) : undefined;
+
+    const dealData = {
+      vendorId: selectedVendorId,
+      title: dealForm.title,
+      description: dealForm.description,
+      finePrint: dealForm.finePrint || undefined,
+      category: dealForm.category || undefined,
+      city: dealForm.city,
+      discountType: dealForm.discountType,
+      discountValue,
+      discountCode: dealForm.discountCode || undefined,
+      tier: dealForm.tier,
+      dealType: dealForm.discountType === "bogo" ? "bogo" : dealForm.discountType === "percent" ? "percent" : "addon",
+      isActive: dealForm.isActive,
+      status: dealForm.status,
+      isPassLocked: dealForm.tier === "member",
+      redemptionFrequency: "weekly",
+      maxRedemptionsPerUser: 1,
+    };
+
+    createDealMutation.mutate(dealData);
+  };
+
+  const publishedDeals = deals.filter(d => d.status === "published");
+  const draftDeals = deals.filter(d => d.status === "draft");
+  const pausedDeals = deals.filter(d => d.status === "paused");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {publishedDeals.length} published, {draftDeals.length} drafts, {pausedDeals.length} paused
+          </p>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-deal-admin">
+          <Plus className="w-4 h-4 mr-2" />
+          Create Deal
+        </Button>
+      </div>
+
+      {dealsLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ) : deals.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground" data-testid="text-no-deals">
+          No deals found. Create your first deal above.
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {deals.slice(0, 20).map((deal) => (
+            <div
+              key={deal.id}
+              className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
+              data-testid={`deal-row-${deal.id}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium truncate">{deal.title}</span>
+                  <Badge variant={deal.status === "published" ? "default" : deal.status === "paused" ? "secondary" : "outline"}>
+                    {deal.status}
+                  </Badge>
+                  {deal.tier === "member" && (
+                    <Badge variant="secondary" className="text-xs">Pass Only</Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground truncate">
+                  {deal.vendorName} • {deal.vendorCity}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => deleteDealMutation.mutate(deal.id)}
+                  disabled={deleteDealMutation.isPending}
+                  data-testid={`button-delete-deal-${deal.id}`}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Deal for Business</DialogTitle>
+            <DialogDescription>
+              Create a deal on behalf of any business
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Business *</Label>
+              <Select value={selectedVendorId} onValueChange={setSelectedVendorId} disabled={vendorsLoading}>
+                <SelectTrigger data-testid="select-vendor-for-deal">
+                  <SelectValue placeholder={vendorsLoading ? "Loading businesses..." : "Select a business"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendorsLoading ? (
+                    <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+                  ) : vendors.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground">No businesses found</div>
+                  ) : (
+                    vendors.map((vendor) => (
+                      <SelectItem key={vendor.id} value={vendor.id}>
+                        {vendor.businessName} ({vendor.city})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Deal Title *</Label>
+              <Input
+                value={dealForm.title}
+                onChange={(e) => setDealForm({ ...dealForm, title: e.target.value })}
+                placeholder="e.g., Buy One Get One Free"
+                data-testid="input-admin-deal-title"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                value={dealForm.description}
+                onChange={(e) => setDealForm({ ...dealForm, description: e.target.value })}
+                placeholder="Describe the deal..."
+                rows={3}
+                data-testid="input-admin-deal-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Discount Type</Label>
+                <Select
+                  value={dealForm.discountType}
+                  onValueChange={(v: "percent" | "dollar" | "bogo" | "free_item") => setDealForm({ ...dealForm, discountType: v })}
+                >
+                  <SelectTrigger data-testid="select-admin-discount-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">Percentage Off</SelectItem>
+                    <SelectItem value="dollar">Dollar Off</SelectItem>
+                    <SelectItem value="bogo">Buy One Get One</SelectItem>
+                    <SelectItem value="free_item">Free Item</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  {dealForm.discountType === "percent" ? "Percentage" : "Amount"}
+                </Label>
+                <Input
+                  type="number"
+                  value={dealForm.discountValue}
+                  onChange={(e) => setDealForm({ ...dealForm, discountValue: e.target.value })}
+                  placeholder={dealForm.discountType === "percent" ? "e.g., 20" : "e.g., 10"}
+                  disabled={dealForm.discountType === "bogo" || dealForm.discountType === "free_item"}
+                  data-testid="input-admin-discount-value"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select
+                  value={dealForm.category}
+                  onValueChange={(v) => setDealForm({ ...dealForm, category: v })}
+                >
+                  <SelectTrigger data-testid="select-admin-deal-category">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEAL_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Select
+                  value={dealForm.city}
+                  onValueChange={(v) => setDealForm({ ...dealForm, city: v })}
+                >
+                  <SelectTrigger data-testid="select-admin-deal-city">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEAL_CITIES.map((city) => (
+                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fine Print</Label>
+              <Textarea
+                value={dealForm.finePrint}
+                onChange={(e) => setDealForm({ ...dealForm, finePrint: e.target.value })}
+                placeholder="Any terms or restrictions..."
+                rows={2}
+                data-testid="input-admin-deal-fine-print"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Discount Code (Optional)</Label>
+              <Input
+                value={dealForm.discountCode}
+                onChange={(e) => setDealForm({ ...dealForm, discountCode: e.target.value })}
+                placeholder="e.g., SAVE20"
+                data-testid="input-admin-discount-code"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tier</Label>
+                <Select
+                  value={dealForm.tier}
+                  onValueChange={(v: "standard" | "member") => setDealForm({ ...dealForm, tier: v })}
+                >
+                  <SelectTrigger data-testid="select-admin-deal-tier">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard (Free)</SelectItem>
+                    <SelectItem value="member">Member Only (Pass Required)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={dealForm.status}
+                  onValueChange={(v: "draft" | "published" | "paused" | "expired") => setDealForm({ ...dealForm, status: v })}
+                >
+                  <SelectTrigger data-testid="select-admin-deal-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label>Active</Label>
+                <p className="text-sm text-muted-foreground">Make this deal visible</p>
+              </div>
+              <Switch
+                checked={dealForm.isActive}
+                onCheckedChange={(checked) => setDealForm({ ...dealForm, isActive: checked })}
+                data-testid="switch-admin-deal-active"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createDealMutation.isPending} data-testid="button-submit-admin-deal">
+                {createDealMutation.isPending ? "Creating..." : "Create Deal"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
 
 function UserAccountsList() {
@@ -851,6 +1261,20 @@ export default function Admin() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Deal Management */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Tag className="w-5 h-5" />
+              Deal Management
+            </CardTitle>
+            <CardDescription>Create and manage deals for any business</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DealManagement />
           </CardContent>
         </Card>
 
