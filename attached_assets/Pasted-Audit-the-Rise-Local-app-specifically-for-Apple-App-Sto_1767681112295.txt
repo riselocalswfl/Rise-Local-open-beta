@@ -1,0 +1,141 @@
+Audit the Rise Local app specifically for Apple App Store approval risks when wrapped with Median.
+Focus on webview legitimacy, navigation integrity, native expectations, auth behavior, and rejection triggers.
+
+Avoid feature ideas, redesign opinions, or growth suggestions.
+
+⸻
+
+🚨 APP STORE RISK SCOPE (STRICT)
+
+Prioritize:
+	1.	Apple “webview-only app” rejection risks
+	2.	Navigation correctness (no dead ends)
+	3.	Auth + logout correctness
+	4.	Payments + subscriptions compliance
+	5.	Broken UI / misleading interactions
+	6.	Privacy & account requirements
+
+Ignore:
+	•	Marketing copy
+	•	Visual polish unless misleading
+	•	Feature expansion
+	•	Performance micro-optimizations
+
+⸻
+
+🧭 STEP 1: WEBVIEW LEGITIMACY CHECK (CRITICAL FOR MEDIAN)
+
+Evaluate whether the app risks being flagged as:
+
+“A simple website wrapped in a native container”
+
+Check and report on:
+	•	Is all core functionality usable without redirecting to an external browser?
+	•	Any links opening Safari unintentionally?
+	•	Any “Open in browser” behavior during core flows?
+	•	Pages that look like desktop layouts on mobile
+	•	Missing native affordances (back behavior, safe areas, keyboard handling)
+
+Flag anything that could cause rejection under:
+	•	App Store Guideline 4.2 (Minimum Functionality)
+
+⸻
+
+🧭 STEP 2: NAVIGATION MAP + BACK BEHAVIOR
+
+Generate a concise navigation map including:
+	•	All screens/routes
+	•	Entry points (cold open, post-login, deep links if present)
+	•	Header icons (profile, account)
+	•	Bottom navigation tabs
+	•	Modals vs full screens
+
+For each screen:
+	•	Allowed roles (logged out / consumer / vendor / admin)
+	•	Expected back behavior
+
+Explicitly test:
+	•	iOS swipe-back gesture
+	•	Hardware back equivalents
+	•	Tab switching mid-flow
+
+Flag:
+	•	Dead ends
+	•	Duplicate stacked routes
+	•	Back actions that exit the app or jump unexpectedly
+
+⸻
+
+🔄 STEP 3: AUTH, LOGOUT & STATE RESET (APPLE-CRITICAL)
+
+Verify:
+	•	Logout fully clears session, cache, and premium access
+	•	After logout → no lingering access to gated content
+	•	App relaunch restores correct auth state
+	•	Login routes users to correct role-based home
+	•	No infinite redirect loops
+
+Flag any ghost state, cached access, or inconsistent auth behavior.
+
+⸻
+
+💳 STEP 4: PAYMENTS & SUBSCRIPTIONS (HIGH RISK)
+
+Audit Rise Local Pass purchase flow for:
+	•	Clear explanation of what the user is buying
+	•	No misleading “unlock” language before payment
+	•	Immediate and persistent unlock after purchase
+	•	No broken state if Stripe webhook is delayed
+	•	Restore access on app reopen
+
+Flag risks related to:
+	•	Apple Guideline 3.1.1 (Subscriptions & digital goods)
+	•	Any purchase flow that feels incomplete or confusing
+
+⸻
+
+👆 STEP 5: NON-FUNCTIONAL UI & MISLEADING INTERACTIONS
+
+List:
+	•	Buttons/icons that appear tappable but do nothing
+	•	Profile or Account icons that fail
+	•	Footer items that don’t navigate
+	•	Actions that fail silently
+	•	Placeholder UI exposed to users
+
+Apple treats misleading UI as rejection-worthy.
+
+⸻
+
+🔐 STEP 6: PRIVACY, ACCOUNT & COMPLIANCE
+
+Verify presence or absence of:
+	•	Privacy Policy link
+	•	Terms of Service link
+	•	Clear account creation flow
+	•	Clear logout flow
+	•	Account deletion path OR instructions (required by Apple)
+
+Flag anything missing or unclear.
+
+⸻
+
+📦 STEP 7: OUTPUT FORMAT (STRICT & COST-EFFICIENT)
+
+Return results as:
+
+1. App Store Launch Blockers (will cause rejection)
+
+2. High-Risk Issues (likely reviewer concern)
+
+3. Medium-Risk Issues (confusing but survivable)
+
+4. Passes / Safe Areas
+
+For each issue include:
+	•	Short title
+	•	Location (route / file / component)
+	•	Why Apple cares
+	•	Minimal fix (1–2 sentences)
+
+No filler. No repetition. No redesign advice.
