@@ -1,0 +1,61 @@
+Context: In vendor onboarding → Business Profile creation, the “Business Category” dropdown sometimes won’t open / won’t let users select anything. This has happened multiple times historically. I need you to find the real root cause in code and fix it so it never happens again.
+
+What I need you to do (step-by-step)
+	1.	Locate the exact component
+	•	Find the onboarding page/component where “Business Category” is rendered (the select/dropdown).
+	•	Identify what select library/component is used (native <select>, Radix, ShadCN, Headless UI, MUI, etc.).
+	2.	Reproduce the bug intentionally
+	•	Run the app and attempt onboarding as a vendor.
+	•	Test these cases:
+	•	Fresh user with empty profile
+	•	Returning user who partially completed onboarding
+	•	Slow network (throttle) / first load
+	•	Mobile width (responsive)
+	•	Confirm whether it’s:
+	•	Not opening
+	•	Opening but items aren’t clickable
+	•	Selecting but not saving
+	•	“Looks disabled” because data never loads
+	3.	Instrument it (don’t guess)
+Add temporary logs or UI debug output for:
+	•	categories (array length, first item, loading state)
+	•	current selectedCategory
+	•	disabled prop value (and WHY it’s disabled)
+	•	whether an overlay element is sitting on top (pointer-events / z-index issue)
+	4.	Check these common root causes
+Please explicitly validate each and report what you found:
+A) Data not loaded / empty list
+	•	Categories are fetched async and the dropdown renders before categories exist.
+	•	A failing API call leaves it empty with no error.
+	•	Fix: show loading skeleton + retry + error state, and never render a “dead” select.
+B) The select is accidentally disabled
+	•	Look for disabled={!categories?.length} or disabled={isLoading} that never flips off.
+	•	Fix: correct loading state, and ensure state updates after fetch.
+C) Overlay blocking clicks (MOST COMMON on mobile)
+	•	Another div sits above the select due to position: absolute, z-index, or a sticky header/footer.
+	•	Or a container has pointer-events: none or a transparent overlay has pointer-events: auto.
+	•	Fix: remove overlay, correct z-index stacking context, or set pointer-events: none on the overlay.
+D) Controlled component bug
+	•	value is set to something invalid (like "" or undefined) and the select library won’t open.
+	•	Fix: ensure value is either null or a valid option; initialize properly.
+E) Form validation / schema mismatch
+	•	category field expects an ID but you pass a label (or vice versa).
+	•	Causes selection to revert instantly or fail on submit.
+	•	Fix: store categoryId consistently; map labels only for display.
+	5.	Implement the fix
+After you identify the real cause, implement the best fix. Requirements:
+	•	Dropdown must be clickable on desktop + mobile.
+	•	If categories fail to load, show a clear error and a “Retry” button.
+	•	If categories are loading, show “Loading categories…” and disable select intentionally (with visible reason).
+	•	Ensure the selected category persists to DB and reloads correctly.
+	6.	Add a regression guard
+	•	Add at least one automated check OR a simple dev test route to confirm:
+	•	categories load successfully
+	•	dropdown opens
+	•	selection updates state
+	•	If you can, add a lightweight Playwright/Cypress test for onboarding category selection.
+	7.	Deliverable
+Reply with:
+	•	Root cause (exact file + line + explanation)
+	•	What you changed (files + key diffs)
+	•	How to verify (exact steps)

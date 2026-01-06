@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { Store, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check, Clock, MapPin, Image } from "lucide-react";
+import { Store, CheckCircle2, ArrowRight, ArrowLeft, CloudUpload, Check, Clock, MapPin, Image, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { FulfillmentEditor } from "@/components/FulfillmentEditor";
 import { ImageUpload } from "@/components/ImageUpload";
 import type { FulfillmentOptions, Category } from "@shared/schema";
@@ -119,7 +119,12 @@ export default function UnifiedOnboarding() {
   const [selectedVendorType, setSelectedVendorType] = useState<"shop" | "dine" | "service" | null>(null);
 
   // Fetch categories from API - single source of truth
-  const { data: categoriesData } = useQuery<Category[]>({
+  const { 
+    data: categoriesData, 
+    isLoading: categoriesLoading, 
+    isError: categoriesError,
+    refetch: refetchCategories 
+  } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -796,20 +801,58 @@ export default function UnifiedOnboarding() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Business Category</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
-                          <FormControl>
-                            <SelectTrigger className="min-h-12 py-3 px-4 text-base [&>svg]:h-5 [&>svg]:w-5" data-testid="select-category">
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="z-50">
-                            {(categoriesData || []).map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id} className="min-h-12 py-3 text-base" data-testid={`option-category-${cat.key}`}>
-                                {cat.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {categoriesLoading ? (
+                          <div className="flex items-center gap-2 min-h-12 py-3 px-4 border rounded-md bg-muted/50" data-testid="category-loading">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <span className="text-muted-foreground text-sm">Loading categories...</span>
+                          </div>
+                        ) : categoriesError ? (
+                          <div className="flex items-center justify-between gap-2 min-h-12 py-3 px-4 border border-destructive/50 rounded-md bg-destructive/5" data-testid="category-error">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className="h-4 w-4 text-destructive" />
+                              <span className="text-destructive text-sm">Failed to load categories</span>
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => refetchCategories()}
+                              data-testid="button-retry-categories"
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Retry
+                            </Button>
+                          </div>
+                        ) : !categoriesData || categoriesData.length === 0 ? (
+                          <div className="flex items-center justify-between gap-2 min-h-12 py-3 px-4 border rounded-md bg-muted/50" data-testid="category-empty">
+                            <span className="text-muted-foreground text-sm">No categories available</span>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => refetchCategories()}
+                              data-testid="button-reload-categories"
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Reload
+                            </Button>
+                          </div>
+                        ) : (
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger className="min-h-12 py-3 px-4 text-base [&>svg]:h-5 [&>svg]:w-5" data-testid="select-category">
+                                <SelectValue placeholder="Select a category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="z-50">
+                              {categoriesData.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id} className="min-h-12 py-3 text-base" data-testid={`option-category-${cat.key}`}>
+                                  {cat.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <FormDescription>
                           Choose the category that best describes what you offer
                         </FormDescription>
