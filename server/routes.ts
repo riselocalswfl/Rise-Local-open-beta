@@ -1167,7 +1167,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminUserId = req.user.claims.sub;
       const adminUser = await storage.getUser(adminUserId);
       
-      if (!adminUser || adminUser.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+      if (!adminUser || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -1245,7 +1247,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminUserId = req.user.claims.sub;
       const adminUser = await storage.getUser(adminUserId);
       
-      if (!adminUser || adminUser.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+      if (!adminUser || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -1352,7 +1356,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adminUserId = req.user.claims.sub;
         const adminUser = await storage.getUser(adminUserId);
         
-        if (!adminUser || adminUser.role !== 'admin') {
+        // Check if user is admin - support both isAdmin flag and legacy role field
+        const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+        if (!adminUser || !isAdmin) {
           return res.status(403).json({ error: "Unauthorized - Admin access required" });
         }
         console.log('[Admin Sync] Authenticated via admin session', { adminUserId });
@@ -1545,7 +1551,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminUserId = req.user.claims.sub;
       const adminUser = await storage.getUser(adminUserId);
       
-      if (!adminUser || adminUser.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+      if (!adminUser || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
