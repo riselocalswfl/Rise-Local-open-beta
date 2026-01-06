@@ -802,18 +802,14 @@ function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
                 <div className="space-y-1">
                   <p className="font-medium">Email Notifications</p>
                   <p className="text-sm text-muted-foreground">
-                    Receive updates about messages and deals
+                    Important updates are always sent to your email
                   </p>
                 </div>
-                <Switch
-                  checked={true}
-                  disabled={true}
-                  data-testid="switch-email-notifications"
-                />
+                <Badge variant="secondary" data-testid="badge-email-enabled">Always On</Badge>
               </div>
             </CardContent>
           </Card>
@@ -875,6 +871,39 @@ function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
+          </Button>
+          <div className="flex gap-2">
+            <Link href="/privacy">
+              <Button variant="ghost" size="sm" data-testid="link-privacy-policy">
+                Privacy Policy
+              </Button>
+            </Link>
+            <Link href="/terms">
+              <Button variant="ghost" size="sm" data-testid="link-terms">
+                Terms of Service
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="card-delete-account" className="border-destructive/30">
+        <CardHeader>
+          <CardTitle className="text-destructive">Delete Account</CardTitle>
+          <CardDescription>Permanently remove your account and data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            To delete your account and all associated data, please contact our support team. 
+            We'll process your request within 30 days as required by applicable privacy laws.
+          </p>
+          <Button 
+            variant="outline"
+            className="w-full justify-start border-destructive/50 text-destructive hover:bg-destructive/10"
+            onClick={() => window.location.href = 'mailto:support@riselocal.com?subject=Account%20Deletion%20Request'}
+            data-testid="button-delete-account"
+          >
+            Request Account Deletion
           </Button>
         </CardContent>
       </Card>

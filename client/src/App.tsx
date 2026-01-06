@@ -55,6 +55,8 @@ import CheckoutCancel from "@/pages/CheckoutCancel";
 import Start from "@/pages/Start";
 import Businesses from "@/pages/Businesses";
 import BusinessProfile from "@/pages/BusinessProfile";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
 import { AuthBoundary } from "@/components/AuthBoundary";
 import AppShell from "@/components/layout/AppShell";
 
@@ -119,6 +121,10 @@ function Router() {
       
       <Route path="/membership" component={Membership} />
       <Route path="/membership/faq" component={MembershipFaq} />
+      
+      {/* Legal Pages */}
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
       
       {/* Checkout - Rise Local Pass subscription purchase */}
       <Route path="/checkout" component={Checkout} />

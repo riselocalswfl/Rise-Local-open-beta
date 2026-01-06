@@ -582,15 +582,57 @@ export default function CustomerProfile() {
               <CardTitle>Account Actions</CardTitle>
               <CardDescription>Manage your account</CardDescription>
             </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.href = '/api/logout'}
+                  data-testid="button-logout"
+                  className="w-full sm:w-auto"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
+                </Button>
+                <Link href="/privacy">
+                  <Button 
+                    variant="ghost" 
+                    data-testid="link-privacy-policy"
+                    className="w-full sm:w-auto"
+                  >
+                    Privacy Policy
+                  </Button>
+                </Link>
+                <Link href="/terms">
+                  <Button 
+                    variant="ghost" 
+                    data-testid="link-terms"
+                    className="w-full sm:w-auto"
+                  >
+                    Terms of Service
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Delete Account */}
+          <Card data-testid="card-delete-account" className="border-destructive/30">
+            <CardHeader>
+              <CardTitle className="text-destructive">Delete Account</CardTitle>
+              <CardDescription>Permanently remove your account and data</CardDescription>
+            </CardHeader>
             <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                To delete your account and all associated data, please contact our support team. 
+                We'll process your request within 30 days as required by applicable privacy laws.
+              </p>
               <Button 
-                variant="outline" 
-                onClick={() => window.location.href = '/api/logout'}
-                data-testid="button-logout"
-                className="w-full sm:w-auto"
+                variant="outline"
+                className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                onClick={() => window.location.href = 'mailto:support@riselocal.com?subject=Account%20Deletion%20Request'}
+                data-testid="button-delete-account"
               >
-                <LogOut className="h-4 w-4 mr-2" />
-                Log Out
+                Request Account Deletion
               </Button>
             </CardContent>
           </Card>

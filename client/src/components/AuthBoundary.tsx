@@ -12,7 +12,7 @@ interface User {
   [key: string]: unknown;
 }
 
-const PUBLIC_ROUTES = ["/auth"];
+const PUBLIC_ROUTES = ["/auth", "/privacy", "/terms"];
 const GATE_ROUTES = ["/start", "/onboarding", "/welcome"];
 
 interface AuthBoundaryProps {

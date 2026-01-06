@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
 import { useAuth } from "@/hooks/useAuth";
@@ -85,6 +85,19 @@ export default function Auth() {
             <p className="text-sm text-white/80 pt-4 drop-shadow">
               Join local shops, restaurants & service providers
             </p>
+
+            <div className="flex justify-center gap-4 pt-2">
+              <Link href="/privacy">
+                <span className="text-xs text-white/60 hover:text-white/90 underline" data-testid="link-privacy">
+                  Privacy Policy
+                </span>
+              </Link>
+              <Link href="/terms">
+                <span className="text-xs text-white/60 hover:text-white/90 underline" data-testid="link-terms">
+                  Terms of Service
+                </span>
+              </Link>
+            </div>
           </div>
         </main>
       </div>
