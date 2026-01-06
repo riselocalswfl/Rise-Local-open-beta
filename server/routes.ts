@@ -4767,10 +4767,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[/api/users] Request from user: ${userId}`);
       
       const currentUser = await storage.getUser(userId);
-      console.log(`[/api/users] User found:`, currentUser ? `${currentUser.email} (role: ${currentUser.role})` : 'NOT FOUND');
+      console.log(`[/api/users] User found:`, currentUser ? `${currentUser.email} (role: ${currentUser.role}, isAdmin: ${currentUser.isAdmin})` : 'NOT FOUND');
       
-      // Only admins can access full user list
-      if (!currentUser || currentUser.role !== 'admin') {
+      // Only admins can access full user list - support both isAdmin flag and legacy role field
+      const isAdminUser = currentUser?.isAdmin === true || currentUser?.role === 'admin';
+      if (!currentUser || !isAdminUser) {
         console.log(`[/api/users] Access DENIED - User is not admin`);
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
