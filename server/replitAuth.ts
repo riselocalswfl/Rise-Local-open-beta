@@ -194,7 +194,15 @@ export async function setupAuth(app: Express) {
           // Get existing user info first to check if they already have a vendor role
           const existingUser = await storage.getUser(userId);
           const existingRole = existingUser?.role;
-          const isExistingVendor = existingUser?.isVendor === true || existingRole === "vendor" || existingRole === "restaurant" || existingRole === "service_provider";
+          
+          // Check if user has a vendor profile (actual business created)
+          const existingVendorProfile = await storage.getVendorByOwnerId(userId);
+          const hasVendorProfile = !!existingVendorProfile;
+          
+          // IMPORTANT: Only consider someone a "committed vendor" if they have BOTH the role AND a vendor profile
+          // This allows users who accidentally clicked "Sell With Us" but never created a business to switch to buyer
+          const isCommittedVendor = hasVendorProfile && (existingUser?.isVendor === true || existingRole === "vendor" || existingRole === "restaurant" || existingRole === "service_provider");
+          
           // Check both isAdmin flag and legacy role for backward compatibility
           const isAdmin = existingUser?.isAdmin === true || existingRole === "admin";
           
@@ -210,10 +218,11 @@ export async function setupAuth(app: Express) {
             // Clear the intended role since we're ignoring it
             delete (req.session as any).intendedRole;
             res.clearCookie("intended_role");
-          // IMPORTANT: Never downgrade a vendor to buyer - once a business, always a business
+          // IMPORTANT: Never downgrade a COMMITTED vendor to buyer - once they've created a business, always a business
           // This allows vendors to click "Shop Local" and still access their business dashboard
-          } else if (isExistingVendor) {
-            console.log("[AUTH] User is already a vendor - preserving vendor role regardless of login button clicked");
+          // BUT: Users who have role=vendor but NO vendor profile can still switch to buyer
+          } else if (isCommittedVendor) {
+            console.log("[AUTH] User is a committed vendor (has business profile) - preserving vendor role");
             userRole = existingRole;
             // Ensure isVendor flag is set for vendor users
             if (existingUser && !existingUser.isVendor) {
@@ -252,8 +261,10 @@ export async function setupAuth(app: Express) {
                 console.log("[AUTH] Redirecting to:", redirectUrl);
               }
             } else if (intendedRole === "buyer") {
-              await storage.updateUser(userId, { role: intendedRole, onboardingComplete: true });
+              // Clear isVendor flag when switching to buyer (for users who accidentally clicked "Sell With Us")
+              await storage.updateUser(userId, { role: intendedRole, isVendor: false, onboardingComplete: true });
               userRole = intendedRole;
+              console.log("[AUTH] User set as buyer, clearing any vendor flags");
             }
             
             // Clear the intended role from session and cookie
