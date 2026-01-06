@@ -1,0 +1,232 @@
+0) Create a quick “Repro + Test” checklist (do this first)
+
+Goal: Don’t “fix” things blindly—prove what’s broken, then confirm it’s fixed.
+
+Make a tiny list:
+
+Consumer: tap top-right profile icon → expected: opens Account/Profile screen (or login prompt if logged out)
+
+Consumer: tap footer Account → expected: same as above
+
+Tap Logout → expected: session clears + redirected to login/onboarding + can’t access locked screens without re-auth
+
+Acceptance test (after every change):
+
+Works on web preview
+
+Works on mobile wrapper (if you’re using one)
+
+Works logged in + logged out
+
+1) Fix the non-functional Consumer buttons (profile icon + footer Account)
+1A) Diagnose why they don’t work (most common causes)
+
+Button has no onClick / handler
+
+Handler exists but route doesn’t exist (wrong path)
+
+Route exists but is blocked by auth guard or crashes
+
+Icon is inside another clickable container preventing click
+
+Z-index / overlay makes button unclickable (especially top-right)
+
+1B) Standardize navigation to ONE Account destination
+
+Pick one canonical route, like:
+
+/account (recommended)
+…and make both buttons go there.
+
+Implementation tasks:
+
+Confirm there is a real page/component for /account
+
+Wire top-right profile icon → navigate("/account")
+
+Wire footer Account → navigate("/account")
+
+If you have separate vendor/consumer layouts, ensure consumer layout includes this route
+
+1C) Add a visible “click works” debug fallback (temporary)
+
+While testing, add a temporary toast/console log:
+
+console.log("Account button clicked")
+So you can tell if the click fires even if routing fails.
+
+Done when:
+
+Both buttons reliably open the same Account screen
+
+No console errors
+
+Works on mobile-sized viewport
+
+2) Fix logout (and make it impossible to “half logout”)
+2A) Identify where auth state lives
+
+Logout fails when your UI and storage disagree. Common patterns:
+
+Token/session stored in localStorage/cookies
+
+User object stored in React context / Zustand / Redux
+
+Replit Auth session stored server-side + client still thinks logged in
+
+Task: Locate your “source of truth” for auth:
+
+AuthProvider / useAuth() / session endpoint like /api/auth/me
+
+2B) Implement a single logout() function
+
+Your logout must do all of these in one place:
+
+Client-side:
+
+Clear local session data: token, cached user, flags like isPassMember
+
+Reset auth state in your store/context
+
+Redirect to /login or /
+
+Server-side (if applicable):
+
+Hit an endpoint like POST /api/auth/logout that clears the session cookie or invalidates session
+
+2C) Add route protection that respects logout
+
+If user is logged out:
+
+Block /account, member-only deal pages, etc.
+
+Redirect to login/onboarding
+
+Done when:
+
+Logout always returns user to login/onboarding
+
+Refreshing the page does NOT log them back in
+
+Account buttons while logged out lead to login (not a broken screen)
+
+3) Make onboarding feel less “Replit” (Auth branding + Email login)
+Option A (recommended): Turn on Email login + brand the Auth page
+
+Steps inside Replit:
+
+Open your Repl
+
+Go to Auth pane
+
+Click Configure
+
+Enable Email
+
+Disable any methods that push “create a Replit account” vibes (if you don’t want them)
+
+Set:
+
+App name: Rise Local
+
+App icon: your Rise Local logo
+
+What this accomplishes:
+
+New users can sign up without feeling like they’re joining Replit
+
+The auth screen looks like Rise Local (not a dev tool)
+
+Option B: Keep Replit Auth but minimize Replit presence
+
+Same as above, but keep only the login methods you actually want and brand it.
+
+Option C: Replace auth entirely (best branding, most work)
+
+Move to Firebase/Supabase/Clerk/Auth0 only if Replit Auth still creates too much friction after Option A.
+
+This is a bigger refactor: sessions, protected routes, user DB syncing, etc.
+
+Done when:
+
+A new user can sign up with email and doesn’t see “make a Replit account” messaging
+
+Your Rise Local name/icon are visible on the auth UI
+
+4) App Store launch path (based on the Replit approach you were sent)
+
+You don’t need to do everything at once—just line it up in order.
+
+4A) Prep checklist (before wrapping)
+
+Ensure deep links/routing work in mobile webview
+
+Ensure auth + logout works in mobile webview
+
+Ensure Stripe checkout flow works end-to-end in mobile webview
+
+Set correct production URLs + env variables
+
+4B) Mobile packaging steps (high level)
+
+Choose wrapper approach (the YouTube flow you were given)
+
+Generate iOS build
+
+Add:
+
+App icon
+
+Splash screen
+
+Bundle ID
+
+Privacy policy URL
+
+Test on a real device via TestFlight
+
+Fix any webview-specific issues (cookies, redirects, popup blockers)
+
+4C) Submission basics
+
+App Store Connect listing: screenshots, description, keywords
+
+“Sign in with Apple” requirement may apply if you offer other social logins (depends on final auth methods)
+
+Privacy disclosures (especially if you track user data / analytics)
+
+Done when:
+
+TestFlight build installs and login/logout works cleanly
+
+Checkout and member unlock flow works on-device
+
+5) Suggested execution order (fastest path to “feels real”)
+
+Fix navigation for profile icon + footer Account
+
+Fix logout + route guards (this will also make #1 more reliable)
+
+Update Replit Auth: Email + branding
+
+Only then start App Store wrapping/testing (because mobile will expose auth bugs)
+
+Copy/paste Replit prompt you can use (for your in-app Replit Assistant)
+
+Paste this into Replit AI to implement in one focused pass:
+
+PROMPT
+
+Audit the Consumer UI navigation and auth/logout flow. The top-right profile icon and the footer “Account” button are currently non-functional.
+
+Requirements:
+
+Create/confirm a single canonical route for the consumer account screen (e.g., /account) and wire BOTH the top-right profile icon and footer Account button to navigate there.
+
+Fix logout so it reliably clears auth state (client + server/session as applicable), resets any cached user info (including membership flags), and redirects to the login/onboarding screen.
+
+Add/ensure route protection: when logged out, /account and member-only pages redirect to login.
+
+After changes, provide a short test checklist and where the changes were made (files + functions).
+
+Do not change styling except if needed to fix clickability (z-index/overlays). Prioritize functional correctness.
