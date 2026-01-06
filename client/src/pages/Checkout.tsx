@@ -199,9 +199,14 @@ export default function Checkout() {
             <span>Secure checkout powered by Stripe</span>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground mb-4">
-            Cancel anytime. No commitment required.
-          </p>
+          <div className="bg-muted/50 rounded-lg p-4 mb-4">
+            <p className="text-center text-sm font-medium text-foreground mb-1" data-testid="text-cancel-disclosure">
+              Cancel anytime. No commitment required.
+            </p>
+            <p className="text-center text-xs text-muted-foreground">
+              You can cancel your subscription at any time from your Profile settings. No questions asked.
+            </p>
+          </div>
         </div>
 
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border">

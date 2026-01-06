@@ -678,17 +678,24 @@ function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }
         <CardContent>
           {isPassMember ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-primary/5">
-                <div className="space-y-1">
+              <div className="p-4 border rounded-lg bg-primary/5">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium">Active Membership</p>
+                    <p className="font-medium">Rise Local Pass</p>
                     <Badge variant="default" className="bg-primary">Active</Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {user?.passExpiresAt && (
-                      <>Renews: {safeFormatDate(user.passExpiresAt) || "Unknown"}</>
-                    )}
-                  </p>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {user?.passExpiresAt && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Next renewal:</span>
+                      <span className="font-medium">{safeFormatDate(user.passExpiresAt) || "Unknown"}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <span className="font-medium text-green-600">Active</span>
+                  </div>
                 </div>
               </div>
               <Button 
@@ -704,9 +711,12 @@ function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }
                     Loading...
                   </>
                 ) : (
-                  "Manage Subscription"
+                  "Manage or Cancel Subscription"
                 )}
               </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                Cancel anytime. No questions asked.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">

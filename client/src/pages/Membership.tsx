@@ -172,10 +172,13 @@ export default function Membership() {
                   ) : (
                     <>
                       <Settings className="w-4 h-4 mr-2" />
-                      Manage Subscription
+                      Manage or Cancel Subscription
                     </>
                   )}
                 </Button>
+                <p className="text-xs text-muted-foreground mt-3" data-testid="text-cancel-guidance">
+                  Cancel anytime. No questions asked.
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -252,9 +255,14 @@ export default function Membership() {
           )}
 
           {!isPassMember && (
-            <p className="text-center text-sm text-muted-foreground mb-8">
-              Cancel anytime &bull; No commitment
-            </p>
+            <div className="text-center mb-8">
+              <p className="text-sm font-medium text-foreground mb-1" data-testid="text-cancel-policy">
+                Cancel anytime. No commitment.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Manage or cancel your subscription anytime from your Profile.
+              </p>
+            </div>
           )}
 
           <Card className="bg-muted/50">
