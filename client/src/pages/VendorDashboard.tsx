@@ -20,7 +20,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket, ChevronDown } from "lucide-react";
+import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket, ChevronDown, Shield } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal, DealRedemption } from "@shared/schema";
 import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
@@ -158,7 +159,11 @@ const DEAL_CITIES = ["Fort Myers", "Cape Coral", "Bonita Springs", "Estero", "Na
 
 export default function VendorDashboard() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
+  
+  // Check if user has admin privileges
+  const isAdmin = user?.isAdmin === true || user?.role === "admin";
   const [localValues, setLocalValues] = useState<string[]>([]);
   const [localSourcingPercent, setLocalSourcingPercent] = useState<number>(0);
   const [showLocalSourcing, setShowLocalSourcing] = useState<boolean>(false);
@@ -662,9 +667,24 @@ export default function VendorDashboard() {
         <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
           {/* Mobile sticky header - title + dropdown */}
           <div className="md:hidden sticky top-0 z-40 bg-bg pt-2 pb-4 -mx-4 px-4 border-b border-border">
-            <div className="mb-3">
-              <h1 className="text-page-title text-xl mb-1" data-testid="heading-dashboard">Business Dashboard</h1>
-              <p className="text-body text-muted-foreground text-sm">{vendor.businessName}</p>
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div>
+                <h1 className="text-page-title text-xl mb-1" data-testid="heading-dashboard">Business Dashboard</h1>
+                <p className="text-body text-muted-foreground text-sm">{vendor.businessName}</p>
+              </div>
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    className="flex items-center gap-2"
+                    data-testid="button-admin-dashboard-mobile"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin
+                  </Button>
+                </Link>
+              )}
             </div>
             <Select value={activeTab} onValueChange={setActiveTab}>
               <SelectTrigger 
@@ -717,9 +737,23 @@ export default function VendorDashboard() {
           </div>
 
           {/* Desktop header */}
-          <div className="hidden md:block mb-8">
-            <h1 className="text-page-title text-2xl md:text-3xl mb-2" data-testid="heading-dashboard-desktop">Business Dashboard</h1>
-            <p className="text-body text-muted-foreground">{vendor.businessName}</p>
+          <div className="hidden md:flex md:items-start md:justify-between mb-8">
+            <div>
+              <h1 className="text-page-title text-2xl md:text-3xl mb-2" data-testid="heading-dashboard-desktop">Business Dashboard</h1>
+              <p className="text-body text-muted-foreground">{vendor.businessName}</p>
+            </div>
+            {isAdmin && (
+              <Link href="/admin">
+                <Button 
+                  variant="destructive"
+                  className="flex items-center gap-2"
+                  data-testid="button-admin-dashboard-desktop"
+                >
+                  <Shield className="w-4 h-4" />
+                  Admin Dashboard
+                </Button>
+              </Link>
+            )}
           </div>
 
 

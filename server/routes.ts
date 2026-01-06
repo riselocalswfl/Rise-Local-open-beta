@@ -396,10 +396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`[/api/admin/stats] Request from user: ${userId}`);
       
       const user = await storage.getUser(userId);
-      console.log(`[/api/admin/stats] User found:`, user ? `${user.email} (role: ${user.role})` : 'NOT FOUND');
+      console.log(`[/api/admin/stats] User found:`, user ? `${user.email} (role: ${user.role}, isAdmin: ${user.isAdmin})` : 'NOT FOUND');
       
-      // Check if user is admin
-      if (!user || user.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         console.log(`[/api/admin/stats] Access DENIED - User is not admin`);
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
@@ -540,8 +541,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Check if user is admin
-      if (!user || user.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -584,8 +586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Check if user is admin
-      if (!user || user.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -603,8 +606,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Check if user is admin
-      if (!user || user.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -622,8 +626,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      // Check if user is admin
-      if (!user || user.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -642,8 +647,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const adminUserId = req.user.claims.sub;
       const adminUser = await storage.getUser(adminUserId);
       
-      // Check if user is admin
-      if (!adminUser || adminUser.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+      if (!adminUser || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -867,7 +873,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -931,7 +939,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.role !== 'admin') {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Unauthorized - Admin access required" });
       }
 
@@ -7080,7 +7090,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.role !== "admin") {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Admin access required" });
       }
 
@@ -7109,7 +7121,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.role !== "admin") {
+      // Check if user is admin - support both isAdmin flag and legacy role field
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: "Admin access required" });
       }
 
