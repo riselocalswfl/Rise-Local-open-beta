@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw, UserPlus, Plus, Tag, Trash2, Eye, Edit } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw, UserPlus, Plus, Tag, Trash2, Eye, Edit, History, ClipboardList, Download } from "lucide-react";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,38 @@ interface AdminVendor {
 interface AdminDeal extends Deal {
   vendorName: string;
   vendorCity: string;
+}
+
+interface AdminRedemption {
+  id: string;
+  dealId: string;
+  vendorId: string;
+  userId: string;
+  status: string;
+  redeemedAt: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+  dealTitle?: string;
+  vendorName?: string;
+  userName?: string;
+  userEmail?: string;
+  isPremiumDeal?: boolean;
+}
+
+interface AdminAuditLog {
+  id: string;
+  adminUserId: string;
+  adminEmail: string | null;
+  actionType: string;
+  entityType: string;
+  entityId: string;
+  entityName: string | null;
+  previousState: any;
+  newState: any;
+  reason: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string | null;
 }
 
 const DEAL_CATEGORIES = ["Food & Drink", "Retail", "Beauty", "Fitness", "Services", "Experiences"];
@@ -484,6 +516,409 @@ function DealManagement() {
           </form>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function RedemptionManagement() {
+  const { toast } = useToast();
+  const [filters, setFilters] = useState({
+    status: '',
+    isPremium: '',
+    startDate: '',
+    endDate: '',
+  });
+  const [page, setPage] = useState(0);
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<AdminRedemption | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const pageSize = 20;
+
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+    params.set('limit', String(pageSize));
+    params.set('offset', String(page * pageSize));
+    if (filters.status) params.set('status', filters.status);
+    if (filters.isPremium) params.set('isPremium', filters.isPremium);
+    if (filters.startDate) params.set('startDate', filters.startDate);
+    if (filters.endDate) params.set('endDate', filters.endDate);
+    return params.toString();
+  };
+
+  const { data, isLoading, refetch } = useQuery<{ redemptions: AdminRedemption[]; total: number }>({
+    queryKey: ['/api/admin/redemptions', filters, page],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/redemptions?${buildQueryString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch redemptions');
+      return response.json();
+    },
+  });
+
+  const voidMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      return await apiRequest('POST', `/api/admin/redemptions/${id}/void`, { reason });
+    },
+    onSuccess: () => {
+      toast({ title: 'Redemption Voided', description: 'The redemption has been voided.' });
+      setVoidDialogOpen(false);
+      setVoidTarget(null);
+      setVoidReason('');
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/stats'] });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Failed to Void', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    if (filters.status) params.set('status', filters.status);
+    if (filters.isPremium) params.set('isPremium', filters.isPremium);
+    if (filters.startDate) params.set('startDate', filters.startDate);
+    if (filters.endDate) params.set('endDate', filters.endDate);
+    window.open(`/api/admin/redemptions/export?${params.toString()}`, '_blank');
+  };
+
+  const totalPages = Math.ceil((data?.total || 0) / pageSize);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="space-y-1">
+          <Label className="text-xs">Status</Label>
+          <Select value={filters.status} onValueChange={(v) => { setFilters({ ...filters, status: v }); setPage(0); }}>
+            <SelectTrigger className="w-32" data-testid="select-redemption-status">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              <SelectItem value="redeemed">Redeemed</SelectItem>
+              <SelectItem value="voided">Voided</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Deal Tier</Label>
+          <Select value={filters.isPremium} onValueChange={(v) => { setFilters({ ...filters, isPremium: v }); setPage(0); }}>
+            <SelectTrigger className="w-32" data-testid="select-redemption-tier">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              <SelectItem value="true">Premium</SelectItem>
+              <SelectItem value="false">Free</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">From</Label>
+          <Input 
+            type="date" 
+            value={filters.startDate} 
+            onChange={(e) => { setFilters({ ...filters, startDate: e.target.value }); setPage(0); }}
+            className="w-36"
+            data-testid="input-redemption-start-date"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">To</Label>
+          <Input 
+            type="date" 
+            value={filters.endDate} 
+            onChange={(e) => { setFilters({ ...filters, endDate: e.target.value }); setPage(0); }}
+            className="w-36"
+            data-testid="input-redemption-end-date"
+          />
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExport} data-testid="button-export-redemptions">
+          Export CSV
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}
+        </div>
+      ) : data?.redemptions.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground" data-testid="text-no-redemptions">
+          No redemptions found
+        </div>
+      ) : (
+        <>
+          <div className="rounded-lg border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-3 font-medium">Deal</th>
+                  <th className="text-left p-3 font-medium">Vendor</th>
+                  <th className="text-left p-3 font-medium">User</th>
+                  <th className="text-left p-3 font-medium">Date</th>
+                  <th className="text-left p-3 font-medium">Status</th>
+                  <th className="text-right p-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data?.redemptions.map((r) => (
+                  <tr key={r.id} className="border-t hover:bg-muted/30" data-testid={`row-redemption-${r.id}`}>
+                    <td className="p-3">
+                      <div className="font-medium">{r.dealTitle || 'Unknown Deal'}</div>
+                      {r.isPremiumDeal && <Badge variant="secondary" className="text-xs mt-1">Premium</Badge>}
+                    </td>
+                    <td className="p-3 text-muted-foreground">{r.vendorName || 'Unknown'}</td>
+                    <td className="p-3">
+                      <div>{r.userName || 'Unknown'}</div>
+                      <div className="text-xs text-muted-foreground">{r.userEmail}</div>
+                    </td>
+                    <td className="p-3 text-muted-foreground">
+                      {r.redeemedAt ? new Date(r.redeemedAt).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="p-3">
+                      <Badge variant={r.status === 'voided' ? 'destructive' : 'outline'}>
+                        {r.status}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-right">
+                      {r.status !== 'voided' && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => { setVoidTarget(r); setVoidDialogOpen(true); }}
+                          data-testid={`button-void-${r.id}`}
+                        >
+                          Void
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Showing {page * pageSize + 1} - {Math.min((page + 1) * pageSize, data?.total || 0)} of {data?.total || 0}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(Math.max(0, page - 1))} 
+                disabled={page === 0}
+                data-testid="button-prev-page"
+              >
+                Previous
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(page + 1)} 
+                disabled={page >= totalPages - 1}
+                data-testid="button-next-page"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <AlertDialog open={voidDialogOpen} onOpenChange={setVoidDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Void Redemption</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will void the redemption for "{voidTarget?.dealTitle}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label>Reason (required)</Label>
+            <Textarea 
+              value={voidReason} 
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="Enter reason for voiding this redemption..."
+              className="mt-2"
+              data-testid="input-void-reason"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setVoidTarget(null); setVoidReason(''); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => voidTarget && voidMutation.mutate({ id: voidTarget.id, reason: voidReason })}
+              disabled={voidReason.length < 5 || voidMutation.isPending}
+              data-testid="button-confirm-void"
+            >
+              {voidMutation.isPending ? 'Voiding...' : 'Void Redemption'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function AuditLogViewer() {
+  const [filters, setFilters] = useState({
+    actionType: '',
+    entityType: '',
+    startDate: '',
+    endDate: '',
+  });
+  const [page, setPage] = useState(0);
+  const pageSize = 25;
+
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+    params.set('limit', String(pageSize));
+    params.set('offset', String(page * pageSize));
+    if (filters.actionType) params.set('actionType', filters.actionType);
+    if (filters.entityType) params.set('entityType', filters.entityType);
+    if (filters.startDate) params.set('startDate', filters.startDate);
+    if (filters.endDate) params.set('endDate', filters.endDate);
+    return params.toString();
+  };
+
+  const { data, isLoading } = useQuery<{ logs: AdminAuditLog[]; total: number }>({
+    queryKey: ['/api/admin/audit-logs', filters, page],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/audit-logs?${buildQueryString()}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch audit logs');
+      return response.json();
+    },
+  });
+
+  const totalPages = Math.ceil((data?.total || 0) / pageSize);
+
+  const formatAction = (action: string) => {
+    return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="space-y-1">
+          <Label className="text-xs">Action Type</Label>
+          <Select value={filters.actionType} onValueChange={(v) => { setFilters({ ...filters, actionType: v }); setPage(0); }}>
+            <SelectTrigger className="w-40" data-testid="select-audit-action">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Actions</SelectItem>
+              <SelectItem value="deal_create">Deal Create</SelectItem>
+              <SelectItem value="deal_update">Deal Update</SelectItem>
+              <SelectItem value="deal_delete">Deal Delete</SelectItem>
+              <SelectItem value="deal_duplicate">Deal Duplicate</SelectItem>
+              <SelectItem value="redemption_void">Redemption Void</SelectItem>
+              <SelectItem value="membership_grant">Membership Grant</SelectItem>
+              <SelectItem value="membership_revoke">Membership Revoke</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Entity Type</Label>
+          <Select value={filters.entityType} onValueChange={(v) => { setFilters({ ...filters, entityType: v }); setPage(0); }}>
+            <SelectTrigger className="w-32" data-testid="select-audit-entity">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              <SelectItem value="deal">Deal</SelectItem>
+              <SelectItem value="redemption">Redemption</SelectItem>
+              <SelectItem value="user">User</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">From</Label>
+          <Input 
+            type="date" 
+            value={filters.startDate} 
+            onChange={(e) => { setFilters({ ...filters, startDate: e.target.value }); setPage(0); }}
+            className="w-36"
+            data-testid="input-audit-start-date"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">To</Label>
+          <Input 
+            type="date" 
+            value={filters.endDate} 
+            onChange={(e) => { setFilters({ ...filters, endDate: e.target.value }); setPage(0); }}
+            className="w-36"
+            data-testid="input-audit-end-date"
+          />
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16" />)}
+        </div>
+      ) : data?.logs.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground" data-testid="text-no-audit-logs">
+          No audit logs found
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            {data?.logs.map((log) => (
+              <div 
+                key={log.id} 
+                className="p-3 border rounded-lg hover:bg-muted/30"
+                data-testid={`audit-log-${log.id}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline">{formatAction(log.actionType)}</Badge>
+                      <Badge variant="secondary">{log.entityType}</Badge>
+                      {log.entityName && <span className="text-sm font-medium">{log.entityName}</span>}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      by {log.adminEmail || log.adminUserId}
+                    </div>
+                    {log.reason && (
+                      <div className="text-sm mt-1">
+                        <span className="text-muted-foreground">Reason:</span> {log.reason}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground text-right">
+                    {log.createdAt ? new Date(log.createdAt).toLocaleString() : '-'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Showing {page * pageSize + 1} - {Math.min((page + 1) * pageSize, data?.total || 0)} of {data?.total || 0}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(Math.max(0, page - 1))} 
+                disabled={page === 0}
+                data-testid="button-audit-prev"
+              >
+                Previous
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setPage(page + 1)} 
+                disabled={page >= totalPages - 1}
+                data-testid="button-audit-next"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1275,6 +1710,34 @@ export default function Admin() {
           </CardHeader>
           <CardContent>
             <DealManagement />
+          </CardContent>
+        </Card>
+
+        {/* Redemption Analytics */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5" />
+              Redemption Analytics
+            </CardTitle>
+            <CardDescription>Track and manage deal redemptions across all businesses</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RedemptionManagement />
+          </CardContent>
+        </Card>
+
+        {/* Audit Log */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Admin Audit Log
+            </CardTitle>
+            <CardDescription>Track all administrative actions for accountability</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AuditLogViewer />
           </CardContent>
         </Card>
 
