@@ -1476,6 +1476,92 @@ export const insertPlacementClickSchema = createInsertSchema(placementClicks).om
 export type InsertPlacementClick = z.infer<typeof insertPlacementClickSchema>;
 export type PlacementClick = typeof placementClicks.$inferSelect;
 
+// ===== ADMIN AUDIT LOGS =====
+
+// Admin action types for audit trail
+export const ADMIN_ACTION_TYPES = [
+  // Deal actions
+  "deal_created",
+  "deal_updated",
+  "deal_deleted",
+  "deal_archived",
+  "deal_unarchived",
+  "deal_duplicated",
+  // Redemption actions
+  "redemption_voided",
+  "redemption_refunded",
+  // Membership actions
+  "membership_granted",
+  "membership_revoked",
+  "membership_synced",
+  // User actions
+  "user_role_changed",
+  "user_banned",
+  "user_unbanned",
+  // Vendor actions
+  "vendor_verified",
+  "vendor_unverified",
+  "vendor_suspended",
+] as const;
+
+export type AdminActionType = typeof ADMIN_ACTION_TYPES[number];
+
+// Entity types that can be audited
+export const ADMIN_ENTITY_TYPES = [
+  "deal",
+  "redemption",
+  "user",
+  "vendor",
+  "membership",
+  "subscription",
+] as const;
+
+export type AdminEntityType = typeof ADMIN_ENTITY_TYPES[number];
+
+// Admin Audit Logs - Track all admin actions for accountability
+export const adminAuditLogs = pgTable("admin_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Who performed the action
+  adminUserId: varchar("admin_user_id").notNull().references(() => users.id),
+  adminEmail: text("admin_email"), // Denormalized for easy reading
+  
+  // What action was performed
+  actionType: text("action_type").notNull(), // One of ADMIN_ACTION_TYPES
+  
+  // What entity was affected
+  entityType: text("entity_type").notNull(), // One of ADMIN_ENTITY_TYPES
+  entityId: varchar("entity_id").notNull(), // ID of the affected entity
+  entityName: text("entity_name"), // Human-readable name (e.g., deal title, user email)
+  
+  // Before/after state for data changes
+  previousState: jsonb("previous_state"), // JSON snapshot before change
+  newState: jsonb("new_state"), // JSON snapshot after change
+  
+  // Required reason for certain actions (membership override, void, etc.)
+  reason: text("reason"),
+  
+  // Request metadata
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Timestamp
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("audit_admin_user_idx").on(table.adminUserId),
+  index("audit_entity_idx").on(table.entityType, table.entityId),
+  index("audit_action_type_idx").on(table.actionType),
+  index("audit_created_at_idx").on(table.createdAt),
+]);
+
+export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+
 // ===== VENDOR PROFILE API TYPES =====
 
 // Deal type for vendor profile responses

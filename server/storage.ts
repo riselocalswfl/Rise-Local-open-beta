@@ -29,10 +29,12 @@ import {
   type Category,
   type Favorite, type InsertFavorite,
   type MembershipEvent, type InsertMembershipEvent,
+  type AdminAuditLog, type InsertAdminAuditLog,
   users, vendors, products, events, eventRsvps, attendances, orders, orderItems, masterOrders, vendorOrders, spotlight, vendorReviews, vendorFAQs,
   menuItems, serviceOfferings, serviceBookings, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders, reservations, preferredPlacements, placementImpressions, placementClicks,
   conversations, conversationMessages, notifications, categories, favorites, membershipEvents, stripeWebhookEvents,
+  adminAuditLogs,
   fulfillmentDetailsSchema,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
@@ -397,6 +399,43 @@ export interface IStorage {
     firstName: string | null;
     lastName: string | null;
   } | undefined>;
+
+  // Admin Audit Log operations
+  createAdminAuditLog(log: InsertAdminAuditLog): Promise<AdminAuditLog>;
+  getAdminAuditLogs(filters?: {
+    adminUserId?: string;
+    actionType?: string;
+    entityType?: string;
+    entityId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: AdminAuditLog[]; total: number }>;
+
+  // Admin Redemption operations (with pagination)
+  getAdminRedemptions(filters?: {
+    vendorId?: string;
+    dealId?: string;
+    userId?: string;
+    status?: string;
+    startDate?: Date;
+    endDate?: Date;
+    isPremium?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ 
+    redemptions: Array<DealRedemption & { 
+      dealTitle?: string;
+      vendorName?: string;
+      userName?: string;
+      userEmail?: string;
+      isPremiumDeal?: boolean;
+    }>;
+    total: number;
+  }>;
+  getRedemptionById(id: string): Promise<DealRedemption | undefined>;
+  adminVoidRedemption(id: string, reason: string): Promise<DealRedemption | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -2611,6 +2650,190 @@ export class DbStorage implements IStorage {
       status,
       errorDetails: errorDetails || null,
     }).onConflictDoNothing();
+  }
+
+  // ===== ADMIN AUDIT LOG OPERATIONS =====
+
+  async createAdminAuditLog(log: InsertAdminAuditLog): Promise<AdminAuditLog> {
+    const result = await db.insert(adminAuditLogs).values(log).returning();
+    return result[0];
+  }
+
+  async getAdminAuditLogs(filters?: {
+    adminUserId?: string;
+    actionType?: string;
+    entityType?: string;
+    entityId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ logs: AdminAuditLog[]; total: number }> {
+    const conditions: any[] = [];
+    
+    if (filters?.adminUserId) {
+      conditions.push(eq(adminAuditLogs.adminUserId, filters.adminUserId));
+    }
+    if (filters?.actionType) {
+      conditions.push(eq(adminAuditLogs.actionType, filters.actionType));
+    }
+    if (filters?.entityType) {
+      conditions.push(eq(adminAuditLogs.entityType, filters.entityType));
+    }
+    if (filters?.entityId) {
+      conditions.push(eq(adminAuditLogs.entityId, filters.entityId));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(adminAuditLogs.createdAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(adminAuditLogs.createdAt, filters.endDate));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const limit = filters?.limit || 50;
+    const offset = filters?.offset || 0;
+
+    // Get logs with pagination
+    const logsQuery = db.select().from(adminAuditLogs);
+    const logsResult = whereClause 
+      ? await logsQuery.where(whereClause).orderBy(desc(adminAuditLogs.createdAt)).limit(limit).offset(offset)
+      : await logsQuery.orderBy(desc(adminAuditLogs.createdAt)).limit(limit).offset(offset);
+
+    // Get total count
+    const countResult = await db.select({ count: sql<number>`count(*)::int` }).from(adminAuditLogs)
+      .where(whereClause || sql`true`);
+    const total = countResult[0]?.count || 0;
+
+    return { logs: logsResult, total };
+  }
+
+  // ===== ADMIN REDEMPTION OPERATIONS =====
+
+  async getAdminRedemptions(filters?: {
+    vendorId?: string;
+    dealId?: string;
+    userId?: string;
+    status?: string;
+    startDate?: Date;
+    endDate?: Date;
+    isPremium?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ 
+    redemptions: Array<DealRedemption & { 
+      dealTitle?: string;
+      vendorName?: string;
+      userName?: string;
+      userEmail?: string;
+      isPremiumDeal?: boolean;
+    }>;
+    total: number;
+  }> {
+    const conditions: any[] = [];
+    
+    if (filters?.vendorId) {
+      conditions.push(eq(dealRedemptions.vendorId, filters.vendorId));
+    }
+    if (filters?.dealId) {
+      conditions.push(eq(dealRedemptions.dealId, filters.dealId));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(dealRedemptions.userId, filters.userId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(dealRedemptions.status, filters.status));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(dealRedemptions.redeemedAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(dealRedemptions.redeemedAt, filters.endDate));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const limit = filters?.limit || 50;
+    const offset = filters?.offset || 0;
+
+    // Get redemptions with joins
+    const redemptionsQuery = db
+      .select({
+        redemption: dealRedemptions,
+        dealTitle: deals.title,
+        dealTier: deals.tier,
+        dealIsPassLocked: deals.isPassLocked,
+        vendorName: vendors.businessName,
+        userName: users.username,
+        userEmail: users.email,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+      })
+      .from(dealRedemptions)
+      .leftJoin(deals, eq(dealRedemptions.dealId, deals.id))
+      .leftJoin(vendors, eq(dealRedemptions.vendorId, vendors.id))
+      .leftJoin(users, eq(dealRedemptions.userId, users.id));
+
+    let query = whereClause ? redemptionsQuery.where(whereClause) : redemptionsQuery;
+    
+    // Filter by premium if specified
+    if (filters?.isPremium !== undefined) {
+      if (filters.isPremium) {
+        query = query.where(or(
+          eq(deals.tier, 'member'),
+          eq(deals.tier, 'premium'),
+          eq(deals.isPassLocked, true)
+        ) as any);
+      } else {
+        query = query.where(and(
+          or(eq(deals.tier, 'standard'), eq(deals.tier, 'free'), isNull(deals.tier)),
+          or(eq(deals.isPassLocked, false), isNull(deals.isPassLocked))
+        ) as any);
+      }
+    }
+
+    const redemptionsResult = await query
+      .orderBy(desc(dealRedemptions.redeemedAt))
+      .limit(limit)
+      .offset(offset);
+
+    // Get total count
+    const countQuery = db.select({ count: sql<number>`count(*)::int` }).from(dealRedemptions);
+    const countResult = whereClause 
+      ? await countQuery.where(whereClause)
+      : await countQuery;
+    const total = countResult[0]?.count || 0;
+
+    // Map results
+    const redemptions = redemptionsResult.map(row => ({
+      ...row.redemption,
+      dealTitle: row.dealTitle || undefined,
+      vendorName: row.vendorName || undefined,
+      userName: row.userFirstName && row.userLastName 
+        ? `${row.userFirstName} ${row.userLastName}` 
+        : row.userName || undefined,
+      userEmail: row.userEmail || undefined,
+      isPremiumDeal: row.dealTier === 'member' || row.dealTier === 'premium' || row.dealIsPassLocked === true,
+    }));
+
+    return { redemptions, total };
+  }
+
+  async getRedemptionById(id: string): Promise<DealRedemption | undefined> {
+    const result = await db.select().from(dealRedemptions).where(eq(dealRedemptions.id, id));
+    return result[0];
+  }
+
+  async adminVoidRedemption(id: string, reason: string): Promise<DealRedemption | undefined> {
+    const result = await db.update(dealRedemptions)
+      .set({ 
+        status: 'voided',
+        voidedAt: new Date(),
+        voidReason: reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(dealRedemptions.id, id))
+      .returning();
+    return result[0];
   }
 }
 
