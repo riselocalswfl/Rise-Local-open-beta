@@ -198,8 +198,8 @@ function DealManagement() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingDeal, setEditingDeal] = useState<AdminDeal | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [tierFilter, setTierFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("_all");
+  const [tierFilter, setTierFilter] = useState<string>("_all");
   const [searchTerm, setSearchTerm] = useState("");
   const [dealForm, setDealForm] = useState({
     title: "",
@@ -405,9 +405,9 @@ function DealManagement() {
   const draftDeals = deals.filter(d => d.status === "draft");
   const pausedDeals = deals.filter(d => d.status === "paused");
 
-  // Apply filters
+  // Apply filters (treat "_all" as no filter)
   const filteredDeals = deals.filter(deal => {
-    if (statusFilter && deal.status !== statusFilter) return false;
+    if (statusFilter && statusFilter !== "_all" && deal.status !== statusFilter) return false;
     if (tierFilter === "member" && deal.tier !== "member" && deal.tier !== "premium") return false;
     if (tierFilter === "standard" && (deal.tier === "member" || deal.tier === "premium")) return false;
     if (searchTerm) {
@@ -886,8 +886,8 @@ function DealManagement() {
 function RedemptionManagement() {
   const { toast } = useToast();
   const [filters, setFilters] = useState({
-    status: '',
-    isPremium: '',
+    status: '_all',
+    isPremium: '_all',
     startDate: '',
     endDate: '',
   });
@@ -901,8 +901,8 @@ function RedemptionManagement() {
     const params = new URLSearchParams();
     params.set('limit', String(pageSize));
     params.set('offset', String(page * pageSize));
-    if (filters.status) params.set('status', filters.status);
-    if (filters.isPremium) params.set('isPremium', filters.isPremium);
+    if (filters.status && filters.status !== '_all') params.set('status', filters.status);
+    if (filters.isPremium && filters.isPremium !== '_all') params.set('isPremium', filters.isPremium);
     if (filters.startDate) params.set('startDate', filters.startDate);
     if (filters.endDate) params.set('endDate', filters.endDate);
     return params.toString();
@@ -936,8 +936,8 @@ function RedemptionManagement() {
 
   const handleExport = () => {
     const params = new URLSearchParams();
-    if (filters.status) params.set('status', filters.status);
-    if (filters.isPremium) params.set('isPremium', filters.isPremium);
+    if (filters.status && filters.status !== '_all') params.set('status', filters.status);
+    if (filters.isPremium && filters.isPremium !== '_all') params.set('isPremium', filters.isPremium);
     if (filters.startDate) params.set('startDate', filters.startDate);
     if (filters.endDate) params.set('endDate', filters.endDate);
     window.open(`/api/admin/redemptions/export?${params.toString()}`, '_blank');
@@ -1123,8 +1123,8 @@ function RedemptionManagement() {
 
 function AuditLogViewer() {
   const [filters, setFilters] = useState({
-    actionType: '',
-    entityType: '',
+    actionType: '_all',
+    entityType: '_all',
     startDate: '',
     endDate: '',
   });
@@ -1135,8 +1135,8 @@ function AuditLogViewer() {
     const params = new URLSearchParams();
     params.set('limit', String(pageSize));
     params.set('offset', String(page * pageSize));
-    if (filters.actionType) params.set('actionType', filters.actionType);
-    if (filters.entityType) params.set('entityType', filters.entityType);
+    if (filters.actionType && filters.actionType !== '_all') params.set('actionType', filters.actionType);
+    if (filters.entityType && filters.entityType !== '_all') params.set('entityType', filters.entityType);
     if (filters.startDate) params.set('startDate', filters.startDate);
     if (filters.endDate) params.set('endDate', filters.endDate);
     return params.toString();
