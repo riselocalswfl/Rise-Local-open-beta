@@ -1,0 +1,95 @@
+You are working inside my existing Rise Local Replit project. Build me a production-ready, comprehensive ADMIN DASHBOARD.
+
+GOALS (must have)
+1) Deal Management (full CRUD)
+- View all deals in a table with search + filters (vendor, category, status, premium/pass-only, created date, expiry date).
+- Create new deals, edit existing deals, archive/unarchive, duplicate a deal.
+- Fields to support: title, description, fine print, vendorId, category/tags, isPremium/passOnly, redemptionType (in-store/show screen vs online/code), couponCode (if online), startDate, endDate/expiry, usageLimit (global + per user), active flag, image, terms, createdAt/updatedAt.
+- Make the edit flow fast (inline edit OR edit drawer/modal).
+
+2) Redemption Analytics + Logs (the most important)
+- A “Redemptions” page that shows a log of every redemption:
+  columns: redeemedAt (timestamp), userId + user name/email if available, dealId + deal title, vendorId + vendor name, redemption method, status (redeemed/voided/refunded), and metadata (e.g., device/app version if we have it).
+- Filters: date range, vendor, deal, user, premium vs free user, and status.
+- Sorting newest → oldest by default.
+- Pagination (server-side) so it stays fast.
+- Click into a redemption row to see details (who, what, when, where, any notes).
+- Export: CSV download of filtered results.
+
+3) Admin Controls for Membership / Pass Access
+- A “Users” admin view:
+  search user by email/name/id
+  show membership/pass status (active/inactive), start/end, Stripe customer/subscription ids if present
+  allow manual override toggle (set pass member true/false) with a required reason note (for audit logging)
+
+4) Audit Trail (admin accountability)
+- Every admin action must be logged (deal created/edited/archived, membership override, redemption void, etc.)
+- Log fields: adminUserId, actionType, entityType, entityId, before/after (JSON), timestamp, ip/userAgent if available.
+
+SECURITY (required)
+- Only admins can access /admin routes and /api/admin/* endpoints.
+- Use the existing auth system in the app. If there is no admin role yet, implement:
+  - A DB field or table that marks a user as admin (e.g., users.isAdmin boolean) OR an admin_users table.
+  - A server middleware guard: requireAuth + requireAdmin.
+- Never expose admin endpoints to non-admins.
+
+IMPLEMENTATION STEPS (do these in order)
+A) First, scan the repo and identify:
+- current database schema (Drizzle/Postgres)
+- existing tables for users, deals, vendors, and any redemption/coupon logic
+- existing routes/endpoints and UI framework (React + router)
+Summarize what exists, then implement with minimal disruption.
+
+B) Database
+If a redemption log table does not exist, create one (ex: deal_redemptions):
+- id (uuid)
+- dealId (fk)
+- vendorId (fk)
+- userId (fk nullable if guest)
+- redeemedAt (timestamp)
+- status (redeemed | voided)
+- redemptionMethod (in_store | online)
+- metadata (jsonb)
+Also create admin_audit_log table if missing.
+
+C) Backend API
+Create REST endpoints under /api/admin:
+- GET /api/admin/deals (with query params for filters, pagination)
+- POST /api/admin/deals
+- PATCH /api/admin/deals/:id
+- POST /api/admin/deals/:id/duplicate
+- PATCH /api/admin/deals/:id/archive (or active toggle)
+- GET /api/admin/redemptions (filters + pagination)
+- POST /api/admin/redemptions/:id/void (requires reason, logs audit)
+- GET /api/admin/users (search)
+- PATCH /api/admin/users/:id/membership (manual override with reason)
+All endpoints must validate input and return clear errors.
+
+D) Frontend Admin UI
+Create /admin with a clean layout + nav tabs:
+- Overview (KPIs: total redemptions today/7d/30d, top deals, top vendors, active pass members vs free)
+- Deals
+- Redemptions
+- Users
+- Audit Log
+Use the existing component library (shadcn/ui etc) and styling conventions already in the app.
+Make it mobile-friendly.
+
+E) Performance & Quality
+- Use server-side pagination for tables.
+- Index redemption table on redeemedAt, dealId, vendorId, userId.
+- Add loading/empty/error states.
+- Make sure “Redeem” actions in the consumer app write into deal_redemptions consistently (if current flow does not, update it so it does).
+
+ACCEPTANCE CHECKLIST
+- I can edit any deal and see changes reflected in the consumer app.
+- Every redemption creates a row in the redemption log with correct timestamp and links to user/deal/vendor.
+- I can filter redemptions by vendor + date range and export CSV.
+- Non-admin users cannot access /admin or /api/admin endpoints.
+- Every admin action writes to admin_audit_log with before/after and reason where required.
+
+IMPORTANT CONSTRAINTS
+- Do not break existing production flows.
+- Reuse existing patterns in this repo (auth, db access, routing, components).
+- If you need to add new files, keep them organized (e.g., server/routes/admin.ts, client/pages/admin/*).
+Proceed to implement now.
