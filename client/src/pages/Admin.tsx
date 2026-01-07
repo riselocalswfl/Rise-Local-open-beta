@@ -11,12 +11,74 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, Component, ErrorInfo, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class AdminErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[Admin Error Boundary] Caught error:', error);
+    console.error('[Admin Error Boundary] Error info:', errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Header />
+          <div className="h-16" aria-hidden="true" />
+          <main className="max-w-4xl mx-auto px-4 py-8">
+            <Card className="border-destructive">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  Admin Dashboard Error
+                </CardTitle>
+                <CardDescription>
+                  Something went wrong while loading the admin dashboard
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-sm">
+                  <strong>Error:</strong> {this.state.error?.message || 'Unknown error'}
+                </div>
+                <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-48">
+                  {this.state.error?.stack || 'No stack trace available'}
+                </pre>
+                <Button onClick={() => window.location.reload()}>
+                  Reload Page
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 interface OrphanedSubscription {
   subscriptionId: string;
@@ -1685,7 +1747,7 @@ function SubscriptionReconciliation() {
   );
 }
 
-export default function Admin() {
+function AdminContent() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
 
@@ -2159,5 +2221,13 @@ export default function Admin() {
         </Card>
       </main>
     </div>
+  );
+}
+
+export default function Admin() {
+  return (
+    <AdminErrorBoundary>
+      <AdminContent />
+    </AdminErrorBoundary>
   );
 }
