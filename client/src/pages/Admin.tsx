@@ -429,7 +429,7 @@ function DealManagement() {
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All ({deals.length})</SelectItem>
+                <SelectItem value="_all">All ({deals.length})</SelectItem>
                 <SelectItem value="published">Published ({publishedDeals.length})</SelectItem>
                 <SelectItem value="draft">Draft ({draftDeals.length})</SelectItem>
                 <SelectItem value="paused">Paused ({pausedDeals.length})</SelectItem>
@@ -443,7 +443,7 @@ function DealManagement() {
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="_all">All</SelectItem>
                 <SelectItem value="member">Premium Only</SelectItem>
                 <SelectItem value="standard">Free</SelectItem>
               </SelectContent>
@@ -955,7 +955,7 @@ function RedemptionManagement() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="_all">All</SelectItem>
               <SelectItem value="redeemed">Redeemed</SelectItem>
               <SelectItem value="voided">Voided</SelectItem>
             </SelectContent>
@@ -968,7 +968,7 @@ function RedemptionManagement() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="_all">All</SelectItem>
               <SelectItem value="true">Premium</SelectItem>
               <SelectItem value="false">Free</SelectItem>
             </SelectContent>
@@ -1167,7 +1167,7 @@ function AuditLogViewer() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Actions</SelectItem>
+              <SelectItem value="_all">All Actions</SelectItem>
               <SelectItem value="deal_create">Deal Create</SelectItem>
               <SelectItem value="deal_update">Deal Update</SelectItem>
               <SelectItem value="deal_delete">Deal Delete</SelectItem>
@@ -1185,7 +1185,7 @@ function AuditLogViewer() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="_all">All</SelectItem>
               <SelectItem value="deal">Deal</SelectItem>
               <SelectItem value="redemption">Redemption</SelectItem>
               <SelectItem value="user">User</SelectItem>
