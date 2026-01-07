@@ -133,7 +133,12 @@ const DEAL_CITIES = ["Fort Myers", "Cape Coral", "Bonita Springs", "Estero", "Na
 function DealManagement() {
   const { toast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState<AdminDeal | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [tierFilter, setTierFilter] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [dealForm, setDealForm] = useState({
     title: "",
     description: "",
@@ -194,6 +199,91 @@ function DealManagement() {
     },
   });
 
+  const updateDealMutation = useMutation({
+    mutationFn: async ({ dealId, data }: { dealId: string; data: any }) => {
+      return await apiRequest("PATCH", `/api/admin/deals/${dealId}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "Deal Updated", description: "The deal has been updated successfully." });
+      setEditDialogOpen(false);
+      setEditingDeal(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Update Deal",
+        description: error.message || "An error occurred.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const duplicateDealMutation = useMutation({
+    mutationFn: async (dealId: string) => {
+      return await apiRequest("POST", `/api/admin/deals/${dealId}/duplicate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "Deal Duplicated", description: "A copy of the deal has been created." });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Duplicate Deal",
+        description: error.message || "An error occurred.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditDeal = (deal: AdminDeal) => {
+    setEditingDeal(deal);
+    setDealForm({
+      title: deal.title,
+      description: deal.description || "",
+      finePrint: deal.finePrint || "",
+      category: deal.category || "",
+      city: deal.vendorCity || "Fort Myers",
+      discountType: (deal.discountType as "percent" | "dollar" | "bogo" | "free_item") || "percent",
+      discountValue: deal.discountValue?.toString() || "",
+      discountCode: deal.discountCode || "",
+      tier: deal.tier === "member" || deal.tier === "premium" ? "member" : "standard",
+      isActive: deal.isActive,
+      status: deal.status as "draft" | "published" | "paused" | "expired",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDeal) return;
+    if (!dealForm.title || !dealForm.description) {
+      toast({ title: "Missing Fields", description: "Title and description are required.", variant: "destructive" });
+      return;
+    }
+
+    const discountValue = (dealForm.discountType === "bogo" || dealForm.discountType === "free_item")
+      ? undefined
+      : dealForm.discountValue ? parseFloat(dealForm.discountValue) : undefined;
+
+    const updateData = {
+      title: dealForm.title,
+      description: dealForm.description,
+      finePrint: dealForm.finePrint || undefined,
+      category: dealForm.category || undefined,
+      discountType: dealForm.discountType,
+      discountValue,
+      discountCode: dealForm.discountCode || undefined,
+      tier: dealForm.tier,
+      isActive: dealForm.isActive,
+      status: dealForm.status,
+      isPassLocked: dealForm.tier === "member",
+    };
+
+    updateDealMutation.mutate({ dealId: editingDeal.id, data: updateData });
+  };
+
   const resetForm = () => {
     setSelectedVendorId("");
     setDealForm({
@@ -253,13 +343,60 @@ function DealManagement() {
   const draftDeals = deals.filter(d => d.status === "draft");
   const pausedDeals = deals.filter(d => d.status === "paused");
 
+  // Apply filters
+  const filteredDeals = deals.filter(deal => {
+    if (statusFilter && deal.status !== statusFilter) return false;
+    if (tierFilter === "member" && deal.tier !== "member" && deal.tier !== "premium") return false;
+    if (tierFilter === "standard" && (deal.tier === "member" || deal.tier === "premium")) return false;
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      if (!deal.title.toLowerCase().includes(search) && 
+          !deal.vendorName?.toLowerCase().includes(search)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {publishedDeals.length} published, {draftDeals.length} drafts, {pausedDeals.length} paused
-          </p>
+      <div className="flex flex-wrap items-end gap-3 justify-between">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="space-y-1">
+            <Label className="text-xs">Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-32" data-testid="select-deal-status-filter">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All ({deals.length})</SelectItem>
+                <SelectItem value="published">Published ({publishedDeals.length})</SelectItem>
+                <SelectItem value="draft">Draft ({draftDeals.length})</SelectItem>
+                <SelectItem value="paused">Paused ({pausedDeals.length})</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Tier</Label>
+            <Select value={tierFilter} onValueChange={setTierFilter}>
+              <SelectTrigger className="w-32" data-testid="select-deal-tier-filter">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All</SelectItem>
+                <SelectItem value="member">Premium Only</SelectItem>
+                <SelectItem value="standard">Free</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Search</Label>
+            <Input
+              placeholder="Title or business..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-48"
+              data-testid="input-deal-search"
+            />
+          </div>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)} data-testid="button-create-deal-admin">
           <Plus className="w-4 h-4 mr-2" />
@@ -273,13 +410,13 @@ function DealManagement() {
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
-      ) : deals.length === 0 ? (
+      ) : filteredDeals.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground" data-testid="text-no-deals">
-          No deals found. Create your first deal above.
+          {deals.length === 0 ? "No deals found. Create your first deal above." : "No deals match your filters."}
         </div>
       ) : (
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {deals.slice(0, 20).map((deal) => (
+        <div className="space-y-2 max-h-[500px] overflow-y-auto">
+          {filteredDeals.map((deal) => (
             <div
               key={deal.id}
               className="flex items-center justify-between p-3 border rounded-lg hover-elevate"
@@ -291,7 +428,7 @@ function DealManagement() {
                   <Badge variant={deal.status === "published" ? "default" : deal.status === "paused" ? "secondary" : "outline"}>
                     {deal.status}
                   </Badge>
-                  {deal.tier === "member" && (
+                  {(deal.tier === "member" || deal.tier === "premium") && (
                     <Badge variant="secondary" className="text-xs">Pass Only</Badge>
                   )}
                 </div>
@@ -299,13 +436,33 @@ function DealManagement() {
                   {deal.vendorName} • {deal.vendorCity}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleEditDeal(deal)}
+                  data-testid={`button-edit-deal-${deal.id}`}
+                  title="Edit deal"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => duplicateDealMutation.mutate(deal.id)}
+                  disabled={duplicateDealMutation.isPending}
+                  data-testid={`button-duplicate-deal-${deal.id}`}
+                  title="Duplicate deal"
+                >
+                  <Download className="w-4 h-4 rotate-180" />
+                </Button>
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={() => deleteDealMutation.mutate(deal.id)}
                   disabled={deleteDealMutation.isPending}
                   data-testid={`button-delete-deal-${deal.id}`}
+                  title="Delete deal"
                 >
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
@@ -511,6 +668,150 @@ function DealManagement() {
               </Button>
               <Button type="submit" disabled={createDealMutation.isPending} data-testid="button-submit-admin-deal">
                 {createDealMutation.isPending ? "Creating..." : "Create Deal"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Deal Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditingDeal(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Deal</DialogTitle>
+            <DialogDescription>
+              Update deal details for {editingDeal?.vendorName}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Deal Title *</Label>
+              <Input
+                value={dealForm.title}
+                onChange={(e) => setDealForm({ ...dealForm, title: e.target.value })}
+                placeholder="e.g., Buy One Get One Free"
+                data-testid="input-edit-deal-title"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <Textarea
+                value={dealForm.description}
+                onChange={(e) => setDealForm({ ...dealForm, description: e.target.value })}
+                placeholder="Describe the deal..."
+                rows={3}
+                data-testid="input-edit-deal-description"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Discount Type</Label>
+                <Select
+                  value={dealForm.discountType}
+                  onValueChange={(v: "percent" | "dollar" | "bogo" | "free_item") => setDealForm({ ...dealForm, discountType: v })}
+                >
+                  <SelectTrigger data-testid="select-edit-discount-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">Percent Off</SelectItem>
+                    <SelectItem value="dollar">Dollar Off</SelectItem>
+                    <SelectItem value="bogo">BOGO</SelectItem>
+                    <SelectItem value="free_item">Free Item</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(dealForm.discountType === "percent" || dealForm.discountType === "dollar") && (
+                <div className="space-y-2">
+                  <Label>Discount Value</Label>
+                  <Input
+                    type="number"
+                    value={dealForm.discountValue}
+                    onChange={(e) => setDealForm({ ...dealForm, discountValue: e.target.value })}
+                    placeholder={dealForm.discountType === "percent" ? "e.g., 20" : "e.g., 5"}
+                    data-testid="input-edit-discount-value"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Discount Code (optional)</Label>
+              <Input
+                value={dealForm.discountCode}
+                onChange={(e) => setDealForm({ ...dealForm, discountCode: e.target.value })}
+                placeholder="e.g., SAVE20"
+                data-testid="input-edit-discount-code"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fine Print (optional)</Label>
+              <Textarea
+                value={dealForm.finePrint}
+                onChange={(e) => setDealForm({ ...dealForm, finePrint: e.target.value })}
+                placeholder="Terms and conditions..."
+                rows={2}
+                data-testid="input-edit-fine-print"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tier</Label>
+                <Select
+                  value={dealForm.tier}
+                  onValueChange={(v: "standard" | "member") => setDealForm({ ...dealForm, tier: v })}
+                >
+                  <SelectTrigger data-testid="select-edit-deal-tier">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard (Free)</SelectItem>
+                    <SelectItem value="member">Member Only (Pass Required)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={dealForm.status}
+                  onValueChange={(v: "draft" | "published" | "paused" | "expired") => setDealForm({ ...dealForm, status: v })}
+                >
+                  <SelectTrigger data-testid="select-edit-deal-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <div>
+                <Label>Active</Label>
+                <p className="text-sm text-muted-foreground">Make this deal visible</p>
+              </div>
+              <Switch
+                checked={dealForm.isActive}
+                onCheckedChange={(checked) => setDealForm({ ...dealForm, isActive: checked })}
+                data-testid="switch-edit-deal-active"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setEditingDeal(null); }}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateDealMutation.isPending} data-testid="button-save-edit-deal">
+                {updateDealMutation.isPending ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>
