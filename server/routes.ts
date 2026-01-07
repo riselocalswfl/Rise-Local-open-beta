@@ -1051,6 +1051,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deal = await storage.createDeal(validatedData);
       
       console.log("[ADMIN] Deal created:", deal.id, "for vendor:", vendor.businessName, "by admin:", user.email);
+      
+      // Create audit log entry
+      await storage.createAdminAuditLog({
+        adminUserId: userId,
+        adminEmail: user.email,
+        actionType: 'deal_create',
+        entityType: 'deal',
+        entityId: deal.id,
+        entityName: deal.title,
+        newState: { deal },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
       res.status(201).json(deal);
     } catch (error) {
       console.error("Error creating deal (admin):", error);
@@ -1126,6 +1140,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedDeal = await storage.updateDeal(dealId, updateData);
       console.log("[ADMIN] Deal updated:", dealId, "by admin:", user.email);
+      
+      // Create audit log entry
+      await storage.createAdminAuditLog({
+        adminUserId: userId,
+        adminEmail: user.email,
+        actionType: 'deal_update',
+        entityType: 'deal',
+        entityId: dealId,
+        entityName: existingDeal.title,
+        previousState: { deal: existingDeal },
+        newState: { deal: updatedDeal },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
       res.json(updatedDeal);
     } catch (error) {
       console.error("Error updating deal (admin):", error);
@@ -1154,10 +1183,248 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Soft delete by setting deletedAt
       await storage.updateDeal(dealId, { deletedAt: new Date() });
       console.log("[ADMIN] Deal deleted:", dealId, "by admin:", user.email);
+      
+      // Create audit log entry
+      await storage.createAdminAuditLog({
+        adminUserId: userId,
+        adminEmail: user.email,
+        actionType: 'deal_delete',
+        entityType: 'deal',
+        entityId: dealId,
+        entityName: existingDeal.title,
+        previousState: { deal: existingDeal },
+        newState: { deletedAt: new Date().toISOString() },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting deal (admin):", error);
       res.status(500).json({ error: "Failed to delete deal" });
+    }
+  });
+
+  // POST /api/admin/deals/:id/duplicate - Duplicate a deal (admin only)
+  app.post("/api/admin/deals/:id/duplicate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const dealId = req.params.id;
+      const existingDeal = await storage.getDealById(dealId);
+      if (!existingDeal) {
+        return res.status(404).json({ error: "Deal not found" });
+      }
+
+      // Create a duplicate with modified title
+      const { id, createdAt, updatedAt, deletedAt, ...dealData } = existingDeal;
+      const duplicateDeal = await storage.createDeal({
+        ...dealData,
+        title: `${existingDeal.title} (Copy)`,
+        status: 'draft', // Start as draft
+      });
+
+      console.log("[ADMIN] Deal duplicated:", dealId, "-> new ID:", duplicateDeal.id, "by admin:", user.email);
+      
+      // Create audit log entry
+      await storage.createAdminAuditLog({
+        adminUserId: userId,
+        adminEmail: user.email,
+        actionType: 'deal_duplicate',
+        entityType: 'deal',
+        entityId: duplicateDeal.id,
+        entityName: duplicateDeal.title,
+        previousState: { sourceDealId: dealId },
+        newState: { deal: duplicateDeal },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+
+      res.json(duplicateDeal);
+    } catch (error) {
+      console.error("Error duplicating deal (admin):", error);
+      res.status(500).json({ error: "Failed to duplicate deal" });
+    }
+  });
+
+  // ===== ADMIN REDEMPTION ENDPOINTS =====
+
+  // GET /api/admin/redemptions - Get all redemptions with filters and pagination (admin only)
+  app.get("/api/admin/redemptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      // Parse query parameters
+      const filters: any = {
+        limit: req.query.limit ? parseInt(req.query.limit) : 50,
+        offset: req.query.offset ? parseInt(req.query.offset) : 0,
+      };
+      
+      if (req.query.vendorId) filters.vendorId = req.query.vendorId;
+      if (req.query.dealId) filters.dealId = req.query.dealId;
+      if (req.query.userId) filters.userId = req.query.userId;
+      if (req.query.status) filters.status = req.query.status;
+      if (req.query.startDate) filters.startDate = new Date(req.query.startDate);
+      if (req.query.endDate) filters.endDate = new Date(req.query.endDate);
+      if (req.query.isPremium !== undefined) filters.isPremium = req.query.isPremium === 'true';
+
+      const result = await storage.getAdminRedemptions(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching admin redemptions:", error);
+      res.status(500).json({ error: "Failed to fetch redemptions" });
+    }
+  });
+
+  // POST /api/admin/redemptions/:id/void - Void a redemption (admin only)
+  app.post("/api/admin/redemptions/:id/void", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      if (!reason || reason.trim().length < 5) {
+        return res.status(400).json({ error: "A reason is required (minimum 5 characters)" });
+      }
+
+      // Get the existing redemption
+      const existingRedemption = await storage.getRedemptionById(id);
+      if (!existingRedemption) {
+        return res.status(404).json({ error: "Redemption not found" });
+      }
+
+      if (existingRedemption.status === 'voided') {
+        return res.status(400).json({ error: "Redemption is already voided" });
+      }
+
+      // Void the redemption
+      const voidedRedemption = await storage.adminVoidRedemption(id, reason);
+
+      console.log("[ADMIN] Redemption voided:", id, "reason:", reason, "by admin:", user.email);
+
+      // Create audit log entry
+      await storage.createAdminAuditLog({
+        adminUserId: userId,
+        adminEmail: user.email,
+        actionType: 'redemption_void',
+        entityType: 'redemption',
+        entityId: id,
+        previousState: { redemption: existingRedemption },
+        newState: { redemption: voidedRedemption },
+        reason: reason,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+
+      res.json({ success: true, redemption: voidedRedemption });
+    } catch (error) {
+      console.error("Error voiding redemption (admin):", error);
+      res.status(500).json({ error: "Failed to void redemption" });
+    }
+  });
+
+  // GET /api/admin/redemptions/export - Export redemptions as CSV (admin only)
+  app.get("/api/admin/redemptions/export", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      // Parse query parameters (no pagination for export)
+      const filters: any = { limit: 10000 };
+      if (req.query.vendorId) filters.vendorId = req.query.vendorId;
+      if (req.query.dealId) filters.dealId = req.query.dealId;
+      if (req.query.userId) filters.userId = req.query.userId;
+      if (req.query.status) filters.status = req.query.status;
+      if (req.query.startDate) filters.startDate = new Date(req.query.startDate);
+      if (req.query.endDate) filters.endDate = new Date(req.query.endDate);
+      if (req.query.isPremium !== undefined) filters.isPremium = req.query.isPremium === 'true';
+
+      const { redemptions } = await storage.getAdminRedemptions(filters);
+
+      // Build CSV
+      const headers = ['ID', 'Deal Title', 'Vendor', 'User Name', 'User Email', 'Status', 'Redeemed At', 'Premium Deal'];
+      const csvRows = [headers.join(',')];
+      
+      for (const r of redemptions) {
+        const row = [
+          r.id,
+          `"${(r.dealTitle || '').replace(/"/g, '""')}"`,
+          `"${(r.vendorName || '').replace(/"/g, '""')}"`,
+          `"${(r.userName || '').replace(/"/g, '""')}"`,
+          r.userEmail || '',
+          r.status,
+          r.redeemedAt ? new Date(r.redeemedAt).toISOString() : '',
+          r.isPremiumDeal ? 'Yes' : 'No',
+        ];
+        csvRows.push(row.join(','));
+      }
+
+      const csv = csvRows.join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="redemptions_${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting redemptions (admin):", error);
+      res.status(500).json({ error: "Failed to export redemptions" });
+    }
+  });
+
+  // ===== ADMIN AUDIT LOG ENDPOINTS =====
+
+  // GET /api/admin/audit-logs - Get audit logs with filters and pagination (admin only)
+  app.get("/api/admin/audit-logs", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      const isAdmin = user?.isAdmin === true || user?.role === 'admin';
+      if (!user || !isAdmin) {
+        return res.status(403).json({ error: "Unauthorized - Admin access required" });
+      }
+
+      // Parse query parameters
+      const filters: any = {
+        limit: req.query.limit ? parseInt(req.query.limit) : 50,
+        offset: req.query.offset ? parseInt(req.query.offset) : 0,
+      };
+      
+      if (req.query.adminUserId) filters.adminUserId = req.query.adminUserId;
+      if (req.query.actionType) filters.actionType = req.query.actionType;
+      if (req.query.entityType) filters.entityType = req.query.entityType;
+      if (req.query.entityId) filters.entityId = req.query.entityId;
+      if (req.query.startDate) filters.startDate = new Date(req.query.startDate);
+      if (req.query.endDate) filters.endDate = new Date(req.query.endDate);
+
+      const result = await storage.getAdminAuditLogs(filters);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching admin audit logs:", error);
+      res.status(500).json({ error: "Failed to fetch audit logs" });
     }
   });
 
@@ -1305,6 +1572,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`[Admin] ${isPassMember ? 'Granted' : 'Revoked'} Pass for user ${userId} by admin ${adminUserId}`);
+      
+      // Create audit log entry
+      await storage.createAdminAuditLog({
+        adminUserId: adminUserId,
+        adminEmail: adminUser.email,
+        actionType: isPassMember ? 'membership_grant' : 'membership_revoke',
+        entityType: 'user',
+        entityId: userId,
+        entityName: targetUser.email,
+        previousState: { 
+          isPassMember: targetUser.isPassMember, 
+          passExpiresAt: targetUser.passExpiresAt,
+          membershipPlan: targetUser.membershipPlan,
+        },
+        newState: { 
+          isPassMember: isPassMember, 
+          passExpiresAt: expirationDate,
+          membershipPlan: isPassMember ? 'admin_manual_grant' : null,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
       
       res.json({ 
         success: true, 
