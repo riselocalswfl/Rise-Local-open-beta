@@ -82,11 +82,26 @@ export default function Auth() {
               </Button>
             </div>
 
-            <p className="text-sm text-white/80 pt-4 drop-shadow">
-              Join local shops, restaurants & service providers
-            </p>
+            <div className="pt-6">
+              <p className="text-sm text-white/80">
+                Already have an account?{" "}
+                <button
+                  onClick={() => {
+                    const returnTo = sessionStorage.getItem("returnTo");
+                    const url = returnTo 
+                      ? `/api/login?returnTo=${encodeURIComponent(returnTo)}`
+                      : "/api/login";
+                    window.location.href = url;
+                  }}
+                  className="text-white font-semibold underline underline-offset-2 hover:text-white/90"
+                  data-testid="button-sign-in"
+                >
+                  Sign in
+                </button>
+              </p>
+            </div>
 
-            <div className="flex justify-center gap-4 pt-2">
+            <div className="flex justify-center gap-4 pt-4">
               <Link href="/privacy">
                 <span className="text-xs text-white/60 hover:text-white/90 underline" data-testid="link-privacy">
                   Privacy Policy
