@@ -35,13 +35,13 @@ export default function BusinessDashboard() {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            You don't have a business profile yet. Sign up as a vendor to create your profile.
+            You don't have a business profile yet. Complete the onboarding process to create your business profile.
           </p>
           <div className="space-y-2">
             <button
-              onClick={() => setLocation("/auth")}
+              onClick={() => setLocation("/onboarding")}
               className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover-elevate active-elevate-2"
-              data-testid="button-auth"
+              data-testid="button-create-business-profile"
             >
               Create Business Profile
             </button>
