@@ -1,0 +1,119 @@
+Based on my comprehensive scan of the schema, server routes, storage layer, and frontend queries, here's the Database + Code Audit Report:
+
+Step 1: Database Schema Inventory
+Tables Found (30 total):
+Table	Type	Purpose
+sessions	Core	Replit Auth sessions
+users	Core	User accounts, membership
+categories	Core	Business categories
+vendors	Core	Unified vendor table
+products	Legacy	E-commerce products
+events	Legacy	Community events
+eventRsvps	Legacy	Event RSVPs
+attendances	Legacy	Event attendance
+orders	Legacy	E-commerce orders
+orderItems	Legacy	Order line items
+masterOrders	Legacy	Multi-vendor orders
+vendorOrders	Legacy	Vendor-specific orders
+vendorReviews	Legacy	Vendor reviews
+vendorFAQs	Legacy	Vendor FAQs
+spotlight	Legacy	Featured vendors
+restaurants	LEGACY	Old restaurant table
+menuItems	Legacy	Restaurant menu items
+restaurantReviews	Legacy	Restaurant reviews
+restaurantFAQs	Legacy	Restaurant FAQs
+serviceProviders	LEGACY	Old service provider table
+serviceOfferings	Legacy	Service offerings
+serviceBookings	Legacy	Service bookings
+messages	Legacy	Old messaging system
+conversations	Core	B2C conversations
+conversationMessages	Core	B2C messages
+notifications	Core	In-app notifications
+emailJobs	Core	Email queue
+membershipEvents	Core	Membership audit trail
+stripeWebhookEvents	Core	Stripe idempotency
+deals	Core	Main deals system
+dealRedemptions	Core	Deal redemptions
+favorites	Core	User favorites
+reservations	Unused	Rise Local reservations
+preferredPlacements	Core	Paid advertising
+placementImpressions	Core	Ad impressions
+placementClicks	Core	Ad clicks
+adminAuditLogs	Core	Admin audit trail
+Step 2: Usage Evidence Summary
+ACTIVELY USED (Core App Features)
+Table	Evidence	Used By
+users	routes.ts (20+ endpoints), storage.ts (15+ methods)	Auth, membership, profiles
+vendors	storage.ts, routes.ts, Discover.tsx, BusinessProfile.tsx	Vendor onboarding, profiles
+deals	storage.ts, routes.ts, Discover.tsx, DealDetailPage.tsx	Deal browsing, redemption
+dealRedemptions	routes.ts, VendorRedeemScreen.tsx, Admin.tsx	Redemption tracking
+favorites	useFavorites.ts, routes.ts	User favorites
+conversations	Messages.tsx, ConversationPage.tsx, routes.ts	B2C messaging
+conversationMessages	routes.ts, storage.ts	B2C messaging
+notifications	routes.ts, NavMenu.tsx	In-app notifications
+emailJobs	emailWorker.ts, storage.ts	Email notifications
+categories	routes.ts, storage.ts, Discover.tsx	Category filtering
+membershipEvents	routes.ts (Stripe webhook)	Membership audit
+stripeWebhookEvents	routes.ts	Webhook idempotency
+preferredPlacements	routes.ts, storage.ts	Sponsored placements
+adminAuditLogs	Admin.tsx, routes.ts	Admin accountability
+sessions	replitAuth.ts	Required for auth
+LEGACY/UNUSED (E-commerce & Old Vendor Types)
+Table	Evidence	Status
+restaurants	Only in migrations, seed scripts, validate-ownership	DEPRECATED - migrated to vendors
+serviceProviders	Only in migrations, seed scripts	DEPRECATED - migrated to vendors
+products	storage.ts has methods, minimal route usage	UNUSED - e-commerce removed
+orders	storage.ts has methods, no active routes	UNUSED - e-commerce removed
+orderItems	storage.ts has methods	UNUSED
+masterOrders	storage.ts has methods	UNUSED
+vendorOrders	storage.ts has methods	UNUSED
+events	storage.ts has methods	UNUSED - events feature disabled
+eventRsvps	Only seed scripts	UNUSED
+attendances	Only storage interface	UNUSED
+menuItems	storage.ts has methods	UNUSED
+restaurantReviews	storage.ts has methods	UNUSED
+restaurantFAQs	storage.ts has methods	UNUSED
+vendorReviews	seed.ts only	UNUSED
+vendorFAQs	seed.ts only	UNUSED
+serviceOfferings	storage.ts has methods	UNUSED
+serviceBookings	storage.ts has methods	UNUSED
+spotlight	storage.ts has methods	UNUSED - replaced by preferredPlacements
+messages	Old messaging system	DEPRECATED - replaced by conversations
+reservations	storage.ts has methods	UNUSED
+Step 3: Newest System of Record
+Domain	Canonical Table/Fields
+Users/Auth	users.id, users.email, users.isAdmin, users.isVendor
+Rise Local Pass	users.isPassMember, users.passExpiresAt, users.stripeCustomerId, users.stripeSubscriptionId, users.membershipStatus
+Deals	deals.* (tier, isPassLocked, status, redemptionFrequency)
+Redemptions	dealRedemptions.status (redeemed/voided), dealRedemptions.redeemedAt
+Vendors	vendors.* (unified table with vendorType: shop/dine/service)
+Categories	categories.key, categories.label
+Messaging	conversations + conversationMessages (NOT messages)
+Step 4: Classification Lists
+✅ KEEP (24 tables)
+sessions, users, categories, vendors, deals, dealRedemptions, 
+favorites, conversations, conversationMessages, notifications, 
+emailJobs, membershipEvents, stripeWebhookEvents, preferredPlacements, 
+placementImpressions, placementClicks, adminAuditLogs
+⚠️ DEPRECATE (Keep for now, but stop writing new code against)
+restaurants       - Migrated to vendors (vendorType='dine')
+serviceProviders  - Migrated to vendors (vendorType='service')
+messages          - Replaced by conversations/conversationMessages
+spotlight         - Replaced by preferredPlacements
+Reason: These may contain legacy data but are no longer the source of truth.
+
+🗑️ SAFE TO REMOVE (After backup)
+products, orders, orderItems, masterOrders, vendorOrders
+events, eventRsvps, attendances
+menuItems, restaurantReviews, restaurantFAQs
+vendorReviews, vendorFAQs
+serviceOfferings, serviceBookings
+reservations
+Reason: E-commerce, events, reviews, and service booking features are not in the current app. No active frontend routes use them.
+
+Step 5: DB Cleanup Plan
+Would you like me to create a detailed task list for the cleanup? Here's what it would include:
+
+Code cleanup first - Remove unused storage methods, routes, and frontend pages
+Schema cleanup - Create a migration to drop unused tables
+Safety plan - Backup strategy and test checklist
