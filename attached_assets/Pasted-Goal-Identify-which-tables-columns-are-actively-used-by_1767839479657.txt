@@ -1,0 +1,54 @@
+Goal: Identify which tables/columns are actively used by the newest app code, and which are legacy/unused, then produce a “KEEP / DEPRECATE / DELETE (later)” list.
+
+Prompt:
+
+You are the senior engineer on this app. I need a database + code audit to determine what is actively used in the newest version of the app vs what is old/legacy.
+
+Rules
+	•	Do not guess. Prove usage by pointing to exact files + line numbers.
+	•	Treat “actively used” as: referenced by API routes, server queries, auth/membership logic, deal redemption flows, admin dashboards, vendor/consumer flows, checkout/webhooks, and any scheduled jobs.
+	•	Output must be based on: (1) schema/migrations, (2) Drizzle ORM usage (or raw SQL), (3) route handlers, (4) frontend queries (TanStack/fetch), (5) Stripe webhook + membership unlock.
+
+Step 1 — Inventory the DB
+	1.	Print the current DB schema (all tables + columns + relations + indexes).
+	2.	List all migrations in order and identify the newest migration that defines the current schema truth.
+	3.	Identify any duplicate/overlapping concepts (ex: old “membership/pass” tables vs newer ones, old “deals” vs “offers”, etc.).
+
+Step 2 — Find real usage in code
+For every table and column, search the entire codebase for references:
+	•	Drizzle schema references (tables/columns)
+	•	Query builder usage (select/insert/update/delete)
+	•	Raw SQL strings
+	•	API endpoints touching it
+	•	Frontend calls that depend on it
+
+Produce a report:
+	•	Table name
+	•	Actively used? (Yes/No/Unclear)
+	•	Evidence: file paths + line numbers of each usage
+	•	Used by: which features (Deals browsing, Deal redemption, Pass unlock, Vendor onboarding, Admin, Messaging, etc.)
+	•	Last meaningful write path: where it gets INSERT/UPDATE
+
+Step 3 — “Newest system of record” decisions
+For each domain, declare the newest canonical fields/tables:
+	•	Users/Auth identity mapping
+	•	Rise Local Pass status (isPassMember / membershipStatus / subscriptionId / etc.)
+	•	Deals + eligibility rules (premium vs free)
+	•	Redemptions tracking
+	•	Vendors + vendor profiles + payment method
+	•	Categories/tags/values labels
+	•	Messaging (if exists)
+
+Step 4 — Flag legacy and risk
+Create 3 lists:
+	1.	KEEP (actively used)
+	2.	DEPRECATE (not used, but keep for now) + why
+	3.	SAFE TO REMOVE (only after confirmation) + the exact code/migration removals needed
+
+Step 5 — Deliverable
+Output a final “DB Cleanup Plan” with:
+	•	What to remove from code first (dead endpoints, unused UI, unused queries)
+	•	Then what to remove from schema (new migration plan)
+	•	A safety plan: backup/export strategy + how to confirm nothing breaks (test checklist)
+
+Start now by scanning the repo for the schema definition files and the server API routes folder, then report back with your findings.
