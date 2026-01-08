@@ -126,6 +126,9 @@ export default function UnifiedOnboarding() {
     refetch: refetchCategories 
   } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Auto-save state
@@ -802,9 +805,23 @@ export default function UnifiedOnboarding() {
                       <FormItem>
                         <FormLabel>Business Category</FormLabel>
                         {categoriesLoading ? (
-                          <div className="flex items-center gap-2 min-h-12 py-3 px-4 border rounded-md bg-muted/50" data-testid="category-loading">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            <span className="text-muted-foreground text-sm">Loading categories...</span>
+                          <div className="flex items-center justify-between gap-2 min-h-12 py-3 px-4 border rounded-md bg-muted/50" data-testid="category-loading">
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              <span className="text-muted-foreground text-sm">Loading categories...</span>
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => {
+                                toast({ title: "Refreshing categories..." });
+                                refetchCategories();
+                              }}
+                              data-testid="button-refresh-categories-loading"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                            </Button>
                           </div>
                         ) : categoriesError ? (
                           <div className="flex items-center justify-between gap-2 min-h-12 py-3 px-4 border border-destructive/50 rounded-md bg-destructive/5" data-testid="category-error">
@@ -816,7 +833,10 @@ export default function UnifiedOnboarding() {
                               type="button" 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => refetchCategories()}
+                              onClick={() => {
+                                toast({ title: "Retrying..." });
+                                refetchCategories();
+                              }}
                               data-testid="button-retry-categories"
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
@@ -830,7 +850,10 @@ export default function UnifiedOnboarding() {
                               type="button" 
                               variant="outline" 
                               size="sm" 
-                              onClick={() => refetchCategories()}
+                              onClick={() => {
+                                toast({ title: "Reloading categories..." });
+                                refetchCategories();
+                              }}
                               data-testid="button-reload-categories"
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
