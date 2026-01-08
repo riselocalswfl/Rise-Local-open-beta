@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, integer, timestamp, boolean, index, jsonb, doublePrecision, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, index, jsonb, doublePrecision, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -125,45 +125,6 @@ export type PickupFulfillment = z.infer<typeof pickupFulfillmentSchema>;
 export type DeliveryFulfillment = z.infer<typeof deliveryFulfillmentSchema>;
 export type ShippingFulfillment = z.infer<typeof shippingFulfillmentSchema>;
 export type FulfillmentOptions = z.infer<typeof fulfillmentOptionsSchema>;
-
-// Fulfillment Details - Buyer-selected fulfillment information for orders
-export const pickupDetailsSchema = z.object({
-  type: z.literal("Pickup"),
-  pickupLocationId: z.string(),
-  pickupLocationName: z.string(),
-  pickupLocationAddress: z.string(),
-  pickupSlot: z.string().optional(), // e.g., "Monday 9am-5pm"
-  instructions: z.string().optional(),
-});
-
-export const deliveryDetailsSchema = z.object({
-  type: z.literal("Delivery"),
-  deliveryAddress: z.string(),
-  deliveryCity: z.string(),
-  deliveryZip: z.string(),
-  instructions: z.string().optional(),
-});
-
-export const shippingDetailsSchema = z.object({
-  type: z.literal("Ship"),
-  shippingAddress: z.string(),
-  shippingCity: z.string(),
-  shippingState: z.string(),
-  shippingZip: z.string(),
-  carrier: z.string().optional(),
-  instructions: z.string().optional(),
-});
-
-export const fulfillmentDetailsSchema = z.discriminatedUnion("type", [
-  pickupDetailsSchema,
-  deliveryDetailsSchema,
-  shippingDetailsSchema,
-]);
-
-export type PickupDetails = z.infer<typeof pickupDetailsSchema>;
-export type DeliveryDetails = z.infer<typeof deliveryDetailsSchema>;
-export type ShippingDetails = z.infer<typeof shippingDetailsSchema>;
-export type FulfillmentDetails = z.infer<typeof fulfillmentDetailsSchema>;
 
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -389,277 +350,7 @@ export const insertVendorSchema = createInsertSchema(vendors).omit({
 export type InsertVendor = z.infer<typeof insertVendorSchema>;
 export type Vendor = typeof vendors.$inferSelect;
 
-export const products = pgTable("products", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
-  name: text("name").notNull(),
-  priceCents: integer("price_cents").notNull(),
-  stock: integer("stock").notNull(),
-  description: text("description"),
-  imageUrl: text("image_url"),
-  
-  // Product Display
-  unitType: text("unit_type").default("per item"), // per lb, per dozen, per item, etc.
-  status: text("status").notNull().default("active"), // active or hidden
-  isFeatured: boolean("is_featured").notNull().default(false),
-  
-  // Sourcing & Transparency
-  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags defined by vendor
-  sourceFarm: text("source_farm"), // where product is sourced from
-  harvestDate: timestamp("harvest_date"), // when product was harvested
-  leadTimeDays: integer("lead_time_days").default(0), // days needed to prepare order
-  inventoryStatus: text("inventory_status").default("in_stock"), // "in_stock", "limited", "out_of_stock"
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertProductSchema = createInsertSchema(products).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertProduct = z.infer<typeof insertProductSchema>;
-export type Product = typeof products.$inferSelect;
-
-export const events = pgTable("events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").references(() => vendors.id),
-  restaurantId: varchar("restaurant_id").references(() => restaurants.id),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  dateTime: timestamp("date_time").notNull(),
-  location: text("location").notNull(),
-  categories: text("categories").array().default(sql`'{}'::text[]`).notNull(), // hierarchical multi-select event categories
-  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags (e.g., Free, Family-Friendly, Community)
-  ticketsAvailable: integer("tickets_available").notNull(),
-  rsvpCount: integer("rsvp_count").notNull().default(0),
-  bannerImageUrl: text("banner_image_url"),
-}, (table) => ({
-  // Check constraint: exactly one of vendorId or restaurantId must be set
-  organizerCheck: sql`CHECK ((vendor_id IS NOT NULL AND restaurant_id IS NULL) OR (vendor_id IS NULL AND restaurant_id IS NOT NULL))`
-}));
-
-export const insertEventSchema = createInsertSchema(events).omit({
-  id: true,
-  rsvpCount: true,
-}).extend({
-  // Accept ISO date strings and convert to Date objects, with validation
-  dateTime: z.union([
-    z.date(),
-    z.string().refine((str) => !isNaN(Date.parse(str)), {
-      message: "Invalid date format"
-    }).transform((str) => new Date(str))
-  ]),
-});
-
-export type InsertEvent = z.infer<typeof insertEventSchema>;
-export type Event = typeof events.$inferSelect;
-
-export const eventRsvps = pgTable("event_rsvps", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  eventId: varchar("event_id").notNull().references(() => events.id),
-  status: text("status").notNull().default("GOING"), // GOING, INTERESTED, NOT_GOING
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  // Unique constraint: one RSVP per user per event
-  uniqueUserEvent: sql`UNIQUE (user_id, event_id)`
-}));
-
-export const insertEventRsvpSchema = createInsertSchema(eventRsvps).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertEventRsvp = z.infer<typeof insertEventRsvpSchema>;
-export type EventRsvp = typeof eventRsvps.$inferSelect;
-
-export const attendances = pgTable("attendances", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  eventId: varchar("event_id").notNull().references(() => events.id),
-  checkedInAt: timestamp("checked_in_at").defaultNow(),
-}, (table) => ({
-  // Unique constraint: one attendance record per user per event
-  uniqueUserEvent: sql`UNIQUE (user_id, event_id)`
-}));
-
-export const insertAttendanceSchema = createInsertSchema(attendances).omit({
-  id: true,
-  checkedInAt: true,
-});
-
-export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
-export type Attendance = typeof attendances.$inferSelect;
-
-export const orders = pgTable("orders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
-  status: text("status").notNull().default("pending"),
-  email: text("email").notNull(),
-  name: text("name").notNull(),
-  phone: text("phone").notNull(),
-  fulfillmentType: text("fulfillment_type").notNull(), // "Pickup", "Delivery", "Ship"
-  fulfillmentDetails: jsonb("fulfillment_details"), // Method-specific details: pickup location, delivery address, etc.
-  addressJson: jsonb("address_json"), // Legacy field, can be migrated to fulfillmentDetails
-  itemsJson: jsonb("items_json").notNull(),
-  subtotalCents: integer("subtotal_cents").notNull(),
-  taxCents: integer("tax_cents").notNull(),
-  feesCents: integer("fees_cents").notNull(),
-  totalCents: integer("total_cents").notNull(),
-  paymentId: text("payment_id"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-});
-
-export const insertOrderSchema = createInsertSchema(orders).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  fulfillmentDetails: fulfillmentDetailsSchema.optional(),
-});
-
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
-export type Order = typeof orders.$inferSelect;
-
-export const orderItems = pgTable("order_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderId: varchar("order_id").notNull().references(() => orders.id),
-  productId: varchar("product_id").notNull().references(() => products.id),
-  quantity: integer("quantity").notNull(),
-  priceAtPurchase: decimal("price_at_purchase", { precision: 10, scale: 2 }).notNull(),
-});
-
-export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
-  id: true,
-});
-
-export const insertOrderItemWithoutOrderIdSchema = insertOrderItemSchema.omit({
-  orderId: true,
-});
-
-export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
-export type InsertOrderItemWithoutOrderId = z.infer<typeof insertOrderItemWithoutOrderIdSchema>;
-export type OrderItem = typeof orderItems.$inferSelect;
-
-// ===== MULTI-VENDOR CHECKOUT TABLES =====
-
-export const masterOrders = pgTable("master_orders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  buyerId: varchar("buyer_id").notNull().references(() => users.id),
-  buyerName: text("buyer_name").notNull(),
-  buyerEmail: text("buyer_email").notNull(),
-  buyerPhone: text("buyer_phone").notNull(),
-  totalCents: integer("total_cents").notNull(), // Grand total across all vendor orders
-  status: text("status").notNull().default("pending"), // pending, completed, cancelled
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-});
-
-export const insertMasterOrderSchema = createInsertSchema(masterOrders).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertMasterOrder = z.infer<typeof insertMasterOrderSchema>;
-export type MasterOrder = typeof masterOrders.$inferSelect;
-
-export const vendorOrders = pgTable("vendor_orders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  masterOrderId: varchar("master_order_id").notNull().references(() => masterOrders.id),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
-  buyerId: varchar("buyer_id").notNull().references(() => users.id),
-  buyerName: text("buyer_name").notNull(),
-  buyerEmail: text("buyer_email").notNull(),
-  buyerPhone: text("buyer_phone").notNull(),
-  
-  // Order details
-  itemsJson: jsonb("items_json").notNull(), // Cart items for this vendor
-  subtotalCents: integer("subtotal_cents").notNull(),
-  taxCents: integer("tax_cents").notNull(),
-  feesCents: integer("fees_cents").notNull(),
-  totalCents: integer("total_cents").notNull(),
-  
-  // Fulfillment
-  fulfillmentType: text("fulfillment_type").notNull(), // "Pickup", "Delivery", "Ship"
-  fulfillmentDetails: jsonb("fulfillment_details"), // Method-specific details
-  
-  // Payment
-  paymentMethod: text("payment_method"), // "stripe_connect", "venmo", "cashapp", "zelle", "paypal", "cash", "custom"
-  paymentLink: text("payment_link"), // For custom payment methods (Venmo, CashApp links, etc.)
-  stripePaymentIntentId: text("stripe_payment_intent_id"), // For Stripe Connect
-  stripeAccountId: text("stripe_account_id"), // Vendor's Stripe Connect account
-  paymentStatus: text("payment_status").notNull().default("pending"), // pending, paid, failed
-  
-  // Status
-  status: text("status").notNull().default("pending"), // pending, processing, fulfilled, cancelled
-  vendorNotified: boolean("vendor_notified").default(false),
-  
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
-});
-
-export const insertVendorOrderSchema = createInsertSchema(vendorOrders).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  fulfillmentDetails: fulfillmentDetailsSchema.optional(),
-});
-
-export type InsertVendorOrder = z.infer<typeof insertVendorOrderSchema>;
-export type VendorOrder = typeof vendorOrders.$inferSelect;
-
-export const spotlight = pgTable("spotlight", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  body: text("body").notNull(),
-  city: text("city").notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-});
-
-export const insertSpotlightSchema = createInsertSchema(spotlight).omit({
-  id: true,
-});
-
-export type InsertSpotlight = z.infer<typeof insertSpotlightSchema>;
-export type Spotlight = typeof spotlight.$inferSelect;
-
-export const vendorReviews = pgTable("vendor_reviews", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
-  authorName: text("author_name").notNull(),
-  rating: integer("rating").notNull(), // 1-5 stars
-  comment: text("comment").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertVendorReviewSchema = createInsertSchema(vendorReviews).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertVendorReview = z.infer<typeof insertVendorReviewSchema>;
-export type VendorReview = typeof vendorReviews.$inferSelect;
-
-export const vendorFAQs = pgTable("vendor_faqs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
-  question: text("question").notNull(),
-  answer: text("answer").notNull(),
-  displayOrder: integer("display_order").default(0), // for custom ordering
-});
-
-export const insertVendorFAQSchema = createInsertSchema(vendorFAQs).omit({
-  id: true,
-});
-
-export type InsertVendorFAQ = z.infer<typeof insertVendorFAQSchema>;
-export type VendorFAQ = typeof vendorFAQs.$inferSelect;
-
-// ===== RESTAURANT TABLES =====
+// ===== LEGACY RESTAURANT TABLE (kept for legacy data) =====
 
 // Reservation method enum values
 export const RESERVATION_METHODS = ["OPENTABLE", "SEVENROOMS", "RESY", "WEBSITE", "PHONE", "NONE"] as const;
@@ -756,37 +447,6 @@ export const insertRestaurantSchema = createInsertSchema(restaurants).omit({
 export type InsertRestaurant = z.infer<typeof insertRestaurantSchema>;
 export type Restaurant = typeof restaurants.$inferSelect;
 
-export const menuItems = pgTable("menu_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Links to unified vendors table
-  restaurantId: varchar("restaurant_id"), // Legacy field - kept for migration, will be deprecated
-  name: text("name").notNull(),
-  description: text("description"),
-  priceCents: integer("price_cents").notNull(),
-  category: text("category").notNull(), // Appetizers, Entrees, Desserts, Drinks, etc.
-  dietaryTags: text("dietary_tags").array().default(sql`'{}'::text[]`), // Vegan, Gluten-Free, Spicy, etc.
-  valueTags: text("value_tags").array().default(sql`'{}'::text[]`), // custom value tags (e.g., Local, Organic, Women-Owned)
-  ingredients: text("ingredients"),
-  allergens: text("allergens").array().default(sql`'{}'::text[]`),
-  imageUrl: text("image_url"),
-  isAvailable: boolean("is_available").default(true),
-  isFeatured: boolean("is_featured").default(false),
-  displayOrder: integer("display_order").default(0),
-  isLocallySourced: boolean("is_locally_sourced").default(false),
-  sourceFarm: text("source_farm"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertMenuItemSchema = createInsertSchema(menuItems).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertMenuItem = z.infer<typeof insertMenuItemSchema>;
-export type MenuItem = typeof menuItems.$inferSelect;
-
 // Services for Service Provider vendors
 export const services = pgTable("services", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -816,22 +476,7 @@ export const insertServiceSchema = createInsertSchema(services).omit({
 export type InsertService = z.infer<typeof insertServiceSchema>;
 export type Service = typeof services.$inferSelect;
 
-export const restaurantReviews = pgTable("restaurant_reviews", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  authorName: text("author_name").notNull(),
-  rating: integer("rating").notNull(), // 1-5 stars
-  comment: text("comment").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertRestaurantReviewSchema = createInsertSchema(restaurantReviews).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertRestaurantReview = z.infer<typeof insertRestaurantReviewSchema>;
-export type RestaurantReview = typeof restaurantReviews.$inferSelect;
+// ===== LEGACY SERVICE PROVIDERS TABLE (kept for legacy data) =====
 
 export const serviceProviders = pgTable("service_providers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -921,112 +566,7 @@ export const insertServiceProviderSchema = createInsertSchema(serviceProviders).
 export type InsertServiceProvider = z.infer<typeof insertServiceProviderSchema>;
 export type ServiceProvider = typeof serviceProviders.$inferSelect;
 
-export const serviceOfferings = pgTable("service_offerings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Links to unified vendors table
-  serviceProviderId: varchar("service_provider_id"), // Legacy field - kept for migration, will be deprecated
-  
-  // Offering Details
-  offeringName: text("offering_name").notNull(),
-  description: text("description").notNull(),
-  durationMinutes: integer("duration_minutes"), // estimated duration
-  
-  // Pricing
-  pricingModel: text("pricing_model").notNull(), // "fixed", "hourly", "quote"
-  fixedPriceCents: integer("fixed_price_cents"), // for fixed pricing
-  hourlyRateCents: integer("hourly_rate_cents"), // for hourly pricing
-  startingAtCents: integer("starting_at_cents"), // display price for listings
-  
-  // Details
-  tags: text("tags").array().default(sql`'{}'::text[]`),
-  requirements: text("requirements"), // what customer needs to provide/prepare
-  includes: text("includes"), // what's included in the service
-  
-  // Status
-  isActive: boolean("is_active").default(true),
-  isFeatured: boolean("is_featured").default(false),
-  displayOrder: integer("display_order").default(0),
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertServiceOfferingSchema = createInsertSchema(serviceOfferings).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertServiceOffering = z.infer<typeof insertServiceOfferingSchema>;
-export type ServiceOffering = typeof serviceOfferings.$inferSelect;
-
-export const serviceBookings = pgTable("service_bookings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  vendorId: varchar("vendor_id").notNull().references(() => vendors.id), // Links to unified vendors table
-  serviceProviderId: varchar("service_provider_id"), // Legacy field - kept for migration, will be deprecated
-  offeringId: varchar("offering_id").notNull().references(() => serviceOfferings.id),
-  
-  // Booking Details
-  status: text("status").notNull().default("requested"), // requested, confirmed, in_progress, completed, cancelled
-  requestedDate: timestamp("requested_date").notNull(), // preferred service date
-  requestedTime: text("requested_time"), // preferred time window
-  confirmedDate: timestamp("confirmed_date"), // actual confirmed date
-  confirmedTime: text("confirmed_time"),
-  
-  // Customer Info
-  customerName: text("customer_name").notNull(),
-  customerEmail: text("customer_email").notNull(),
-  customerPhone: text("customer_phone").notNull(),
-  customerAddress: text("customer_address"), // service location if different from profile
-  customerNotes: text("customer_notes"),
-  
-  // Provider Response
-  providerNotes: text("provider_notes"),
-  providerResponse: text("provider_response"), // message to customer
-  
-  // Pricing
-  quotedPriceCents: integer("quoted_price_cents"), // provider's quote
-  depositCents: integer("deposit_cents"), // deposit amount
-  totalCents: integer("total_cents"), // final total
-  
-  // Payment
-  paymentStatus: text("payment_status").default("pending"), // pending, deposit_paid, paid, refunded
-  paymentId: text("payment_id"),
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
-  cancelledAt: timestamp("cancelled_at"),
-});
-
-export const insertServiceBookingSchema = createInsertSchema(serviceBookings).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  completedAt: true,
-  cancelledAt: true,
-});
-
-export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
-export type ServiceBooking = typeof serviceBookings.$inferSelect;
-
-export const restaurantFAQs = pgTable("restaurant_faqs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  question: text("question").notNull(),
-  answer: text("answer").notNull(),
-  displayOrder: integer("display_order").default(0),
-});
-
-export const insertRestaurantFAQSchema = createInsertSchema(restaurantFAQs).omit({
-  id: true,
-});
-
-export type InsertRestaurantFAQ = z.infer<typeof insertRestaurantFAQSchema>;
-export type RestaurantFAQ = typeof restaurantFAQs.$inferSelect;
+// ===== LEGACY MESSAGES TABLE (kept for legacy data) =====
 
 // Messages - Direct messaging between users (consumers and vendors)
 export const messages = pgTable("messages", {
@@ -1193,10 +733,6 @@ export type DealStatus = typeof DEAL_STATUSES[number];
 export const DEAL_REDEMPTION_METHODS = ["time_locked_code"] as const;
 export type DealRedemptionMethod = typeof DEAL_REDEMPTION_METHODS[number];
 
-// Reservation status enum values
-export const RESERVATION_STATUSES = ["INITIATED", "BOOKED_EXTERNALLY", "CANCELLED"] as const;
-export type ReservationStatus = typeof RESERVATION_STATUSES[number];
-
 // Redemption type enum values
 export const REDEMPTION_TYPES = ["IN_PERSON"] as const;
 export type RedemptionType = typeof REDEMPTION_TYPES[number];
@@ -1360,41 +896,6 @@ export const insertFavoriteSchema = createInsertSchema(favorites).omit({
 export type InsertFavorite = z.infer<typeof insertFavoriteSchema>;
 export type Favorite = typeof favorites.$inferSelect;
 
-// ===== RESTAURANT RESERVATION SYSTEM =====
-
-// Reservations - Rise Local tracking only (not inventory control)
-export const reservations = pgTable("reservations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  restaurantId: varchar("restaurant_id").notNull().references(() => restaurants.id),
-  dealRedemptionId: varchar("deal_redemption_id").references(() => dealRedemptions.id), // Optional: linked deal redemption
-  
-  // Reservation Details
-  partySize: integer("party_size").notNull(),
-  requestedTime: timestamp("requested_time").notNull(),
-  status: text("status").notNull().default("INITIATED"), // INITIATED, BOOKED_EXTERNALLY, CANCELLED
-  
-  // External Provider Tracking
-  externalProvider: text("external_provider"), // OPENTABLE, SEVENROOMS, RESY, WEBSITE, PHONE
-  externalReference: text("external_reference"), // Confirmation number or reference from external system
-  
-  // Notes
-  specialRequests: text("special_requests"),
-  
-  // Timestamps
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertReservationSchema = createInsertSchema(reservations).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertReservation = z.infer<typeof insertReservationSchema>;
-export type Reservation = typeof reservations.$inferSelect;
-
 // ===== PREFERRED PLACEMENTS (PAID ADVERTISING) =====
 
 // Placement status enum values
@@ -1534,14 +1035,12 @@ export const adminAuditLogs = pgTable("admin_audit_logs", {
   entityId: varchar("entity_id").notNull(), // ID of the affected entity
   entityName: text("entity_name"), // Human-readable name (e.g., deal title, user email)
   
-  // Before/after state for data changes
-  previousState: jsonb("previous_state"), // JSON snapshot before change
-  newState: jsonb("new_state"), // JSON snapshot after change
+  // Change details
+  previousValue: jsonb("previous_value"), // State before change (for updates)
+  newValue: jsonb("new_value"), // State after change (for updates)
+  reason: text("reason"), // Optional reason for the action
   
-  // Required reason for certain actions (membership override, void, etc.)
-  reason: text("reason"),
-  
-  // Request metadata
+  // Context
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   
@@ -1561,129 +1060,3 @@ export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLogs).omit
 
 export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
-
-// ===== VENDOR PROFILE API TYPES =====
-
-// Deal type for vendor profile responses
-export type VendorDeal = {
-  id: string;
-  title: string;
-  description: string;
-  dealType: string;
-  tier: string;
-  category: string | null;
-  isActive: boolean;
-  discountType: string | null;
-  discountValue: number | null;
-  isPassLocked: boolean | null;
-  finePrint: string | null;
-};
-
-// Vendor profile with all public fields
-export type VendorProfile = {
-  id: string;
-  vendorType: string;
-  businessName: string;
-  displayName: string | null;
-  tagline: string | null;
-  bio: string;
-  
-  // Images
-  logoUrl: string | null;
-  bannerUrl: string | null;
-  heroImageUrl: string | null;
-  gallery: string[];
-  
-  // Contact
-  contactEmail: string | null;
-  phone: string | null;
-  
-  // Social/Online
-  website: string | null;
-  instagram: string | null;
-  tiktok: string | null;
-  facebook: string | null;
-  youtube: string | null;
-  twitter: string | null;
-  
-  // Location
-  address: string | null;
-  city: string;
-  state: string;
-  zipCode: string;
-  latitude: string | null;
-  longitude: string | null;
-  
-  // Business details
-  hours: unknown;
-  locationType: string;
-  serviceOptions: string[];
-  
-  // Menu (for dine vendors)
-  menuUrl: string | null;
-  menuFileUrl: string | null;
-  menuType: string | null;
-  
-  // Trust signals
-  values: string[];
-  badges: string[];
-  isVerified: boolean;
-  followerCount: number;
-};
-
-// Full vendor profile response including deals
-export type VendorProfileResponse = {
-  vendor: VendorProfile;
-  deals: VendorDeal[];
-};
-
-// Zod schema for PATCH /api/vendors/me validation
-export const updateVendorProfileSchema = z.object({
-  // Business info
-  businessName: z.string().min(1).optional(),
-  displayName: z.string().nullable().optional(),
-  tagline: z.string().nullable().optional(),
-  bio: z.string().min(1).optional(),
-  
-  // Images (stored as URLs)
-  logoUrl: z.string().url().nullable().optional(),
-  bannerUrl: z.string().url().nullable().optional(),
-  heroImageUrl: z.string().url().nullable().optional(),
-  gallery: z.array(z.string().url()).optional(),
-  
-  // Contact
-  contactEmail: z.string().email().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  
-  // Social links
-  website: z.string().url().nullable().optional(),
-  instagram: z.string().nullable().optional(),
-  tiktok: z.string().nullable().optional(),
-  facebook: z.string().nullable().optional(),
-  youtube: z.string().nullable().optional(),
-  twitter: z.string().nullable().optional(),
-  
-  // Address
-  address: z.string().nullable().optional(),
-  addressLine2: z.string().nullable().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
-  
-  // Hours
-  hours: z.record(z.object({
-    open: z.string().optional(),
-    close: z.string().optional(),
-    closed: z.boolean().optional(),
-  })).nullable().optional(),
-  
-  // Menu options
-  menuUrl: z.string().url().nullable().optional(),
-  menuFileUrl: z.string().url().nullable().optional(),
-  menuType: z.enum(["link", "file"]).nullable().optional(),
-  
-  // Values/badges
-  values: z.array(z.string()).optional(),
-}).strict();
-
-export type UpdateVendorProfile = z.infer<typeof updateVendorProfileSchema>;

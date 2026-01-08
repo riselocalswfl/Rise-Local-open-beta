@@ -9,20 +9,8 @@ import { geocodeAddress, buildFullAddress } from "./geocoding";
 import { 
   insertUserSchema, 
   insertVendorSchema, 
-  insertProductSchema,
-  insertEventSchema,
-  insertOrderSchema,
-  insertOrderItemWithoutOrderIdSchema,
-  insertSpotlightSchema,
-  insertVendorReviewSchema,
-  insertVendorFAQSchema,
   insertRestaurantSchema,
-  insertMenuItemSchema,
-  insertRestaurantReviewSchema,
-  insertRestaurantFAQSchema,
   insertServiceProviderSchema,
-  insertServiceOfferingSchema,
-  insertServiceBookingSchema,
   insertServiceSchema,
   insertMessageSchema,
   insertDealSchema,
@@ -30,11 +18,202 @@ import {
   insertPlacementImpressionSchema,
   insertPlacementClickSchema,
   fulfillmentOptionsSchema,
-  updateVendorProfileSchema,
   type FulfillmentOptions,
-  type VendorDeal
 } from "@shared/schema";
 import { z } from "zod";
+
+// ========================================
+// DEPRECATED VALIDATION SCHEMAS
+// These schemas are for deprecated features that have been removed from the schema.
+// They are kept here for backward compatibility with existing routes.
+// ========================================
+
+// Vendor profile update schema (validation for PATCH /api/vendors/me)
+const updateVendorProfileSchema = insertVendorSchema.partial().omit({
+  ownerId: true,
+  isFoundingMember: true,
+  isVerified: true,
+  termsAccepted: true,
+  privacyAccepted: true,
+});
+
+// Product schema (deprecated - products table removed)
+const insertProductSchema = z.object({
+  vendorId: z.string(),
+  name: z.string(),
+  priceCents: z.number(),
+  stock: z.number(),
+  description: z.string().optional(),
+  imageUrl: z.string().optional(),
+  unitType: z.string().optional(),
+  status: z.string().optional(),
+  isFeatured: z.boolean().optional(),
+  valueTags: z.array(z.string()).optional(),
+  sourceFarm: z.string().optional(),
+  harvestDate: z.date().optional(),
+  leadTimeDays: z.number().optional(),
+  inventoryStatus: z.string().optional(),
+});
+
+// Event schema (deprecated - events table removed)
+const insertEventSchema = z.object({
+  vendorId: z.string().optional(),
+  restaurantId: z.string().optional(),
+  title: z.string(),
+  description: z.string(),
+  dateTime: z.union([z.date(), z.string()]),
+  location: z.string(),
+  categories: z.array(z.string()).optional(),
+  valueTags: z.array(z.string()).optional(),
+  ticketsAvailable: z.number(),
+  bannerImageUrl: z.string().optional(),
+});
+
+// Order schema (deprecated - orders table removed)
+const insertOrderSchema = z.object({
+  userId: z.string(),
+  vendorId: z.string(),
+  status: z.string().optional(),
+  email: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  fulfillmentType: z.string(),
+  fulfillmentDetails: z.any().optional(),
+  addressJson: z.any().optional(),
+  itemsJson: z.any(),
+  subtotalCents: z.number(),
+  taxCents: z.number(),
+  feesCents: z.number(),
+  totalCents: z.number(),
+  paymentId: z.string().optional(),
+});
+
+// Order item schema (deprecated)
+const insertOrderItemWithoutOrderIdSchema = z.object({
+  productId: z.string(),
+  quantity: z.number(),
+  priceAtPurchase: z.string(),
+});
+
+// Spotlight schema (deprecated - spotlight table removed)
+const insertSpotlightSchema = z.object({
+  title: z.string(),
+  body: z.string(),
+  city: z.string(),
+  isActive: z.boolean().optional(),
+});
+
+// Vendor review schema (deprecated - vendorReviews table removed)
+const insertVendorReviewSchema = z.object({
+  vendorId: z.string(),
+  authorName: z.string(),
+  rating: z.number(),
+  comment: z.string(),
+});
+
+// Vendor FAQ schema (deprecated - vendorFAQs table removed)
+const insertVendorFAQSchema = z.object({
+  vendorId: z.string(),
+  question: z.string(),
+  answer: z.string(),
+  displayOrder: z.number().optional(),
+});
+
+// Menu item schema (deprecated - menuItems table removed)
+const insertMenuItemSchema = z.object({
+  vendorId: z.string(),
+  restaurantId: z.string().optional(),
+  name: z.string(),
+  description: z.string().optional(),
+  priceCents: z.number(),
+  category: z.string(),
+  dietaryTags: z.array(z.string()).optional(),
+  valueTags: z.array(z.string()).optional(),
+  ingredients: z.string().optional(),
+  allergens: z.array(z.string()).optional(),
+  imageUrl: z.string().optional(),
+  isAvailable: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
+  displayOrder: z.number().optional(),
+  isLocallySourced: z.boolean().optional(),
+  sourceFarm: z.string().optional(),
+});
+
+// Restaurant review schema (deprecated - restaurantReviews table removed)
+const insertRestaurantReviewSchema = z.object({
+  restaurantId: z.string(),
+  authorName: z.string(),
+  rating: z.number(),
+  comment: z.string(),
+});
+
+// Restaurant FAQ schema (deprecated - restaurantFAQs table removed)
+const insertRestaurantFAQSchema = z.object({
+  restaurantId: z.string(),
+  question: z.string(),
+  answer: z.string(),
+  displayOrder: z.number().optional(),
+});
+
+// Service offering schema (deprecated - serviceOfferings table removed)
+const insertServiceOfferingSchema = z.object({
+  vendorId: z.string(),
+  serviceProviderId: z.string().optional(),
+  offeringName: z.string(),
+  description: z.string(),
+  durationMinutes: z.number().optional(),
+  pricingModel: z.string(),
+  fixedPriceCents: z.number().optional(),
+  hourlyRateCents: z.number().optional(),
+  startingAtCents: z.number().optional(),
+  tags: z.array(z.string()).optional(),
+  requirements: z.string().optional(),
+  includes: z.string().optional(),
+  isActive: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
+  displayOrder: z.number().optional(),
+});
+
+// Service booking schema (deprecated - serviceBookings table removed)
+const insertServiceBookingSchema = z.object({
+  userId: z.string(),
+  vendorId: z.string(),
+  serviceProviderId: z.string().optional(),
+  offeringId: z.string(),
+  status: z.string().optional(),
+  requestedDate: z.union([z.date(), z.string()]),
+  requestedTime: z.string().optional(),
+  confirmedDate: z.union([z.date(), z.string()]).optional(),
+  confirmedTime: z.string().optional(),
+  customerName: z.string(),
+  customerEmail: z.string(),
+  customerPhone: z.string(),
+  customerAddress: z.string().optional(),
+  customerNotes: z.string().optional(),
+  providerNotes: z.string().optional(),
+  providerResponse: z.string().optional(),
+  quotedPriceCents: z.number().optional(),
+  depositCents: z.number().optional(),
+  totalCents: z.number().optional(),
+  paymentStatus: z.string().optional(),
+  paymentId: z.string().optional(),
+});
+
+// VendorDeal type for vendor dashboard
+type VendorDeal = {
+  id: string;
+  title: string;
+  description: string;
+  dealType: string;
+  tier: string;
+  category: string | null;
+  isActive: boolean;
+  discountType: string | null;
+  discountValue: number | null;
+  isPassLocked: boolean;
+  finePrint: string | null;
+  imageUrl: string | null;
+};
 
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
