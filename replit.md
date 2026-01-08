@@ -102,6 +102,36 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 - `drizzle-orm`
 - `drizzle-kit`
 
+### Database Tables (22 Active)
+**Core Tables:**
+- `users`, `sessions` - Authentication and user accounts
+- `vendors` - Unified business profiles (shop/dine/service types)
+- `categories` - Business category taxonomy
+- `deals`, `deal_redemptions`, `deal_claims` - Deal system
+- `favorites` - User saved deals
+
+**Messaging:**
+- `conversations`, `conversation_messages` - B2C messaging
+- `notifications`, `email_jobs` - Notification system
+
+**Membership:**
+- `membership_events`, `stripe_webhook_events` - Subscription tracking
+
+**Advertising:**
+- `preferred_placements`, `placement_impressions`, `placement_clicks` - Sponsored content
+
+**Admin:**
+- `admin_audit_logs` - Admin action tracking
+
+**Services:**
+- `services` - Active services listing
+
+**Legacy (Deprecated - Read-Only):**
+- `restaurants`, `service_providers`, `messages` - Kept for historical data
+
+**Removed Tables (Jan 2026):**
+Products, orders, events, menu items, service bookings, reservations, spotlight, reviews, and FAQs tables were removed as part of the deals-only focus pivot.
+
 ### APIs
 - OpenStreetMap Nominatim API (for geocoding)
 
