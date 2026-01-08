@@ -766,7 +766,6 @@ export const deals = pgTable("deals", {
   
   // Deal Classification
   tier: text("tier").notNull().default("free"), // "free" | "premium" (legacy support)
-  isFree: boolean("is_free").notNull().default(false), // Free deal shown to everyone
   isPassLocked: boolean("is_pass_locked").notNull().default(true), // Locked unless subscribed
   dealType: varchar("deal_type", { length: 32 }).notNull().default("other"), // percent_off, amount_off, bogo, free_item, fixed_price, other
   redemptionType: text("redemption_type").default("IN_PERSON"), // How deal is redeemed
