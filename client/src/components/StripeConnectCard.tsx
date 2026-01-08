@@ -28,9 +28,9 @@ export default function StripeConnectCard() {
   // Fetch Stripe account status
   const { data: status, isLoading, refetch } = useQuery<StripeAccountStatus>({
     queryKey: ["/api/stripe/account-status"],
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Poll more frequently if onboarding is in progress
-      if (data?.connected && !data?.onboardingComplete) {
+      if (query.state.data?.connected && !query.state.data?.onboardingComplete) {
         return 5000; // 5 seconds
       }
       return false; // Don't poll if not connected or fully onboarded

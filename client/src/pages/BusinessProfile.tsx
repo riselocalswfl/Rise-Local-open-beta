@@ -15,11 +15,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { hasRiseLocalPass, isMemberOnlyDeal } from "@shared/dealAccess";
 import { apiRequest } from "@/lib/queryClient";
-import type { Vendor, Product, VendorDeal } from "@shared/schema";
+import type { Vendor, Deal } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
 interface ProfileDealCardProps {
-  deal: VendorDeal & { imageUrl?: string | null };
+  deal: Deal & { imageUrl?: string | null };
   vendor: VendorWithDetails;
   isMember?: boolean;
 }
@@ -136,7 +136,6 @@ function ProfileDealCard({ deal, vendor, isMember = false }: ProfileDealCardProp
 }
 
 interface VendorWithDetails extends Omit<Vendor, 'contactEmail' | 'contactPhone'> {
-  products?: Product[];
   contactPhone?: string | null;
   contactEmail?: string | null;
 }
@@ -173,7 +172,7 @@ export default function BusinessProfile() {
     },
   });
 
-  const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails | null; deals: VendorDeal[]; isHidden?: boolean; message?: string }>({
+  const { data: vendorData, isLoading } = useQuery<{ vendor: VendorWithDetails | null; deals: Deal[]; isHidden?: boolean; message?: string }>({
     queryKey: ["/api/vendors", vendorId],
     queryFn: async () => {
       const res = await fetch(`/api/vendors/${vendorId}`);
@@ -198,11 +197,6 @@ export default function BusinessProfile() {
       default: return Tag;
     }
   };
-
-  const { data: products } = useQuery<Product[]>({
-    queryKey: [`/api/vendors/${vendorId}/products`],
-    enabled: !!vendorId,
-  });
 
   const getVendorTypeBadge = (type: string) => {
     const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
@@ -622,35 +616,6 @@ export default function BusinessProfile() {
             {startConversation.isPending ? "Starting..." : "Message Business"}
           </Button>
         </div>
-
-        {products && products.length > 0 && (
-          <Card data-testid="card-products">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-section-header">Products & Services</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {products.slice(0, 4).map((product) => (
-                  <div 
-                    key={product.id} 
-                    className="p-3 bg-muted/50 rounded-lg"
-                    data-testid={`product-${product.id}`}
-                  >
-                    <p className="text-deal-title truncate">{product.name}</p>
-                    <p className="text-body text-muted-foreground">
-                      ${(product.priceCents / 100).toFixed(2)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              {products.length > 4 && (
-                <p className="text-body text-muted-foreground text-center mt-3">
-                  +{products.length - 4} more items
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
         </div>
       </main>
     </div>

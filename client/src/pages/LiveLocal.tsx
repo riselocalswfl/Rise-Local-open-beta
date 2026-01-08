@@ -20,6 +20,9 @@ const SERVICE_CATEGORIES = [
 ];
 
 function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
+  const serviceAreas = provider.serviceAreas as string[] | null;
+  const primaryCategory = serviceAreas?.[0] || "Service";
+  
   return (
     <Link href={`/service/${provider.id}`}>
       <Card className="hover-elevate active-elevate-2 cursor-pointer transition-all h-full" data-testid={`card-service-provider-${provider.id}`}>
@@ -61,7 +64,7 @@ function ServiceProviderCard({ provider }: { provider: ServiceProvider }) {
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Badge variant="secondary" className="text-xs" data-testid="badge-category">
-                {provider.category}
+                {primaryCategory}
               </Badge>
               {provider.city && (
                 <span className="flex items-center gap-1">
@@ -100,30 +103,30 @@ export default function LiveLocal() {
     queryKey: ["/api/services"],
   });
 
-  // Filter providers
   let filteredProviders = providers;
 
   if (selectedCategory !== "All Services") {
-    filteredProviders = filteredProviders?.filter(
-      p => p.category === selectedCategory
-    );
+    filteredProviders = filteredProviders?.filter(p => {
+      const serviceAreas = p.serviceAreas as string[] | null;
+      return serviceAreas?.some(area => area === selectedCategory);
+    });
   }
 
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase();
-    filteredProviders = filteredProviders?.filter(p => 
-      p.businessName.toLowerCase().includes(query) ||
-      p.bio?.toLowerCase().includes(query) ||
-      p.tagline?.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query)
-    );
+    filteredProviders = filteredProviders?.filter(p => {
+      const serviceAreas = p.serviceAreas as string[] | null;
+      return p.businessName.toLowerCase().includes(query) ||
+        p.bio?.toLowerCase().includes(query) ||
+        p.tagline?.toLowerCase().includes(query) ||
+        serviceAreas?.some(area => area.toLowerCase().includes(query));
+    });
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      {/* Hero Section */}
       <div className="bg-primary text-primary-foreground py-16">
         <div className="max-w-7xl mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-semibold mb-4" data-testid="heading-live-local">
@@ -136,7 +139,6 @@ export default function LiveLocal() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Search and Filters */}
         <div className="mb-8 space-y-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -150,7 +152,6 @@ export default function LiveLocal() {
             />
           </div>
 
-          {/* Category Filter */}
           <div className="flex flex-wrap gap-2">
             {SERVICE_CATEGORIES.map((category) => (
               <Button
@@ -166,14 +167,12 @@ export default function LiveLocal() {
           </div>
         </div>
 
-        {/* Results Count */}
         {filteredProviders && (
           <p className="text-sm text-muted-foreground mb-4" data-testid="text-results-count">
             {filteredProviders.length} {filteredProviders.length === 1 ? 'service provider' : 'service providers'} found
           </p>
         )}
 
-        {/* Service Provider Grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (

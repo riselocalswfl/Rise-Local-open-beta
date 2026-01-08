@@ -1,22 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import Header from "@/components/Header";
-import ProductCard from "@/components/ProductCard";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getProductsWithVendors } from "@/lib/api";
 import { ShoppingBag } from "lucide-react";
+import type { Deal } from "@shared/schema";
 
 export default function Products() {
-  const { data: products, isLoading } = useQuery({
-    queryKey: ["/api/products-with-vendors"],
-    queryFn: getProductsWithVendors,
+  const { data: deals, isLoading } = useQuery<Deal[]>({
+    queryKey: ["/api/deals"],
   });
+
+  const productDeals = deals?.filter(d => d.isActive && d.status === "published" && d.category === "retail") || [];
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <div className="h-16" aria-hidden="true" />
       
-      {/* Hero Section */}
       <div className="bg-primary/5 border-b">
         <div className="max-w-5xl mx-auto px-4 py-12">
           <div className="flex items-center gap-3 mb-4">
@@ -31,7 +33,6 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Product List */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {isLoading ? (
@@ -43,25 +44,38 @@ export default function Products() {
               <Skeleton className="h-80" />
               <Skeleton className="h-80" />
             </>
-          ) : products && products.length === 0 ? (
+          ) : productDeals && productDeals.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <p className="text-muted-foreground">
                 No products currently listed. Check back soon!
               </p>
             </div>
           ) : (
-            products?.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                price={parseFloat(product.price || "0")}
-                vendorName={product.vendorName}
-                vendorId={product.vendorId}
-                inventory={product.inventory}
-                isVerifiedVendor={product.isVerifiedVendor}
-                valueTags={product.valueTags as string[] || []}
-              />
+            productDeals?.map((deal) => (
+              <Link key={deal.id} href={`/deal/${deal.id}`}>
+                <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-deal-${deal.id}`}>
+                  {deal.heroImageUrl && (
+                    <div className="aspect-video relative overflow-hidden rounded-t-md">
+                      <img 
+                        src={deal.heroImageUrl} 
+                        alt={deal.title}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  )}
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-lg mb-2" data-testid={`text-deal-title-${deal.id}`}>
+                      {deal.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                      {deal.description}
+                    </p>
+                    {deal.valueLabel && (
+                      <Badge>{deal.valueLabel}</Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
             ))
           )}
         </div>

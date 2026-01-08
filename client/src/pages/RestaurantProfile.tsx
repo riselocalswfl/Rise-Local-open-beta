@@ -5,43 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   MapPin, Clock, Phone, Mail, Globe, Instagram, Facebook,
-  Star, Calendar, Utensils, Award, HelpCircle, Image as ImageIcon,
-  Users, DollarSign
+  Award, Image as ImageIcon,
+  Users, DollarSign, Utensils
 } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { Vendor, MenuItem, Event, VendorReview, VendorFAQ } from "@shared/schema";
+import type { Vendor } from "@shared/schema";
 
 export default function RestaurantProfile() {
   const [, params] = useRoute("/restaurant/:id");
   const vendorId = params?.id;
 
-  // Use unified vendor endpoint
   const { data: vendor, isLoading: vendorLoading } = useQuery<Vendor>({
     queryKey: [`/api/vendors/${vendorId}`],
-    enabled: !!vendorId,
-  });
-
-  // Extract capabilities for conditional fetching
-  const capabilities = vendor?.capabilities as { products?: boolean; services?: boolean; menu?: boolean } | undefined;
-
-  // Only fetch menu if vendor has menu capability
-  const { data: menuItems = [], isLoading: menuLoading } = useQuery<MenuItem[]>({
-    queryKey: [`/api/vendors/${vendorId}/menu`],
-    enabled: !!vendorId && !!capabilities?.menu,
-  });
-
-  const { data: events = [] } = useQuery<Event[]>({
-    queryKey: [`/api/vendors/${vendorId}/events`],
-    enabled: !!vendorId,
-  });
-
-  const { data: reviews = [] } = useQuery<VendorReview[]>({
-    queryKey: [`/api/vendors/${vendorId}/reviews`],
-    enabled: !!vendorId,
-  });
-
-  const { data: faqs = [] } = useQuery<VendorFAQ[]>({
-    queryKey: [`/api/vendors/${vendorId}/faqs`],
     enabled: !!vendorId,
   });
 
@@ -68,33 +42,13 @@ export default function RestaurantProfile() {
     );
   }
 
-  // Extract restaurant-specific data from unified vendor
   const restaurantDetails = (vendor.restaurantDetails as any) || {};
   const heroImage = vendor.heroImageUrl || vendor.bannerUrl;
   const certifications = (vendor.certifications as any) || [];
-  const policies = restaurantDetails.policies || {};
   const hours = (vendor.hours as any) || {};
-
-  const averageRating = reviews.length > 0 
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
-    : 0;
-
-  const menuByCategory = menuItems.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, MenuItem[]>);
-
-  const categories = ["Appetizers", "Entrees", "Desserts", "Drinks", "Specials"];
-  const orderedCategories = categories.filter(cat => menuByCategory[cat]?.length > 0);
-  const otherCategories = Object.keys(menuByCategory).filter(cat => !categories.includes(cat));
-  const allCategories = [...orderedCategories, ...otherCategories];
 
   return (
     <div className="min-h-screen bg-bg">
-      {/* Hero Section */}
       {heroImage && (
         <div className="relative h-80 bg-gray-900">
           <img 
@@ -107,9 +61,7 @@ export default function RestaurantProfile() {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Restaurant Header */}
         <div className="flex flex-col md:flex-row gap-6 mb-8">
           {vendor.logoUrl && (
             <img 
@@ -130,7 +82,6 @@ export default function RestaurantProfile() {
               </p>
             )}
             
-            {/* Cuisine & Price Range */}
             <div className="flex flex-wrap gap-2 mb-4">
               {restaurantDetails.cuisineType && (
                 <Badge variant="outline" className="gap-1" data-testid="badge-cuisine">
@@ -144,15 +95,8 @@ export default function RestaurantProfile() {
                   {restaurantDetails.priceRange}
                 </Badge>
               )}
-              {reviews.length > 0 && (
-                <Badge variant="outline" className="gap-1" data-testid="badge-rating">
-                  <Star className="w-3 h-3" />
-                  {averageRating.toFixed(1)} ({reviews.length} reviews)
-                </Badge>
-              )}
             </div>
 
-            {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-4">
               {vendor.isVerified && (
                 <Badge variant="default" className="gap-1" data-testid="badge-verified">
@@ -165,7 +109,6 @@ export default function RestaurantProfile() {
               ))}
             </div>
 
-            {/* Dietary Options */}
             {restaurantDetails.dietaryOptions && restaurantDetails.dietaryOptions.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {restaurantDetails.dietaryOptions.map((option: string, i: number) => (
@@ -176,7 +119,6 @@ export default function RestaurantProfile() {
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex flex-wrap gap-2">
               {restaurantDetails.reservationsUrl && (
                 <Button variant="default" asChild data-testid="button-reserve">
@@ -186,12 +128,8 @@ export default function RestaurantProfile() {
                 </Button>
               )}
               <Button variant="outline" data-testid="button-follow">Follow</Button>
-              {capabilities?.menu && (
-                <Button variant="outline" data-testid="button-view-menu">View Menu</Button>
-              )}
             </div>
             
-            {/* Reservation disclaimer */}
             {restaurantDetails.reservationsUrl && (
               <p className="text-xs text-muted-foreground mt-3 max-w-md" data-testid="text-reservation-disclaimer">
                 Reservations are completed through the restaurant's official booking system. Rise Local helps you discover deals and reserve easily, but table availability is managed by the restaurant.
@@ -201,9 +139,7 @@ export default function RestaurantProfile() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* About Section */}
             <Card data-testid="card-about">
               <CardHeader>
                 <CardTitle>About {vendor.businessName}</CardTitle>
@@ -213,162 +149,6 @@ export default function RestaurantProfile() {
               </CardContent>
             </Card>
 
-            {/* Menu Section - Only show if vendor has menu capability */}
-            {capabilities?.menu && (
-              <Card data-testid="card-menu">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Utensils className="w-5 h-5" />
-                    Menu
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {menuLoading ? (
-                    <p className="text-muted-foreground">Loading menu...</p>
-                  ) : menuItems.length === 0 ? (
-                    <p className="text-muted-foreground">No menu items available yet</p>
-                  ) : (
-                    <Accordion type="single" collapsible className="w-full">
-                      {allCategories.map((category, idx) => (
-                        <AccordionItem key={category} value={category}>
-                          <AccordionTrigger data-testid={`accordion-menu-category-${idx}`}>
-                            {category}
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="space-y-4">
-                              {menuByCategory[category].map((item) => (
-                                <div key={item.id} className="border-b pb-4 last:border-0" data-testid={`menu-item-${item.id}`}>
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div className="flex-1">
-                                      <h4 className="font-medium" data-testid={`text-menu-name-${item.id}`}>
-                                        {item.name}
-                                      </h4>
-                                      {item.description && (
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                          {item.description}
-                                        </p>
-                                      )}
-                                      {item.dietaryTags && item.dietaryTags.length > 0 && (
-                                        <div className="flex gap-1 mt-2 flex-wrap">
-                                          {item.dietaryTags.map((tag, i) => (
-                                            <Badge key={i} variant="outline" className="text-xs">
-                                              {tag}
-                                            </Badge>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <span className="font-semibold text-primary ml-4" data-testid={`text-menu-price-${item.id}`}>
-                                      ${(item.priceCents / 100).toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Events Section */}
-            {events.length > 0 && (
-              <Card data-testid="card-events">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5" />
-                    Upcoming Events
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {events.map((event) => (
-                      <div key={event.id} className="border-b pb-4 last:border-0" data-testid={`event-${event.id}`}>
-                        <h4 className="font-medium mb-1" data-testid={`text-event-title-${event.id}`}>
-                          {event.title}
-                        </h4>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {new Date(event.dateTime).toLocaleDateString()} at {new Date(event.dateTime).toLocaleTimeString()}
-                        </p>
-                        <p className="text-sm">{event.description}</p>
-                        {event.location && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            <MapPin className="w-3 h-3 inline mr-1" />
-                            {event.location}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Reviews Section */}
-            {reviews.length > 0 && (
-              <Card data-testid="card-reviews">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="w-5 h-5" />
-                    Customer Reviews ({reviews.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {reviews.map((review) => (
-                      <div key={review.id} className="border-b pb-4 last:border-0" data-testid={`review-${review.id}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star 
-                                key={i}
-                                className={`w-4 h-4 ${i < review.rating ? 'fill-primary text-primary' : 'text-gray-300'}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="font-medium">{review.authorName}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : 'Recently'}
-                          </span>
-                        </div>
-                        <p className="text-sm">{review.comment}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* FAQ Section */}
-            {faqs.length > 0 && (
-              <Card data-testid="card-faq">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <HelpCircle className="w-5 h-5" />
-                    Frequently Asked Questions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Accordion type="single" collapsible className="w-full">
-                    {faqs.map((faq, idx) => (
-                      <AccordionItem key={faq.id} value={faq.id}>
-                        <AccordionTrigger data-testid={`accordion-faq-${idx}`}>
-                          {faq.question}
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <p className="text-sm">{faq.answer}</p>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Gallery Section */}
             {vendor.gallery && vendor.gallery.length > 0 && (
               <Card data-testid="card-gallery">
                 <CardHeader>
@@ -394,15 +174,12 @@ export default function RestaurantProfile() {
             )}
           </div>
 
-          {/* Right Column - Quick Info */}
           <div className="space-y-6">
-            {/* Contact & Hours Card */}
             <Card data-testid="card-quick-info">
               <CardHeader>
                 <CardTitle>Quick Info</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Hours */}
                 {hours && Object.keys(hours).length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2 text-sm font-medium">
@@ -426,7 +203,6 @@ export default function RestaurantProfile() {
                   </div>
                 )}
 
-                {/* Seating Capacity */}
                 {restaurantDetails.seatingCapacity && (
                   <div className="flex items-center gap-2 text-sm">
                     <Users className="w-4 h-4" />
@@ -434,14 +210,12 @@ export default function RestaurantProfile() {
                   </div>
                 )}
 
-                {/* Reservations */}
                 {restaurantDetails.reservationsRequired && (
                   <div className="text-sm">
                     <Badge variant="outline">Reservations Required</Badge>
                   </div>
                 )}
 
-                {/* Contact */}
                 {vendor.contactEmail && (
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="w-4 h-4 text-muted-foreground" />
@@ -460,7 +234,6 @@ export default function RestaurantProfile() {
                   </div>
                 )}
 
-                {/* Address */}
                 {vendor.address && (
                   <div className="flex items-start gap-2 text-sm">
                     <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
@@ -471,7 +244,6 @@ export default function RestaurantProfile() {
                   </div>
                 )}
 
-                {/* Social Links */}
                 <div className="flex gap-2 pt-2">
                   {vendor.website && (
                     <Button variant="outline" size="icon" asChild data-testid="button-website">
@@ -498,7 +270,6 @@ export default function RestaurantProfile() {
               </CardContent>
             </Card>
 
-            {/* Certifications */}
             {certifications.length > 0 && (
               <Card data-testid="card-certifications">
                 <CardHeader>

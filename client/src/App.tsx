@@ -24,14 +24,9 @@ import Vendors from "@/pages/Vendors";
 import EatLocal from "@/pages/EatLocal";
 import LiveLocal from "@/pages/LiveLocal";
 import Services from "@/pages/Services";
-import ServiceProviderProfile from "@/pages/ServiceProviderProfile";
-import EventsLayout from "@/pages/EventsLayout";
-import EventDetail from "@/pages/EventDetail";
-import Spotlight from "@/pages/Spotlight";
 import Auth from "@/pages/Auth";
 import Welcome from "@/pages/Welcome";
 import Admin from "@/pages/Admin";
-import VendorProfile from "@/pages/VendorProfile";
 import RestaurantProfile from "@/pages/RestaurantProfile";
 import BusinessDashboard from "@/pages/BusinessDashboard";
 import UnifiedOnboarding from "@/pages/UnifiedOnboarding";
@@ -213,43 +208,9 @@ function Router() {
           </AppShell>
         )}
       </Route>
-      <Route path="/services/:id">
-        {(params) => (
-          <AppShell>
-            <ServiceProviderProfile />
-          </AppShell>
-        )}
-      </Route>
-      <Route path="/events">
-        {() => (
-          <AppShell>
-            <EventsLayout />
-          </AppShell>
-        )}
-      </Route>
-      <Route path="/events/:id">
-        {(params) => (
-          <AppShell>
-            <EventDetail />
-          </AppShell>
-        )}
-      </Route>
-      <Route path="/spotlight">
-        {() => (
-          <AppShell>
-            <Spotlight />
-          </AppShell>
-        )}
-      </Route>
+      {/* Events routes removed - feature deprecated */}
       
       {/* Protected Account Features - Require authentication */}
-      <Route path="/events/my">
-        {() => (
-          <AppShell>
-            <EventsLayout />
-          </AppShell>
-        )}
-      </Route>
       
       {/* Vendor Routes - no tabs */}
       <Route path="/onboarding" component={UnifiedOnboarding} />
@@ -307,7 +268,7 @@ function Router() {
         {() => <Redirect to="/dashboard" />}
       </Route>
       <Route path="/my-events">
-        {() => <Redirect to="/events/my" />}
+        {() => <Redirect to="/discover" />}
       </Route>
       <Route path="/onboarding/shop">
         {() => <Redirect to="/onboarding" />}

@@ -2103,23 +2103,24 @@ export class DbStorage implements IStorage {
       .leftJoin(vendors, eq(dealRedemptions.vendorId, vendors.id))
       .leftJoin(users, eq(dealRedemptions.userId, users.id));
 
-    let query = whereClause ? redemptionsQuery.where(whereClause) : redemptionsQuery;
-    
-    // Filter by premium if specified
+    // Add premium filter to conditions
     if (filters?.isPremium !== undefined) {
       if (filters.isPremium) {
-        query = query.where(or(
+        conditions.push(or(
           eq(deals.tier, 'member'),
           eq(deals.tier, 'premium'),
           eq(deals.isPassLocked, true)
-        ) as any);
+        )!);
       } else {
-        query = query.where(and(
+        conditions.push(and(
           or(eq(deals.tier, 'standard'), eq(deals.tier, 'free'), isNull(deals.tier)),
           or(eq(deals.isPassLocked, false), isNull(deals.isPassLocked))
-        ) as any);
+        )!);
       }
     }
+
+    const finalWhereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const query = finalWhereClause ? redemptionsQuery.where(finalWhereClause) : redemptionsQuery;
 
     const redemptionsResult = await query
       .orderBy(desc(dealRedemptions.redeemedAt))

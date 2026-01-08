@@ -23,9 +23,9 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Store, Package, HelpCircle, Settings, Plus, Eye, Upload, Image as ImageIcon, Trash2, Edit, AlertCircle, LogOut, UtensilsCrossed, Tag, MessageSquare, Lock, Send, User, Ticket, ChevronDown, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { Vendor, Product, Event, VendorFAQ, MenuItem, ServiceOffering, Deal, DealRedemption } from "@shared/schema";
+import type { Vendor, Deal, DealRedemption } from "@shared/schema";
 import { DEALS_QUERY_KEY } from "@/hooks/useDeals";
-import { insertProductSchema, insertEventSchema, insertVendorFAQSchema, insertMenuItemSchema, insertServiceOfferingSchema, insertDealSchema } from "@shared/schema";
+import { insertDealSchema } from "@shared/schema";
 import { TagInput } from "@/components/TagInput";
 import { ImageUpload } from "@/components/ImageUpload";
 import Header from "@/components/Header";
@@ -50,13 +50,19 @@ const productFormSchema = z.object({
   inventoryStatus: z.string().default("in_stock"),
 });
 
-const eventFormSchema = insertEventSchema.omit({ vendorId: true, restaurantId: true }).extend({
+const eventFormSchema = z.object({
+  title: z.string().min(1, "Title is required"),
   dateTime: z.string().min(1, "Date is required"),
+  description: z.string().optional(),
+  location: z.string().optional(),
   ticketsAvailable: z.number().int().min(0, "Tickets must be a positive number"),
   bannerImageUrl: z.string().optional(),
 });
 
-const faqFormSchema = insertVendorFAQSchema.omit({ vendorId: true });
+const faqFormSchema = z.object({
+  question: z.string().min(1, "Question is required"),
+  answer: z.string().min(1, "Answer is required"),
+});
 
 const menuItemFormSchema = z.object({
   name: z.string().min(1, "Item name is required"),
@@ -219,32 +225,11 @@ export default function VendorDashboard() {
     }
   }, [vendor]);
 
-  const { data: products = [] } = useQuery<Product[]>({
-    queryKey: [`/api/products?vendorId=${vendor?.id}`],
-    enabled: !!vendor?.id,
-  });
-
-  const { data: events = [] } = useQuery<Event[]>({
-    queryKey: [`/api/vendors/${vendor?.id}/events`],
-    enabled: !!vendor?.id,
-  });
-
-  const { data: faqs = [] } = useQuery<VendorFAQ[]>({
-    queryKey: [`/api/vendors/${vendor?.id}/faqs`],
-    enabled: !!vendor?.id,
-  });
-
-  // Fetch menu items
-  const { data: menuItems = [] } = useQuery<MenuItem[]>({
-    queryKey: [`/api/menu-items?vendorId=${vendor?.id}`],
-    enabled: !!vendor?.id,
-  });
-
-  // Fetch service offerings
-  const { data: serviceOfferings = [] } = useQuery<ServiceOffering[]>({
-    queryKey: [`/api/vendors/${vendor?.id}/service-offerings`],
-    enabled: !!vendor?.id,
-  });
+  const products: any[] = [];
+  const events: any[] = [];
+  const faqs: any[] = [];
+  const menuItems: any[] = [];
+  const serviceOfferings: any[] = [];
 
   // Fetch deals (includeAll=true to see drafts/paused deals for vendor management)
   const dealsFilters = { vendorId: vendor?.id, includeAll: true };
@@ -1812,7 +1797,6 @@ function AddEventForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; 
       description: "",
       dateTime: "",
       location: "",
-      categories: [],
       ticketsAvailable: 0,
       bannerImageUrl: "",
     },
@@ -1952,7 +1936,6 @@ function AddFAQForm({ onSubmit, isPending }: { onSubmit: (data: any) => void; is
     defaultValues: {
       question: "",
       answer: "",
-      displayOrder: 0,
     },
   });
 
