@@ -28,6 +28,11 @@ export default function CheckoutSuccess() {
 
   // Call entitlements refresh endpoint to sync membership from Stripe
   const refreshEntitlements = useCallback(async () => {
+    // Only call if we have a valid session ID from checkout
+    if (!sessionId) {
+      console.log('[CheckoutSuccess] Skipping entitlements refresh - no session_id in URL');
+      return;
+    }
     try {
       console.log('[CheckoutSuccess] Calling entitlements refresh', { sessionId });
       await apiRequest('POST', '/api/entitlements/refresh', { checkout_session_id: sessionId });
@@ -150,19 +155,26 @@ export default function CheckoutSuccess() {
                 </CardContent>
               </Card>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mb-6"
-                onClick={async () => {
-                  await refreshEntitlements();
-                  await refreshUserData();
-                }}
-                data-testid="button-refresh-status"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Check membership status
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mb-4"
+                  onClick={async () => {
+                    await refreshEntitlements();
+                    await refreshUserData();
+                  }}
+                  data-testid="button-refresh-status"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Check membership status
+                </Button>
+                {!sessionId && (
+                  <p className="text-xs text-muted-foreground mb-4">
+                    If your membership doesn't activate within a few minutes, please contact support.
+                  </p>
+                )}
+              </>
             )}
 
             <Button 
