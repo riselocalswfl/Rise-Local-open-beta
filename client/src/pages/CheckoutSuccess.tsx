@@ -4,7 +4,7 @@ import { CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AppShell from "@/components/layout/AppShell";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { hasRiseLocalPass } from "@shared/dealAccess";
 
@@ -16,10 +16,26 @@ export default function CheckoutSuccess() {
   const [isRefreshing, setIsRefreshing] = useState(true);
   const [countdown, setCountdown] = useState(REDIRECT_DELAY_SECONDS);
   const [retryCount, setRetryCount] = useState(0);
+  const [hasCalledEntitlements, setHasCalledEntitlements] = useState(false);
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   
   const isMemberActive = hasRiseLocalPass(user);
+  
+  // Get session_id from URL query parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get('session_id');
+
+  // Call entitlements refresh endpoint to sync membership from Stripe
+  const refreshEntitlements = useCallback(async () => {
+    try {
+      console.log('[CheckoutSuccess] Calling entitlements refresh', { sessionId });
+      await apiRequest('POST', '/api/entitlements/refresh', { checkout_session_id: sessionId });
+      console.log('[CheckoutSuccess] Entitlements refresh successful');
+    } catch (error) {
+      console.warn('[CheckoutSuccess] Entitlements refresh failed (may not have subscription yet):', error);
+    }
+  }, [sessionId]);
 
   const refreshUserData = useCallback(async () => {
     try {
@@ -30,10 +46,20 @@ export default function CheckoutSuccess() {
     }
   }, []);
 
+  // Initial call to sync entitlements from Stripe
   useEffect(() => {
-    // Initial refresh
-    refreshUserData();
-  }, [refreshUserData]);
+    if (hasCalledEntitlements) return;
+    
+    const syncMembership = async () => {
+      // First, try to sync entitlements directly from Stripe
+      await refreshEntitlements();
+      // Then refresh user data from our database
+      await refreshUserData();
+      setHasCalledEntitlements(true);
+    };
+    
+    syncMembership();
+  }, [hasCalledEntitlements, refreshEntitlements, refreshUserData]);
 
   // Retry logic if membership isn't active yet (webhook delay)
   useEffect(() => {
@@ -45,12 +71,14 @@ export default function CheckoutSuccess() {
 
     const retryTimer = setTimeout(async () => {
       console.log(`[CheckoutSuccess] Retry ${retryCount + 1}/${MAX_RETRY_ATTEMPTS} - checking membership status`);
+      // Try syncing from Stripe again in case the first attempt failed
+      await refreshEntitlements();
       await refreshUserData();
       setRetryCount(prev => prev + 1);
     }, RETRY_INTERVAL_MS);
 
     return () => clearTimeout(retryTimer);
-  }, [isMemberActive, retryCount, refreshUserData]);
+  }, [isMemberActive, retryCount, refreshEntitlements, refreshUserData]);
 
   // Countdown and auto-redirect after data is refreshed
   useEffect(() => {
@@ -126,7 +154,10 @@ export default function CheckoutSuccess() {
                 variant="outline"
                 size="sm"
                 className="mb-6"
-                onClick={refreshUserData}
+                onClick={async () => {
+                  await refreshEntitlements();
+                  await refreshUserData();
+                }}
                 data-testid="button-refresh-status"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
