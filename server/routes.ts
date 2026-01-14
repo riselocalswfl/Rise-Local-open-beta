@@ -2759,7 +2759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: 1,
           },
         ],
-        success_url: `${appBaseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        success_url: `${appBaseUrl}/checkout/success`,
         cancel_url: `${appBaseUrl}/checkout/cancel`,
         metadata: {
           appUserId: userId, // Primary user lookup method (renamed from userId for clarity)
