@@ -3604,6 +3604,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTE: This endpoint receives raw body from express.raw() middleware in index.ts
   // Middleware order in server/index.ts ensures express.raw() runs BEFORE express.json()
   app.post("/api/stripe/webhook", async (req, res) => {
+    app.post("/api/stripe/webhook", async (req, res) => {
+      console.log("🔔 WEBHOOK RECEIVED - Headers:", req.headers);
+      console.log("🔔 WEBHOOK RECEIVED - Path:", req.path);
+      console.log("🔔 WEBHOOK RECEIVED - Body exists:", !!req.body);
+
+      // ... rest of your webhook code
+    });
+
     console.log("[Stripe Webhook] Received request");
 
     const sig = req.headers["stripe-signature"];
