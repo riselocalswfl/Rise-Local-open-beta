@@ -1,0 +1,52 @@
+Form Styling
+	∙	Input fields with clear labels above (not placeholder-only)
+	∙	Visible focus states for accessibility
+	∙	Inline validation with checkmarks/errors
+	∙	Password strength indicator
+	∙	Show/hide password toggle
+	∙	Loading states for buttons
+6. User Experience Flow
+First-Time Business User
+	1.	Lands on homepage → Clicks “For Businesses”
+	2.	Sees sign-up form (not login) by default
+	3.	Fills out Step 1 → validates → proceeds
+	4.	Completes Steps 2-3 → account created
+	5.	Email verification sent → clicks link
+	6.	Redirected to business dashboard with onboarding
+First-Time Regular User
+	1.	Lands on homepage → Clicks “For Users” or main “Sign Up”
+	2.	Sees quick signup options + email form
+	3.	Chooses method → creates account (one page)
+	4.	Email verification sent → clicks link
+	5.	Redirected to home feed or personalized onboarding
+Returning Users
+	1.	Lands on homepage → Clicks “Login” (detects last account type)
+	2.	Or navigates to specific login (business vs user)
+	3.	Enters credentials → immediately authenticated
+	4.	Redirected to their last page or default dashboard
+7. Error Handling & Edge Cases
+Common Scenarios to Handle
+	∙	Email already exists → “Already have an account? Log in”
+	∙	Invalid email format → Real-time validation
+	∙	Weak password → Show requirements, strength meter
+	∙	Network timeout → “Taking longer than expected” with retry
+	∙	Server error → “Something went wrong. Please try again.”
+	∙	Email not verified → Resend verification button
+	∙	Account locked → Clear message with unlock instructions
+	∙	Wrong account type login → “This is a business/user account. Try the other login.”
+Forgot Password Flow
+	∙	Enter email → receive reset link (always show success, security)
+	∙	Click link → verify token validity
+	∙	Create new password → confirm change
+	∙	Auto-login or redirect to login page
+	∙	Invalidate old sessions
+8. Post-Authentication
+Business Dashboard Redirect
+	∙	If new: Welcome onboarding flow
+	∙	If returning: Dashboard with recent activity
+	∙	Clear navigation to profile, listings, analytics
+User Homepage Redirect
+	∙	If new: Personalization questions (interests, location)
+	∙	If returning: Personalized feed/recommendations
+	∙	Easy access to favorites, bookings, reviews
+9. Database Schema Requirements

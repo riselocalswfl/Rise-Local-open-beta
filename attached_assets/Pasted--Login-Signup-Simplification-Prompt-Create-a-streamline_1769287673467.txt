@@ -1,0 +1,331 @@
+# Login/Signup Simplification Prompt
+
+Create a streamlined authentication system that clearly separates business and user login flows, inspired by Rise Local’s clean approach rather than Replit’s developer-focused style.
+
+## Core Requirements
+
+### 1. Clear Entry Points
+
+- **Two distinct paths from the start:**
+  - “For Businesses” - leads to business registration/login
+  - “For Users” - leads to user registration/login
+- No confusion about which type of account someone is creating
+- Clear visual separation between the two flows
+
+### 2. Business Flow
+
+#### Business Sign Up
+
+- **Step 1: Business Basics**
+  - Business name (required)
+  - Business email (required)
+  - Password (required)
+  - Business type/category dropdown
+  - Phone number (optional but encouraged)
+- **Step 2: Business Details**
+  - Address with autocomplete
+  - Business hours
+  - Description (optional)
+  - Upload logo (optional, can do later)
+- **Step 3: Account Setup**
+  - Owner/Manager name
+  - Role/position
+  - Verify email (send code)
+  - Accept terms for businesses
+
+#### Business Login
+
+- Email + Password
+- “Forgot Password” link
+- “Don’t have an account? Sign up as a business” link
+- Option: “Sign in with Google” (business email)
+
+### 3. User Flow
+
+#### User Sign Up
+
+- **Simple one-page signup:**
+  - Full name (required)
+  - Email (required)
+  - Password (required)
+  - Phone number (optional)
+  - Location/zip code (for local recommendations)
+  - Accept terms checkbox
+- **Or: Quick signup options**
+  - “Continue with Google”
+  - “Continue with Apple”
+  - “Continue with Email” (shows form above)
+
+#### User Login
+
+- Email + Password
+- “Forgot Password” link
+- “Don’t have an account? Sign up” link
+- Quick login: “Continue with Google” / “Continue with Apple”
+
+### 4. Technical Implementation Requirements
+
+#### Always Works Reliability
+
+```
+- Implement proper error handling for all edge cases
+- Show clear, actionable error messages (not technical jargon)
+- Auto-save form progress (localStorage backup)
+- Handle network failures gracefully with retry logic
+- Validate inputs in real-time with helpful feedback
+- Support password managers properly
+- Implement rate limiting to prevent abuse
+- Use secure session management with proper token refresh
+```
+
+#### Session Management
+
+```
+- JWT tokens with refresh token rotation
+- Secure httpOnly cookies
+- 30-day "remember me" option
+- Proper logout on all devices option
+- Session timeout with warning before expiration
+```
+
+#### Security Best Practices
+
+```
+- Bcrypt password hashing (min 10 rounds)
+- Email verification required before full access
+- 2FA optional but encouraged for businesses
+- Password requirements: 8+ chars, letters + numbers
+- Account lockout after 5 failed attempts (15-min cooldown)
+- Suspicious activity detection and alerts
+```
+
+### 5. UI/UX Guidelines (Rise Local Style)
+
+#### Design Principles
+
+- Clean, professional, trustworthy aesthetic
+- Generous whitespace
+- Large, clear call-to-action buttons
+- Minimal form fields (only ask what’s necessary)
+- Progressive disclosure (don’t overwhelm upfront)
+- Mobile-first responsive design
+
+#### Visual Elements
+
+```css
+/* Color palette suggestion */
+Primary: Professional blue or teal (#0066CC or similar)
+Secondary: Warm accent for CTAs (#FF6B35 or similar)
+Success: Green (#10B981)
+Error: Red but not alarming (#EF4444)
+Backgrounds: White/light gray (#FFFFFF, #F9FAFB)
+Text: Dark gray for primary (#1F2937)
+```
+
+#### Form Styling
+
+- Input fields with clear labels above (not placeholder-only)
+- Visible focus states for accessibility
+- Inline validation with checkmarks/errors
+- Password strength indicator
+- Show/hide password toggle
+- Loading states for buttons
+
+### 6. User Experience Flow
+
+#### First-Time Business User
+
+1. Lands on homepage → Clicks “For Businesses”
+1. Sees sign-up form (not login) by default
+1. Fills out Step 1 → validates → proceeds
+1. Completes Steps 2-3 → account created
+1. Email verification sent → clicks link
+1. Redirected to business dashboard with onboarding
+
+#### First-Time Regular User
+
+1. Lands on homepage → Clicks “For Users” or main “Sign Up”
+1. Sees quick signup options + email form
+1. Chooses method → creates account (one page)
+1. Email verification sent → clicks link
+1. Redirected to home feed or personalized onboarding
+
+#### Returning Users
+
+1. Lands on homepage → Clicks “Login” (detects last account type)
+1. Or navigates to specific login (business vs user)
+1. Enters credentials → immediately authenticated
+1. Redirected to their last page or default dashboard
+
+### 7. Error Handling & Edge Cases
+
+#### Common Scenarios to Handle
+
+- Email already exists → “Already have an account? Log in”
+- Invalid email format → Real-time validation
+- Weak password → Show requirements, strength meter
+- Network timeout → “Taking longer than expected” with retry
+- Server error → “Something went wrong. Please try again.”
+- Email not verified → Resend verification button
+- Account locked → Clear message with unlock instructions
+- Wrong account type login → “This is a business/user account. Try the other login.”
+
+#### Forgot Password Flow
+
+- Enter email → receive reset link (always show success, security)
+- Click link → verify token validity
+- Create new password → confirm change
+- Auto-login or redirect to login page
+- Invalidate old sessions
+
+### 8. Post-Authentication
+
+#### Business Dashboard Redirect
+
+- If new: Welcome onboarding flow
+- If returning: Dashboard with recent activity
+- Clear navigation to profile, listings, analytics
+
+#### User Homepage Redirect
+
+- If new: Personalization questions (interests, location)
+- If returning: Personalized feed/recommendations
+- Easy access to favorites, bookings, reviews
+
+### 9. Database Schema Requirements
+
+```sql
+-- Users table (for all users)
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  account_type ENUM('business', 'user') NOT NULL,
+  email_verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_login TIMESTAMP,
+  is_active BOOLEAN DEFAULT TRUE,
+  failed_login_attempts INT DEFAULT 0,
+  locked_until TIMESTAMP
+);
+
+-- Business profiles (extends users)
+CREATE TABLE business_profiles (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  business_name VARCHAR(255) NOT NULL,
+  business_type VARCHAR(100),
+  phone VARCHAR(20),
+  address TEXT,
+  hours JSONB,
+  logo_url TEXT,
+  description TEXT,
+  owner_name VARCHAR(255)
+);
+
+-- User profiles (extends users)
+CREATE TABLE user_profiles (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  full_name VARCHAR(255) NOT NULL,
+  phone VARCHAR(20),
+  location VARCHAR(255),
+  preferences JSONB
+);
+
+-- Email verification tokens
+CREATE TABLE verification_tokens (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  token VARCHAR(255) UNIQUE NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used BOOLEAN DEFAULT FALSE
+);
+
+-- Password reset tokens
+CREATE TABLE password_reset_tokens (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  token VARCHAR(255) UNIQUE NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used BOOLEAN DEFAULT FALSE
+);
+```
+
+### 10. Testing Checklist
+
+- [ ] Business can sign up successfully
+- [ ] User can sign up successfully
+- [ ] Business can log in after signup
+- [ ] User can log in after signup
+- [ ] Email verification works
+- [ ] Password reset works
+- [ ] Google OAuth works (if implemented)
+- [ ] Apple Sign In works (if implemented)
+- [ ] Account lockout works after failed attempts
+- [ ] Session persists across page refreshes
+- [ ] Logout works properly
+- [ ] Can’t access business features with user account
+- [ ] Can’t access user features with business account
+- [ ] Mobile responsive design works
+- [ ] Form validation works in real-time
+- [ ] Error messages are clear and helpful
+- [ ] Accessibility (keyboard navigation, screen readers)
+
+## Implementation Priority
+
+### Phase 1 (MVP - Week 1)
+
+1. Basic email/password auth for both account types
+1. Clear business vs user separation
+1. Email verification
+1. Password reset
+1. Session management
+1. Basic error handling
+
+### Phase 2 (Enhancement - Week 2)
+
+1. Google OAuth integration
+1. Apple Sign In integration
+1. Enhanced security (rate limiting, lockouts)
+1. Better UX (auto-save, progress indicators)
+1. Comprehensive error handling
+
+### Phase 3 (Polish - Week 3)
+
+1. 2FA for businesses
+1. “Remember me” functionality
+1. Advanced session management
+1. Suspicious activity detection
+1. Performance optimization
+
+## Success Metrics
+
+- Sign-up completion rate > 80%
+- Login success rate > 95%
+- Password reset completion rate > 70%
+- Email verification rate > 85%
+- Average time to complete signup < 2 minutes
+- Error rate < 2%
+- Mobile signup rate similar to desktop
+
+## Key Differences from Replit Approach
+
+**Replit Style (What to AVOID):**
+
+- Developer-focused, technical language
+- GitHub-first authentication
+- Complex workspace/project metaphors
+- Assumes technical literacy
+- Minimal onboarding
+
+**Rise Local Style (What to IMPLEMENT):**
+
+- Consumer-friendly, approachable language
+- Clear business vs customer distinction
+- Simple, guided signup process
+- Assumes non-technical users
+- Comprehensive onboarding
+- Trust-building elements (security badges, testimonials)
+- Local community focus
+- Professional but warm tone
