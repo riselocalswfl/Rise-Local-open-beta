@@ -8,7 +8,6 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import { extractBearerToken, verifyToken } from "./jwtAuth";
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
@@ -355,42 +354,4 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
-};
-
-export const isAuthenticatedJWT: RequestHandler = async (req, res, next) => {
-  const token = extractBearerToken(req);
-  if (!token) {
-    return res.status(401).json({ message: "Unauthorized - No token provided" });
-  }
-  const payload = verifyToken(token);
-  if (!payload) {
-    return res.status(401).json({ message: "Unauthorized - Invalid token" });
-  }
-  try {
-    const user = await storage.getUser(payload.sub);
-    if (!user) {
-      return res.status(401).json({ message: "Unauthorized - User not found" });
-    }
-    (req as any).user = {
-      claims: {
-        sub: user.id,
-        email: user.email,
-        first_name: user.firstName,
-        last_name: user.lastName,
-      },
-      id: user.id,
-    };
-    return next();
-  } catch (error) {
-    console.error("[JWT AUTH] Error fetching user:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const requireAuth: RequestHandler = async (req, res, next) => {
-  const token = extractBearerToken(req);
-  if (token) {
-    return isAuthenticatedJWT(req, res, next);
-  }
-  return isAuthenticated(req, res, next);
 };
