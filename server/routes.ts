@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupCustomAuth } from "./customAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import Stripe from "stripe";
@@ -149,6 +150,10 @@ async function isUserSubscribed(userId: string | undefined): Promise<boolean> {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth (IMPORTANT: must be done before routes)
   await setupAuth(app);
+  
+  // Setup Custom Email/Password Auth (new streamlined auth system)
+  await setupCustomAuth(app);
+  
   // Apple Sign In endpoint for iOS app
   app.post("/api/auth/apple", async (req, res) => {
     try {
