@@ -5,6 +5,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import Stripe from "stripe";
+import appleSignin from "apple-signin-auth";
+import { generateToken } from "./jwtAuth";
 import { geocodeAddress, buildFullAddress } from "./geocoding";
 import {
   insertUserSchema,
@@ -47,11 +49,17 @@ type VendorDeal = {
   imageUrl: string | null;
 };
 
-// Initialize Stripe
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("Missing required Stripe secret: STRIPE_SECRET_KEY");
+// Initialize Stripe (lazy - only throws when actually used if missing)
+let stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("Missing required Stripe secret: STRIPE_SECRET_KEY");
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return stripe;
 }
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 /**
  * Safely converts a Stripe Unix timestamp (seconds) to a JS Date.
@@ -178,12 +186,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         const email =
           userEmail || appleUser.email || `${username}@appleid.privaterelay`;
-        user = await storage.createUser({
+        user = await storage.upsertUser({
           id: crypto.randomUUID(),
-          username,
           email,
           firstName: firstName || "User",
           lastName: lastName || "",
+        });
+        // Set additional user properties after creation
+        await storage.updateUser(user.id, {
+          username,
           role: "buyer",
           isVendor: false,
           isAdmin: false,
@@ -1165,7 +1176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Get all active subscriptions from Stripe
-        const stripeSubscriptions = await stripe.subscriptions.list({
+        const stripeSubscriptions = await getStripe().subscriptions.list({
           status: "active",
           limit: 100,
         });
@@ -1187,7 +1198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let customerName = "";
             if (sub.customer && typeof sub.customer === "string") {
               try {
-                const customer = await stripe.customers.retrieve(sub.customer);
+                const customer = await getStripe().customers.retrieve(sub.customer);
                 if (customer && !customer.deleted) {
                   customerEmail = (customer as any).email || "";
                   customerName = (customer as any).name || "";
@@ -1829,7 +1840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Verify subscription exists in Stripe
         const subscription =
-          await stripe.subscriptions.retrieve(subscriptionId);
+          await getStripe().subscriptions.retrieve(subscriptionId);
         if (!subscription || subscription.status !== "active") {
           return res
             .status(400)
@@ -2087,7 +2098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (subscriptionId) {
         try {
           stripeSubscription =
-            await stripe.subscriptions.retrieve(subscriptionId);
+            await getStripe().subscriptions.retrieve(subscriptionId);
           console.log("[Admin Sync] Retrieved subscription from Stripe", {
             subscriptionId,
             status: stripeSubscription.status,
@@ -2123,7 +2134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!user && stripeSubscription.customer) {
             try {
               const customerData =
-                await stripe.customers.retrieve(subCustomerId);
+                await getStripe().customers.retrieve(subCustomerId);
               if (
                 customerData &&
                 !customerData.deleted &&
@@ -2154,13 +2165,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (user) {
           // Try to find subscription by customer email in Stripe
-          const customers = await stripe.customers.list({
+          const customers = await getStripe().customers.list({
             email: email,
             limit: 1,
           });
           if (customers.data.length > 0) {
             const customerId = customers.data[0].id;
-            const subscriptions = await stripe.subscriptions.list({
+            const subscriptions = await getStripe().subscriptions.list({
               customer: customerId,
               status: "active",
               limit: 1,
@@ -2169,7 +2180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               stripeSubscription = subscriptions.data[0];
             } else {
               // Check for any subscription including past_due, trialing, etc.
-              const allSubs = await stripe.subscriptions.list({
+              const allSubs = await getStripe().subscriptions.list({
                 customer: customerId,
                 limit: 1,
               });
@@ -2345,7 +2356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             // Retrieve subscription from Stripe
-            const subscription = await stripe.subscriptions.retrieve(
+            const subscription = await getStripe().subscriptions.retrieve(
               user.stripeSubscriptionId,
             );
             const subData = subscription as any;
@@ -3323,7 +3334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create Checkout Session without customer parameter to avoid resource_missing errors
         // Stripe will create/link customer automatically; we use client_reference_id and metadata.appUserId for reliable user lookup
-        const session = await stripe.checkout.sessions.create({
+        const session = await getStripe().checkout.sessions.create({
           mode: "subscription",
           customer_email: user.email || undefined, // Let Stripe handle customer creation
           client_reference_id: userId, // Primary user lookup method
@@ -3388,7 +3399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? `https://${process.env.REPLIT_DEV_DOMAIN}`
             : "http://localhost:5000");
 
-        const session = await stripe.billingPortal.sessions.create({
+        const session = await getStripe().billingPortal.sessions.create({
           customer: user.stripeCustomerId,
           return_url: `${appBaseUrl}/account`,
         });
@@ -3451,7 +3462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Create Stripe Connect Express account
-        const account = await stripe.accounts.create({
+        const account = await getStripe().accounts.create({
           type: "express",
           country: "US",
           email: user.email || undefined,
@@ -3509,7 +3520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Generate account link for onboarding
-        const accountLink = await stripe.accountLinks.create({
+        const accountLink = await getStripe().accountLinks.create({
           account: stripeAccountId,
           refresh_url: `${req.protocol}://${req.get("host")}/dashboard?stripe_refresh=true`,
           return_url: `${req.protocol}://${req.get("host")}/dashboard?stripe_success=true`,
@@ -3553,7 +3564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Fetch account details from Stripe
-        const account = await stripe.accounts.retrieve(stripeAccountId);
+        const account = await getStripe().accounts.retrieve(stripeAccountId);
 
         // Check if charges are enabled and onboarding is complete
         const onboardingComplete =
@@ -3611,7 +3622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Signature verification - return 400 on failure, NOT 500
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      event = getStripe().webhooks.constructEvent(req.body, sig, webhookSecret);
     } catch (signatureError) {
       console.error("[Stripe Webhook] SIGNATURE VERIFICATION FAILED", {
         error:
@@ -3701,7 +3712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     vendorSubtotalCents + vendorTaxCents;
 
                   // Create transfer to vendor's connected account
-                  await stripe.transfers.create({
+                  await getStripe().transfers.create({
                     amount: vendorReceivesCents,
                     currency: "usd",
                     destination: vendor.stripeConnectAccountId,
@@ -3796,7 +3807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let subscriptionData: any;
             try {
               subscriptionData =
-                await stripe.subscriptions.retrieve(subscriptionId);
+                await getStripe().subscriptions.retrieve(subscriptionId);
               console.log("[Stripe Webhook] Subscription retrieved:", {
                 id: subscriptionData.id,
                 status: subscriptionData.status,
@@ -4280,7 +4291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("[Stripe Webhook] invoice.paid for customer:", customerId);
 
         if (invoiceData.subscription) {
-          const subscriptionData = (await stripe.subscriptions.retrieve(
+          const subscriptionData = (await getStripe().subscriptions.retrieve(
             invoiceData.subscription as string,
           )) as any;
 
@@ -4510,7 +4521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Method 1: Use checkout_session_id if provided
         if (checkout_session_id) {
           try {
-            const session = await stripe.checkout.sessions.retrieve(
+            const session = await getStripe().checkout.sessions.retrieve(
               checkout_session_id,
               {
                 expand: ["subscription", "customer"],
@@ -4527,13 +4538,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (session.subscription) {
               stripeSubscription =
                 typeof session.subscription === "string"
-                  ? await stripe.subscriptions.retrieve(session.subscription)
+                  ? await getStripe().subscriptions.retrieve(session.subscription)
                   : session.subscription;
             }
             if (session.customer) {
               stripeCustomer =
                 typeof session.customer === "string"
-                  ? await stripe.customers.retrieve(session.customer)
+                  ? await getStripe().customers.retrieve(session.customer)
                   : session.customer;
             }
           } catch (sessionError) {
@@ -4553,7 +4564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Method 2: Use user's stripeSubscriptionId
         if (!stripeSubscription && user.stripeSubscriptionId) {
           try {
-            stripeSubscription = await stripe.subscriptions.retrieve(
+            stripeSubscription = await getStripe().subscriptions.retrieve(
               user.stripeSubscriptionId,
             );
             console.log(
@@ -4580,7 +4591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Method 3: Use user's stripeCustomerId to find subscriptions
         if (!stripeSubscription && user.stripeCustomerId) {
           try {
-            const subscriptions = await stripe.subscriptions.list({
+            const subscriptions = await getStripe().subscriptions.list({
               customer: user.stripeCustomerId,
               status: "all",
               limit: 1,
@@ -4613,13 +4624,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Method 4: Use user's email to find customer and subscription
         if (!stripeSubscription && user.email) {
           try {
-            const customers = await stripe.customers.list({
+            const customers = await getStripe().customers.list({
               email: user.email,
               limit: 1,
             });
             if (customers.data.length > 0) {
               const customer = customers.data[0];
-              const subscriptions = await stripe.subscriptions.list({
+              const subscriptions = await getStripe().subscriptions.list({
                 customer: customer.id,
                 status: "all",
                 limit: 1,
@@ -5197,7 +5208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create Stripe Connect account if it doesn't exist
         if (!accountId) {
-          const account = await stripe.accounts.create({
+          const account = await getStripe().accounts.create({
             type: "express",
             country: "US",
             email: vendor.contactEmail || req.user.claims.email,
@@ -5220,7 +5231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Create account link for onboarding
-        const accountLink = await stripe.accountLinks.create({
+        const accountLink = await getStripe().accountLinks.create({
           account: accountId,
           refresh_url: `${req.protocol}://${req.get("host")}/dashboard?stripe_refresh=true`,
           return_url: `${req.protocol}://${req.get("host")}/dashboard?stripe_success=true`,
@@ -5258,7 +5269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Get account details from Stripe
-        const account = await stripe.accounts.retrieve(
+        const account = await getStripe().accounts.retrieve(
           vendor.stripeConnectAccountId,
         );
 
@@ -5319,7 +5330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create payment intent that collects on platform account
         // After payment succeeds, webhook will create transfers to vendor accounts
-        const paymentIntent = await stripe.paymentIntents.create({
+        const paymentIntent = await getStripe().paymentIntents.create({
           amount: totalCents,
           currency: "usd",
           automatic_payment_methods: {

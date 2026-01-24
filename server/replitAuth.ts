@@ -26,6 +26,7 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const isProduction = process.env.NODE_ENV === "production";
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
@@ -40,7 +41,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
       maxAge: sessionTtl,
     },
   });
@@ -110,13 +111,14 @@ export async function setupAuth(app: Express) {
     console.log("[AUTH] /api/login - intended_role query param:", intendedRole);
     console.log("[AUTH] /api/login - returnTo query param:", returnTo);
     
+    const isProduction = process.env.NODE_ENV === "production";
     if (intendedRole === "buyer" || intendedRole === "vendor" || intendedRole === "restaurant" || intendedRole === "service_provider") {
       (req.session as any).intendedRole = intendedRole;
       // Also store in cookie as backup (expires in 5 minutes)
       res.cookie("intended_role", intendedRole, { 
         maxAge: 5 * 60 * 1000, 
         httpOnly: true,
-        secure: true,
+        secure: isProduction,
         sameSite: "lax"
       });
       console.log("[AUTH] Stored intended_role in session and cookie:", intendedRole);
@@ -128,7 +130,7 @@ export async function setupAuth(app: Express) {
       res.cookie("return_to", returnTo, {
         maxAge: 5 * 60 * 1000,
         httpOnly: true,
-        secure: true,
+        secure: isProduction,
         sameSite: "lax"
       });
       console.log("[AUTH] Stored returnTo in session and cookie:", returnTo);
