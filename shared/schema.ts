@@ -78,6 +78,13 @@ export const users = pgTable("users", {
   // Email notification preferences
   emailMessageNotifications: boolean("email_message_notifications").default(true), // Receive email when new message arrives
   
+  // Custom auth fields (for email/password authentication)
+  emailVerified: boolean("email_verified").default(false), // Whether email has been verified
+  failedLoginAttempts: integer("failed_login_attempts").default(0), // Counter for failed logins
+  lockedUntil: timestamp("locked_until"), // Account lockout expiration
+  lastLoginAt: timestamp("last_login_at"), // Last successful login
+  accountType: text("account_type").default("user"), // 'business' or 'user' for auth flow separation
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1059,3 +1066,49 @@ export const insertAdminAuditLogSchema = createInsertSchema(adminAuditLogs).omit
 
 export type InsertAdminAuditLog = z.infer<typeof insertAdminAuditLogSchema>;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
+
+// ===== CUSTOM AUTH TOKENS =====
+
+// Email Verification Tokens - For verifying user email addresses
+export const verificationTokens = pgTable("verification_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"), // When the token was used (null if not yet used)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("verification_token_user_idx").on(table.userId),
+  index("verification_token_token_idx").on(table.token),
+]);
+
+export const insertVerificationTokenSchema = createInsertSchema(verificationTokens).omit({
+  id: true,
+  usedAt: true,
+  createdAt: true,
+});
+
+export type InsertVerificationToken = z.infer<typeof insertVerificationTokenSchema>;
+export type VerificationToken = typeof verificationTokens.$inferSelect;
+
+// Password Reset Tokens - For password recovery
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"), // When the token was used (null if not yet used)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("password_reset_user_idx").on(table.userId),
+  index("password_reset_token_idx").on(table.token),
+]);
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  usedAt: true,
+  createdAt: true,
+});
+
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

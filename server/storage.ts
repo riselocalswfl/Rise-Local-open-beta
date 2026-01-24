@@ -13,10 +13,12 @@ import {
   type Favorite, type InsertFavorite,
   type MembershipEvent, type InsertMembershipEvent,
   type AdminAuditLog, type InsertAdminAuditLog,
+  type VerificationToken, type InsertVerificationToken,
+  type PasswordResetToken, type InsertPasswordResetToken,
   users, vendors, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders, preferredPlacements, placementImpressions, placementClicks,
   conversations, conversationMessages, notifications, categories, favorites, membershipEvents, stripeWebhookEvents,
-  adminAuditLogs,
+  adminAuditLogs, verificationTokens, passwordResetTokens,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
 import { eq, desc, and, sql, gte, lte, isNull, or } from "drizzle-orm";
@@ -285,6 +287,24 @@ export interface IStorage {
   }>;
   getRedemptionById(id: string): Promise<DealRedemption | undefined>;
   adminVoidRedemption(id: string, reason: string): Promise<DealRedemption | undefined>;
+
+  // Custom Auth - Verification Tokens
+  createVerificationToken(data: InsertVerificationToken): Promise<VerificationToken>;
+  getVerificationToken(token: string): Promise<VerificationToken | undefined>;
+  markVerificationTokenUsed(token: string): Promise<void>;
+  deleteExpiredVerificationTokens(): Promise<void>;
+
+  // Custom Auth - Password Reset Tokens
+  createPasswordResetToken(data: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenUsed(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<void>;
+
+  // Custom Auth - Login management
+  incrementFailedLoginAttempts(userId: string): Promise<number>;
+  resetFailedLoginAttempts(userId: string): Promise<void>;
+  lockAccount(userId: string, lockoutMinutes: number): Promise<void>;
+  updateLastLogin(userId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -2165,6 +2185,104 @@ export class DbStorage implements IStorage {
       .where(eq(dealRedemptions.id, id))
       .returning();
     return result[0];
+  }
+
+  // ===== CUSTOM AUTH - VERIFICATION TOKENS =====
+  
+  async createVerificationToken(data: InsertVerificationToken): Promise<VerificationToken> {
+    const result = await db.insert(verificationTokens).values(data).returning();
+    return result[0];
+  }
+
+  async getVerificationToken(token: string): Promise<VerificationToken | undefined> {
+    const result = await db.select().from(verificationTokens)
+      .where(and(
+        eq(verificationTokens.token, token),
+        isNull(verificationTokens.usedAt),
+        gte(verificationTokens.expiresAt, new Date())
+      ));
+    return result[0];
+  }
+
+  async markVerificationTokenUsed(token: string): Promise<void> {
+    await db.update(verificationTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(verificationTokens.token, token));
+  }
+
+  async deleteExpiredVerificationTokens(): Promise<void> {
+    await db.delete(verificationTokens)
+      .where(lte(verificationTokens.expiresAt, new Date()));
+  }
+
+  // ===== CUSTOM AUTH - PASSWORD RESET TOKENS =====
+  
+  async createPasswordResetToken(data: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const result = await db.insert(passwordResetTokens).values(data).returning();
+    return result[0];
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const result = await db.select().from(passwordResetTokens)
+      .where(and(
+        eq(passwordResetTokens.token, token),
+        isNull(passwordResetTokens.usedAt),
+        gte(passwordResetTokens.expiresAt, new Date())
+      ));
+    return result[0];
+  }
+
+  async markPasswordResetTokenUsed(token: string): Promise<void> {
+    await db.update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokens.token, token));
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<void> {
+    await db.delete(passwordResetTokens)
+      .where(lte(passwordResetTokens.expiresAt, new Date()));
+  }
+
+  // ===== CUSTOM AUTH - LOGIN MANAGEMENT =====
+  
+  async incrementFailedLoginAttempts(userId: string): Promise<number> {
+    const result = await db.update(users)
+      .set({ 
+        failedLoginAttempts: sql`COALESCE(failed_login_attempts, 0) + 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning({ failedLoginAttempts: users.failedLoginAttempts });
+    return result[0]?.failedLoginAttempts ?? 0;
+  }
+
+  async resetFailedLoginAttempts(userId: string): Promise<void> {
+    await db.update(users)
+      .set({ 
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async lockAccount(userId: string, lockoutMinutes: number): Promise<void> {
+    const lockUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
+    await db.update(users)
+      .set({ 
+        lockedUntil: lockUntil,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateLastLogin(userId: string): Promise<void> {
+    await db.update(users)
+      .set({ 
+        lastLoginAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
   }
 }
 
