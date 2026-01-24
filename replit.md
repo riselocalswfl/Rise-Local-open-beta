@@ -15,7 +15,13 @@ The frontend uses React 18, TypeScript, and Vite, with Radix UI, shadcn/ui (new-
 - **Frontend State Management**: TanStack Query for server state, React hooks for UI state, and Wouter for client-side routing.
 - **Backend**: Express.js with TypeScript for a RESTful API.
 - **Data Storage**: PostgreSQL via Neon's serverless driver, utilizing Drizzle ORM.
-- **Authentication**: Replit Auth (OIDC) with PostgreSQL session storage. Supports `buyer`, `vendor`, and `admin` roles. All pages except `/auth` require authentication, enforced by an `AuthBoundary` component. Note: `restaurant` and `service_provider` roles have been deprecated and consolidated into `vendor` - vendor types are now differentiated by the `vendorType` field (shop, dine, service) in the vendors table.
+- **Authentication**: Dual authentication system supporting both Replit Auth (OIDC) and custom email/password authentication:
+  - **Custom Email/Password Auth (Primary)**: JWT-based sessions with bcrypt password hashing, account lockout after 5 failed attempts (15-minute lockdown), email verification tokens, and password reset flow.
+  - **Auth Routes**: `POST /api/auth/register/user`, `POST /api/auth/register/business`, `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/verify-email`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, `POST /api/auth/resend-verification`.
+  - **Auth UI**: Streamlined `/auth` page with clear "For Users" and "For Businesses" entry points, split signup/login flows, password strength indicators, and legacy Replit login option.
+  - **Security Notes**: Verification tokens only exposed in development (via `_devVerificationToken`); production should integrate email sending. Email verification is encouraged but not required for login.
+  - **Legacy Support**: Replit Auth (OIDC) still available for users who prefer social login.
+  - Supports `buyer`, `vendor`, and `admin` roles. All pages except `/auth` require authentication, enforced by an `AuthBoundary` component. Note: `restaurant` and `service_provider` roles have been deprecated and consolidated into `vendor` - vendor types are now differentiated by the `vendorType` field (shop, dine, service) in the vendors table.
 - **Multi-Role User System**: Users can have both admin and vendor privileges simultaneously via boolean flags:
   - `isAdmin` (boolean): Grants admin dashboard access, user management, deal moderation
   - `isVendor` (boolean): Grants vendor dashboard access, deal creation/editing, business profile management
