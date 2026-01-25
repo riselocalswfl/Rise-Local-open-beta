@@ -291,7 +291,7 @@ export default function Auth() {
                   data-testid="button-for-users"
                 >
                   <User className="mr-2 h-5 w-5" />
-                  For Users
+                  For Customers
                 </Button>
                 
                 <Button 
