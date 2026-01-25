@@ -596,7 +596,7 @@ export default function CustomerProfile() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button 
                   variant="outline" 
-                  onClick={() => window.location.href = '/api/logout'}
+                  onClick={() => { localStorage.removeItem("auth_token"); window.location.href = '/api/logout'; }}
                   data-testid="button-logout"
                   className="w-full sm:w-auto"
                 >

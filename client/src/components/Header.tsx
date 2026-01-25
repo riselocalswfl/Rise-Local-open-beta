@@ -73,12 +73,14 @@ export default function Header() {
             {/* Desktop Auth Actions */}
             <div className="hidden md:flex items-center gap-2">
               {isAuthenticated ? (
-                <a href="/api/logout" data-testid="link-logout">
-                  <BrandButton size="sm" data-testid="button-logout">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </BrandButton>
-                </a>
+                <BrandButton 
+                  size="sm" 
+                  data-testid="button-logout"
+                  onClick={() => { localStorage.removeItem("auth_token"); window.location.href = '/api/logout'; }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </BrandButton>
               ) : (
                 <Dialog open={signInDialogOpen} onOpenChange={setSignInDialogOpen}>
                   <DialogTrigger asChild>

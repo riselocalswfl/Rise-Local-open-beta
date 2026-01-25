@@ -1203,7 +1203,7 @@ export default function VendorDashboard() {
                   <Label>Account Actions</Label>
                   <Button 
                     variant="outline" 
-                    onClick={() => window.location.href = '/api/logout'}
+                    onClick={() => { localStorage.removeItem("auth_token"); window.location.href = '/api/logout'; }}
                     data-testid="button-logout-settings"
                     className="w-full sm:w-auto"
                   >
