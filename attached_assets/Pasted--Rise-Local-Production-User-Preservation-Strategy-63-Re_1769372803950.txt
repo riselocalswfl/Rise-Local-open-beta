@@ -1,0 +1,827 @@
+# Rise Local: Production User Preservation Strategy
+## 63 Real Users - App Store Launch Plan
+
+## Current Situation - PRODUCTION DATA
+
+**Real Production Users:** 63
+- Need to preserve ALL of them
+- Unknown how many have passwords vs. Replit-only
+- These are real people with real data
+
+**Test Data:** 213 users in development/staging
+- Can be deleted
+
+---
+
+## CRITICAL: Identify Production vs Test Data
+
+### Step 1: Audit Your Production Database
+
+```sql
+-- Connect to your PRODUCTION database
+-- Find out which users have passwords
+
+SELECT 
+  COUNT(*) as total_users,
+  COUNT(*) FILTER (WHERE password IS NOT NULL) as have_password,
+  COUNT(*) FILTER (WHERE password IS NULL) as need_migration,
+  COUNT(*) FILTER (WHERE isVendor = true) as vendors,
+  COUNT(*) FILTER (WHERE isVendor = true AND password IS NULL) as vendors_need_migration
+FROM users;
+
+-- Get list of all production users who need migration
+SELECT 
+  id,
+  email,
+  firstName,
+  lastName,
+  isVendor,
+  businessName,
+  replitId IS NOT NULL as has_replit,
+  password IS NOT NULL as has_password,
+  createdAt
+FROM users
+ORDER BY isVendor DESC, createdAt DESC;
+
+-- Export this to CSV for your records
+\copy (SELECT id, email, firstName, lastName, isVendor, businessName, replitId IS NOT NULL as has_replit, password IS NOT NULL as has_password, createdAt FROM users ORDER BY isVendor DESC, createdAt DESC) TO '/tmp/production_users_backup.csv' CSV HEADER;
+```
+
+---
+
+## Strategy: Preserve Production, Remove Test Data
+
+### Option 1: If All 63 Users Are in PRODUCTION Database
+
+**Keep everything, migrate the Replit users:**
+
+1. **Don't delete ANY data**
+2. **Implement password recovery for Replit-only users**
+3. **Remove Replit OAuth code**
+4. **Launch on App Store with recovery system**
+
+### Option 2: If 63 Users + 213 Test Users Are Mixed
+
+**Separate production from test:**
+
+1. **Identify the 63 real users** (export to CSV)
+2. **Create production backup**
+3. **Clean test database and reimport only real users**
+4. **Implement recovery system**
+
+---
+
+## Phase 1: Data Audit & Backup (DO THIS FIRST)
+
+### 1.1 Complete Database Backup
+
+```bash
+# BACKUP YOUR ENTIRE PRODUCTION DATABASE
+pg_dump production_database > production_backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Verify backup worked
+ls -lh production_backup_*.sql
+
+# KEEP THIS BACKUP SAFE - Upload to secure storage
+```
+
+### 1.2 Identify Your 63 Real Users
+
+**Create a manual list of real users:**
+
+```sql
+-- Get detailed user information
+SELECT 
+  id,
+  email,
+  firstName,
+  lastName,
+  isVendor,
+  businessName,
+  accountType,
+  replitId,
+  password IS NOT NULL as has_password,
+  emailVerified,
+  lastLoginAt,
+  createdAt,
+  -- Count their activity
+  (SELECT COUNT(*) FROM deals WHERE vendorId = users.id) as deal_count,
+  (SELECT COUNT(*) FROM favorites WHERE userId = users.id) as favorite_count
+FROM users
+WHERE 
+  -- Real users likely have:
+  lastLoginAt IS NOT NULL  -- They've actually used the app
+  OR (SELECT COUNT(*) FROM deals WHERE vendorId = users.id) > 0  -- Posted deals
+  OR (SELECT COUNT(*) FROM favorites WHERE userId = users.id) > 0  -- Added favorites
+  OR isVendor = true  -- Are vendors
+ORDER BY 
+  isVendor DESC,
+  deal_count DESC,
+  lastLoginAt DESC NULLS LAST;
+
+-- Export for review
+\copy (...query above...) TO '/tmp/real_users_review.csv' CSV HEADER;
+```
+
+**Manually review this CSV and confirm:**
+- Which are real users
+- Which are test accounts
+- Tag the 63 you want to keep
+
+### 1.3 Mark Real Users
+
+```sql
+-- Add a flag to identify production users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS isProduction BOOLEAN DEFAULT false;
+
+-- Manually mark the 63 real users
+-- Either one by one:
+UPDATE users SET isProduction = true WHERE email = 'real.user@example.com';
+
+-- Or in bulk (paste the list of real emails):
+UPDATE users SET isProduction = true WHERE email IN (
+  'user1@example.com',
+  'user2@example.com',
+  'user3@example.com'
+  -- ... all 63 emails
+);
+
+-- Verify count
+SELECT COUNT(*) FROM users WHERE isProduction = true;
+-- Should return: 63
+```
+
+---
+
+## Phase 2: Clean Test Data (If Mixed Database)
+
+### 2.1 Delete Test Users Only
+
+```sql
+-- DOUBLE CHECK: Backup first!
+-- VERIFY: isProduction flag is set correctly
+
+BEGIN; -- Use transaction for safety
+
+-- Delete test user data (keep production users)
+DELETE FROM refresh_tokens 
+WHERE userId IN (SELECT id FROM users WHERE isProduction = false);
+
+DELETE FROM login_log 
+WHERE userId IN (SELECT id FROM users WHERE isProduction = false);
+
+DELETE FROM deals 
+WHERE vendorId IN (SELECT id FROM users WHERE isProduction = false);
+
+DELETE FROM favorites 
+WHERE userId IN (SELECT id FROM users WHERE isProduction = false);
+
+-- Delete test users
+DELETE FROM users WHERE isProduction = false;
+
+-- Verify only 63 remain
+SELECT COUNT(*) FROM users;
+-- Should return: 63
+
+-- If correct, commit. If wrong, rollback!
+COMMIT;
+-- Or: ROLLBACK;
+```
+
+---
+
+## Phase 3: Production User Migration System
+
+### 3.1 Identify Who Needs Migration
+
+```sql
+-- Check how many of your 63 need passwords
+SELECT 
+  COUNT(*) as production_users,
+  COUNT(*) FILTER (WHERE password IS NOT NULL) as can_login_now,
+  COUNT(*) FILTER (WHERE password IS NULL) as need_password,
+  COUNT(*) FILTER (WHERE isVendor = true AND password IS NULL) as vendors_need_password
+FROM users
+WHERE isProduction = true;
+```
+
+**Scenarios:**
+
+**Best Case:** All 63 have passwords
+→ Just remove Replit code, they can all log in
+
+**Likely Case:** Some have passwords, some don't
+→ Implement recovery system for those without passwords
+
+**Worst Case:** None have passwords
+→ All 63 need recovery tokens
+
+### 3.2 Recovery System for Production Users
+
+```sql
+-- Create recovery table for PRODUCTION users only
+CREATE TABLE IF NOT EXISTS user_recovery (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  email VARCHAR(255) NOT NULL,
+  recoveryToken VARCHAR(255) UNIQUE NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expiresAt TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '60 days'),
+  used BOOLEAN DEFAULT false,
+  usedAt TIMESTAMP
+);
+
+-- Generate recovery tokens for production users without passwords
+INSERT INTO user_recovery (userId, email, recoveryToken)
+SELECT 
+  id,
+  email,
+  md5(random()::text || id::text || email)
+FROM users
+WHERE isProduction = true 
+  AND password IS NULL;
+
+-- View tokens (you'll email these)
+SELECT 
+  u.firstName,
+  u.lastName,
+  u.email,
+  u.isVendor,
+  u.businessName,
+  ur.recoveryToken
+FROM user_recovery ur
+JOIN users u ON ur.userId = u.id
+ORDER BY u.isVendor DESC, u.email;
+
+-- Export for emailing
+\copy (SELECT u.firstName, u.lastName, u.email, u.isVendor, u.businessName, ur.recoveryToken FROM user_recovery ur JOIN users u ON ur.userId = u.id ORDER BY u.isVendor DESC) TO '/tmp/recovery_tokens.csv' CSV HEADER;
+```
+
+### 3.3 Recovery Endpoint
+
+```javascript
+// routes/auth/recoverProductionAccount.js
+const db = require('../../db/connection');
+const { hashPassword } = require('../../utils/password');
+
+async function recoverProductionAccount(req, res) {
+  const { email, recoveryToken, password } = req.body;
+
+  if (!email || !recoveryToken || !password) {
+    return res.status(400).json({
+      error: 'Email, recovery token, and password are required',
+      code: 'MISSING_FIELDS'
+    });
+  }
+
+  try {
+    // Find recovery record
+    const recoveryResult = await db.query(
+      `SELECT ur.*, u.id as userId, u.firstName
+       FROM user_recovery ur
+       JOIN users u ON ur.userId = u.id
+       WHERE ur.recoveryToken = $1
+         AND LOWER(ur.email) = LOWER($2)
+         AND ur.used = false
+         AND ur.expiresAt > NOW()`,
+      [recoveryToken, email.trim()]
+    );
+
+    if (recoveryResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Invalid recovery token, email, or token expired',
+        code: 'INVALID_RECOVERY'
+      });
+    }
+
+    const recovery = recoveryResult.rows[0];
+
+    // Hash new password
+    const hashedPassword = await hashPassword(password);
+
+    // Update user with password
+    await db.query(
+      `UPDATE users
+       SET 
+         password = $1,
+         emailVerified = true,
+         isActive = true,
+         updatedAt = NOW()
+       WHERE id = $2`,
+      [hashedPassword, recovery.userId]
+    );
+
+    // Mark recovery as used
+    await db.query(
+      `UPDATE user_recovery 
+       SET used = true, usedAt = NOW() 
+       WHERE id = $1`,
+      [recovery.id]
+    );
+
+    res.json({
+      success: true,
+      message: `Welcome back, ${recovery.firstName}! Your account has been recovered.`,
+      userId: recovery.userId
+    });
+
+  } catch (error) {
+    console.error('Recovery error:', error);
+    res.status(500).json({
+      error: 'Account recovery failed. Please try again.',
+      code: 'RECOVERY_ERROR'
+    });
+  }
+}
+
+module.exports = recoverProductionAccount;
+```
+
+### 3.4 Recovery Page
+
+```jsx
+// pages/RecoverAccount.jsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function RecoverAccount() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [recoveryToken, setRecoveryToken] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleRecover(e) {
+    e.preventDefault();
+    setError('');
+    
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/recover-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, recoveryToken, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess(true);
+        setTimeout(() => {
+          navigate('/auth/login');
+        }, 3000);
+      } else {
+        setError(data.error || 'Recovery failed');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="recovery-success">
+        <h1>✅ Account Recovered!</h1>
+        <p>Your Rise Local account has been successfully recovered.</p>
+        <p>Redirecting to login...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="recovery-container">
+      <div className="recovery-header">
+        <h1>Recover Your Rise Local Account</h1>
+        <p>
+          Welcome back! Enter your recovery token from your email 
+          to set up your password.
+        </p>
+      </div>
+
+      <form onSubmit={handleRecover} className="recovery-form">
+        <div className="form-group">
+          <label>Email Address</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your.email@example.com"
+            required
+            autoFocus
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Recovery Token</label>
+          <input
+            type="text"
+            value={recoveryToken}
+            onChange={(e) => setRecoveryToken(e.target.value)}
+            placeholder="Enter token from email"
+            required
+          />
+          <small>Check your email for your unique recovery token</small>
+        </div>
+
+        <div className="form-group">
+          <label>New Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="At least 8 characters"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Confirm Password</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Re-enter password"
+            required
+          />
+        </div>
+
+        {error && (
+          <div className="error-message">{error}</div>
+        )}
+
+        <button 
+          type="submit" 
+          disabled={loading}
+          className="recover-button"
+        >
+          {loading ? 'Recovering Account...' : 'Recover Account'}
+        </button>
+      </form>
+
+      <div className="help-section">
+        <p>
+          Don't have a recovery token?{' '}
+          <a href="mailto:support@riselocal.app">Contact Support</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Phase 4: Email Your 63 Production Users
+
+### 4.1 Personalized Email Template
+
+**For users WITH passwords (can already login):**
+
+```
+Subject: Rise Local is Launching on the App Store! 🎉
+
+Hi [First Name],
+
+Great news! Rise Local is launching on the iOS App Store.
+
+Your account is ready to go - just log in with your email and password:
+👉 Download: [App Store Link]
+
+Email: [their email]
+
+See you in the app!
+- The Rise Local Team
+```
+
+**For users WITHOUT passwords (need recovery):**
+
+```
+Subject: Action Required: Set Up Your Rise Local Password
+
+Hi [First Name],
+
+Rise Local is launching on the iOS App Store! 🎉
+
+To continue using your account, please set up a password:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR ACCOUNT RECOVERY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Email: [their email]
+Recovery Token: [recovery token]
+
+STEP 1: Visit https://riselocal.app/recover-account
+STEP 2: Enter your email and recovery token
+STEP 3: Create a secure password
+STEP 4: Done! All your data is preserved.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+What This Means:
+✅ All your data is safe and preserved
+✅ You're just adding a password to your existing account
+✅ One-time setup (takes 30 seconds)
+
+[IF VENDOR]
+Your business profile, deals, and analytics are all preserved.
+
+Need Help?
+Reply to this email: support@riselocal.app
+
+Recovery token expires: [60 days from now]
+
+- The Rise Local Team
+
+P.S. This is your personal recovery token. Don't share it with anyone.
+```
+
+### 4.2 Send Emails in Batches
+
+**Priority order:**
+1. **Vendors first** (they have businesses depending on this)
+2. **Active users** (recently logged in)
+3. **Everyone else**
+
+```javascript
+// scripts/sendRecoveryEmails.js
+const db = require('../db/connection');
+const sendEmail = require('../utils/email'); // Your email service
+
+async function sendRecoveryEmails() {
+  // Get users who need recovery tokens
+  const users = await db.query(`
+    SELECT 
+      u.firstName,
+      u.email,
+      u.isVendor,
+      u.businessName,
+      ur.recoveryToken,
+      u.lastLoginAt
+    FROM user_recovery ur
+    JOIN users u ON ur.userId = u.id
+    WHERE ur.used = false
+    ORDER BY 
+      u.isVendor DESC,
+      u.lastLoginAt DESC NULLS LAST
+  `);
+
+  console.log(`Sending emails to ${users.rows.length} users...`);
+
+  for (const user of users.rows) {
+    const emailContent = generateRecoveryEmail(user);
+    
+    await sendEmail({
+      to: user.email,
+      subject: 'Action Required: Set Up Your Rise Local Password',
+      html: emailContent
+    });
+
+    console.log(`✅ Sent to ${user.email}`);
+    
+    // Pause between emails to avoid rate limits
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  console.log('All emails sent!');
+}
+
+sendRecoveryEmails().catch(console.error);
+```
+
+---
+
+## Phase 5: Remove Replit OAuth Code
+
+**ONLY AFTER:**
+- ✅ Database backed up
+- ✅ 63 real users identified
+- ✅ Recovery tokens generated
+- ✅ Recovery emails sent
+- ✅ Recovery system tested
+
+### 5.1 Backend Cleanup
+
+```bash
+# Delete Replit files
+rm -f routes/auth/replitOAuth.js
+rm -f routes/auth/replitCallback.js
+rm -f utils/replitAuth.js
+
+# Remove from routes
+# Edit app.js and delete:
+# app.get('/api/auth/replit', ...)
+# app.get('/api/auth/replit/callback', ...)
+```
+
+### 5.2 Database Cleanup
+
+```sql
+-- Archive replitId (don't delete, keep for records)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS replitIdArchived VARCHAR(255);
+UPDATE users SET replitIdArchived = replitId WHERE replitId IS NOT NULL;
+ALTER TABLE users DROP COLUMN replitId;
+
+-- Remove migration columns
+ALTER TABLE users DROP COLUMN IF EXISTS migrationRequired;
+```
+
+### 5.3 Frontend Cleanup
+
+```bash
+# Remove "Sign in with Replit" button
+# Update login screen to only show:
+# - Email/Password login
+# - "Forgot Password?" link
+# - "Recover Account" link (for token users)
+# - Sign up link
+```
+
+---
+
+## Phase 6: Monitor Recovery Progress
+
+### 6.1 Check Recovery Status
+
+```sql
+-- Daily recovery dashboard
+SELECT 
+  COUNT(*) as total_with_tokens,
+  COUNT(*) FILTER (WHERE used = true) as recovered,
+  COUNT(*) FILTER (WHERE used = false) as pending,
+  COUNT(*) FILTER (WHERE expiresAt < NOW()) as expired,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE used = true) / COUNT(*), 1) as recovery_rate
+FROM user_recovery;
+
+-- List who hasn't recovered yet
+SELECT 
+  u.email,
+  u.firstName,
+  u.lastName,
+  u.isVendor,
+  u.businessName,
+  ur.createdAt as token_sent,
+  (ur.expiresAt - NOW()) as time_remaining
+FROM user_recovery ur
+JOIN users u ON ur.userId = u.id
+WHERE ur.used = false
+  AND ur.expiresAt > NOW()
+ORDER BY u.isVendor DESC, ur.createdAt;
+```
+
+### 6.2 Follow-Up Strategy
+
+**Week 1:** Send recovery emails
+**Week 2:** Check recovery rate, follow up with vendors who haven't recovered
+**Week 3:** Personal email to remaining users
+**Week 4:** Final reminder before token expiration
+
+---
+
+## Complete Implementation Checklist
+
+### Pre-Launch (Do in Order)
+
+- [ ] **Backup entire production database**
+- [ ] **Identify 63 real production users**
+- [ ] **Mark them with isProduction flag**
+- [ ] **Delete test users (if mixed database)**
+- [ ] **Verify only 63 users remain**
+- [ ] **Create another backup**
+- [ ] **Generate recovery tokens**
+- [ ] **Export recovery token list**
+- [ ] **Test recovery endpoint with one user**
+- [ ] **Send recovery emails to all users needing them**
+- [ ] **Wait 3-7 days for initial recoveries**
+- [ ] **Check recovery rate**
+- [ ] **Follow up with non-recovered vendors**
+
+### Clean Up (After Most Users Recovered)
+
+- [ ] **Remove Replit OAuth backend files**
+- [ ] **Remove Replit OAuth frontend components**
+- [ ] **Clean database schema**
+- [ ] **Update login screen**
+- [ ] **Test login with recovered account**
+- [ ] **Test Apple Sign-In (if implemented)**
+- [ ] **Final app testing**
+- [ ] **Submit to App Store**
+
+---
+
+## Success Metrics
+
+**Target Goals:**
+- 100% of vendors recovered (Week 1-2)
+- 80%+ of all users recovered (Week 2-3)
+- Zero data loss
+- Clean App Store submission
+
+**Track Weekly:**
+```sql
+SELECT 
+  DATE(usedAt) as recovery_date,
+  COUNT(*) as recoveries,
+  COUNT(*) FILTER (
+    WHERE userId IN (SELECT id FROM users WHERE isVendor = true)
+  ) as vendor_recoveries
+FROM user_recovery
+WHERE used = true
+GROUP BY DATE(usedAt)
+ORDER BY recovery_date;
+```
+
+---
+
+## Support Process
+
+**When a user contacts support:**
+
+1. **Verify their identity**
+   - Ask for: email, name, business name (if vendor)
+
+2. **Look up their status**
+   ```sql
+   SELECT 
+     u.*,
+     ur.recoveryToken,
+     ur.used,
+     ur.expiresAt
+   FROM users u
+   LEFT JOIN user_recovery ur ON u.id = ur.userId
+   WHERE u.email = '[user_email]';
+   ```
+
+3. **Common issues:**
+   - **Lost token:** Regenerate and resend
+   - **Expired token:** Extend expiration
+   - **Token not working:** Check if already used
+   - **Can't receive email:** Send via alternative method
+
+4. **Regenerate token if needed:**
+   ```sql
+   UPDATE user_recovery
+   SET 
+     recoveryToken = md5(random()::text),
+     expiresAt = NOW() + INTERVAL '30 days',
+     used = false
+   WHERE userId = [user_id];
+   ```
+
+---
+
+## Emergency Rollback Plan
+
+If something goes wrong:
+
+```sql
+-- Restore from backup
+psql production_database < production_backup_YYYYMMDD_HHMMSS.sql
+
+-- Or restore specific table
+pg_restore -t users production_backup_YYYYMMDD_HHMMSS.sql
+```
+
+**Keep backups for 90 days minimum**
+
+---
+
+## Summary
+
+This strategy:
+
+✅ **Preserves all 63 production users**
+✅ **Zero data loss**
+✅ **Clear recovery path**
+✅ **Removes Replit OAuth**
+✅ **App Store ready**
+✅ **Support-friendly**
+
+**Timeline:** 2-3 weeks from start to App Store submission
+
+**Next Steps:**
+1. Backup database NOW
+2. Identify your 63 real users
+3. Generate recovery tokens
+4. Send emails
+5. Monitor recovery progress
+6. Remove Replit code
+7. Submit to App Store
+
+Good luck with your launch! 🚀
