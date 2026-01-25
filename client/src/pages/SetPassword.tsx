@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface PasswordStrength {
   hasMinLength: boolean;
@@ -85,6 +85,8 @@ export default function SetPassword() {
       if (data.token) {
         localStorage.setItem("auth_token", data.token);
       }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
       toast({
         title: "Password created",
