@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, requireAuth } from "./replitAuth";
+import { setupAuth, requireAuth } from "./replitAuth";
 import { setupCustomAuth } from "./customAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
@@ -252,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get vendor type from session (for onboarding wizard)
-  app.get("/api/auth/vendor-type", isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/vendor-type", requireAuth, async (req: any, res) => {
     try {
       const vendorType = (req.session as any).vendorType;
       res.json({ vendorType: vendorType || null });
@@ -265,7 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Complete onboarding - mark user as having completed the welcome flow
   app.post(
     "/api/auth/complete-onboarding",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -279,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Complete welcome carousel - mark user as having seen the intro slides
-  app.post("/api/welcome/complete", isAuthenticated, async (req: any, res) => {
+  app.post("/api/welcome/complete", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { role } = req.body;
@@ -354,7 +354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get presigned URL for image upload
-  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
+  app.post("/api/objects/upload", requireAuth, async (req, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Set ACL policy after image upload with server-side validation
-  app.put("/api/images", isAuthenticated, async (req: any, res) => {
+  app.put("/api/images", requireAuth, async (req: any, res) => {
     if (!req.body.imageURL) {
       return res.status(400).json({ error: "imageURL is required" });
     }
@@ -441,7 +441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current user's vendor business (unified for all vendor types: shop, dine, service)
-  app.get("/api/auth/my-vendor", isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/my-vendor", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendorByOwnerId(userId);
@@ -453,7 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Legacy endpoint - redirects to unified /api/auth/my-vendor
-  app.get("/api/auth/my-restaurant", isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/my-restaurant", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendorByOwnerId(userId);
@@ -531,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin statistics endpoint - focused on deals, memberships, and business participation
-  app.get("/api/admin/stats", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/stats", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       console.log(`[/api/admin/stats] Request from user: ${userId}`);
@@ -709,7 +709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // This allows running ownership validation and email worker on-demand
   app.post(
     "/api/admin/run-maintenance",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -770,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin vendor verification endpoints
   app.patch(
     "/api/admin/vendors/:id/verify",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -796,7 +796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch(
     "/api/admin/restaurants/:id/verify",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -822,7 +822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch(
     "/api/admin/service-providers/:id/verify",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -849,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Switch vendor type for a user (DEPRECATED - only 'vendor' role is now supported)
   app.post(
     "/api/admin/users/:userId/switch-vendor-type",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const adminUserId = req.user.claims.sub;
@@ -1166,7 +1166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get orphaned Stripe subscriptions (active subscriptions not linked to app users)
   app.get(
     "/api/admin/orphaned-subscriptions",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -1242,7 +1242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Search users for linking (admin only)
-  app.get("/api/admin/users/search", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/users/search", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1298,7 +1298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // GET /api/admin/vendors - Get all vendors for deal creation (admin only)
-  app.get("/api/admin/vendors", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/vendors", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1329,7 +1329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/deals - Create a deal for any vendor (admin only)
-  app.post("/api/admin/deals", isAuthenticated, async (req: any, res) => {
+  app.post("/api/admin/deals", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1401,7 +1401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/admin/deals - Get all deals across all vendors (admin only)
-  app.get("/api/admin/deals", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/deals", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1437,7 +1437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/admin/deals/:id - Update any deal (admin only)
-  app.patch("/api/admin/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/admin/deals/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1492,7 +1492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/admin/deals/:id - Delete any deal (admin only)
-  app.delete("/api/admin/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/admin/deals/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1539,7 +1539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/admin/deals/:id/duplicate - Duplicate a deal (admin only)
   app.post(
     "/api/admin/deals/:id/duplicate",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -1601,7 +1601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== ADMIN REDEMPTION ENDPOINTS =====
 
   // GET /api/admin/redemptions - Get all redemptions with filters and pagination (admin only)
-  app.get("/api/admin/redemptions", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/redemptions", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1640,7 +1640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/admin/redemptions/:id/void - Void a redemption (admin only)
   app.post(
     "/api/admin/redemptions/:id/void",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -1711,7 +1711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/admin/redemptions/export - Export redemptions as CSV (admin only)
   app.get(
     "/api/admin/redemptions/export",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -1783,7 +1783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== ADMIN AUDIT LOG ENDPOINTS =====
 
   // GET /api/admin/audit-logs - Get audit logs with filters and pagination (admin only)
-  app.get("/api/admin/audit-logs", isAuthenticated, async (req: any, res) => {
+  app.get("/api/admin/audit-logs", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1820,7 +1820,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Link a Stripe subscription to an app user (admin only)
   app.post(
     "/api/admin/link-subscription",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const adminUserId = req.user.claims.sub;
@@ -1916,7 +1916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Allows admin to grant or revoke Pass membership manually
   app.patch(
     "/api/admin/users/:userId/membership",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const adminUserId = req.user.claims.sub;
@@ -2306,7 +2306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin-only endpoint
   app.post(
     "/api/admin/bulk-sync-memberships",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const adminUserId = req.user.claims.sub;
@@ -2526,7 +2526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTE: These MUST be defined BEFORE /api/vendors/:id to avoid route conflicts
 
   // GET /api/vendors/me - Get current vendor's profile with deals
-  app.get("/api/vendors/me", isAuthenticated, async (req: any, res) => {
+  app.get("/api/vendors/me", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendorByOwnerId(userId);
@@ -2568,7 +2568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/vendors/me - Update current vendor's profile
-  app.patch("/api/vendors/me", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/vendors/me", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendorByOwnerId(userId);
@@ -2621,7 +2621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // Get or create draft vendor profile for current user
-  app.get("/api/vendors/draft", isAuthenticated, async (req: any, res) => {
+  app.get("/api/vendors/draft", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       console.log("[DRAFT-GET] Fetching draft vendor for userId:", userId);
@@ -2648,7 +2648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create draft vendor profile (called on Step 1)
-  app.post("/api/vendors/draft", isAuthenticated, async (req: any, res) => {
+  app.post("/api/vendors/draft", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { vendorType, ...data } = req.body;
@@ -2713,7 +2713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mark vendor profile as complete
   app.post(
     "/api/vendors/:id/complete",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -2831,7 +2831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unified vendor onboarding endpoint
-  app.post("/api/vendors/onboard", isAuthenticated, async (req: any, res) => {
+  app.post("/api/vendors/onboard", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { vendorType, paymentMethods, fulfillmentMethods, ...data } =
@@ -3014,7 +3014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Draft Restaurant Profile Routes (LEGACY - redirects to unified vendor system)
   // ============================================================================
 
-  app.get("/api/restaurants/draft", isAuthenticated, async (req: any, res) => {
+  app.get("/api/restaurants/draft", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendorByOwnerId(userId);
@@ -3028,7 +3028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/restaurants/draft", isAuthenticated, async (req: any, res) => {
+  app.post("/api/restaurants/draft", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const data = req.body;
@@ -3078,7 +3078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/restaurants/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendorId = req.params.id;
@@ -3103,7 +3103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/restaurants/:id/complete",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3139,7 +3139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(
     "/api/service-providers/draft",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3159,7 +3159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/service-providers/draft",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3217,7 +3217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch(
     "/api/service-providers/:id",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3244,7 +3244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/service-providers/:id/complete",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3284,7 +3284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe Checkout Session for Rise Local Pass subscription
   app.post(
     "/api/billing/create-checkout-session",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3380,7 +3380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe Billing Portal session for managing subscription
   app.post(
     "/api/billing/create-portal-session",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3428,7 +3428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe Connect Express account for vendor
   app.post(
     "/api/stripe/create-connect-account",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3502,7 +3502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate Stripe Connect onboarding link
   app.post(
     "/api/stripe/account-link",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -3546,7 +3546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check Stripe Connect account status
   app.get(
     "/api/stripe/account-status",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -4457,7 +4457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Debug endpoint for membership status (admin only)
   app.get(
     "/api/debug/membership/:userId",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const requestingUserId = req.user.claims.sub;
@@ -4512,7 +4512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Useful when webhook delivery fails or membership isn't unlocked after payment
   app.post(
     "/api/entitlements/refresh",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -4817,7 +4817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  app.patch("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/vendors/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       console.log(
@@ -4926,7 +4926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/vendors/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/vendors/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendor(req.params.id);
@@ -4950,7 +4950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch(
     "/api/vendors/:id/verify",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -4989,7 +4989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get authenticated user's orders only
-  app.get("/api/orders/me", isAuthenticated, async (req: any, res) => {
+  app.get("/api/orders/me", requireAuth, async (req: any, res) => {
     try {
       const userEmail = req.user.claims.email;
       if (!userEmail) {
@@ -5017,7 +5017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/orders", isAuthenticated, async (req: any, res) => {
+  app.post("/api/orders", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const userEmail = req.user.claims.email;
@@ -5084,7 +5084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get vendor's incoming orders
-  app.get("/api/vendor-orders/my", isAuthenticated, async (req: any, res) => {
+  app.get("/api/vendor-orders/my", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -5106,7 +5106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update vendor order status
-  app.patch("/api/vendor-orders/:id/status", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/vendor-orders/:id/status", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
@@ -5141,7 +5141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update vendor order payment status
-  app.patch("/api/vendor-orders/:id/payment", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/vendor-orders/:id/payment", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
@@ -5176,7 +5176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current user's orders (master orders with vendor orders)
-  app.get("/api/orders/me", isAuthenticated, async (req: any, res) => {
+  app.get("/api/orders/me", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
@@ -5207,7 +5207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create Stripe Connect account link for vendor onboarding
   app.post(
     "/api/stripe/create-connect-account",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5264,7 +5264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check Stripe Connect account status
   app.get(
     "/api/stripe/connect-status",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5314,7 +5314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create payment intent for checkout (splits payment to vendors)
   app.post(
     "/api/stripe/create-payment-intent",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5374,7 +5374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== MULTI-VENDOR CHECKOUT =====
   
   // Multi-Vendor Checkout Route
-  app.post("/api/checkout", isAuthenticated, async (req: any, res) => {
+  app.post("/api/checkout", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const userEmail = req.user.claims.email;
@@ -5528,7 +5528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Buyer signup route
   app.post(
     "/api/users/buyer/signup",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5566,7 +5566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Vendor signup route
-  app.post("/api/vendors/signup", isAuthenticated, async (req: any, res) => {
+  app.post("/api/vendors/signup", requireAuth, async (req: any, res) => {
     try {
       const ownerId = req.user.claims.sub;
       const vendorData = req.body;
@@ -5590,7 +5590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // User routes
   // Get all users (admin only - returns complete user data)
-  app.get("/api/users", isAuthenticated, async (req: any, res) => {
+  app.get("/api/users", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       console.log(`[/api/users] Request from user: ${userId}`);
@@ -5663,7 +5663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/me", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/users/me", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
 
@@ -5719,7 +5719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/vendors/:vendorId/services",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5755,7 +5755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch(
     "/api/vendor-services/:id",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5794,7 +5794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete(
     "/api/vendor-services/:id",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5882,7 +5882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/restaurants/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendor(req.params.id);
@@ -5910,7 +5910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/restaurants/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/restaurants/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendor(req.params.id);
@@ -5934,7 +5934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch(
     "/api/restaurants/:id/verify",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -5962,7 +5962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Legacy endpoint - redirects to unified /api/auth/my-vendor
   app.get(
     "/api/auth/my-service-provider",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6018,7 +6018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/services", isAuthenticated, async (req: any, res) => {
+  app.post("/api/services", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
 
@@ -6049,7 +6049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/services/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/services/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const vendor = await storage.getVendor(req.params.id);
@@ -6080,7 +6080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Message routes
-  app.post("/api/messages", isAuthenticated, async (req: any, res) => {
+  app.post("/api/messages", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const messageData = insertMessageSchema.parse({
@@ -6103,7 +6103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+  app.get("/api/conversations", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       console.log("[CONVERSATIONS] Fetching conversations for user:", userId);
@@ -6118,7 +6118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(
     "/api/messages/:otherUserId",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6144,7 +6144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get(
     "/api/messages/unread/count",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6162,7 +6162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/b2c/conversations/start - Start or get existing conversation with a business
   app.post(
     "/api/b2c/conversations/start",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const consumerId = req.user.claims.sub;
@@ -6205,7 +6205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // GET /api/b2c/conversations - Get all B2C conversations for current user
-  app.get("/api/b2c/conversations", isAuthenticated, async (req: any, res) => {
+  app.get("/api/b2c/conversations", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -6246,7 +6246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/b2c/conversations/:conversationId - Get messages in a conversation
   app.get(
     "/api/b2c/conversations/:conversationId",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6313,7 +6313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/b2c/conversations/:conversationId/messages - Send a message in a conversation
   app.post(
     "/api/b2c/conversations/:conversationId/messages",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6413,7 +6413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // GET /api/b2c/unread-count - Get unread B2C message count for current user
-  app.get("/api/b2c/unread-count", isAuthenticated, async (req: any, res) => {
+  app.get("/api/b2c/unread-count", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -6453,7 +6453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============ NOTIFICATIONS ROUTES ============
 
   // GET /api/notifications - Get all notifications for current user
-  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+  app.get("/api/notifications", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const notifications = await storage.getNotifications(userId);
@@ -6467,7 +6467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/notifications/unread-count - Get unread notification count
   app.get(
     "/api/notifications/unread-count",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6483,7 +6483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PATCH /api/notifications/:id/read - Mark a notification as read
   app.patch(
     "/api/notifications/:id/read",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const { id } = req.params;
@@ -6499,7 +6499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/notifications/mark-all-read - Mark all notifications as read
   app.post(
     "/api/notifications/mark-all-read",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6716,7 +6716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/deals - Create a new deal (vendor only)
-  app.post("/api/deals", isAuthenticated, async (req: any, res) => {
+  app.post("/api/deals", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
 
@@ -6752,7 +6752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PUT /api/deals/:id - Update a deal (vendor only, own deals)
-  app.put("/api/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/deals/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const dealId = req.params.id;
@@ -6793,7 +6793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/deals/:id/redeem - Simple button-based deal redemption (consumer endpoint)
-  app.post("/api/deals/:id/redeem", isAuthenticated, async (req: any, res) => {
+  app.post("/api/deals/:id/redeem", requireAuth, async (req: any, res) => {
     try {
       const dealId = req.params.id;
       const userId = req.user.claims.sub;
@@ -6847,7 +6847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/me/redemptions - Get current user's redemption history (button-based)
-  app.get("/api/me/redemptions", isAuthenticated, async (req: any, res) => {
+  app.get("/api/me/redemptions", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
@@ -6885,7 +6885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DELETE /api/me/redemptions/:id - Undo (void) a consumer's own redemption
   app.delete(
     "/api/me/redemptions/:id",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -6946,7 +6946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/deals/:id/can-redeem - Check if user can redeem a deal
   app.get(
     "/api/deals/:id/can-redeem",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const dealId = req.params.id;
@@ -6981,7 +6981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/business/redemptions - Get business's redemption history
   app.get(
     "/api/business/redemptions",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -7034,7 +7034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // GET /api/vendor/redemptions - Get vendor's redemption history
-  app.get("/api/vendor/redemptions", isAuthenticated, async (req: any, res) => {
+  app.get("/api/vendor/redemptions", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
 
@@ -7081,7 +7081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/deals/:id/redemptions - Get redemption history for a deal (vendor only)
   app.get(
     "/api/deals/:id/redemptions",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -7115,7 +7115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== VENDOR DEAL MANAGEMENT ENDPOINTS =====
 
   // GET /api/vendor/deals - List vendor's own deals with optional status filter
-  app.get("/api/vendor/deals", isAuthenticated, async (req: any, res) => {
+  app.get("/api/vendor/deals", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const statusFilter = req.query.status as string | undefined;
@@ -7160,7 +7160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/vendor/deals/:id - Get a single deal for the vendor
-  app.get("/api/vendor/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/vendor/deals/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const dealId = req.params.id;
@@ -7192,7 +7192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/vendor/deals - Create and auto-publish a new deal
-  app.post("/api/vendor/deals", isAuthenticated, async (req: any, res) => {
+  app.post("/api/vendor/deals", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
 
@@ -7234,7 +7234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/vendor/deals/:id - Update a deal
-  app.patch("/api/vendor/deals/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/vendor/deals/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const dealId = req.params.id;
@@ -7281,7 +7281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/vendor/deals/:id/publish - Publish a deal
   app.post(
     "/api/vendor/deals/:id/publish",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -7365,7 +7365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/vendor/deals/:id/pause - Pause a deal
   app.post(
     "/api/vendor/deals/:id/pause",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -7406,7 +7406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DELETE /api/vendor/deals/:id - Soft delete a deal
   app.delete(
     "/api/vendor/deals/:id",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -7448,7 +7448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/vendor/deals/:dealId/void/:redemptionId - Void a redemption (for staff mistakes)
   app.post(
     "/api/vendor/deals/:dealId/void/:redemptionId",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -7494,7 +7494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== DEAL CLAIM ENDPOINTS (Time-Locked Code System) =====
 
   // POST /api/deals/:id/claim - Claim a deal and generate time-locked code
-  app.post("/api/deals/:id/claim", isAuthenticated, async (req: any, res) => {
+  app.post("/api/deals/:id/claim", requireAuth, async (req: any, res) => {
     try {
       const dealId = req.params.id;
       const userId = req.user.claims.sub;
@@ -7637,7 +7637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/redemptions/my - Get current user's redemptions with deal info
-  app.get("/api/redemptions/my", isAuthenticated, async (req: any, res) => {
+  app.get("/api/redemptions/my", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const redemptions = await storage.getUserRedemptions(userId);
@@ -7676,7 +7676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/redemptions/:id - Get a specific redemption with deal info
-  app.get("/api/redemptions/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/redemptions/:id", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const redemptionId = req.params.id;
@@ -7796,7 +7796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/placements - Create a new placement (admin only)
-  app.post("/api/placements", isAuthenticated, async (req: any, res) => {
+  app.post("/api/placements", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -7832,7 +7832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PATCH /api/placements/:id/status - Update placement status (admin only)
   app.patch(
     "/api/placements/:id/status",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
@@ -7867,7 +7867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== FAVORITES =====
 
   // GET /api/favorites/ids - Get just the deal IDs user has favorited (for fast checking on list pages)
-  app.get("/api/favorites/ids", isAuthenticated, async (req: any, res) => {
+  app.get("/api/favorites/ids", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const favorites = await storage.getUserFavorites(userId);
@@ -7880,7 +7880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/favorites - Get user's favorite deals
-  app.get("/api/favorites", isAuthenticated, async (req: any, res) => {
+  app.get("/api/favorites", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const favoriteDeals = await storage.getUserFavoriteDeals(userId);
@@ -7905,7 +7905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/favorites/:dealId - Check if deal is favorited
-  app.get("/api/favorites/:dealId", isAuthenticated, async (req: any, res) => {
+  app.get("/api/favorites/:dealId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const dealId = req.params.dealId;
@@ -7919,7 +7919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/favorites/:dealId - Add deal to favorites
-  app.post("/api/favorites/:dealId", isAuthenticated, async (req: any, res) => {
+  app.post("/api/favorites/:dealId", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const dealId = req.params.dealId;
@@ -7941,7 +7941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DELETE /api/favorites/:dealId - Remove deal from favorites
   app.delete(
     "/api/favorites/:dealId",
-    isAuthenticated,
+    requireAuth,
     async (req: any, res) => {
       try {
         const userId = req.user.claims.sub;
