@@ -1,0 +1,1410 @@
+# Rise Local: Complete Backend Audit & App Store Readiness Master Prompt
+
+## Mission
+Audit the entire Rise Local backend, identify all dysfunctions, security issues, and missing features, then implement fixes to create a production-ready, App Store-compliant system.
+
+---
+
+## Phase 1: Backend Audit - Identify All Issues
+
+### 1.1 Authentication & Security Audit
+
+**Run these checks:**
+
+```bash
+# Check all auth-related files
+find . -name "*auth*" -o -name "*login*" -o -name "*password*" | grep -v node_modules
+
+# Check for hardcoded secrets
+grep -r "password\|secret\|key" --include="*.js" --include="*.ts" . | grep -v node_modules | grep -v "process.env"
+
+# Check for SQL injection vulnerabilities
+grep -r "query.*\${" --include="*.js" . | grep -v node_modules
+```
+
+**Critical Questions:**
+
+1. **Is JWT implemented properly?**
+   - [ ] JWT secret is in environment variables (not hardcoded)
+   - [ ] Tokens have appropriate expiration (7-30 days)
+   - [ ] Tokens are signed and verified correctly
+   - [ ] Refresh tokens are implemented
+
+2. **Are passwords secure?**
+   - [ ] Using bcrypt with salt rounds >= 10
+   - [ ] Passwords never logged or exposed
+   - [ ] Password reset flow is secure
+   - [ ] No plain text passwords anywhere
+
+3. **Is the database safe from injection?**
+   - [ ] All queries use parameterized statements ($1, $2, etc.)
+   - [ ] No string concatenation in SQL queries
+   - [ ] Input validation on all endpoints
+
+4. **Is there proper rate limiting?**
+   - [ ] Login endpoint rate limited (5-10 attempts per 15 min)
+   - [ ] Password reset rate limited (3 attempts per hour)
+   - [ ] API endpoints rate limited
+   - [ ] Account lockout after failed attempts
+
+5. **Are sessions managed correctly?**
+   - [ ] Tokens stored securely
+   - [ ] Session expiration handled
+   - [ ] Logout properly invalidates tokens
+   - [ ] No session data in localStorage (security risk)
+
+**Action Items:**
+```javascript
+// FIND AND FIX THESE ISSUES:
+
+// ❌ WRONG: Hardcoded secret
+const jwt = require('jsonwebtoken');
+const token = jwt.sign(user, 'my-secret-key');
+
+// ✅ CORRECT: Environment variable
+const token = jwt.sign(user, process.env.JWT_SECRET);
+
+// ❌ WRONG: SQL injection vulnerability
+const query = `SELECT * FROM users WHERE email = '${email}'`;
+
+// ✅ CORRECT: Parameterized query
+const query = 'SELECT * FROM users WHERE email = $1';
+await db.query(query, [email]);
+
+// ❌ WRONG: Plain bcrypt (not enough rounds)
+const hash = await bcrypt.hash(password, 8);
+
+// ✅ CORRECT: Bcrypt with 12 rounds
+const hash = await bcrypt.hash(password, 12);
+```
+
+---
+
+### 1.2 Database Connection & Performance Audit
+
+**Check database setup:**
+
+```javascript
+// List all database queries in your codebase
+grep -r "db.query\|pool.query\|client.query" --include="*.js" . | grep -v node_modules
+
+// Check for connection leaks
+grep -r "db.query" --include="*.js" . -A 5 | grep -v "pool\|client" | grep -v node_modules
+```
+
+**Critical Questions:**
+
+1. **Is connection pooling configured?**
+   - [ ] Using connection pool (not single connection)
+   - [ ] Pool size appropriate for load (10-20 connections)
+   - [ ] Connections properly closed after use
+   - [ ] Error handling for connection failures
+
+2. **Are indexes created for performance?**
+   - [ ] Index on users.email
+   - [ ] Index on foreign keys (userId, vendorId, etc.)
+   - [ ] Index on frequently queried columns
+   - [ ] Composite indexes where needed
+
+3. **Is database schema optimized?**
+   - [ ] No duplicate data
+   - [ ] Proper foreign key constraints
+   - [ ] Correct data types
+   - [ ] NOT NULL constraints where appropriate
+
+**Database Connection Fix:**
+```javascript
+// ❌ WRONG: No connection pooling
+const { Client } = require('pg');
+const client = new Client({ connectionString: process.env.DATABASE_URL });
+client.connect();
+
+// ✅ CORRECT: Connection pooling
+const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 20, // Max connections
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+module.exports = {
+  query: (text, params) => pool.query(text, params)
+};
+```
+
+**Required Database Indexes:**
+```sql
+-- Critical indexes for performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_users_active ON users(isActive) WHERE isActive = true;
+CREATE INDEX IF NOT EXISTS idx_deals_vendor ON deals(vendorId);
+CREATE INDEX IF NOT EXISTS idx_deals_active ON deals(isActive) WHERE isActive = true;
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(userId);
+CREATE INDEX IF NOT EXISTS idx_favorites_deal ON favorites(dealId);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(userId);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expiry ON refresh_tokens(expiresAt);
+```
+
+---
+
+### 1.3 Error Handling Audit
+
+**Check error handling:**
+
+```bash
+# Find try-catch blocks
+grep -r "try {" --include="*.js" . | wc -l
+
+# Find endpoints without error handling
+grep -r "async function\|app.post\|app.get" --include="*.js" . -A 10 | grep -v "try\|catch" | grep -v node_modules
+```
+
+**Critical Questions:**
+
+1. **Do all async functions have try-catch?**
+   - [ ] Every async route handler wrapped in try-catch
+   - [ ] Errors logged properly
+   - [ ] User-friendly error messages returned
+   - [ ] Stack traces never exposed to users
+
+2. **Is there global error handling?**
+   - [ ] Global error handler middleware exists
+   - [ ] Catches uncaught errors
+   - [ ] Logs errors to monitoring service
+   - [ ] Returns appropriate status codes
+
+**Error Handling Fix:**
+```javascript
+// ❌ WRONG: No error handling
+app.post('/api/deals', async (req, res) => {
+  const deal = await db.query('INSERT INTO deals ...');
+  res.json(deal);
+});
+
+// ✅ CORRECT: Proper error handling
+app.post('/api/deals', async (req, res) => {
+  try {
+    const deal = await db.query('INSERT INTO deals ...');
+    res.json(deal);
+  } catch (error) {
+    console.error('Create deal error:', error);
+    res.status(500).json({
+      error: 'Failed to create deal',
+      code: 'CREATE_DEAL_ERROR'
+    });
+  }
+});
+
+// ✅ BEST: Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error',
+    code: err.code || 'SERVER_ERROR',
+    // Don't expose stack trace in production
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+```
+
+---
+
+### 1.4 Input Validation Audit
+
+**Check validation:**
+
+```bash
+# Find endpoints that accept user input
+grep -r "req.body\|req.params\|req.query" --include="*.js" . | grep -v node_modules | head -20
+```
+
+**Critical Questions:**
+
+1. **Is all user input validated?**
+   - [ ] Email format validation
+   - [ ] Password strength validation
+   - [ ] String length limits enforced
+   - [ ] Number range validation
+   - [ ] Required fields checked
+
+2. **Are there validation libraries in use?**
+   - [ ] Using express-validator, joi, or zod
+   - [ ] Validation applied before database queries
+   - [ ] Clear error messages for invalid input
+
+**Input Validation Fix:**
+```javascript
+// Install validation library
+// npm install express-validator
+
+const { body, validationResult } = require('express-validator');
+
+// ❌ WRONG: No validation
+app.post('/api/auth/signup', async (req, res) => {
+  const { email, password } = req.body;
+  // Directly use without validation
+});
+
+// ✅ CORRECT: Validated input
+const signupValidation = [
+  body('email')
+    .isEmail().withMessage('Invalid email format')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/).withMessage('Password must contain uppercase letter')
+    .matches(/[0-9]/).withMessage('Password must contain a number'),
+  body('firstName')
+    .trim()
+    .isLength({ min: 1, max: 50 }).withMessage('First name must be 1-50 characters')
+    .escape(),
+  body('lastName')
+    .trim()
+    .isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters')
+    .escape()
+];
+
+app.post('/api/auth/signup', signupValidation, async (req, res) => {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ 
+      errors: errors.array(),
+      code: 'VALIDATION_ERROR'
+    });
+  }
+  
+  // Now safe to use validated input
+  const { email, password, firstName, lastName } = req.body;
+});
+```
+
+---
+
+### 1.5 Environment Variables Audit
+
+**Check environment setup:**
+
+```bash
+# List all environment variable usage
+grep -r "process.env" --include="*.js" . | grep -v node_modules | cut -d: -f1 | sort -u
+
+# Check for .env file
+ls -la | grep .env
+```
+
+**Required Environment Variables:**
+```bash
+# .env (NEVER commit this file)
+
+# Database
+DATABASE_URL=postgresql://user:password@host:5432/database
+POSTGRES_SSL=true
+
+# JWT
+JWT_SECRET=your-super-long-random-secret-min-64-chars
+JWT_EXPIRATION=7d
+JWT_REFRESH_EXPIRATION=30d
+
+# Bcrypt
+BCRYPT_ROUNDS=12
+
+# Server
+PORT=3000
+NODE_ENV=production
+
+# CORS
+FRONTEND_URL=https://riselocal.app
+ALLOWED_ORIGINS=https://riselocal.app,https://www.riselocal.app
+
+# Email (if using)
+SENDGRID_API_KEY=your-sendgrid-key
+EMAIL_FROM=noreply@riselocal.app
+
+# Apple Sign-In (if using)
+APPLE_CLIENT_ID=com.riselocal.app
+APPLE_TEAM_ID=YOUR_TEAM_ID
+APPLE_KEY_ID=YOUR_KEY_ID
+
+# Logging & Monitoring
+LOG_LEVEL=info
+SENTRY_DSN=your-sentry-dsn
+
+# Rate Limiting
+RATE_LIMIT_WINDOW=15
+RATE_LIMIT_MAX=100
+```
+
+**Environment Variable Checker:**
+```javascript
+// config/validateEnv.js
+const requiredEnvVars = [
+  'DATABASE_URL',
+  'JWT_SECRET',
+  'PORT',
+  'NODE_ENV'
+];
+
+function validateEnv() {
+  const missing = requiredEnvVars.filter(varName => !process.env[varName]);
+  
+  if (missing.length > 0) {
+    console.error('Missing required environment variables:');
+    missing.forEach(varName => console.error(`  - ${varName}`));
+    process.exit(1);
+  }
+  
+  // Validate JWT_SECRET length
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+    console.error('JWT_SECRET must be at least 32 characters long');
+    process.exit(1);
+  }
+  
+  console.log('✓ All required environment variables present');
+}
+
+module.exports = validateEnv;
+
+// In your main app file:
+// const validateEnv = require('./config/validateEnv');
+// validateEnv();
+```
+
+---
+
+### 1.6 API Structure & Organization Audit
+
+**Check code organization:**
+
+```bash
+# Count files in routes folder
+find routes -name "*.js" | wc -l
+
+# Check for duplicate route definitions
+grep -r "app.post\|app.get\|app.put\|app.delete" --include="*.js" . | grep -v node_modules | sort
+```
+
+**Ideal Structure:**
+```
+backend/
+├── server.js                 # Main entry point
+├── config/
+│   ├── database.js          # DB connection
+│   ├── validateEnv.js       # Environment validation
+│   └── index.js
+├── middleware/
+│   ├── auth.js              # JWT verification
+│   ├── validation.js        # Input validation
+│   ├── rateLimiter.js       # Rate limiting
+│   ├── errorHandler.js      # Global error handler
+│   └── logger.js            # Request logging
+├── routes/
+│   ├── index.js             # Route aggregator
+│   ├── auth/
+│   │   ├── login.js
+│   │   ├── signup.js
+│   │   ├── logout.js
+│   │   ├── refresh.js
+│   │   ├── forgotPassword.js
+│   │   ├── resetPassword.js
+│   │   └── verify.js
+│   ├── users/
+│   │   ├── profile.js
+│   │   ├── settings.js
+│   │   └── favorites.js
+│   ├── deals/
+│   │   ├── list.js
+│   │   ├── create.js
+│   │   ├── update.js
+│   │   └── delete.js
+│   └── vendors/
+│       ├── profile.js
+│       └── dashboard.js
+├── models/                   # Database models (optional)
+├── utils/
+│   ├── jwt.js               # JWT utilities
+│   ├── password.js          # Password hashing
+│   └── email.js             # Email utilities
+└── tests/                    # Unit & integration tests
+```
+
+---
+
+## Phase 2: Critical Fixes - Must Implement Before App Store
+
+### 2.1 Security Hardening
+
+**Implement these immediately:**
+
+```javascript
+// 1. Security Headers
+const helmet = require('helmet');
+app.use(helmet());
+
+// 2. CORS Configuration
+const cors = require('cors');
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// 3. Rate Limiting
+const rateLimit = require('express-rate-limit');
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: { error: 'Too many requests', code: 'RATE_LIMIT' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  skipSuccessfulRequests: true
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/auth/login', authLimiter);
+
+// 4. Body Parser Limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 5. SQL Injection Prevention
+// ALWAYS use parameterized queries
+const safeQuery = async (text, params) => {
+  // Validate params are not malformed
+  if (params && !Array.isArray(params)) {
+    throw new Error('Query params must be an array');
+  }
+  return db.query(text, params);
+};
+
+// 6. XSS Prevention
+const xss = require('xss-clean');
+app.use(xss());
+
+// 7. Hide Powered-By Header
+app.disable('x-powered-by');
+
+// 8. Force HTTPS in Production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      return res.redirect(`https://${req.header('host')}${req.url}`);
+    }
+    next();
+  });
+}
+```
+
+---
+
+### 2.2 Complete JWT Implementation
+
+```javascript
+// utils/jwt.js
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '7d';
+const REFRESH_EXPIRATION = process.env.JWT_REFRESH_EXPIRATION || '30d';
+
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be at least 32 characters');
+}
+
+function generateAccessToken(payload) {
+  return jwt.sign(
+    payload,
+    JWT_SECRET,
+    {
+      expiresIn: JWT_EXPIRATION,
+      issuer: 'riselocal',
+      audience: 'riselocal-app'
+    }
+  );
+}
+
+function generateRefreshToken(payload) {
+  return jwt.sign(
+    { ...payload, type: 'refresh' },
+    JWT_SECRET,
+    {
+      expiresIn: REFRESH_EXPIRATION,
+      issuer: 'riselocal',
+      audience: 'riselocal-app'
+    }
+  );
+}
+
+function verifyToken(token, type = 'access') {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      issuer: 'riselocal',
+      audience: 'riselocal-app'
+    });
+    
+    if (type === 'refresh' && decoded.type !== 'refresh') {
+      throw new Error('Invalid token type');
+    }
+    
+    return decoded;
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      throw new Error('Token expired');
+    }
+    throw new Error('Invalid token');
+  }
+}
+
+module.exports = {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken
+};
+```
+
+---
+
+### 2.3 Proper Database Connection Pool
+
+```javascript
+// config/database.js
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? {
+    rejectUnauthorized: false
+  } : false,
+  max: 20, // Maximum number of connections
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+// Test connection on startup
+pool.on('connect', () => {
+  console.log('✓ Database connected');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected database error:', err);
+  process.exit(-1);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  await pool.end();
+  console.log('Database pool closed');
+  process.exit(0);
+});
+
+module.exports = {
+  query: (text, params) => pool.query(text, params),
+  pool
+};
+```
+
+---
+
+### 2.4 Complete Auth Middleware
+
+```javascript
+// middleware/auth.js
+const { verifyToken } = require('../utils/jwt');
+const db = require('../config/database');
+
+async function authenticateToken(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        error: 'Access token required',
+        code: 'NO_TOKEN'
+      });
+    }
+    
+    // Verify and decode token
+    const decoded = verifyToken(token);
+    
+    // Check if user still exists and is active
+    const userResult = await db.query(
+      'SELECT id, email, role, isActive, isVendor FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+    
+    const user = userResult.rows[0];
+    
+    if (!user.isActive) {
+      return res.status(403).json({
+        error: 'Account is inactive',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+    
+    // Attach user to request
+    req.user = user;
+    next();
+    
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    
+    if (error.message === 'Token expired') {
+      return res.status(401).json({
+        error: 'Token expired',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+    
+    return res.status(401).json({
+      error: 'Invalid token',
+      code: 'INVALID_TOKEN'
+    });
+  }
+}
+
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        code: 'NOT_AUTHENTICATED'
+      });
+    }
+    
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: 'Insufficient permissions',
+        code: 'FORBIDDEN'
+      });
+    }
+    
+    next();
+  };
+}
+
+function requireVendor(req, res, next) {
+  if (!req.user || !req.user.isVendor) {
+    return res.status(403).json({
+      error: 'Vendor access required',
+      code: 'VENDOR_ONLY'
+    });
+  }
+  next();
+}
+
+module.exports = {
+  authenticateToken,
+  requireRole,
+  requireVendor
+};
+```
+
+---
+
+### 2.5 Global Error Handler
+
+```javascript
+// middleware/errorHandler.js
+function errorHandler(err, req, res, next) {
+  // Log error
+  console.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    user: req.user?.id
+  });
+  
+  // Don't expose internal errors in production
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // Default error
+  let status = err.status || 500;
+  let message = err.message || 'Internal server error';
+  let code = err.code || 'SERVER_ERROR';
+  
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    status = 400;
+    code = 'VALIDATION_ERROR';
+  }
+  
+  if (err.code === '23505') { // PostgreSQL unique violation
+    status = 409;
+    message = 'Resource already exists';
+    code = 'DUPLICATE_RESOURCE';
+  }
+  
+  if (err.code === '23503') { // PostgreSQL foreign key violation
+    status = 400;
+    message = 'Invalid reference';
+    code = 'INVALID_REFERENCE';
+  }
+  
+  res.status(status).json({
+    error: message,
+    code,
+    ...((!isProduction && err.stack) && { stack: err.stack })
+  });
+}
+
+// Catch 404 errors
+function notFound(req, res) {
+  res.status(404).json({
+    error: 'Route not found',
+    code: 'NOT_FOUND',
+    path: req.url
+  });
+}
+
+module.exports = {
+  errorHandler,
+  notFound
+};
+```
+
+---
+
+### 2.6 Request Logging
+
+```javascript
+// middleware/logger.js
+function requestLogger(req, res, next) {
+  const start = Date.now();
+  
+  // Log request
+  console.log(`→ ${req.method} ${req.url}`, {
+    body: req.method !== 'GET' ? req.body : undefined,
+    user: req.user?.id
+  });
+  
+  // Log response
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`← ${req.method} ${req.url} ${res.statusCode} (${duration}ms)`);
+  });
+  
+  next();
+}
+
+module.exports = requestLogger;
+```
+
+---
+
+## Phase 3: Complete Server Setup
+
+### 3.1 Main Server File
+
+```javascript
+// server.js
+require('dotenv').config();
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+const xss = require('xss-clean');
+
+// Import configs and middleware
+const validateEnv = require('./config/validateEnv');
+const db = require('./config/database');
+const requestLogger = require('./middleware/logger');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { generalLimiter } = require('./middleware/rateLimiter');
+
+// Import routes
+const routes = require('./routes');
+
+// Validate environment
+validateEnv();
+
+// Initialize Express
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Trust proxy (for rate limiting behind reverse proxy)
+app.set('trust proxy', 1);
+
+// Security middleware
+app.use(helmet());
+app.use(xss());
+app.disable('x-powered-by');
+
+// CORS
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Force HTTPS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.header('x-forwarded-proto') !== 'https') {
+      return res.redirect(`https://${req.header('host')}${req.url}`);
+    }
+    next();
+  });
+}
+
+// Request logging
+app.use(requestLogger);
+
+// Rate limiting
+app.use('/api/', generalLimiter);
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// API routes
+app.use('/api', routes);
+
+// 404 handler
+app.use(notFound);
+
+// Error handler (must be last)
+app.use(errorHandler);
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`✓ Server running on port ${PORT}`);
+  console.log(`✓ Environment: ${process.env.NODE_ENV}`);
+  console.log(`✓ Database: Connected`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+module.exports = app;
+```
+
+---
+
+## Phase 4: Database Schema Validation
+
+### 4.1 Required Tables & Columns
+
+```sql
+-- Users table (complete)
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255), -- NULL for OAuth/unrecovered users
+  firstName VARCHAR(255) NOT NULL,
+  lastName VARCHAR(255) NOT NULL,
+  businessName VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'user',
+  accountType VARCHAR(50) DEFAULT 'user',
+  isVendor BOOLEAN DEFAULT false,
+  isAdmin BOOLEAN DEFAULT false,
+  isActive BOOLEAN DEFAULT true,
+  emailVerified BOOLEAN DEFAULT false,
+  emailVerificationToken VARCHAR(255),
+  emailVerificationExpiry TIMESTAMP,
+  resetToken VARCHAR(255),
+  resetTokenExpiry TIMESTAMP,
+  failedLoginAttempts INTEGER DEFAULT 0,
+  lockedUntil TIMESTAMP,
+  appleId VARCHAR(255) UNIQUE,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  lastLoginAt TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Refresh tokens
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  deviceInfo JSONB,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  lastUsedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expiresAt TIMESTAMP NOT NULL,
+  revoked BOOLEAN DEFAULT false,
+  revokedAt TIMESTAMP,
+  revokedReason VARCHAR(255)
+);
+
+-- Login log (security monitoring)
+CREATE TABLE IF NOT EXISTS login_log (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  email VARCHAR(255),
+  ipAddress VARCHAR(45),
+  userAgent TEXT,
+  success BOOLEAN NOT NULL,
+  errorMessage TEXT,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Deals (if you have them)
+CREATE TABLE IF NOT EXISTS deals (
+  id SERIAL PRIMARY KEY,
+  vendorId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  category VARCHAR(100),
+  originalPrice DECIMAL(10, 2),
+  discountedPrice DECIMAL(10, 2),
+  discountPercentage INTEGER,
+  startDate TIMESTAMP,
+  endDate TIMESTAMP,
+  isActive BOOLEAN DEFAULT true,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Favorites
+CREATE TABLE IF NOT EXISTS favorites (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  dealId INTEGER NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(userId, dealId)
+);
+
+-- Critical indexes
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_users_active ON users(isActive) WHERE isActive = true;
+CREATE INDEX IF NOT EXISTS idx_users_vendor ON users(isVendor) WHERE isVendor = true;
+CREATE INDEX IF NOT EXISTS idx_users_apple_id ON users(appleId) WHERE appleId IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(userId);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expiry ON refresh_tokens(expiresAt) WHERE revoked = false;
+CREATE INDEX IF NOT EXISTS idx_login_log_user ON login_log(userId);
+CREATE INDEX IF NOT EXISTS idx_login_log_timestamp ON login_log(timestamp);
+CREATE INDEX IF NOT EXISTS idx_deals_vendor ON deals(vendorId);
+CREATE INDEX IF NOT EXISTS idx_deals_active ON deals(isActive) WHERE isActive = true;
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(userId);
+CREATE INDEX IF NOT EXISTS idx_favorites_deal ON favorites(dealId);
+```
+
+---
+
+## Phase 5: Testing Strategy
+
+### 5.1 Unit Tests
+
+```javascript
+// tests/auth.test.js
+const request = require('supertest');
+const app = require('../server');
+
+describe('Authentication', () => {
+  test('POST /api/auth/login - successful login', async () => {
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'test@example.com',
+        password: 'Password123'
+      });
+    
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('token');
+    expect(response.body).toHaveProperty('user');
+  });
+  
+  test('POST /api/auth/login - invalid credentials', async () => {
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'test@example.com',
+        password: 'WrongPassword'
+      });
+    
+    expect(response.status).toBe(401);
+    expect(response.body).toHaveProperty('error');
+  });
+  
+  test('POST /api/auth/login - user needs recovery', async () => {
+    const response = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'nopassword@example.com',
+        password: 'anything'
+      });
+    
+    expect(response.status).toBe(200);
+    expect(response.body.needsRecovery).toBe(true);
+  });
+});
+```
+
+### 5.2 Integration Tests
+
+```javascript
+// tests/integration/dealFlow.test.js
+describe('Deal Creation Flow', () => {
+  let authToken;
+  let vendorId;
+  
+  beforeAll(async () => {
+    // Login as vendor
+    const loginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'vendor@example.com', password: 'Password123' });
+    
+    authToken = loginResponse.body.token;
+    vendorId = loginResponse.body.user.id;
+  });
+  
+  test('Create deal as vendor', async () => {
+    const response = await request(app)
+      .post('/api/deals')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        title: 'Test Deal',
+        description: 'Test description',
+        originalPrice: 100,
+        discountedPrice: 80
+      });
+    
+    expect(response.status).toBe(201);
+    expect(response.body).toHaveProperty('id');
+  });
+  
+  test('Cannot create deal without auth', async () => {
+    const response = await request(app)
+      .post('/api/deals')
+      .send({ title: 'Test Deal' });
+    
+    expect(response.status).toBe(401);
+  });
+});
+```
+
+---
+
+## Phase 6: Deployment Checklist
+
+### 6.1 Pre-Deployment
+
+- [ ] All environment variables set in production
+- [ ] Database migrations applied
+- [ ] Database indexes created
+- [ ] Connection pooling configured
+- [ ] JWT secret is strong (64+ characters)
+- [ ] bcrypt rounds set to 12
+- [ ] Rate limiting enabled
+- [ ] CORS configured for production domain
+- [ ] HTTPS enforced
+- [ ] Security headers enabled (helmet)
+- [ ] Error handler doesn't expose stack traces
+- [ ] Logging configured (not console.log in production)
+- [ ] All secrets removed from code
+- [ ] .env file in .gitignore
+- [ ] Health check endpoint working
+
+### 6.2 Performance Optimization
+
+```javascript
+// Enable compression
+const compression = require('compression');
+app.use(compression());
+
+// Cache static assets
+app.use(express.static('public', {
+  maxAge: '1d',
+  etag: true
+}));
+
+// Database query optimization
+// Use EXPLAIN ANALYZE to check query performance
+const result = await db.query(`
+  EXPLAIN ANALYZE
+  SELECT * FROM deals WHERE vendorId = $1
+`, [vendorId]);
+```
+
+### 6.3 Monitoring Setup
+
+```javascript
+// Add error tracking (Sentry)
+const Sentry = require('@sentry/node');
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV,
+    tracesSampleRate: 0.1
+  });
+  
+  app.use(Sentry.Handlers.requestHandler());
+  app.use(Sentry.Handlers.errorHandler());
+}
+
+// Add performance monitoring
+const responseTime = require('response-time');
+app.use(responseTime((req, res, time) => {
+  if (time > 1000) {
+    console.warn(`Slow request: ${req.method} ${req.url} took ${time}ms`);
+  }
+}));
+```
+
+---
+
+## Phase 7: App Store Specific Requirements
+
+### 7.1 Privacy & Data Handling
+
+**Create these endpoints for GDPR/privacy compliance:**
+
+```javascript
+// Get user data (data export)
+app.get('/api/user/data', authenticateToken, async (req, res) => {
+  const userData = await db.query(
+    `SELECT 
+      u.id, u.email, u.firstName, u.lastName, u.createdAt,
+      json_agg(DISTINCT d.*) as deals,
+      json_agg(DISTINCT f.*) as favorites
+     FROM users u
+     LEFT JOIN deals d ON u.id = d.vendorId
+     LEFT JOIN favorites f ON u.id = f.userId
+     WHERE u.id = $1
+     GROUP BY u.id`,
+    [req.user.id]
+  );
+  
+  res.json(userData.rows[0]);
+});
+
+// Delete user account (GDPR right to be forgotten)
+app.delete('/api/user/account', authenticateToken, async (req, res) => {
+  await db.query('DELETE FROM users WHERE id = $1', [req.user.id]);
+  res.json({ message: 'Account deleted successfully' });
+});
+```
+
+### 7.2 Apple Sign-In Integration
+
+```javascript
+// backend/routes/auth/appleSignIn.js
+const appleSignin = require('apple-signin-auth');
+
+async function appleSignIn(req, res) {
+  const { identityToken, user } = req.body;
+  
+  try {
+    // Verify Apple token
+    const appleData = await appleSignin.verifyIdToken(identityToken, {
+      audience: process.env.APPLE_CLIENT_ID,
+      ignoreExpiration: false
+    });
+    
+    const appleUserId = appleData.sub;
+    const email = appleData.email;
+    
+    // Find or create user
+    let userResult = await db.query(
+      'SELECT * FROM users WHERE appleId = $1 OR LOWER(email) = LOWER($2)',
+      [appleUserId, email]
+    );
+    
+    let dbUser;
+    
+    if (userResult.rows.length === 0) {
+      // Create new user
+      const createResult = await db.query(
+        `INSERT INTO users (email, appleId, firstName, lastName, emailVerified)
+         VALUES ($1, $2, $3, $4, true)
+         RETURNING *`,
+        [email, appleUserId, user?.name?.firstName || 'User', user?.name?.lastName || '']
+      );
+      dbUser = createResult.rows[0];
+    } else {
+      dbUser = userResult.rows[0];
+      
+      // Update appleId if not set
+      if (!dbUser.appleId) {
+        await db.query('UPDATE users SET appleId = $1 WHERE id = $2', [appleUserId, dbUser.id]);
+      }
+    }
+    
+    // Generate tokens
+    const accessToken = generateAccessToken({ id: dbUser.id, email: dbUser.email, role: dbUser.role });
+    const refreshToken = generateRefreshToken({ id: dbUser.id, email: dbUser.email, role: dbUser.role });
+    
+    // Store refresh token
+    await db.query(
+      `INSERT INTO refresh_tokens (userId, token, expiresAt, deviceInfo)
+       VALUES ($1, $2, NOW() + INTERVAL '30 days', $3)`,
+      [dbUser.id, refreshToken, { provider: 'apple' }]
+    );
+    
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName
+      }
+    });
+    
+  } catch (error) {
+    console.error('Apple Sign-In error:', error);
+    res.status(500).json({ error: 'Apple Sign-In failed' });
+  }
+}
+
+module.exports = appleSignIn;
+```
+
+---
+
+## Phase 8: Final Audit Checklist
+
+### Security ✓
+- [ ] No hardcoded secrets
+- [ ] All queries parameterized
+- [ ] Rate limiting on all endpoints
+- [ ] CORS configured properly
+- [ ] HTTPS enforced
+- [ ] Security headers (helmet)
+- [ ] XSS protection
+- [ ] SQL injection protection
+- [ ] JWT implemented correctly
+- [ ] Passwords hashed with bcrypt (12 rounds)
+- [ ] Account lockout after failed attempts
+
+### Performance ✓
+- [ ] Database connection pooling
+- [ ] Indexes on frequently queried columns
+- [ ] Query optimization (no N+1 queries)
+- [ ] Response compression
+- [ ] Caching where appropriate
+
+### Reliability ✓
+- [ ] Error handling on all async functions
+- [ ] Global error handler
+- [ ] Graceful shutdown
+- [ ] Health check endpoint
+- [ ] Database connection monitoring
+- [ ] Logging configured
+
+### Code Quality ✓
+- [ ] Consistent file structure
+- [ ] No duplicate code
+- [ ] Clear function names
+- [ ] Comments where needed
+- [ ] Environment variables validated
+- [ ] Tests written and passing
+
+### App Store Compliance ✓
+- [ ] Privacy endpoints (data export, deletion)
+- [ ] Apple Sign-In integrated
+- [ ] No Replit dependencies
+- [ ] Proper session management
+- [ ] User data protection
+- [ ] Privacy policy in place
+
+---
+
+## Implementation Priority
+
+### Week 1: Critical Security
+1. Fix SQL injection vulnerabilities
+2. Implement JWT properly
+3. Add rate limiting
+4. Remove hardcoded secrets
+5. Add security headers
+
+### Week 2: Authentication & Data
+6. Complete auth flow (login, recovery, refresh)
+7. Fix session management
+8. Add database indexes
+9. Optimize connection pooling
+10. Add error handling everywhere
+
+### Week 3: Testing & Polish
+11. Write tests
+12. Add monitoring
+13. Implement Apple Sign-In
+14. Add privacy endpoints
+15. Final audit and fixes
+
+### Week 4: Deployment
+16. Configure production environment
+17. Deploy to production
+18. Monitor for issues
+19. Final App Store preparations
+20. Submit to App Store
+
+---
+
+## Success Criteria
+
+Your backend is App Store ready when:
+
+✅ All authentication flows work smoothly  
+✅ No security vulnerabilities  
+✅ Database is optimized and indexed  
+✅ Error handling is comprehensive  
+✅ Tests are passing  
+✅ Monitoring is in place  
+✅ Privacy compliance is met  
+✅ Apple Sign-In works  
+✅ No Replit dependencies remain  
+✅ Performance is acceptable (<200ms API responses)  
+
+---
+
+## Quick Reference Commands
+
+```bash
+# Check for security issues
+npm audit
+
+# Check for SQL injection
+grep -r "query.*\${" --include="*.js" . | grep -v node_modules
+
+# Check for hardcoded secrets
+grep -r "password\|secret\|key" --include="*.js" . | grep -v node_modules | grep -v "process.env"
+
+# Run tests
+npm test
+
+# Check database connection
+psql $DATABASE_URL -c "SELECT 1"
+
+# Generate strong JWT secret
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+---
+
+This master prompt covers everything needed to audit, fix, and prepare your Rise Local backend for App Store launch. Follow the phases in order, implement the fixes, and check off the items. You'll have a production-ready, secure, performant backend! 🚀
