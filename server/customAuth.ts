@@ -482,6 +482,120 @@ export async function setupCustomAuth(app: Express) {
     }
   });
 
+  // Migration Routes - For transitioning OAuth users to email/password
+  
+  // Validate migration token and return userId
+  app.post("/api/auth/validate-migration-token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+      }
+
+      const userId = await storage.validateTempToken(token, "migration");
+      
+      if (!userId) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+
+      res.json({ userId });
+    } catch (error) {
+      console.error("[Custom Auth] Validate migration token error:", error);
+      res.status(500).json({ message: "Something went wrong. Please try again." });
+    }
+  });
+
+  // Set password for migrating OAuth user
+  app.post("/api/auth/set-password", async (req: Request, res: Response) => {
+    try {
+      const { userId, password, token } = req.body;
+      
+      if (!userId || !password) {
+        return res.status(400).json({ message: "User ID and password are required" });
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long" });
+      }
+      if (!/[A-Za-z]/.test(password)) {
+        return res.status(400).json({ message: "Password must contain at least one letter" });
+      }
+      if (!/[0-9]/.test(password)) {
+        return res.status(400).json({ message: "Password must contain at least one number" });
+      }
+
+      // Verify user exists and needs migration
+      const user = await storage.getUser(userId);
+      if (!user) {
+        await storage.logMigrationAction(userId, "password_set", false, "User not found");
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!user.migrationRequired) {
+        await storage.logMigrationAction(userId, "password_set", false, "User already migrated");
+        return res.status(400).json({ message: "Password already set for this account" });
+      }
+
+      // Hash password and update user
+      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+      await storage.updateUser(userId, { password: passwordHash });
+      await storage.markUserMigrated(userId);
+
+      // Log successful migration
+      await storage.logMigrationAction(userId, "password_set", true, "User completed migration");
+
+      console.log(`[Custom Auth] User migrated successfully: ${user.email}`);
+
+      // Generate JWT token for auto-login
+      const jwtToken = generateToken(userId);
+
+      res.json({
+        success: true,
+        message: "Password successfully created",
+        token: jwtToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          isVendor: user.isVendor,
+          isAdmin: user.isAdmin,
+        }
+      });
+    } catch (error) {
+      console.error("[Custom Auth] Set password error:", error);
+      res.status(500).json({ message: "Failed to set password" });
+    }
+  });
+
+  // Check if a user needs migration (by email)
+  app.post("/api/auth/check-migration", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        return res.json({ needsMigration: false });
+      }
+
+      res.json({ 
+        needsMigration: user.migrationRequired || false,
+        hasPassword: !!user.password
+      });
+    } catch (error) {
+      console.error("[Custom Auth] Check migration error:", error);
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
   console.log("[Custom Auth] Custom authentication routes registered");
 }
 

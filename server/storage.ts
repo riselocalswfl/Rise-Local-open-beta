@@ -18,7 +18,7 @@ import {
   users, vendors, services, messages, deals, dealRedemptions,
   restaurants, serviceProviders, preferredPlacements, placementImpressions, placementClicks,
   conversations, conversationMessages, notifications, categories, favorites, membershipEvents, stripeWebhookEvents,
-  adminAuditLogs, verificationTokens, passwordResetTokens,
+  adminAuditLogs, verificationTokens, passwordResetTokens, tempTokens, migrationLog,
   type PreferredPlacement, type InsertPreferredPlacement, type PlacementImpression, type InsertPlacementImpression, type PlacementClick, type InsertPlacementClick
 } from "@shared/schema";
 import { eq, desc, and, sql, gte, lte, isNull, or } from "drizzle-orm";
@@ -2292,6 +2292,89 @@ export class DbStorage implements IStorage {
     await db.update(users)
       .set({ 
         lastLoginAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  // Migration - Temp Tokens
+  async createTempToken(userId: string, purpose: string, expiresInMinutes: number = 60): Promise<string> {
+    const crypto = await import('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+    
+    await db.insert(tempTokens).values({
+      token,
+      userId,
+      purpose,
+      expiresAt,
+    });
+    
+    return token;
+  }
+
+  async validateTempToken(token: string, purpose: string): Promise<string | null> {
+    const result = await db.select().from(tempTokens)
+      .where(and(
+        eq(tempTokens.token, token),
+        eq(tempTokens.purpose, purpose),
+        eq(tempTokens.used, false),
+        gte(tempTokens.expiresAt, new Date())
+      ));
+    
+    if (result.length === 0) {
+      return null;
+    }
+    
+    // Mark as used
+    await db.update(tempTokens)
+      .set({ used: true })
+      .where(eq(tempTokens.token, token));
+    
+    return result[0].userId;
+  }
+
+  // Migration - Migration Log
+  async logMigrationAction(
+    userId: string | null, 
+    action: string, 
+    success: boolean, 
+    notes?: string, 
+    ipAddress?: string, 
+    userAgent?: string
+  ): Promise<void> {
+    await db.insert(migrationLog).values({
+      userId,
+      action,
+      success,
+      notes,
+      ipAddress,
+      userAgent,
+    });
+  }
+
+  // Migration - User migration status
+  async getUsersRequiringMigration(): Promise<User[]> {
+    const result = await db.select().from(users)
+      .where(eq(users.migrationRequired, true));
+    return result;
+  }
+
+  async markUserMigrated(userId: string): Promise<void> {
+    await db.update(users)
+      .set({ 
+        migrationRequired: false,
+        migratedAt: new Date(),
+        emailVerified: true,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async setUserMigrationRequired(userId: string, required: boolean): Promise<void> {
+    await db.update(users)
+      .set({ 
+        migrationRequired: required,
         updatedAt: new Date()
       })
       .where(eq(users.id, userId));
