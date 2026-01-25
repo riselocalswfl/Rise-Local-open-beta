@@ -347,8 +347,14 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Verify claims.sub exists for consistency with JWT auth
+  if (!user.claims?.sub) {
+    console.error("[OAuth AUTH] Session missing claims.sub:", { hasUser: !!user, hasClaims: !!user?.claims });
+    return res.status(401).json({ message: "Unauthorized - Invalid session" });
   }
 
   const now = Math.floor(Date.now() / 1000);
