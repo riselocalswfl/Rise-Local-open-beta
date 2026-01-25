@@ -305,6 +305,18 @@ export interface IStorage {
   resetFailedLoginAttempts(userId: string): Promise<void>;
   lockAccount(userId: string, lockoutMinutes: number): Promise<void>;
   updateLastLogin(userId: string): Promise<void>;
+
+  // Migration - Temp Tokens
+  createTempToken(userId: string, purpose: string, expiresInMinutes?: number): Promise<string>;
+  validateTempToken(token: string, purpose: string): Promise<string | null>;
+  
+  // Migration - Migration Log
+  logMigrationAction(userId: string | null, action: string, success: boolean, notes?: string, ipAddress?: string, userAgent?: string): Promise<void>;
+  
+  // Migration - User migration status
+  getUsersRequiringMigration(): Promise<User[]>;
+  markUserMigrated(userId: string): Promise<void>;
+  setUserMigrationRequired(userId: string, required: boolean): Promise<void>;
 }
 
 export class DbStorage implements IStorage {

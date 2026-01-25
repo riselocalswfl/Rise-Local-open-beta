@@ -85,6 +85,10 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"), // Last successful login
   accountType: text("account_type").default("user"), // 'business' or 'user' for auth flow separation
   
+  // Migration fields (for Replit OAuth to email/password migration)
+  migrationRequired: boolean("migration_required").default(false), // Whether user needs to set password
+  migratedAt: timestamp("migrated_at"), // When the user completed migration
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1112,3 +1116,50 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
 
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Migration log table - tracks OAuth to email/password migration actions
+export const migrationLog = pgTable("migration_log", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 100 }).notNull(), // 'password_set', 'migration_started', etc.
+  success: boolean("success").notNull(),
+  notes: text("notes"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("migration_log_user_idx").on(table.userId),
+  index("migration_log_timestamp_idx").on(table.createdAt),
+]);
+
+export const insertMigrationLogSchema = createInsertSchema(migrationLog).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMigrationLog = z.infer<typeof insertMigrationLogSchema>;
+export type MigrationLog = typeof migrationLog.$inferSelect;
+
+// Temp tokens table - for secure migration flow tokens
+export const tempTokens = pgTable("temp_tokens", {
+  id: serial("id").primaryKey(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  purpose: varchar("purpose", { length: 50 }).notNull(), // 'migration', 'email_change', etc.
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("temp_token_idx").on(table.token),
+  index("temp_token_user_idx").on(table.userId),
+  index("temp_token_expiry_idx").on(table.expiresAt),
+]);
+
+export const insertTempTokenSchema = createInsertSchema(tempTokens).omit({
+  id: true,
+  used: true,
+  createdAt: true,
+});
+
+export type InsertTempToken = z.infer<typeof insertTempTokenSchema>;
+export type TempToken = typeof tempTokens.$inferSelect;
