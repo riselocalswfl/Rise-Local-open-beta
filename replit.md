@@ -39,6 +39,19 @@ The frontend is built using React 18, TypeScript, and Vite, leveraging Radix UI,
 - **Viewable Locked Deals**: Pass-locked deals are fully viewable by non-members to encourage conversion, with redemption restricted.
 - **Admin Dashboard**: A redesigned interface focused on founder-readable metrics for deals, membership, and business participation, including manual membership toggling for buyers.
 
+### Security & Compliance (App Store Ready)
+- **Security Headers**: Helmet middleware with HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy
+- **CORS Protection**: Strict origin allowlist with proper credential handling and unknown origin blocking
+- **Rate Limiting**: Tiered rate limits - general (1000/15min), auth (10/15min), password reset (3/hour)
+- **Response Compression**: gzip/deflate for reduced bandwidth
+- **Password Security**: bcrypt with 12 salt rounds, account lockout after 5 failed attempts
+- **Environment Validation**: Startup validation of required environment variables (JWT_SECRET min 32 chars, DATABASE_URL required)
+- **Production Error Handling**: Stack traces hidden in production, sanitized error messages
+- **Health Check**: GET /api/health returns status, uptime, version, environment
+- **GDPR Compliance**: 
+  - GET /api/user/data-export - Full user data export (profile, favorites, deals, notifications)
+  - DELETE /api/user/account - Account deletion with related data cleanup
+
 ### Feature Specifications
 - **Geographic Focus**: Southwest Florida (Fort Myers, Cape Coral, Bonita Springs, Estero, Naples).
 - **Fulfillment**: Supports pickup, local delivery, and shipping options.
