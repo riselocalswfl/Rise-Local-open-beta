@@ -334,10 +334,19 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
+      // Use X-Forwarded headers for proper protocol/host detection behind proxy
+      // Default to https for production since Replit apps are served over HTTPS
+      const isProduction = process.env.NODE_ENV === 'production';
+      const protocol = req.get('X-Forwarded-Proto') || (isProduction ? 'https' : req.protocol) || 'https';
+      const host = req.get('X-Forwarded-Host') || req.get('Host') || req.hostname;
+      const redirectUri = `${protocol}://${host}/auth`;
+      
+      console.log('[LOGOUT] Redirecting to:', redirectUri);
+      
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}/auth`,
+          post_logout_redirect_uri: redirectUri,
         }).href
       );
     });
