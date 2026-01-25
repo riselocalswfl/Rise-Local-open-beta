@@ -217,9 +217,12 @@ export default function Auth() {
     onSuccess: (data, variables) => {
       // Check if user needs to migrate (set password for OAuth account)
       if (data.requiresMigration) {
-        // Auto-trigger password reset email for migration users
-        // The forgotPasswordMutation handlers will show the toast
-        forgotPasswordMutation.mutate({ email: variables.email });
+        // Direct users to sign in with Replit to verify identity, then set password
+        toast({ 
+          title: "One more step!", 
+          description: "Click 'Sign in with Replit Account' below to verify your identity and create your password.",
+          duration: 10000,
+        });
         return;
       }
       
