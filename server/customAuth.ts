@@ -220,18 +220,14 @@ export async function setupCustomAuth(app: Express) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      // Check if user has no password set
+      // Check if user has no password set - they need to recover their account
       if (!user.password) {
-        // Check if this is a migration-required user (OAuth user who needs to set password)
-        if (user.migrationRequired) {
-          return res.status(200).json({
-            requiresMigration: true,
-            message: "Please create a password for your account to continue",
-            code: "MIGRATION_REQUIRED"
-          });
-        }
-        return res.status(401).json({ 
-          message: "This account uses a different sign-in method. Please use the original sign-in method." 
+        return res.status(200).json({
+          needsRecovery: true,
+          email: user.email,
+          firstName: user.firstName,
+          message: "Please set a password for your account",
+          code: "NEEDS_RECOVERY"
         });
       }
 

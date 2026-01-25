@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,14 @@ interface PasswordStrength {
 
 export default function RecoverAccount() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const { toast } = useToast();
-  const [email, setEmail] = useState("");
+  
+  // Parse email from URL query params
+  const urlParams = new URLSearchParams(searchString);
+  const emailFromUrl = urlParams.get("email") || "";
+  
+  const [email, setEmail] = useState(emailFromUrl);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -102,9 +108,13 @@ export default function RecoverAccount() {
           <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
             <KeyRound className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Recover Your Account</CardTitle>
+          <CardTitle className="text-2xl">
+            {emailFromUrl ? "Set Up Your Password" : "Recover Your Account"}
+          </CardTitle>
           <CardDescription>
-            Enter your email address to recover your account and create a new password
+            {emailFromUrl 
+              ? "Welcome back! Create a password to access your account." 
+              : "Enter your email address to recover your account and create a new password"}
           </CardDescription>
         </CardHeader>
         

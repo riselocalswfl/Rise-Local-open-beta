@@ -215,15 +215,15 @@ export default function Auth() {
       return response.json();
     },
     onSuccess: (data, variables) => {
-      // Check if user needs to migrate (set password for OAuth account)
-      if (data.requiresMigration) {
-        // Direct users to recovery page to set their password
+      // Check if user needs to recover their account (no password set)
+      if (data.needsRecovery) {
         toast({ 
-          title: "Account Recovery Required", 
-          description: "Please use your recovery token to set up your password.",
+          title: "Set Up Your Password", 
+          description: `Welcome back${data.firstName ? `, ${data.firstName}` : ''}! Please create a password for your account.`,
           duration: 5000,
         });
-        setLocation("/recover-account");
+        // Redirect to recovery page with email pre-filled
+        setLocation(`/recover-account?email=${encodeURIComponent(data.email)}`);
         return;
       }
       

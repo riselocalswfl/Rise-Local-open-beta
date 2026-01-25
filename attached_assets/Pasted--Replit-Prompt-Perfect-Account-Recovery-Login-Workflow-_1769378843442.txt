@@ -1,0 +1,942 @@
+# Replit Prompt: Perfect Account Recovery & Login Workflow
+
+## Current Problem
+
+Users trying to access the dashboard are seeing:
+- "No Business Profile Found" screen
+- "Session expired - Please log in again to continue" error
+- Getting stuck in login loops
+- Can't smoothly transition from Replit auth to email/password
+
+## Goal
+
+Create a seamless, foolproof workflow that:
+1. Detects if a user has an account without a password
+2. Guides them through password creation
+3. Automatically logs them in after password creation
+4. Preserves all their data (business profile, deals, favorites)
+5. Never leaves them stuck or confused
+
+---
+
+## Implementation Requirements
+
+### Phase 1: Fix Authentication State Management
+
+**Problem:** Session is expiring immediately after login/recovery
+
+**Solution:** Implement proper JWT token handling with auto-refresh
+
+```javascript
+// backend/middleware/auth.js
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRATION = '7d'; // 7 days
+
+function generateToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isVendor: user.isVendor
+    },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRATION }
+  );
+}
+
+function verifyToken(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token) {
+    return res.status(401).json({ 
+      error: 'No token provided',
+      code: 'NO_TOKEN'
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ 
+      error: 'Session expired',
+      code: 'TOKEN_EXPIRED'
+    });
+  }
+}
+
+module.exports = { generateToken, verifyToken };
+```
+
+---
+
+### Phase 2: Unified Login Endpoint with Auto-Detection
+
+**This single endpoint handles:**
+- Users with passwords (normal login)
+- Users without passwords (needs recovery)
+- Invalid credentials
+- Account locked
+
+```javascript
+// backend/routes/auth/login.js
+const bcrypt = require('bcrypt');
+const { generateToken } = require('../../middleware/auth');
+
+async function login(req, res) {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      error: 'Email and password are required',
+      code: 'MISSING_CREDENTIALS'
+    });
+  }
+
+  try {
+    // Find user by email
+    const userResult = await req.db.query(
+      `SELECT id, email, password, firstName, lastName, role, 
+              isVendor, isAdmin, emailVerified, failedLoginAttempts, lockedUntil
+       FROM users 
+       WHERE LOWER(email) = LOWER($1)`,
+      [email.trim()]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({
+        error: 'Invalid email or password',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // CRITICAL: Check if user has no password (needs recovery)
+    if (!user.password) {
+      return res.status(200).json({
+        needsRecovery: true,
+        email: user.email,
+        firstName: user.firstName,
+        code: 'NEEDS_RECOVERY',
+        message: 'Please set a password for your account'
+      });
+    }
+
+    // Check if account is locked
+    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+      const minutesLeft = Math.ceil(
+        (new Date(user.lockedUntil) - new Date()) / 1000 / 60
+      );
+      
+      return res.status(423).json({
+        error: `Account locked. Try again in ${minutesLeft} minutes.`,
+        code: 'ACCOUNT_LOCKED'
+      });
+    }
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      // Increment failed attempts
+      const newFailedAttempts = user.failedLoginAttempts + 1;
+      const shouldLock = newFailedAttempts >= 5;
+      
+      await req.db.query(
+        `UPDATE users 
+         SET failedLoginAttempts = $1,
+             lockedUntil = $2
+         WHERE id = $3`,
+        [
+          newFailedAttempts,
+          shouldLock ? new Date(Date.now() + 15 * 60 * 1000) : null,
+          user.id
+        ]
+      );
+
+      return res.status(401).json({
+        error: 'Invalid email or password',
+        attemptsLeft: Math.max(0, 5 - newFailedAttempts),
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    // Successful login - reset failed attempts
+    await req.db.query(
+      `UPDATE users 
+       SET failedLoginAttempts = 0, 
+           lockedUntil = NULL,
+           lastLoginAt = NOW()
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    // Generate token
+    const token = generateToken(user);
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVendor: user.isVendor,
+        isAdmin: user.isAdmin
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      error: 'Login failed',
+      code: 'SERVER_ERROR'
+    });
+  }
+}
+
+module.exports = login;
+```
+
+---
+
+### Phase 3: Account Recovery Endpoint
+
+**This creates a password for users who don't have one:**
+
+```javascript
+// backend/routes/auth/recoverAccount.js
+const bcrypt = require('bcrypt');
+const { generateToken } = require('../../middleware/auth');
+
+async function recoverAccount(req, res) {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      error: 'Email and password are required',
+      code: 'MISSING_FIELDS'
+    });
+  }
+
+  // Password validation
+  if (password.length < 8) {
+    return res.status(400).json({
+      error: 'Password must be at least 8 characters',
+      code: 'PASSWORD_TOO_SHORT'
+    });
+  }
+
+  try {
+    // Find user
+    const userResult = await req.db.query(
+      `SELECT id, email, password, firstName, lastName, role, isVendor, isAdmin
+       FROM users 
+       WHERE LOWER(email) = LOWER($1)`,
+      [email.trim()]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'No account found with this email',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if user already has a password
+    if (user.password) {
+      return res.status(400).json({
+        error: 'This account already has a password. Please use "Forgot Password" instead.',
+        code: 'PASSWORD_EXISTS'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update user with password
+    await req.db.query(
+      `UPDATE users
+       SET password = $1,
+           emailVerified = true,
+           failedLoginAttempts = 0,
+           lockedUntil = NULL,
+           updatedAt = NOW()
+       WHERE id = $2`,
+      [hashedPassword, user.id]
+    );
+
+    // Generate token and auto-login
+    const token = generateToken(user);
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVendor: user.isVendor,
+        isAdmin: user.isAdmin
+      },
+      message: 'Account recovered successfully'
+    });
+
+  } catch (error) {
+    console.error('Recovery error:', error);
+    res.status(500).json({
+      error: 'Account recovery failed',
+      code: 'RECOVERY_ERROR'
+    });
+  }
+}
+
+module.exports = recoverAccount;
+```
+
+---
+
+### Phase 4: Frontend Login Component with Smart Detection
+
+```jsx
+// client/src/pages/Login.jsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function Login() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      // Check if user needs to recover account
+      if (data.needsRecovery) {
+        // Redirect to recovery page with email pre-filled
+        navigate(`/recover-account?email=${encodeURIComponent(email)}`);
+        return;
+      }
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed');
+        setLoading(false);
+        return;
+      }
+
+      // Successful login - store token
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Redirect based on user type
+      if (data.user.isVendor) {
+        navigate('/business/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Network error. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="login-page">
+      <div className="login-container">
+        <h1>Sign In to Rise Local</h1>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="error-message">{error}</div>
+          )}
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Signing In...' : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="auth-links">
+          <a href="/forgot-password">Forgot Password?</a>
+          <span>•</span>
+          <a href="/recover-account">First time? Set up password</a>
+        </div>
+
+        <div className="signup-prompt">
+          <p>Don't have an account? <a href="/signup">Sign Up</a></p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+### Phase 5: Account Recovery Page (Standalone)
+
+```jsx
+// client/src/pages/RecoverAccount.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+export default function RecoverAccount() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  const [email, setEmail] = useState(searchParams.get('email') || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleRecover(e) {
+    e.preventDefault();
+    setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/recover-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Recovery failed');
+        setLoading(false);
+        return;
+      }
+
+      // Auto-login after successful recovery
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Redirect to dashboard
+      if (data.user.isVendor) {
+        navigate('/business/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+
+    } catch (err) {
+      console.error('Recovery error:', err);
+      setError('Network error. Please try again.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="recovery-page">
+      <div className="recovery-container">
+        <h1>Set Up Your Password</h1>
+        
+        <div className="recovery-info">
+          <p>
+            Welcome back! Create a password to access your Rise Local account.
+          </p>
+          <p>
+            <strong>All your data will be preserved:</strong> business profile, 
+            deals, favorites, and more.
+          </p>
+        </div>
+
+        <form onSubmit={handleRecover}>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your.email@example.com"
+              required
+              autoFocus={!email}
+              readOnly={!!searchParams.get('email')}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>New Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters"
+              required
+              autoFocus={!!email}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Confirm Password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter password"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="error-message">{error}</div>
+          )}
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Setting Password...' : 'Set Password & Continue'}
+          </button>
+        </form>
+
+        <div className="help-text">
+          <p>
+            Already have a password? <a href="/login">Sign in here</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+### Phase 6: Protected Route with Proper Token Handling
+
+```jsx
+// client/src/components/ProtectedRoute.jsx
+import { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+
+export default function ProtectedRoute({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  async function checkAuth() {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      setIsAuthenticated(false);
+      return;
+    }
+
+    try {
+      // Verify token is still valid
+      const response = await fetch('/api/auth/verify', {
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+
+      if (response.ok) {
+        setIsAuthenticated(true);
+      } else {
+        // Token expired or invalid
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setIsAuthenticated(false);
+    }
+  }
+
+  if (isAuthenticated === null) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+```
+
+---
+
+### Phase 7: Token Verification Endpoint
+
+```javascript
+// backend/routes/auth/verify.js
+const { verifyToken } = require('../../middleware/auth');
+
+async function verify(req, res) {
+  // verifyToken middleware already validated the token
+  // If we're here, token is valid
+  res.json({ 
+    valid: true,
+    user: req.user 
+  });
+}
+
+module.exports = { verify, middleware: verifyToken };
+```
+
+---
+
+### Phase 8: API Client with Auto Token Injection
+
+```javascript
+// client/src/utils/api.js
+const API_BASE = '/api';
+
+async function apiCall(endpoint, options = {}) {
+  const token = localStorage.getItem('token');
+  
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    }
+  };
+
+  const response = await fetch(`${API_BASE}${endpoint}`, config);
+
+  // Handle token expiration
+  if (response.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+
+  return response;
+}
+
+export const api = {
+  get: (endpoint) => apiCall(endpoint),
+  post: (endpoint, body) => apiCall(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  put: (endpoint, body) => apiCall(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  }),
+  delete: (endpoint) => apiCall(endpoint, { method: 'DELETE' })
+};
+```
+
+---
+
+### Phase 9: Backend Routes Setup
+
+```javascript
+// backend/routes/index.js
+const express = require('express');
+const router = express.Router();
+
+const login = require('./auth/login');
+const recoverAccount = require('./auth/recoverAccount');
+const { verify, middleware: verifyToken } = require('./auth/verify');
+
+// Public routes
+router.post('/auth/login', login);
+router.post('/auth/recover-account', recoverAccount);
+
+// Protected routes (require valid token)
+router.get('/auth/verify', verifyToken, verify);
+
+module.exports = router;
+```
+
+---
+
+### Phase 10: Frontend Routes Setup
+
+```jsx
+// client/src/App.jsx
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import RecoverAccount from './pages/RecoverAccount';
+import BusinessDashboard from './pages/BusinessDashboard';
+import UserDashboard from './pages/Dashboard';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/recover-account" element={<RecoverAccount />} />
+        
+        {/* Protected routes */}
+        <Route 
+          path="/business/dashboard" 
+          element={
+            <ProtectedRoute>
+              <BusinessDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <UserDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Default redirect */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+---
+
+## User Experience Flow
+
+### Scenario 1: User Without Password (Needs Recovery)
+
+1. **User goes to login page**
+2. **Enters email + any password** (they try to login)
+3. **Backend detects:** No password in database
+4. **Response:** `{ needsRecovery: true, email: "user@email.com" }`
+5. **Frontend automatically redirects:** `/recover-account?email=user@email.com`
+6. **User sees:** "Set Up Your Password" page with email pre-filled
+7. **User creates password**
+8. **Backend:** Updates user record with password
+9. **Backend:** Returns token (auto-login)
+10. **Frontend:** Stores token, redirects to dashboard
+11. **User sees:** Their dashboard with all their data ✅
+
+### Scenario 2: User With Password (Normal Login)
+
+1. **User goes to login page**
+2. **Enters email + password**
+3. **Backend verifies:** Password matches
+4. **Backend:** Returns token
+5. **Frontend:** Stores token, redirects to dashboard
+6. **User sees:** Dashboard ✅
+
+### Scenario 3: Session Expiration
+
+1. **User's token expires** (after 7 days)
+2. **User tries to access protected page**
+3. **Frontend checks token:** Expired
+4. **Frontend:** Removes token, redirects to login
+5. **User logs in again**
+6. **Gets new token**
+7. **Continues using app** ✅
+
+---
+
+## Critical Implementation Checklist
+
+### Backend
+- [ ] Install dependencies: `npm install jsonwebtoken bcrypt`
+- [ ] Set `JWT_SECRET` in environment variables (use long random string)
+- [ ] Create `/api/auth/login` endpoint with recovery detection
+- [ ] Create `/api/auth/recover-account` endpoint
+- [ ] Create `/api/auth/verify` endpoint
+- [ ] Add JWT middleware for protected routes
+- [ ] Test each endpoint with Postman/Thunder Client
+
+### Frontend
+- [ ] Create Login page with smart detection
+- [ ] Create RecoverAccount page
+- [ ] Create ProtectedRoute component
+- [ ] Update App.jsx with routes
+- [ ] Create API utility with auto token injection
+- [ ] Test login flow
+- [ ] Test recovery flow
+- [ ] Test session expiration handling
+
+### Database
+- [ ] Verify users table has all required columns
+- [ ] Add indexes if needed for performance
+- [ ] Test queries work correctly
+
+### Testing
+- [ ] Test user without password → should redirect to recovery
+- [ ] Test user with password → should login normally
+- [ ] Test recovery → should auto-login after password creation
+- [ ] Test expired token → should redirect to login
+- [ ] Test protected routes → should require valid token
+
+---
+
+## Environment Variables Required
+
+```bash
+# .env
+JWT_SECRET=your-very-long-random-secret-key-here-min-32-chars
+DATABASE_URL=your-database-connection-string
+PORT=3000
+```
+
+**Generate JWT_SECRET:**
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+---
+
+## Database Schema Requirements
+
+```sql
+-- Ensure users table has these columns
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS emailVerified BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS failedLoginAttempts INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS lockedUntil TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS lastLoginAt TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_users_locked ON users(lockedUntil) WHERE lockedUntil IS NOT NULL;
+```
+
+---
+
+## Success Criteria
+
+After implementation, users should:
+
+✅ **Never see "Session expired" on fresh login**
+✅ **Automatically get redirected to recovery if they have no password**
+✅ **Be auto-logged in after creating a password**
+✅ **See their dashboard with all data intact**
+✅ **Have a clear, simple workflow with no confusion**
+✅ **Never get stuck in loops**
+
+---
+
+## Troubleshooting Common Issues
+
+### Issue: "Session expired" immediately after login
+
+**Cause:** Token not being stored or sent correctly
+
+**Fix:**
+```javascript
+// Make sure token is stored
+localStorage.setItem('token', data.token);
+
+// Make sure token is sent with requests
+headers: { 'Authorization': `Bearer ${token}` }
+```
+
+### Issue: Users stuck on "No Business Profile Found"
+
+**Cause:** User is logged in but their role/vendor status isn't set correctly
+
+**Fix:**
+```sql
+-- Check user's vendor status
+SELECT id, email, isVendor, role FROM users WHERE email = 'user@email.com';
+
+-- If they should be a vendor but aren't:
+UPDATE users SET isVendor = true WHERE email = 'user@email.com';
+```
+
+### Issue: Recovery page doesn't redirect after success
+
+**Cause:** Token not being returned or stored
+
+**Fix:**
+```javascript
+// In recoverAccount endpoint, make sure you return token:
+res.json({
+  token,  // Must include this
+  user: { ... }
+});
+
+// In frontend, make sure you store it:
+localStorage.setItem('token', data.token);
+```
+
+---
+
+## Summary
+
+This implementation creates a **seamless, bulletproof workflow** where:
+
+1. **Login endpoint automatically detects** if user needs recovery
+2. **Frontend automatically redirects** to recovery page
+3. **Recovery endpoint auto-logs in** user after password creation
+4. **Protected routes properly verify** tokens
+5. **Session management works correctly** with no expiration bugs
+6. **All user data is preserved** throughout the process
+
+**The user experience is smooth and simple** - no confusion, no stuck states, no data loss.
+
+Implement these components in order, test each one, and your authentication workflow will be production-ready and App Store-compliant! 🚀
