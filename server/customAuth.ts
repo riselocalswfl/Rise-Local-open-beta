@@ -222,17 +222,14 @@ export async function setupCustomAuth(app: Express) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-        const remainingMinutes = Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000);
-        return res.status(423).json({ 
-          message: `Account is locked. Please try again in ${remainingMinutes} minutes.`,
-          lockedUntil: user.lockedUntil
-        });
-      }
-
+      // Check migration status FIRST - OAuth users without passwords shouldn't hit lockout
       if (!user.password) {
         // Check if this is a migration-required user (OAuth user who needs to set password)
         if (user.migrationRequired) {
+          // Clear any lockout since they can't have valid login attempts without a password
+          if (user.lockedUntil || (user.failedLoginAttempts && user.failedLoginAttempts > 0)) {
+            await storage.resetFailedLoginAttempts(user.id);
+          }
           return res.status(200).json({
             requiresMigration: true,
             message: "Please create a password for your account to continue",
@@ -241,6 +238,15 @@ export async function setupCustomAuth(app: Express) {
         }
         return res.status(401).json({ 
           message: "This account uses a different sign-in method. Please use the original sign-in method." 
+        });
+      }
+
+      // Only check lockout for users who have passwords set
+      if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+        const remainingMinutes = Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000);
+        return res.status(423).json({ 
+          message: `Account is locked. Please try again in ${remainingMinutes} minutes.`,
+          lockedUntil: user.lockedUntil
         });
       }
 
