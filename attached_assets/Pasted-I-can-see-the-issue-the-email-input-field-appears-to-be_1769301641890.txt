@@ -1,0 +1,86 @@
+I can see the issue - the email input field appears to be disabled or not properly initialized. Here's a comprehensive prompt to help you debug and fix this:
+
+Debugging Prompt for Email Input Issue
+Problem: The Business Email input field on the login page (riselocal.replit.app/auth) is not accepting user input. The field appears to be locked or disabled.
+Please investigate and fix the following:
+
+Check if the input is disabled:
+
+Look for disabled attribute in the email input JSX/HTML
+Check if there's any conditional logic that might be setting disabled={true}
+
+
+Review the input's event handlers:
+
+Verify onChange handler is properly connected
+Check if there's any onKeyDown or onInput that might be blocking input
+Ensure state update function is working (e.g., setEmail or similar)
+
+
+Look for CSS issues:
+
+Check if pointer-events: none is applied to the input or parent
+Verify user-select: none isn't blocking text input
+Look for readonly attribute
+
+
+Check the component state:
+
+Verify the email state variable is properly initialized
+Look for any useEffect or other logic that might be resetting the value
+Check if there's form validation blocking input
+
+
+Common fixes to try:
+
+jsx// Make sure your input looks something like this:
+<input
+  type="email"
+  value={businessEmail}
+  onChange={(e) => setBusinessEmail(e.target.value)}
+  placeholder="you@business.com"
+  disabled={false}  // or remove this line entirely
+  readOnly={false}  // or remove this line entirely
+  className="email-input"
+  autoComplete="email"
+/>
+
+Check for form library interference:
+
+If using React Hook Form, Formik, or similar, verify field registration
+Make sure the field name is correctly registered
+Check if there's validation blocking input
+
+
+Browser console check:
+
+Open DevTools Console (Cmd+Option+J on Mac)
+Look for JavaScript errors when clicking the input
+Check if any event listeners are preventing default behavior
+
+
+React-specific issues:
+
+Ensure you're not using defaultValue with value simultaneously
+Check if component is re-rendering and resetting the input
+Verify the input isn't inside a form that's preventing edits
+
+
+
+Files to check:
+
+Login/Auth component file (likely BusinessLogin.jsx or similar)
+Any shared Input component
+CSS/Tailwind classes applied to the input
+Form validation schema if using one
+
+Quick test:
+Try changing the input to this minimal version to isolate the issue:
+jsxconst [email, setEmail] = useState('');
+
+<input 
+  type="text"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+/>
+If this works, gradually add back your styling and features to find what's breaking it.

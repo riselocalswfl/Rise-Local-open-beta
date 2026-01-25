@@ -167,6 +167,11 @@ export default function Auth() {
     defaultValues: { email: "", password: "" },
   });
 
+  const businessLoginForm = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
   const forgotPasswordForm = useForm<ForgotPasswordForm>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
@@ -711,10 +716,10 @@ export default function Auth() {
               <CardDescription>Access your business dashboard</CardDescription>
             </CardHeader>
             <CardContent>
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
+              <Form {...businessLoginForm}>
+                <form onSubmit={businessLoginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
                   <FormField
-                    control={loginForm.control}
+                    control={businessLoginForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
@@ -730,7 +735,7 @@ export default function Auth() {
                     )}
                   />
                   <FormField
-                    control={loginForm.control}
+                    control={businessLoginForm.control}
                     name="password"
                     render={({ field }) => (
                       <FormItem>
