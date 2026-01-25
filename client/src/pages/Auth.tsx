@@ -214,15 +214,12 @@ export default function Auth() {
       const response = await apiRequest("POST", "/api/auth/login", data);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       // Check if user needs to migrate (set password for OAuth account)
       if (data.requiresMigration) {
-        toast({ 
-          title: "Account upgrade required", 
-          description: "Please sign in with your Replit account to create a password.",
-        });
-        // Redirect to OAuth login which will handle migration
-        window.location.href = "/api/login";
+        // Auto-trigger password reset email for migration users
+        // The forgotPasswordMutation handlers will show the toast
+        forgotPasswordMutation.mutate({ email: variables.email });
         return;
       }
       
@@ -242,11 +239,17 @@ export default function Auth() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Check your email", description: "If an account exists, we've sent reset instructions." });
+      toast({ 
+        title: "Check your email", 
+        description: "We've sent you a link to set up your password. Check your inbox!" 
+      });
       setShowForgotPassword(false);
     },
     onError: () => {
-      toast({ title: "Check your email", description: "If an account exists, we've sent reset instructions." });
+      toast({ 
+        title: "Check your email", 
+        description: "If an account exists, we've sent reset instructions." 
+      });
       setShowForgotPassword(false);
     },
   });
