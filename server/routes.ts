@@ -153,6 +153,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Setup Custom Email/Password Auth (new streamlined auth system)
   await setupCustomAuth(app);
+
+  // Health check endpoint for monitoring and deployment
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const healthData = {
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: "1.0.0",
+        environment: process.env.NODE_ENV || "development",
+      };
+      res.json(healthData);
+    } catch (error) {
+      res.status(503).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        error: "Health check failed",
+      });
+    }
+  });
+
+  // GDPR Data Export - allows users to download all their data
+  app.get("/api/user/data-export", requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const vendor = await storage.getVendorByOwnerId(userId);
+      const favorites = await storage.getUserFavorites(userId);
+      const deals = vendor ? await storage.getDealsByVendorId(vendor.id) : [];
+      const notifications = await storage.getNotifications(userId);
+
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          role: user.role,
+          isVendor: user.isVendor,
+          isPassMember: user.isPassMember,
+          createdAt: user.createdAt,
+        },
+        vendor: vendor ? {
+          id: vendor.id,
+          businessName: vendor.businessName,
+          vendorType: vendor.vendorType,
+          bio: vendor.bio,
+          city: vendor.city,
+          createdAt: vendor.createdAt,
+        } : null,
+        favorites: favorites.map((f: { dealId: string; createdAt: Date | null }) => ({ 
+          dealId: f.dealId, 
+          createdAt: f.createdAt 
+        })),
+        deals: deals.map((d: { id: string; title: string; description: string | null; status: string | null; createdAt: Date | null }) => ({
+          id: d.id,
+          title: d.title,
+          description: d.description,
+          status: d.status,
+          createdAt: d.createdAt,
+        })),
+        notifications: notifications.map((n: { id: string; type: string; message: string; createdAt: Date | null }) => ({
+          id: n.id,
+          type: n.type,
+          message: n.message,
+          createdAt: n.createdAt,
+        })),
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="riselocal-data-export-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error("[Data Export] Error:", error);
+      res.status(500).json({ message: "Failed to export data" });
+    }
+  });
+
+  // GDPR Account Deletion - allows users to delete their account
+  app.delete("/api/user/account", requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.deleteUser(userId);
+
+      res.json({ 
+        message: "Account deleted successfully",
+        deletedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[Account Deletion] Error:", error);
+      res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
   
   // Apple Sign In endpoint for iOS app
   app.post("/api/auth/apple", async (req, res) => {

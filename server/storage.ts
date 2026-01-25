@@ -41,7 +41,7 @@ const db = drizzle(client);
 // Export db for seed scripts
 export { db };
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
 
 export interface IStorage {
   // User operations
