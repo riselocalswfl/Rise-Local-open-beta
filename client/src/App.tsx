@@ -49,6 +49,7 @@ import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
 import Start from "@/pages/Start";
 import ResetPassword from "@/pages/ResetPassword";
+import RecoverAccount from "@/pages/RecoverAccount";
 import Businesses from "@/pages/Businesses";
 import BusinessProfile from "@/pages/BusinessProfile";
 import Privacy from "@/pages/Privacy";
@@ -170,6 +171,7 @@ function Router() {
       {/* Auth - Single unified authentication page (no footer) */}
       <Route path="/auth" component={Auth} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/recover-account" component={RecoverAccount} />
       
       {/* SetPassword - Migration page for OAuth users transitioning to email/password */}
       <Route path="/set-password" component={SetPassword} />

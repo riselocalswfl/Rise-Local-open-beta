@@ -590,6 +590,133 @@ export async function setupCustomAuth(app: Express) {
     }
   });
 
+  // Account recovery - validate recovery token and set password
+  app.post("/api/auth/recover-account", async (req: Request, res: Response) => {
+    try {
+      const { email, recoveryToken, password } = req.body;
+
+      if (!email || !recoveryToken || !password) {
+        return res.status(400).json({ 
+          message: "Email, recovery token, and password are required" 
+        });
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        return res.status(400).json({ 
+          message: "Password must be at least 8 characters" 
+        });
+      }
+
+      if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+        return res.status(400).json({ 
+          message: "Password must contain at least one letter and one number" 
+        });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      if (!user) {
+        return res.status(404).json({ 
+          message: "Invalid email or recovery token" 
+        });
+      }
+
+      // Validate and consume the recovery token
+      const userId = await storage.consumeTempToken(recoveryToken, 'recovery');
+      if (!userId || userId !== user.id) {
+        return res.status(400).json({ 
+          message: "Invalid or expired recovery token" 
+        });
+      }
+
+      // Hash and set password
+      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+      await storage.updateUser(userId, { password: passwordHash });
+      await storage.markUserMigrated(userId);
+
+      console.log(`[Custom Auth] Account recovered for user: ${user.email}`);
+
+      // Generate JWT for auto-login
+      const jwtToken = generateToken(userId);
+
+      res.json({
+        success: true,
+        message: `Welcome back, ${user.firstName || 'User'}! Your account has been recovered.`,
+        token: jwtToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          isVendor: user.isVendor,
+          isAdmin: user.isAdmin,
+        }
+      });
+    } catch (error) {
+      console.error("[Custom Auth] Account recovery error:", error);
+      res.status(500).json({ message: "Account recovery failed. Please try again." });
+    }
+  });
+
+  // Admin endpoint - Generate recovery tokens for users without passwords
+  app.post("/api/admin/generate-recovery-tokens", async (req: Request, res: Response) => {
+    try {
+      // Get all users who need recovery (no password set)
+      const usersNeedingRecovery = await storage.getUsersRequiringMigration();
+      
+      const recoveryData = [];
+      
+      for (const user of usersNeedingRecovery) {
+        // Generate a recovery token valid for 60 days
+        const token = await storage.createTempToken(user.id, 'recovery', 60 * 24 * 60); // 60 days in minutes
+        
+        recoveryData.push({
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          isVendor: user.isVendor,
+          recoveryToken: token,
+        });
+      }
+
+      console.log(`[Custom Auth] Generated ${recoveryData.length} recovery tokens`);
+
+      res.json({
+        success: true,
+        count: recoveryData.length,
+        users: recoveryData,
+      });
+    } catch (error) {
+      console.error("[Custom Auth] Generate recovery tokens error:", error);
+      res.status(500).json({ message: "Failed to generate recovery tokens" });
+    }
+  });
+
+  // Admin endpoint - Get users needing recovery (for viewing, no token generation)
+  app.get("/api/admin/users-needing-recovery", async (req: Request, res: Response) => {
+    try {
+      const usersNeedingRecovery = await storage.getUsersRequiringMigration();
+      
+      res.json({
+        count: usersNeedingRecovery.length,
+        users: usersNeedingRecovery.map(u => ({
+          id: u.id,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          isVendor: u.isVendor,
+          createdAt: u.createdAt,
+        })),
+      });
+    } catch (error) {
+      console.error("[Custom Auth] Get users needing recovery error:", error);
+      res.status(500).json({ message: "Failed to get users" });
+    }
+  });
+
   console.log("[Custom Auth] Custom authentication routes registered");
 }
 

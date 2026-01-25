@@ -217,12 +217,13 @@ export default function Auth() {
     onSuccess: (data, variables) => {
       // Check if user needs to migrate (set password for OAuth account)
       if (data.requiresMigration) {
-        // Direct users to sign in with Replit to verify identity, then set password
+        // Direct users to recovery page to set their password
         toast({ 
-          title: "One more step!", 
-          description: "Click 'Sign in with Replit Account' below to verify your identity and create your password.",
-          duration: 10000,
+          title: "Account Recovery Required", 
+          description: "Please use your recovery token to set up your password.",
+          duration: 5000,
         });
+        setLocation("/recover-account");
         return;
       }
       
@@ -257,9 +258,6 @@ export default function Auth() {
     },
   });
 
-  const handleLegacyLogin = () => {
-    window.location.href = "/api/login";
-  };
 
   if (isLoading) {
     return (
@@ -513,11 +511,6 @@ export default function Auth() {
                 </p>
               </div>
 
-              <div className="mt-4 pt-4 border-t text-center">
-                <button onClick={handleLegacyLogin} className="text-xs text-muted-foreground hover:text-foreground underline" data-testid="link-social-login">
-                  Sign in with Replit Account
-                </button>
-              </div>
             </CardContent>
           </Card>
         ) : mode === "user-login" ? (
@@ -586,11 +579,6 @@ export default function Auth() {
                 </p>
               </div>
 
-              <div className="mt-4 pt-4 border-t text-center">
-                <button onClick={handleLegacyLogin} className="text-xs text-muted-foreground hover:text-foreground underline" data-testid="link-replit-login">
-                  Sign in with Replit Account
-                </button>
-              </div>
             </CardContent>
           </Card>
         ) : mode === "business-signup" ? (
@@ -716,11 +704,6 @@ export default function Auth() {
                 </p>
               </div>
 
-              <div className="mt-4 pt-4 border-t text-center">
-                <button onClick={handleLegacyLogin} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Sign in with Replit Account
-                </button>
-              </div>
             </CardContent>
           </Card>
         ) : mode === "business-login" ? (
@@ -790,11 +773,6 @@ export default function Auth() {
                 </button>
               </div>
 
-              <div className="mt-4 pt-4 border-t text-center">
-                <button onClick={handleLegacyLogin} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Sign in with Replit Account
-                </button>
-              </div>
             </CardContent>
           </Card>
         ) : null}
