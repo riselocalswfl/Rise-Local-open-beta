@@ -15,7 +15,7 @@ The frontend is built using React 18, TypeScript, and Vite, leveraging Radix UI,
 - **Frontend**: Utilizes TanStack Query for server state management, React hooks for UI state, and Wouter for client-side routing.
 - **Backend**: Implemented with Express.js and TypeScript, providing a RESTful API.
 - **Data Storage**: PostgreSQL, accessed via Neon's serverless driver, and managed with Drizzle ORM.
-- **Authentication**: A dual system featuring custom email/password authentication (JWT-based, bcrypt hashing, account lockout, email verification, password reset) and legacy Replit Auth (OIDC). Includes an OAuth-to-Password migration system for App Store compatibility, handling user role assignments (`buyer`, `vendor`, `admin`).
+- **Authentication**: A dual system featuring custom email/password authentication (JWT-based, bcrypt hashing, account lockout, email verification, password reset) and legacy Replit Auth (OIDC). Includes an OAuth-to-Password migration system for App Store compatibility, handling user role assignments (`buyer`, `vendor`, `admin`). Account lockout (5 attempts, 15 min) clears on password reset. OAuth migration users bypass lockout checks and get directed to set password instead.
 - **Multi-Role User System**: Users can have `isAdmin` and `isVendor` privileges simultaneously, with the navigation adapting accordingly.
 - **Unified Vendor Architecture**: All vendor types are managed within a single `vendors` table using `vendorType` and `capabilities` fields.
 - **Simplified Authentication & Onboarding**: Streamlined signup directs users to a `/start` gate for role-based routing and onboarding status checks.
@@ -43,7 +43,7 @@ The frontend is built using React 18, TypeScript, and Vite, leveraging Radix UI,
 - **Geographic Focus**: Southwest Florida (Fort Myers, Cape Coral, Bonita Springs, Estero, Naples).
 - **Fulfillment**: Supports pickup, local delivery, and shipping options.
 - **Application Routes**:
-  - **Public**: `/auth`.
+  - **Public**: `/auth`, `/reset-password`, `/set-password`, `/privacy`, `/terms`.
   - **Gate**: `/start`, `/onboarding` (for authenticated users).
   - **Protected**: All other routes require authentication and completed onboarding.
   - **Redirects**: Legacy routes are redirected to unified paths.
