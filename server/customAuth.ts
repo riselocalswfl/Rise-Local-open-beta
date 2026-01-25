@@ -6,8 +6,6 @@ import crypto from "crypto";
 import { z } from "zod";
 
 const SALT_ROUNDS = 10;
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_MINUTES = 15;
 const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
 const PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1;
 
@@ -222,14 +220,10 @@ export async function setupCustomAuth(app: Express) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      // Check migration status FIRST - OAuth users without passwords shouldn't hit lockout
+      // Check if user has no password set
       if (!user.password) {
         // Check if this is a migration-required user (OAuth user who needs to set password)
         if (user.migrationRequired) {
-          // Clear any lockout since they can't have valid login attempts without a password
-          if (user.lockedUntil || (user.failedLoginAttempts && user.failedLoginAttempts > 0)) {
-            await storage.resetFailedLoginAttempts(user.id);
-          }
           return res.status(200).json({
             requiresMigration: true,
             message: "Please create a password for your account to continue",
@@ -241,33 +235,10 @@ export async function setupCustomAuth(app: Express) {
         });
       }
 
-      // Only check lockout for users who have passwords set
-      if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-        const remainingMinutes = Math.ceil((new Date(user.lockedUntil).getTime() - Date.now()) / 60000);
-        return res.status(423).json({ 
-          message: `Account is locked. Please try again in ${remainingMinutes} minutes.`,
-          lockedUntil: user.lockedUntil
-        });
-      }
-
       const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
       if (!isValidPassword) {
-        const attempts = await storage.incrementFailedLoginAttempts(user.id);
-        
-        if (attempts >= MAX_LOGIN_ATTEMPTS) {
-          await storage.lockAccount(user.id, LOCKOUT_MINUTES);
-          return res.status(423).json({ 
-            message: `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`,
-          });
-        }
-        
-        const remainingAttempts = MAX_LOGIN_ATTEMPTS - attempts;
-        return res.status(401).json({ 
-          message: `Invalid email or password. ${remainingAttempts} attempts remaining.`
-        });
+        return res.status(401).json({ message: "Invalid email or password" });
       }
-
-      await storage.resetFailedLoginAttempts(user.id);
       await storage.updateLastLogin(user.id);
 
       const token = generateToken(user.id);
@@ -436,7 +407,6 @@ export async function setupCustomAuth(app: Express) {
       
       await storage.updateUser(resetToken.userId, { password: passwordHash });
       await storage.markPasswordResetTokenUsed(validatedData.token);
-      await storage.resetFailedLoginAttempts(resetToken.userId);
 
       console.log(`[Custom Auth] Password reset for user: ${resetToken.userId}`);
 
