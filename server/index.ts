@@ -34,12 +34,27 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed.split('://')[0] + '://' + allowed.split('://')[1]?.split('/')[0]))) {
+    if (!origin) {
       callback(null, true);
-    } else if (allowedOrigins.some(allowed => origin.includes(allowed.replace('https://', '').replace('http://', '')))) {
+      return;
+    }
+    
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (!allowed) return false;
+      try {
+        const allowedHost = new URL(allowed).host;
+        const originHost = new URL(origin).host;
+        return allowedHost === originHost || originHost.endsWith('.' + allowedHost);
+      } catch {
+        return origin.includes(allowed);
+      }
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
-      callback(null, true);
+      console.warn(`[CORS] Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
