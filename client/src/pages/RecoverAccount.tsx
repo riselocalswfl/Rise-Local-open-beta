@@ -19,7 +19,6 @@ export default function RecoverAccount() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
-  const [recoveryToken, setRecoveryToken] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,10 +32,10 @@ export default function RecoverAccount() {
 
   const isPasswordValid = passwordStrength.hasMinLength && passwordStrength.hasLetter && passwordStrength.hasNumber;
   const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
-  const canSubmit = email.length > 0 && recoveryToken.length > 0 && isPasswordValid && passwordsMatch;
+  const canSubmit = email.length > 0 && isPasswordValid && passwordsMatch;
 
   const recoverMutation = useMutation({
-    mutationFn: async (data: { email: string; recoveryToken: string; password: string }) => {
+    mutationFn: async (data: { email: string; password: string }) => {
       const response = await apiRequest("POST", "/api/auth/recover-account", data);
       return response.json();
     },
@@ -57,11 +56,21 @@ export default function RecoverAccount() {
       }, 1500);
     },
     onError: (error: any) => {
-      toast({
-        title: "Recovery Failed",
-        description: error.message || "Please check your email and recovery token.",
-        variant: "destructive",
-      });
+      const errorMessage = error.message || "Recovery failed. Please try again.";
+      
+      if (error.message?.includes("already has a password")) {
+        toast({
+          title: "Account Already Set Up",
+          description: "This account already has a password. Use 'Forgot Password' to reset it.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Recovery Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -71,7 +80,6 @@ export default function RecoverAccount() {
     
     recoverMutation.mutate({
       email: email.trim(),
-      recoveryToken: recoveryToken.trim(),
       password,
     });
   };
@@ -96,11 +104,17 @@ export default function RecoverAccount() {
           </div>
           <CardTitle className="text-2xl">Recover Your Account</CardTitle>
           <CardDescription>
-            Enter your email and recovery token to set up your new password
+            Enter your email address to recover your account and create a new password
           </CardDescription>
         </CardHeader>
         
         <CardContent>
+          <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              <strong>All your data will be preserved:</strong> deals, favorites, business profile, and more.
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
@@ -113,20 +127,8 @@ export default function RecoverAccount() {
                 data-testid="input-recovery-email"
                 autoFocus
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="token">Recovery Token</Label>
-              <Input
-                id="token"
-                type="text"
-                value={recoveryToken}
-                onChange={(e) => setRecoveryToken(e.target.value)}
-                placeholder="Enter your recovery token"
-                data-testid="input-recovery-token"
-              />
               <p className="text-xs text-muted-foreground">
-                Check your email or contact support for your recovery token
+                The email you used when you first signed up
               </p>
             </div>
 
@@ -206,12 +208,12 @@ export default function RecoverAccount() {
                   Recovering Account...
                 </>
               ) : (
-                "Recover Account"
+                "Recover Account & Set Password"
               )}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
             <p>
               Already have a password?{" "}
               <button
@@ -219,6 +221,24 @@ export default function RecoverAccount() {
                 className="text-primary hover:underline"
               >
                 Sign in
+              </button>
+            </p>
+            <p>
+              Forgot your password?{" "}
+              <button
+                onClick={() => setLocation("/reset-password")}
+                className="text-primary hover:underline"
+              >
+                Reset it here
+              </button>
+            </p>
+            <p>
+              Don't have an account?{" "}
+              <button
+                onClick={() => setLocation("/auth")}
+                className="text-primary hover:underline"
+              >
+                Sign up
               </button>
             </p>
           </div>

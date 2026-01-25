@@ -570,11 +570,17 @@ export default function Auth() {
                 </TabsContent>
               </Tabs>
 
-              <div className="mt-6 text-center">
+              <div className="mt-6 text-center space-y-2">
                 <p className="text-sm text-muted-foreground">
                   Don't have an account?{" "}
                   <button onClick={() => setMode("user-signup")} className="text-primary font-semibold hover:underline" data-testid="link-to-signup">
                     Sign up
+                  </button>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Had an account before?{" "}
+                  <button onClick={() => setLocation("/recover-account")} className="text-primary hover:underline" data-testid="link-recover-account">
+                    Recover old account
                   </button>
                 </p>
               </div>
@@ -758,11 +764,17 @@ export default function Auth() {
                 </form>
               </Form>
 
-              <div className="mt-6 text-center">
+              <div className="mt-6 text-center space-y-2">
                 <p className="text-sm text-muted-foreground">
                   Don't have a business account?{" "}
                   <button onClick={() => setMode("business-signup")} className="text-primary font-semibold hover:underline" data-testid="link-to-biz-signup">
                     Sign up
+                  </button>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Had an account before?{" "}
+                  <button onClick={() => setLocation("/recover-account")} className="text-primary hover:underline" data-testid="link-biz-recover-account">
+                    Recover old account
                   </button>
                 </p>
               </div>

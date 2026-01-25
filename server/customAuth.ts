@@ -590,14 +590,14 @@ export async function setupCustomAuth(app: Express) {
     }
   });
 
-  // Account recovery - validate recovery token and set password
+  // Account recovery - email lookup and password creation (no token needed)
   app.post("/api/auth/recover-account", async (req: Request, res: Response) => {
     try {
-      const { email, recoveryToken, password } = req.body;
+      const { email, password } = req.body;
 
-      if (!email || !recoveryToken || !password) {
+      if (!email || !password) {
         return res.status(400).json({ 
-          message: "Email, recovery token, and password are required" 
+          message: "Email and password are required" 
         });
       }
 
@@ -618,27 +618,27 @@ export async function setupCustomAuth(app: Express) {
       const user = await storage.getUserByEmail(email.trim().toLowerCase());
       if (!user) {
         return res.status(404).json({ 
-          message: "Invalid email or recovery token" 
+          message: "No account found with this email address" 
         });
       }
 
-      // Validate and consume the recovery token
-      const userId = await storage.consumeTempToken(recoveryToken, 'recovery');
-      if (!userId || userId !== user.id) {
+      // Check if user already has a password - they should use forgot password instead
+      if (user.password) {
         return res.status(400).json({ 
-          message: "Invalid or expired recovery token" 
+          message: "This account already has a password. Please use 'Forgot Password' instead.",
+          code: "PASSWORD_EXISTS"
         });
       }
 
       // Hash and set password
       const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-      await storage.updateUser(userId, { password: passwordHash });
-      await storage.markUserMigrated(userId);
+      await storage.updateUser(user.id, { password: passwordHash });
+      await storage.markUserMigrated(user.id);
 
       console.log(`[Custom Auth] Account recovered for user: ${user.email}`);
 
       // Generate JWT for auto-login
-      const jwtToken = generateToken(userId);
+      const jwtToken = generateToken(user.id);
 
       res.json({
         success: true,
