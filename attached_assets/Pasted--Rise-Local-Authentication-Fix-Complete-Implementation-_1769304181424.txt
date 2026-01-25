@@ -1,0 +1,1809 @@
+# Rise Local Authentication Fix - Complete Implementation Guide
+
+## Problem Statement
+
+Rise Local users who created accounts via Replit OAuth cannot login after migration to the new email/password authentication system. Issues include:
+- Login fails with "Too many failed attempts" error
+- Password reset completes but login still doesn't work
+- Users locked out of their accounts
+- No clear migration path from Replit OAuth to email/password
+
+## Solution Overview
+
+Implement a seamless migration system that:
+1. Detects Replit users attempting to login without passwords
+2. Guides them to create a password for their existing account
+3. Preserves all user data and relationships
+4. Handles edge cases (locked accounts, failed resets, email verification)
+
+---
+
+## Phase 1: Immediate Emergency Fixes (Do This First)
+
+### 1.1 Unlock All Locked Accounts
+
+```sql
+-- Unlock all currently locked accounts
+UPDATE users 
+SET 
+  failedLoginAttempts = 0,
+  lockedUntil = NULL
+WHERE lockedUntil IS NOT NULL;
+
+-- Specifically unlock your test account
+UPDATE users
+SET 
+  failedLoginAttempts = 0,
+  lockedUntil = NULL
+WHERE email = 'riselocalswfl@gmail.com';
+```
+
+### 1.2 Run Complete Account Diagnostics
+
+```sql
+-- See exactly what's wrong with your account
+SELECT 
+  id,
+  email,
+  password IS NOT NULL as has_password,
+  LENGTH(password) as password_hash_length,
+  replitId IS NOT NULL as has_replit_id,
+  emailVerified,
+  failedLoginAttempts,
+  lockedUntil,
+  lockedUntil > NOW() as currently_locked,
+  resetToken IS NOT NULL as has_reset_token,
+  resetTokenExpiry,
+  resetTokenExpiry > NOW() as reset_token_valid,
+  createdAt,
+  lastLoginAt
+FROM users
+WHERE email = 'riselocalswfl@gmail.com';
+
+-- Check for duplicate accounts
+SELECT id, email, replitId, password IS NOT NULL as has_password, createdAt
+FROM users 
+WHERE email = 'riselocalswfl@gmail.com'
+ORDER BY createdAt;
+```
+
+**What to look for:**
+- ✅ `has_password` should be `true`
+- ✅ `password_hash_length` should be `60` (bcrypt)
+- ✅ `currently_locked` should be `false`
+- ✅ `emailVerified` should be `true`
+- ✅ `failedLoginAttempts` should be `0`
+- ❌ If you see multiple records, you have duplicates to clean up
+
+### 1.3 Nuclear Option: Set Known Password Manually
+
+If nothing else works, use this to set a temporary password you can immediately login with:
+
+```sql
+-- This sets the password to "TempPassword123"
+UPDATE users
+SET 
+  password = '$2b$10$N9qo8uLOickgx2ZpriIlu.KCBkYgL7.CdH0G6F8nF2aYRJxTFjZ9W',
+  failedLoginAttempts = 0,
+  lockedUntil = NULL,
+  emailVerified = true,
+  resetToken = NULL,
+  resetTokenExpiry = NULL
+WHERE email = 'riselocalswfl@gmail.com';
+```
+
+**Now try logging in with:**
+- Email: `riselocalswfl@gmail.com`
+- Password: `TempPassword123`
+
+⚠️ **Change this password immediately after logging in!**
+
+### 1.4 Re-enable Replit OAuth Temporarily
+
+Make the "Sign in with Replit Account" button visible and functional so users have a way to access their accounts while you implement the migration flow.
+
+```jsx
+// In your BusinessLogin component
+// Make sure this is visible:
+<div className="oauth-section">
+  <p>Looking for user login?</p>
+  <a href="/api/auth/replit" className="replit-login-link">
+    Sign in with Replit Account
+  </a>
+</div>
+```
+
+---
+
+## Phase 2: Database Schema Updates
+
+### 2.1 Add Migration Tracking
+
+```sql
+-- Add column to track which users need migration
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS migrationRequired BOOLEAN DEFAULT false;
+
+-- Mark all existing Replit users without passwords
+UPDATE users
+SET migrationRequired = true
+WHERE replitId IS NOT NULL AND password IS NULL;
+
+-- Add index for performance
+CREATE INDEX IF NOT EXISTS idx_migration_required 
+ON users(migrationRequired);
+
+-- Add index for Replit ID lookups
+CREATE INDEX IF NOT EXISTS idx_replit_id 
+ON users(replitId);
+```
+
+### 2.2 Create Migration Log Table
+
+```sql
+-- Track all migration activities
+CREATE TABLE IF NOT EXISTS migration_log (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER REFERENCES users(id),
+  action VARCHAR(100) NOT NULL,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ipAddress VARCHAR(45),
+  userAgent TEXT,
+  success BOOLEAN NOT NULL,
+  notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_migration_user 
+ON migration_log(userId);
+
+CREATE INDEX IF NOT EXISTS idx_migration_timestamp 
+ON migration_log(timestamp);
+```
+
+### 2.3 Create Temporary Tokens Table
+
+```sql
+-- For secure migration flow tokens
+CREATE TABLE IF NOT EXISTS temp_tokens (
+  id SERIAL PRIMARY KEY,
+  token VARCHAR(255) UNIQUE NOT NULL,
+  userId INTEGER REFERENCES users(id),
+  purpose VARCHAR(50) NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expiresAt TIMESTAMP NOT NULL,
+  used BOOLEAN DEFAULT false
+);
+
+CREATE INDEX IF NOT EXISTS idx_temp_token 
+ON temp_tokens(token);
+
+CREATE INDEX IF NOT EXISTS idx_temp_token_expiry 
+ON temp_tokens(expiresAt);
+
+-- Clean up expired tokens periodically
+CREATE INDEX IF NOT EXISTS idx_temp_token_cleanup 
+ON temp_tokens(expiresAt, used);
+```
+
+### 2.4 Verify Schema Changes
+
+```sql
+-- Confirm all changes applied successfully
+SELECT 
+  COUNT(*) as total_users,
+  COUNT(*) FILTER (WHERE replitId IS NOT NULL) as replit_users,
+  COUNT(*) FILTER (WHERE migrationRequired = true) as needs_migration,
+  COUNT(*) FILTER (WHERE password IS NOT NULL) as has_password
+FROM users;
+```
+
+---
+
+## Phase 3: Backend Implementation
+
+### 3.1 Enhanced Login Endpoint with Migration Detection
+
+```javascript
+// routes/auth/login.js
+const bcrypt = require('bcrypt');
+const db = require('../../db/connection');
+const { generateJWT } = require('../../utils/jwt');
+
+async function login(req, res) {
+  const { email, password } = req.body;
+
+  // Input validation
+  if (!email || !password) {
+    return res.status(400).json({ 
+      error: 'Email and password are required',
+      code: 'MISSING_CREDENTIALS'
+    });
+  }
+
+  try {
+    // Find user by email
+    const userResult = await db.query(
+      `SELECT id, email, password, replitId, emailVerified, 
+              failedLoginAttempts, lockedUntil, migrationRequired,
+              firstName, lastName, role, isVendor, isAdmin
+       FROM users 
+       WHERE email = $1`,
+      [email.toLowerCase().trim()]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Account not found with this email',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // MIGRATION CHECK: Replit user without password
+    if (user.replitId && !user.password) {
+      console.log('Migration required for user:', user.email);
+      
+      return res.status(200).json({
+        requiresMigration: true,
+        userId: user.id,
+        email: user.email,
+        message: 'Please create a password for your account to continue',
+        code: 'MIGRATION_REQUIRED'
+      });
+    }
+
+    // LOCK CHECK: Account locked?
+    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+      const minutesLeft = Math.ceil(
+        (new Date(user.lockedUntil) - new Date()) / 1000 / 60
+      );
+      
+      console.log('Account locked:', user.email, 'Minutes left:', minutesLeft);
+      
+      return res.status(423).json({
+        error: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`,
+        minutesLeft: minutesLeft,
+        code: 'ACCOUNT_LOCKED'
+      });
+    }
+
+    // PASSWORD CHECK
+    if (!user.password) {
+      return res.status(400).json({
+        error: 'No password set for this account. Please use password reset.',
+        code: 'NO_PASSWORD'
+      });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      // Increment failed attempts
+      const newFailedAttempts = user.failedLoginAttempts + 1;
+      const shouldLock = newFailedAttempts >= 5;
+      
+      await db.query(
+        `UPDATE users 
+         SET failedLoginAttempts = $1,
+             lockedUntil = $2
+         WHERE id = $3`,
+        [
+          newFailedAttempts,
+          shouldLock ? new Date(Date.now() + 15 * 60 * 1000) : null,
+          user.id
+        ]
+      );
+
+      console.log('Invalid password for:', user.email, 'Attempts:', newFailedAttempts);
+
+      if (shouldLock) {
+        return res.status(423).json({
+          error: 'Too many failed attempts. Account locked for 15 minutes.',
+          code: 'ACCOUNT_LOCKED'
+        });
+      }
+
+      return res.status(401).json({
+        error: 'Invalid password',
+        attemptsLeft: Math.max(0, 5 - newFailedAttempts),
+        code: 'INVALID_PASSWORD'
+      });
+    }
+
+    // SUCCESS - Reset failed attempts and generate token
+    await db.query(
+      `UPDATE users 
+       SET failedLoginAttempts = 0, 
+           lockedUntil = NULL,
+           lastLoginAt = NOW()
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    // For Replit migrated users, auto-verify email
+    if (user.replitId && !user.emailVerified) {
+      await db.query(
+        'UPDATE users SET emailVerified = true WHERE id = $1',
+        [user.id]
+      );
+      user.emailVerified = true;
+    }
+
+    // Generate JWT token
+    const token = generateJWT({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    console.log('Successful login:', user.email);
+
+    res.json({ 
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVendor: user.isVendor,
+        isAdmin: user.isAdmin
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ 
+      error: 'Login failed. Please try again.',
+      code: 'SERVER_ERROR'
+    });
+  }
+}
+
+module.exports = login;
+```
+
+### 3.2 Password Creation Endpoint for Migration
+
+```javascript
+// routes/auth/setPassword.js
+const bcrypt = require('bcrypt');
+const db = require('../../db/connection');
+
+async function setPassword(req, res) {
+  const { userId, password } = req.body;
+
+  // Input validation
+  if (!userId || !password) {
+    return res.status(400).json({
+      error: 'User ID and password are required'
+    });
+  }
+
+  // Password strength validation
+  if (password.length < 8) {
+    return res.status(400).json({
+      error: 'Password must be at least 8 characters long'
+    });
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    return res.status(400).json({
+      error: 'Password must contain at least one uppercase letter'
+    });
+  }
+
+  if (!/[0-9]/.test(password)) {
+    return res.status(400).json({
+      error: 'Password must contain at least one number'
+    });
+  }
+
+  try {
+    // Get user and verify eligibility
+    const userResult = await db.query(
+      'SELECT id, email, replitId, password FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Must have replitId and no password to be eligible
+    if (!user.replitId) {
+      return res.status(400).json({
+        error: 'This account is not a Replit account'
+      });
+    }
+
+    if (user.password) {
+      return res.status(400).json({
+        error: 'Password already set for this account'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update user with new password
+    await db.query(
+      `UPDATE users 
+       SET password = $1,
+           migrationRequired = false,
+           emailVerified = true,
+           failedLoginAttempts = 0,
+           lockedUntil = NULL
+       WHERE id = $2`,
+      [hashedPassword, userId]
+    );
+
+    // Log successful migration
+    await db.query(
+      `INSERT INTO migration_log (userId, action, success, notes)
+       VALUES ($1, 'password_created', true, 'User completed migration')`,
+      [userId]
+    );
+
+    console.log('Password created for user:', user.email);
+
+    res.json({
+      success: true,
+      message: 'Password created successfully'
+    });
+
+  } catch (error) {
+    console.error('Set password error:', error);
+
+    // Log failed attempt
+    if (userId) {
+      await db.query(
+        `INSERT INTO migration_log (userId, action, success, notes)
+         VALUES ($1, 'password_created', false, $2)`,
+        [userId, error.message]
+      );
+    }
+
+    res.status(500).json({
+      error: 'Failed to create password. Please try again.'
+    });
+  }
+}
+
+module.exports = setPassword;
+```
+
+### 3.3 Fixed Password Reset Endpoint
+
+```javascript
+// routes/auth/resetPassword.js
+const bcrypt = require('bcrypt');
+const db = require('../../db/connection');
+
+async function resetPassword(req, res) {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({
+      error: 'Token and new password are required'
+    });
+  }
+
+  // Password validation
+  if (newPassword.length < 8) {
+    return res.status(400).json({
+      error: 'Password must be at least 8 characters'
+    });
+  }
+
+  try {
+    // Validate reset token
+    const userResult = await db.query(
+      `SELECT id, email FROM users 
+       WHERE resetToken = $1 
+         AND resetTokenExpiry > NOW()`,
+      [token]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ 
+        error: 'Invalid or expired reset token' 
+      });
+    }
+
+    const userId = userResult.rows[0].id;
+    const email = userResult.rows[0].email;
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // CRITICAL: Update password AND clear all locks/tokens/attempts
+    await db.query(
+      `UPDATE users 
+       SET password = $1,
+           resetToken = NULL,
+           resetTokenExpiry = NULL,
+           failedLoginAttempts = 0,
+           lockedUntil = NULL,
+           emailVerified = true,
+           migrationRequired = false
+       WHERE id = $2`,
+      [hashedPassword, userId]
+    );
+
+    console.log('Password reset successful for:', email);
+
+    res.json({ 
+      success: true, 
+      message: 'Password reset successful. You can now login.' 
+    });
+
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ 
+      error: 'Password reset failed. Please try again.' 
+    });
+  }
+}
+
+module.exports = resetPassword;
+```
+
+### 3.4 Temporary Token Management
+
+```javascript
+// utils/tempToken.js
+const crypto = require('crypto');
+const db = require('../db/connection');
+
+async function generateTempToken(userId, purpose = 'migration') {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await db.query(
+    `INSERT INTO temp_tokens (token, userId, expiresAt, purpose)
+     VALUES ($1, $2, $3, $4)`,
+    [token, userId, expiresAt, purpose]
+  );
+
+  return token;
+}
+
+async function validateTempToken(token, purpose = 'migration') {
+  const result = await db.query(
+    `SELECT userId FROM temp_tokens
+     WHERE token = $1
+       AND purpose = $2
+       AND expiresAt > NOW()
+       AND used = false`,
+    [token, purpose]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  // Mark as used
+  await db.query(
+    'UPDATE temp_tokens SET used = true WHERE token = $1',
+    [token]
+  );
+
+  return result.rows[0].userId;
+}
+
+// Clean up expired tokens (run periodically)
+async function cleanupExpiredTokens() {
+  await db.query(
+    'DELETE FROM temp_tokens WHERE expiresAt < NOW() - INTERVAL \'7 days\''
+  );
+}
+
+module.exports = {
+  generateTempToken,
+  validateTempToken,
+  cleanupExpiredTokens
+};
+```
+
+### 3.5 Update Replit OAuth Callback
+
+```javascript
+// routes/auth/replitCallback.js
+const db = require('../../db/connection');
+const { generateJWT } = require('../../utils/jwt');
+const { generateTempToken } = require('../../utils/tempToken');
+
+async function replitOAuthCallback(req, res) {
+  try {
+    // Get user info from Replit OAuth
+    const replitUser = await getReplitUserInfo(req.query.code);
+
+    // Find user by replitId
+    const userResult = await db.query(
+      'SELECT * FROM users WHERE replitId = $1',
+      [replitUser.id]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'User not found. Please sign up first.'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if migration required (no password set)
+    if (!user.password) {
+      // Generate temporary token for migration
+      const tempToken = await generateTempToken(user.id, 'migration');
+
+      // Redirect to password creation page
+      return res.redirect(
+        `/migration/create-password?token=${tempToken}&email=${encodeURIComponent(user.email)}`
+      );
+    }
+
+    // Normal login flow for already-migrated users
+    const token = generateJWT({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    // Update last login
+    await db.query(
+      'UPDATE users SET lastLoginAt = NOW() WHERE id = $1',
+      [user.id]
+    );
+
+    // Redirect to dashboard with token
+    res.redirect(`/business/dashboard?token=${token}`);
+
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+}
+
+module.exports = replitOAuthCallback;
+```
+
+### 3.6 Add Routes to Express App
+
+```javascript
+// In your main app.js or routes/index.js
+
+const login = require('./routes/auth/login');
+const setPassword = require('./routes/auth/setPassword');
+const resetPassword = require('./routes/auth/resetPassword');
+const replitCallback = require('./routes/auth/replitCallback');
+
+// Authentication routes
+app.post('/api/auth/login', login);
+app.post('/api/auth/set-password', setPassword);
+app.post('/api/auth/reset-password', resetPassword);
+app.get('/api/auth/replit/callback', replitCallback);
+
+// Replit OAuth initiation
+app.get('/api/auth/replit', (req, res) => {
+  const replitAuthUrl = `https://replit.com/auth/oauth2/authorize?client_id=${process.env.REPLIT_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.REPLIT_REDIRECT_URI)}&response_type=code&scope=user:read`;
+  res.redirect(replitAuthUrl);
+});
+```
+
+---
+
+## Phase 4: Frontend Implementation
+
+### 4.1 Enhanced Login Component
+
+```jsx
+// components/BusinessLogin.jsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function BusinessLogin() {
+  const navigate = useNavigate();
+  const [businessEmail, setBusinessEmail] = useState('');
+  const [businessPassword, setBusinessPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    // Basic validation
+    if (!businessEmail || !businessPassword) {
+      setError('Please enter both email and password');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: businessEmail.trim(),
+          password: businessPassword
+        })
+      });
+
+      const data = await response.json();
+
+      // Handle migration required
+      if (data.requiresMigration) {
+        console.log('Migration required for user');
+        
+        // Store user info for migration flow
+        sessionStorage.setItem('migrationUserId', data.userId);
+        sessionStorage.setItem('migrationEmail', data.email);
+        
+        // Redirect to password creation
+        navigate('/migration/create-password');
+        return;
+      }
+
+      // Handle errors
+      if (!response.ok) {
+        if (data.code === 'ACCOUNT_LOCKED') {
+          setError(`Account locked. Try again in ${data.minutesLeft || 15} minutes.`);
+        } else if (data.code === 'INVALID_PASSWORD' && data.attemptsLeft !== undefined) {
+          setError(`Invalid password. ${data.attemptsLeft} attempts remaining before lockout.`);
+        } else if (data.code === 'USER_NOT_FOUND') {
+          setError('No account found with this email. Please check your email or sign up.');
+        } else {
+          setError(data.error || 'Login failed. Please try again.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Successful login
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      console.log('Login successful');
+      navigate('/business/dashboard');
+
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="logo">
+          {/* Your Rise Local logo */}
+          <img src="/logo.png" alt="Rise Local" />
+        </div>
+
+        <h1>Business Sign In</h1>
+        <p className="subtitle">Access your business dashboard</p>
+
+        <form onSubmit={handleLogin} className="login-form">
+          <div className="form-group">
+            <label htmlFor="businessEmail">Business Email</label>
+            <div className="input-wrapper">
+              <input
+                id="businessEmail"
+                type="email"
+                value={businessEmail}
+                onChange={(e) => setBusinessEmail(e.target.value)}
+                placeholder="you@business.com"
+                required
+                autoComplete="email"
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <div className="label-row">
+              <label htmlFor="businessPassword">Password</label>
+              <a href="/forgot-password" className="forgot-link">
+                Forgot password?
+              </a>
+            </div>
+            <div className="input-wrapper">
+              <input
+                id="businessPassword"
+                type={showPassword ? 'text' : 'password'}
+                value={businessPassword}
+                onChange={(e) => setBusinessPassword(e.target.value)}
+                placeholder="••••••••••"
+                required
+                autoComplete="current-password"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="error-message" role="alert">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="submit-button"
+          >
+            {loading ? 'Signing In...' : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="divider">
+          <span>or</span>
+        </div>
+
+        <div className="alternative-logins">
+          <p className="small-text">Don't have a business account?</p>
+          <a href="/signup" className="signup-link">Sign up</a>
+
+          <p className="small-text" style={{ marginTop: '1rem' }}>
+            Looking for user login?
+          </p>
+
+          <a href="/api/auth/replit" className="replit-login-button">
+            Sign in with Replit Account
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### 4.2 Password Creation Page for Migration
+
+```jsx
+// pages/migration/CreatePassword.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+export default function CreatePassword() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    number: false
+  });
+
+  useEffect(() => {
+    // Check if coming from OAuth callback with token
+    const token = searchParams.get('token');
+    const emailParam = searchParams.get('email');
+
+    if (token && emailParam) {
+      // Validate token and get user info
+      validateToken(token, emailParam);
+    } else {
+      // Check session storage for migration data
+      const migrationEmail = sessionStorage.getItem('migrationEmail');
+      const migrationUserId = sessionStorage.getItem('migrationUserId');
+
+      if (!migrationEmail || !migrationUserId) {
+        setError('Invalid migration session. Please try logging in again.');
+        setTimeout(() => navigate('/auth/business-login'), 2000);
+        return;
+      }
+
+      setEmail(migrationEmail);
+      setUserId(migrationUserId);
+    }
+  }, [searchParams, navigate]);
+
+  const validateToken = async (token, emailParam) => {
+    try {
+      const response = await fetch('/api/auth/validate-migration-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid or expired token');
+      }
+
+      const data = await response.json();
+      setEmail(emailParam);
+      setUserId(data.userId);
+
+    } catch (err) {
+      setError('Invalid or expired migration link. Please try logging in again.');
+      setTimeout(() => navigate('/auth/business-login'), 2000);
+    }
+  };
+
+  const checkPasswordStrength = (pwd) => {
+    setPasswordStrength({
+      length: pwd.length >= 8,
+      uppercase: /[A-Z]/.test(pwd),
+      number: /[0-9]/.test(pwd)
+    });
+  };
+
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    checkPasswordStrength(newPassword);
+  };
+
+  const validatePassword = (pwd) => {
+    if (pwd.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    if (!/[A-Z]/.test(pwd)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/[0-9]/.test(pwd)) {
+      return 'Password must contain at least one number';
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Validate password
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
+    // Check passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Set password
+      const setPasswordRes = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: userId || sessionStorage.getItem('migrationUserId'), 
+          password 
+        })
+      });
+
+      if (!setPasswordRes.ok) {
+        const data = await setPasswordRes.json();
+        throw new Error(data.error || 'Failed to set password');
+      }
+
+      // Auto-login with new password
+      const loginRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!loginRes.ok) {
+        throw new Error('Login failed after password creation');
+      }
+
+      const { token, user } = await loginRes.json();
+      
+      // Save auth data
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // Clear migration data
+      sessionStorage.removeItem('migrationUserId');
+      sessionStorage.removeItem('migrationEmail');
+
+      // Redirect to dashboard
+      navigate('/business/dashboard');
+
+    } catch (err) {
+      console.error('Migration error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="migration-container">
+      <div className="migration-card">
+        <div className="logo">
+          <img src="/logo.png" alt="Rise Local" />
+        </div>
+
+        <h1>Welcome Back to Rise Local!</h1>
+        
+        <div className="migration-message">
+          <p>
+            We've upgraded our authentication system for better security. 
+            Please create a password to continue accessing your account.
+          </p>
+          {email && (
+            <div className="email-display">
+              <strong>Email:</strong> {email}
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="migration-form">
+          <div className="form-group">
+            <label htmlFor="password">New Password</label>
+            <div className="input-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={handlePasswordChange}
+                placeholder="Create a strong password"
+                required
+                autoFocus
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
+            
+            <div className="password-requirements">
+              <div className={passwordStrength.length ? 'met' : 'unmet'}>
+                {passwordStrength.length ? '✓' : '○'} At least 8 characters
+              </div>
+              <div className={passwordStrength.uppercase ? 'met' : 'unmet'}>
+                {passwordStrength.uppercase ? '✓' : '○'} One uppercase letter
+              </div>
+              <div className={passwordStrength.number ? 'met' : 'unmet'}>
+                {passwordStrength.number ? '✓' : '○'} One number
+              </div>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter your password"
+              required
+              disabled={loading}
+            />
+          </div>
+
+          {error && (
+            <div className="error-message" role="alert">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !passwordStrength.length || !passwordStrength.uppercase || !passwordStrength.number}
+            className="submit-button"
+          >
+            {loading ? 'Creating Password...' : 'Create Password & Login'}
+          </button>
+        </form>
+
+        <div className="help-section">
+          <p>
+            Need help? <a href="mailto:support@riselocal.app">Contact Support</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### 4.3 Add Styling
+
+```css
+/* styles/auth.css */
+
+.migration-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 2rem;
+}
+
+.migration-card,
+.login-card {
+  background: white;
+  border-radius: 12px;
+  padding: 3rem;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.logo {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.logo img {
+  height: 60px;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.subtitle {
+  color: #718096;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.migration-message {
+  background: #edf2f7;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.migration-message p {
+  color: #4a5568;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.email-display {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
+
+.email-display strong {
+  color: #2d3748;
+  margin-right: 0.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.forgot-link {
+  font-size: 0.875rem;
+  color: #667eea;
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+input:disabled {
+  background: #f7fafc;
+  cursor: not-allowed;
+}
+
+.input-wrapper input {
+  padding-right: 3rem;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+}
+
+.password-requirements {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.password-requirements div {
+  padding: 0.25rem 0;
+  transition: color 0.2s;
+}
+
+.password-requirements .met {
+  color: #48bb78;
+}
+
+.password-requirements .unmet {
+  color: #a0aec0;
+}
+
+.error-message {
+  background: #fed7d7;
+  color: #c53030;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.submit-button {
+  width: 100%;
+  padding: 0.875rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.submit-button:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+}
+
+.divider {
+  text-align: center;
+  margin: 2rem 0;
+  position: relative;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.divider span {
+  background: white;
+  padding: 0 1rem;
+  position: relative;
+  color: #718096;
+}
+
+.alternative-logins {
+  text-align: center;
+}
+
+.small-text {
+  color: #718096;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.signup-link,
+.replit-login-button {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.replit-login-button {
+  display: inline-block;
+  padding: 0.5rem 1.5rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.replit-login-button:hover {
+  border-color: #667eea;
+  background: #f7fafc;
+}
+
+.help-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.help-section p {
+  color: #718096;
+  font-size: 0.875rem;
+}
+
+.help-section a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.help-section a:hover {
+  text-decoration: underline;
+}
+```
+
+### 4.4 Add Route Configuration
+
+```jsx
+// In your main App.jsx or router file
+import CreatePassword from './pages/migration/CreatePassword';
+import BusinessLogin from './components/BusinessLogin';
+
+// Add routes
+<Routes>
+  <Route path="/auth/business-login" element={<BusinessLogin />} />
+  <Route path="/migration/create-password" element={<CreatePassword />} />
+  {/* ... other routes */}
+</Routes>
+```
+
+---
+
+## Phase 5: Testing & Deployment
+
+### 5.1 Pre-Deployment Testing Checklist
+
+- [ ] Run diagnostic SQL on your test account
+- [ ] Verify account is unlocked (`lockedUntil = NULL`)
+- [ ] Test nuclear option password reset works
+- [ ] Test login with temporary password
+- [ ] Test migration flow for Replit user
+- [ ] Test password creation page
+- [ ] Test auto-login after password creation
+- [ ] Verify all user data persists
+- [ ] Test error handling (weak password, mismatch)
+- [ ] Test Replit OAuth still works as fallback
+- [ ] Check migration log entries created
+- [ ] Test rate limiting on endpoints
+- [ ] Verify email verification auto-enables for Replit users
+- [ ] Test duplicate account detection
+- [ ] Verify password reset clears locks properly
+
+### 5.2 Monitoring Queries
+
+```sql
+-- Daily migration progress
+SELECT 
+  COUNT(*) as total_replit_users,
+  COUNT(*) FILTER (WHERE password IS NOT NULL) as migrated,
+  COUNT(*) FILTER (WHERE password IS NULL) as pending,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE password IS NOT NULL) / COUNT(*), 1) as percent_complete
+FROM users
+WHERE replitId IS NOT NULL;
+
+-- Recent migrations
+SELECT 
+  u.email,
+  m.action,
+  m.success,
+  m.timestamp
+FROM migration_log m
+JOIN users u ON m.userId = u.id
+WHERE m.action IN ('password_created', 'password_set')
+ORDER BY m.timestamp DESC
+LIMIT 20;
+
+-- Failed migration attempts
+SELECT 
+  u.email,
+  m.action,
+  m.notes,
+  m.timestamp
+FROM migration_log m
+JOIN users u ON m.userId = u.id
+WHERE m.success = false
+ORDER BY m.timestamp DESC
+LIMIT 10;
+
+-- Currently locked accounts
+SELECT 
+  id,
+  email,
+  failedLoginAttempts,
+  lockedUntil,
+  EXTRACT(MINUTE FROM (lockedUntil - NOW())) as minutes_left
+FROM users
+WHERE lockedUntil > NOW()
+ORDER BY lockedUntil;
+```
+
+### 5.3 Performance Optimization
+
+```sql
+-- Add indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_users_last_login ON users (lastLoginAt);
+CREATE INDEX IF NOT EXISTS idx_migration_log_timestamp ON migration_log (timestamp DESC);
+
+-- Cleanup old temp tokens (run daily via cron)
+DELETE FROM temp_tokens 
+WHERE expiresAt < NOW() - INTERVAL '7 days';
+```
+
+---
+
+## Phase 6: User Communication
+
+### 6.1 Email Notification to All Replit Users
+
+Send this email to all users where `replitId IS NOT NULL AND password IS NULL`:
+
+**Subject:** Important: Upgrade Your Rise Local Account
+
+```
+Hi [First Name],
+
+We're excited to announce that Rise Local is getting a major upgrade!
+
+To prepare for our upcoming App Store launch, we need you to take one quick action:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTION REQUIRED: Create Your Password
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The next time you log into Rise Local, you'll be prompted to create a password 
+for your account. This is a one-time step that takes less than 30 seconds.
+
+Your email address: [email]
+
+What to do:
+1. Visit riselocal.replit.app
+2. Click "Sign in with Replit Account"
+3. Create your new password
+4. You're done!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Why the change?
+• Enhanced security for your account
+• Seamless access across web and mobile
+• Preparation for App Store launch
+• Better overall user experience
+
+Your data is safe:
+All your listings, preferences, and account history remain exactly the same. 
+We're simply upgrading how you sign in.
+
+Need help?
+Reply to this email or contact us at support@riselocal.app
+
+Thanks for being part of Rise Local!
+
+The Rise Local Team
+
+P.S. Don't worry - your Replit login will continue working until you create 
+your password, so there's no rush. But we recommend doing it soon!
+```
+
+### 6.2 In-App Banner for Replit Users
+
+```jsx
+// components/MigrationBanner.jsx
+export default function MigrationBanner({ user }) {
+  if (!user.migrationRequired) return null;
+
+  return (
+    <div className="migration-banner">
+      <div className="banner-icon">⚠️</div>
+      <div className="banner-content">
+        <strong>Action Required:</strong> Please create a password for your 
+        account. The next time you log in, you'll be prompted to set one up.
+      </div>
+      <button 
+        onClick={() => window.location.href = '/migration/create-password'}
+        className="banner-action"
+      >
+        Create Password Now
+      </button>
+    </div>
+  );
+}
+```
+
+### 6.3 FAQ Page Content
+
+Add to your help center:
+
+**Q: Why do I need to create a password?**
+A: We're upgrading our authentication system to support Rise Local's upcoming App Store launch. This ensures your account works seamlessly across all platforms with enhanced security.
+
+**Q: Will I lose any data?**
+A: No! All your data, listings, preferences, and history remain completely intact. You're simply adding a password to your existing account.
+
+**Q: What if I forget my password?**
+A: Use the "Forgot Password" link on the login page to reset it via email.
+
+**Q: Can I still use my Replit account?**
+A: For a transition period, yes. But we encourage you to create a password soon as Replit login will be phased out after all users have migrated.
+
+**Q: How long will this take?**
+A: Creating your password takes less than 30 seconds. Just make sure it's strong and secure!
+
+---
+
+## Phase 7: Post-Migration Cleanup
+
+### 7.1 After 90% Migration Rate
+
+```sql
+-- Send reminder email to remaining users
+SELECT email, firstName, lastName
+FROM users
+WHERE replitId IS NOT NULL 
+  AND password IS NULL
+  AND lastLoginAt > NOW() - INTERVAL '90 days';
+```
+
+### 7.2 After 100% Migration
+
+```sql
+-- Verify all users migrated
+SELECT COUNT(*) as remaining
+FROM users 
+WHERE replitId IS NOT NULL AND password IS NULL;
+
+-- If 0, proceed with cleanup:
+
+-- Remove Replit OAuth routes from your backend
+-- Remove "Sign in with Replit Account" button from frontend
+-- Optional: Keep replitId column for historical records
+-- Optional: Remove migration tracking columns
+
+-- DROP COLUMN migrationRequired;  -- Keep for analytics
+-- DROP TABLE temp_tokens;  -- Keep for 30 days
+-- Keep migration_log permanently for audit trail
+```
+
+---
+
+## Troubleshooting Guide
+
+### Problem: "Account locked" message
+**Solution:**
+```sql
+UPDATE users 
+SET failedLoginAttempts = 0, lockedUntil = NULL
+WHERE email = '[user_email]';
+```
+
+### Problem: Password reset doesn't work
+**Check:**
+1. Password hash is saved (length = 60)
+2. Reset token is cleared after use
+3. All locks cleared in reset endpoint
+4. Email verification set to true
+
+**Fix:**
+```sql
+UPDATE users
+SET 
+  password = '$2b$10$N9qo8uLOickgx2ZpriIlu.KCBkYgL7.CdH0G6F8nF2aYRJxTFjZ9W',
+  resetToken = NULL,
+  resetTokenExpiry = NULL,
+  failedLoginAttempts = 0,
+  lockedUntil = NULL,
+  emailVerified = true
+WHERE email = '[user_email]';
+```
+
+### Problem: Duplicate accounts
+**Solution:**
+```sql
+-- Find duplicates
+SELECT email, COUNT(*), array_agg(id) as ids
+FROM users
+GROUP BY email
+HAVING COUNT(*) > 1;
+
+-- Keep the one with replitId, delete others
+DELETE FROM users
+WHERE email = '[duplicate_email]'
+  AND replitId IS NULL;
+```
+
+### Problem: Migration doesn't trigger
+**Check:**
+1. Login endpoint detects `replitId && !password`
+2. Returns `requiresMigration: true`
+3. Frontend handles migration response
+4. Redirects to `/migration/create-password`
+
+**Debug:**
+Add console.log to login endpoint and frontend handler
+
+---
+
+## Success Metrics
+
+Track these KPIs weekly:
+
+1. **Migration Rate:** % of Replit users with passwords created
+2. **Time to Migrate:** Average days from email notification to completion
+3. **Support Tickets:** Number of migration-related issues
+4. **Failed Attempts:** Password creation failures and reasons
+5. **User Retention:** Ensure migration doesn't cause user drop-off
+6. **Login Success Rate:** Track login failures vs successes
+
+**Target Goals:**
+- 50% migration within 2 weeks
+- 90% migration within 4 weeks
+- < 5% support ticket rate
+- < 2% user churn during migration
+
+---
+
+## Emergency Rollback Plan
+
+If critical issues arise:
+
+### 1. Disable Migration Flow
+```javascript
+// Add feature flag at top of login endpoint
+const MIGRATION_ENABLED = false;
+
+if (!MIGRATION_ENABLED && user.replitId && !user.password) {
+  // Allow OAuth login temporarily
+  const token = generateJWT(user);
+  return res.json({ token, user });
+}
+```
+
+### 2. Unlock All Accounts
+```sql
+UPDATE users 
+SET failedLoginAttempts = 0, lockedUntil = NULL;
+```
+
+### 3. Communicate with Users
+Send email explaining temporary issue and that OAuth login still works.
+
+### 4. Fix Issue
+Debug, test fix locally, deploy corrected version.
+
+### 5. Re-enable Migration
+Set `MIGRATION_ENABLED = true` and resume normal flow.
+
+---
+
+## Final Checklist
+
+Before going live with this solution:
+
+- [ ] All database schema updates applied
+- [ ] Backend endpoints implemented and tested
+- [ ] Frontend pages created and styled
+- [ ] Routes configured correctly
+- [ ] Test account can complete migration flow
+- [ ] Error handling works for all scenarios
+- [ ] Logging in place for debugging
+- [ ] Monitoring queries ready
+- [ ] Email templates prepared
+- [ ] FAQ page updated
+- [ ] Support team briefed
+- [ ] Rollback plan documented
+- [ ] Success metrics tracking configured
+
+---
+
+## Support Contacts
+
+**Implementation Questions:**
+- Technical Lead: [Your Name]
+- Database Admin: [DBA Name]
+
+**User Support:**
+- Email: support@riselocal.app
+- Help Center: riselocal.app/help
+
+**Emergency Issues:**
+- On-call Engineer: [Phone/Slack]
+
+---
+
+## Summary
+
+This unified guide provides everything needed to successfully migrate Replit OAuth users to email/password authentication:
+
+**Immediate Actions:**
+1. Run SQL to unlock accounts
+2. Set temporary password for testing
+3. Re-enable Replit OAuth as fallback
+
+**Core Implementation:**
+1. Enhanced login with migration detection
+2. Password creation page for seamless migration
+3. Fixed password reset that clears all locks
+4. Comprehensive error handling
+
+**User Experience:**
+1. Automatic detection of migration need
+2. Clear guidance through password creation
+3. Auto-login after migration complete
+4. Email notifications and in-app banners
+
+**Monitoring & Support:**
+1. Migration progress tracking
+2. Detailed logging for debugging
+3. Support documentation and FAQs
+4. Emergency rollback procedures
+
+Follow this guide step-by-step to ensure a smooth, secure migration with zero data loss and minimal user friction. Good luck with your App Store launch! 🚀

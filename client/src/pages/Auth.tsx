@@ -215,6 +215,17 @@ export default function Auth() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Check if user needs to migrate (set password for OAuth account)
+      if (data.requiresMigration) {
+        toast({ 
+          title: "Account upgrade required", 
+          description: "Please sign in with your Replit account to create a password.",
+        });
+        // Redirect to OAuth login which will handle migration
+        window.location.href = "/api/login";
+        return;
+      }
+      
       localStorage.setItem("auth_token", data.token);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Welcome back!" });

@@ -18,7 +18,7 @@ export function generateToken(userId: string): string {
   return jwt.sign(
     { sub: userId },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRATION }
+    { expiresIn: JWT_EXPIRATION as jwt.SignOptions['expiresIn'] }
   );
 }
 
