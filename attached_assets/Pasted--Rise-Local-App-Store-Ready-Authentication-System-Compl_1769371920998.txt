@@ -1,0 +1,2359 @@
+# Rise Local: App Store Ready Authentication System
+## Complete Migration from Replit OAuth to Production-Grade Mobile Auth
+
+---
+
+## Executive Summary
+
+Transform Rise Local's authentication system from Replit-dependent OAuth to an industry-standard, App Store-ready mobile authentication solution. This guide removes all Replit dependencies and implements secure, scalable auth suitable for iOS app submission.
+
+---
+
+## Goals & Requirements
+
+### Primary Objectives
+1. **Remove ALL Replit OAuth dependencies** - Complete elimination for standalone operation
+2. **Implement industry-standard email/password auth** - Secure, mobile-optimized
+3. **Add Apple Sign-In** - Required for App Store (if using any social auth)
+4. **Migrate existing users seamlessly** - Zero data loss, minimal friction
+5. **Meet Apple App Store guidelines** - Privacy, security, and UX standards
+6. **Production-grade security** - JWT tokens, secure password handling, rate limiting
+7. **Mobile-first architecture** - Optimized for React Native/iOS
+
+### App Store Compliance Requirements
+- ✅ No third-party dependencies for core functionality (Replit removal)
+- ✅ Secure password storage (bcrypt with proper salt rounds)
+- ✅ Apple Sign-In integration (if offering any social login)
+- ✅ Privacy policy and terms of service
+- ✅ Secure token storage (iOS Keychain via react-native-keychain)
+- ✅ Biometric authentication support (Face ID/Touch ID)
+- ✅ Proper error handling and user feedback
+- ✅ Network security (SSL/TLS only)
+
+---
+
+## Phase 1: Remove Replit Dependencies
+
+### 1.1 Audit Current Replit Usage
+
+**Identify all Replit touchpoints:**
+
+```bash
+# Search codebase for Replit references
+grep -r "replit" . --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx"
+grep -r "REPLIT" . --include="*.env*"
+```
+
+**Database audit:**
+```sql
+-- Count users still using Replit OAuth
+SELECT 
+  COUNT(*) as total_replit_users,
+  COUNT(*) FILTER (WHERE password IS NULL) as needs_migration,
+  COUNT(*) FILTER (WHERE password IS NOT NULL) as migrated
+FROM users
+WHERE replitId IS NOT NULL;
+```
+
+### 1.2 Final User Migration (Force Completion)
+
+**Send final migration email to remaining users:**
+
+```
+Subject: URGENT: Action Required - Rise Local Account Migration
+
+Hi [First Name],
+
+Rise Local is launching on the App Store! 🎉
+
+To continue using your account, you must create a password by [DATE].
+
+▶️ CREATE PASSWORD NOW: [link]
+
+After [DATE], Replit login will no longer work.
+
+Your account data will be preserved - you're simply adding a password.
+
+Questions? Reply to this email.
+
+- The Rise Local Team
+```
+
+**Set migration deadline:**
+```sql
+-- Add deadline column
+ALTER TABLE users ADD COLUMN migrationDeadline TIMESTAMP;
+
+-- Set deadline (e.g., 14 days from now)
+UPDATE users
+SET migrationDeadline = NOW() + INTERVAL '14 days'
+WHERE replitId IS NOT NULL AND password IS NULL;
+```
+
+**Auto-lock accounts after deadline:**
+```javascript
+// Backend: Scheduled job (run daily)
+async function enforceMinimumDeadline() {
+  const result = await db.query(
+    `UPDATE users 
+     SET isActive = false,
+         deactivationReason = 'migration_deadline_passed'
+     WHERE replitId IS NOT NULL 
+       AND password IS NULL
+       AND migrationDeadline < NOW()
+     RETURNING email, firstName`
+  );
+  
+  // Send notification emails
+  for (const user of result.rows) {
+    await sendEmail(user.email, 'account_locked_migration', {
+      firstName: user.firstName,
+      reactivationLink: generateReactivationLink(user.email)
+    });
+  }
+}
+```
+
+### 1.3 Complete Replit Removal
+
+**After 100% user migration:**
+
+```sql
+-- Verify no active users need Replit
+SELECT COUNT(*) FROM users 
+WHERE replitId IS NOT NULL 
+  AND password IS NULL 
+  AND isActive = true;
+
+-- If count = 0, proceed:
+
+-- Archive Replit data (don't delete - keep for records)
+ALTER TABLE users ADD COLUMN replitIdArchived VARCHAR(255);
+UPDATE users SET replitIdArchived = replitId WHERE replitId IS NOT NULL;
+
+-- Remove active Replit column
+ALTER TABLE users DROP COLUMN replitId;
+ALTER TABLE users DROP COLUMN migrationRequired;
+ALTER TABLE users DROP COLUMN migrationDeadline;
+```
+
+**Backend cleanup:**
+
+```bash
+# Remove Replit OAuth files
+rm -rf routes/auth/replitOAuth.js
+rm -rf routes/auth/replitCallback.js
+rm -rf utils/replitAuth.js
+
+# Remove Replit env variables
+# Edit .env and remove:
+# REPLIT_CLIENT_ID
+# REPLIT_CLIENT_SECRET
+# REPLIT_REDIRECT_URI
+```
+
+**Frontend cleanup:**
+
+```bash
+# Remove Replit UI components
+# Find and delete:
+# - "Sign in with Replit" buttons
+# - Replit OAuth redirect logic
+# - Replit-specific styling
+```
+
+---
+
+## Phase 2: Industry-Standard Email/Password Authentication
+
+### 2.1 Enhanced Backend Auth System
+
+**Environment variables (.env):**
+```bash
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-min-32-chars-use-crypto-random
+JWT_EXPIRATION=7d
+JWT_REFRESH_EXPIRATION=30d
+
+# Bcrypt Configuration
+BCRYPT_ROUNDS=12
+
+# Rate Limiting
+LOGIN_RATE_LIMIT_WINDOW=15m
+LOGIN_RATE_LIMIT_MAX_ATTEMPTS=5
+
+# Password Policy
+PASSWORD_MIN_LENGTH=8
+PASSWORD_REQUIRE_UPPERCASE=true
+PASSWORD_REQUIRE_NUMBER=true
+PASSWORD_REQUIRE_SPECIAL=false
+
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/riselocal
+
+# Email Service (for verification, password reset)
+SENDGRID_API_KEY=your-sendgrid-key
+EMAIL_FROM=noreply@riselocal.app
+
+# App URLs
+FRONTEND_URL=https://riselocal.app
+API_URL=https://api.riselocal.app
+```
+
+**JWT utility (utils/jwt.js):**
+
+```javascript
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '7d';
+const JWT_REFRESH_EXPIRATION = process.env.JWT_REFRESH_EXPIRATION || '30d';
+
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be at least 32 characters');
+}
+
+function generateAccessToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRATION,
+    issuer: 'riselocal',
+    audience: 'riselocal-app'
+  });
+}
+
+function generateRefreshToken(payload) {
+  return jwt.sign(
+    { ...payload, type: 'refresh' },
+    JWT_SECRET,
+    {
+      expiresIn: JWT_REFRESH_EXPIRATION,
+      issuer: 'riselocal',
+      audience: 'riselocal-app'
+    }
+  );
+}
+
+function verifyToken(token, type = 'access') {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      issuer: 'riselocal',
+      audience: 'riselocal-app'
+    });
+    
+    if (type === 'refresh' && decoded.type !== 'refresh') {
+      throw new Error('Invalid token type');
+    }
+    
+    return decoded;
+  } catch (error) {
+    throw new Error('Invalid or expired token');
+  }
+}
+
+module.exports = {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken
+};
+```
+
+**Password utility (utils/password.js):**
+
+```javascript
+const bcrypt = require('bcrypt');
+
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 12;
+const MIN_LENGTH = parseInt(process.env.PASSWORD_MIN_LENGTH) || 8;
+const REQUIRE_UPPERCASE = process.env.PASSWORD_REQUIRE_UPPERCASE === 'true';
+const REQUIRE_NUMBER = process.env.PASSWORD_REQUIRE_NUMBER === 'true';
+const REQUIRE_SPECIAL = process.env.PASSWORD_REQUIRE_SPECIAL === 'true';
+
+function validatePasswordStrength(password) {
+  const errors = [];
+  
+  if (password.length < MIN_LENGTH) {
+    errors.push(`Password must be at least ${MIN_LENGTH} characters`);
+  }
+  
+  if (REQUIRE_UPPERCASE && !/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  
+  if (REQUIRE_NUMBER && !/[0-9]/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  
+  if (REQUIRE_SPECIAL && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push('Password must contain at least one special character');
+  }
+  
+  // Check against common passwords
+  const commonPasswords = [
+    'password', '12345678', 'qwerty', 'abc123', 'password1',
+    '111111', '123456789', 'letmein', 'welcome', 'monkey'
+  ];
+  
+  if (commonPasswords.includes(password.toLowerCase())) {
+    errors.push('Password is too common. Please choose a stronger password');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+async function hashPassword(password) {
+  const validation = validatePasswordStrength(password);
+  
+  if (!validation.valid) {
+    throw new Error(validation.errors.join('. '));
+  }
+  
+  return await bcrypt.hash(password, BCRYPT_ROUNDS);
+}
+
+async function comparePassword(password, hash) {
+  return await bcrypt.compare(password, hash);
+}
+
+module.exports = {
+  validatePasswordStrength,
+  hashPassword,
+  comparePassword
+};
+```
+
+**Auth middleware (middleware/auth.js):**
+
+```javascript
+const { verifyToken } = require('../utils/jwt');
+const db = require('../db/connection');
+
+async function authenticateToken(req, res, next) {
+  try {
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    
+    if (!token) {
+      return res.status(401).json({
+        error: 'Access token required',
+        code: 'NO_TOKEN'
+      });
+    }
+    
+    // Verify token
+    const decoded = verifyToken(token);
+    
+    // Check if user still exists and is active
+    const userResult = await db.query(
+      'SELECT id, email, role, isActive FROM users WHERE id = $1',
+      [decoded.id]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+    
+    const user = userResult.rows[0];
+    
+    if (!user.isActive) {
+      return res.status(403).json({
+        error: 'Account is inactive',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+    
+    // Attach user to request
+    req.user = user;
+    next();
+    
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    
+    return res.status(401).json({
+      error: 'Invalid or expired token',
+      code: 'INVALID_TOKEN'
+    });
+  }
+}
+
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        code: 'NOT_AUTHENTICATED'
+      });
+    }
+    
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        error: 'Insufficient permissions',
+        code: 'INSUFFICIENT_PERMISSIONS'
+      });
+    }
+    
+    next();
+  };
+}
+
+module.exports = {
+  authenticateToken,
+  requireRole
+};
+```
+
+**Production-grade login endpoint:**
+
+```javascript
+// routes/auth/login.js
+const db = require('../../db/connection');
+const { comparePassword } = require('../../utils/password');
+const { generateAccessToken, generateRefreshToken } = require('../../utils/jwt');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiting
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts
+  message: {
+    error: 'Too many login attempts. Please try again in 15 minutes.',
+    code: 'RATE_LIMIT_EXCEEDED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Use user's IP + email as key
+  keyGenerator: (req) => `${req.ip}-${req.body.email || 'unknown'}`
+});
+
+async function login(req, res) {
+  const { email, password, deviceInfo } = req.body;
+
+  // Input validation
+  if (!email || !password) {
+    return res.status(400).json({
+      error: 'Email and password are required',
+      code: 'MISSING_CREDENTIALS'
+    });
+  }
+
+  try {
+    // Find user
+    const userResult = await db.query(
+      `SELECT id, email, password, firstName, lastName, role, 
+              isVendor, isAdmin, isActive, emailVerified,
+              failedLoginAttempts, lockedUntil
+       FROM users 
+       WHERE LOWER(email) = LOWER($1)`,
+      [email.trim()]
+    );
+
+    if (userResult.rows.length === 0) {
+      // Don't reveal if email exists
+      return res.status(401).json({
+        error: 'Invalid email or password',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if account is active
+    if (!user.isActive) {
+      return res.status(403).json({
+        error: 'Account is inactive. Please contact support.',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+
+    // Check if account is locked
+    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+      const minutesLeft = Math.ceil(
+        (new Date(user.lockedUntil) - new Date()) / 1000 / 60
+      );
+      
+      return res.status(423).json({
+        error: `Account locked due to multiple failed attempts. Try again in ${minutesLeft} minutes.`,
+        minutesLeft,
+        code: 'ACCOUNT_LOCKED'
+      });
+    }
+
+    // Verify password
+    const validPassword = await comparePassword(password, user.password);
+
+    if (!validPassword) {
+      // Increment failed attempts
+      const newFailedAttempts = user.failedLoginAttempts + 1;
+      const shouldLock = newFailedAttempts >= 5;
+      
+      await db.query(
+        `UPDATE users 
+         SET failedLoginAttempts = $1,
+             lockedUntil = $2,
+             lastFailedLoginAt = NOW()
+         WHERE id = $3`,
+        [
+          newFailedAttempts,
+          shouldLock ? new Date(Date.now() + 15 * 60 * 1000) : null,
+          user.id
+        ]
+      );
+
+      if (shouldLock) {
+        return res.status(423).json({
+          error: 'Too many failed attempts. Account locked for 15 minutes.',
+          code: 'ACCOUNT_LOCKED'
+        });
+      }
+
+      return res.status(401).json({
+        error: 'Invalid email or password',
+        attemptsLeft: 5 - newFailedAttempts,
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+
+    // Successful login - reset failed attempts
+    await db.query(
+      `UPDATE users 
+       SET failedLoginAttempts = 0, 
+           lockedUntil = NULL,
+           lastLoginAt = NOW()
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    // Generate tokens
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    };
+
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+
+    // Store refresh token in database
+    await db.query(
+      `INSERT INTO refresh_tokens (userId, token, deviceInfo, expiresAt)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '30 days')`,
+      [user.id, refreshToken, deviceInfo || null]
+    );
+
+    // Log successful login
+    await db.query(
+      `INSERT INTO login_log (userId, ipAddress, userAgent, success, deviceInfo)
+       VALUES ($1, $2, $3, true, $4)`,
+      [user.id, req.ip, req.headers['user-agent'], deviceInfo]
+    );
+
+    // Return tokens and user data
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVendor: user.isVendor,
+        isAdmin: user.isAdmin
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    
+    // Log failed attempt
+    await db.query(
+      `INSERT INTO login_log (userId, ipAddress, userAgent, success, errorMessage)
+       VALUES (
+         (SELECT id FROM users WHERE LOWER(email) = LOWER($1)),
+         $2, $3, false, $4
+       )`,
+      [email, req.ip, req.headers['user-agent'], error.message]
+    );
+
+    res.status(500).json({
+      error: 'Login failed. Please try again.',
+      code: 'SERVER_ERROR'
+    });
+  }
+}
+
+module.exports = { login, loginLimiter };
+```
+
+**Token refresh endpoint:**
+
+```javascript
+// routes/auth/refresh.js
+const { verifyToken, generateAccessToken } = require('../../utils/jwt');
+const db = require('../../db/connection');
+
+async function refreshAccessToken(req, res) {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(400).json({
+      error: 'Refresh token required',
+      code: 'NO_REFRESH_TOKEN'
+    });
+  }
+
+  try {
+    // Verify refresh token
+    const decoded = verifyToken(refreshToken, 'refresh');
+
+    // Check if refresh token exists in database and is valid
+    const tokenResult = await db.query(
+      `SELECT id, userId, revoked FROM refresh_tokens
+       WHERE token = $1 AND expiresAt > NOW()`,
+      [refreshToken]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      return res.status(401).json({
+        error: 'Invalid or expired refresh token',
+        code: 'INVALID_REFRESH_TOKEN'
+      });
+    }
+
+    const tokenRecord = tokenResult.rows[0];
+
+    if (tokenRecord.revoked) {
+      return res.status(401).json({
+        error: 'Refresh token has been revoked',
+        code: 'TOKEN_REVOKED'
+      });
+    }
+
+    // Get user data
+    const userResult = await db.query(
+      'SELECT id, email, role, isActive FROM users WHERE id = $1',
+      [decoded.id]
+    );
+
+    if (userResult.rows.length === 0 || !userResult.rows[0].isActive) {
+      return res.status(401).json({
+        error: 'User not found or inactive',
+        code: 'USER_INVALID'
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Generate new access token
+    const newAccessToken = generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    // Update last used timestamp
+    await db.query(
+      'UPDATE refresh_tokens SET lastUsedAt = NOW() WHERE id = $1',
+      [tokenRecord.id]
+    );
+
+    res.json({
+      accessToken: newAccessToken
+    });
+
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    
+    res.status(401).json({
+      error: 'Failed to refresh token',
+      code: 'REFRESH_FAILED'
+    });
+  }
+}
+
+module.exports = refreshAccessToken;
+```
+
+**Signup endpoint:**
+
+```javascript
+// routes/auth/signup.js
+const db = require('../../db/connection');
+const { hashPassword, validatePasswordStrength } = require('../../utils/password');
+const { generateAccessToken, generateRefreshToken } = require('../../utils/jwt');
+const crypto = require('crypto');
+
+async function signup(req, res) {
+  const { email, password, firstName, lastName, accountType, businessName } = req.body;
+
+  // Validation
+  if (!email || !password || !firstName || !lastName) {
+    return res.status(400).json({
+      error: 'Email, password, first name, and last name are required',
+      code: 'MISSING_FIELDS'
+    });
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({
+      error: 'Invalid email format',
+      code: 'INVALID_EMAIL'
+    });
+  }
+
+  // Validate password strength
+  const passwordValidation = validatePasswordStrength(password);
+  if (!passwordValidation.valid) {
+    return res.status(400).json({
+      error: passwordValidation.errors[0],
+      errors: passwordValidation.errors,
+      code: 'WEAK_PASSWORD'
+    });
+  }
+
+  try {
+    // Check if email already exists
+    const existingUser = await db.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
+      [email.trim()]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({
+        error: 'An account with this email already exists',
+        code: 'EMAIL_EXISTS'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Generate email verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Create user
+    const userResult = await db.query(
+      `INSERT INTO users (
+        email, password, firstName, lastName, accountType, businessName,
+        emailVerificationToken, emailVerificationExpiry, isActive
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+      RETURNING id, email, firstName, lastName, role, accountType`,
+      [
+        email.toLowerCase().trim(),
+        hashedPassword,
+        firstName.trim(),
+        lastName.trim(),
+        accountType || 'user',
+        businessName || null,
+        verificationToken,
+        verificationExpiry
+      ]
+    );
+
+    const user = userResult.rows[0];
+
+    // Generate tokens
+    const accessToken = generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    const refreshToken = generateRefreshToken({
+      id: user.id,
+      email: user.email,
+      role: user.role
+    });
+
+    // Store refresh token
+    await db.query(
+      `INSERT INTO refresh_tokens (userId, token, expiresAt)
+       VALUES ($1, $2, NOW() + INTERVAL '30 days')`,
+      [user.id, refreshToken]
+    );
+
+    // Send verification email (async, don't wait)
+    sendVerificationEmail(user.email, verificationToken).catch(err =>
+      console.error('Failed to send verification email:', err)
+    );
+
+    // Log signup
+    await db.query(
+      `INSERT INTO signup_log (userId, ipAddress, userAgent)
+       VALUES ($1, $2, $3)`,
+      [user.id, req.ip, req.headers['user-agent']]
+    );
+
+    res.status(201).json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        accountType: user.accountType
+      },
+      message: 'Account created successfully. Please check your email to verify your account.'
+    });
+
+  } catch (error) {
+    console.error('Signup error:', error);
+    
+    res.status(500).json({
+      error: 'Account creation failed. Please try again.',
+      code: 'SERVER_ERROR'
+    });
+  }
+}
+
+// Email verification helper
+async function sendVerificationEmail(email, token) {
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  
+  // Implement with your email service (SendGrid, AWS SES, etc.)
+  // This is a placeholder
+  console.log(`Verification email would be sent to ${email}: ${verificationUrl}`);
+}
+
+module.exports = signup;
+```
+
+### 2.2 Required Database Schema Updates
+
+```sql
+-- Add missing columns for production auth
+ALTER TABLE users ADD COLUMN IF NOT EXISTS isActive BOOLEAN DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS lastLoginAt TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS lastFailedLoginAt TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS emailVerificationToken VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS emailVerificationExpiry TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS businessName VARCHAR(255);
+
+-- Create refresh tokens table
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  deviceInfo JSONB,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  lastUsedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expiresAt TIMESTAMP NOT NULL,
+  revoked BOOLEAN DEFAULT false,
+  revokedAt TIMESTAMP,
+  revokedReason VARCHAR(255)
+);
+
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(userId);
+CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX idx_refresh_tokens_expiry ON refresh_tokens(expiresAt);
+
+-- Create login log table
+CREATE TABLE IF NOT EXISTS login_log (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  ipAddress VARCHAR(45),
+  userAgent TEXT,
+  deviceInfo JSONB,
+  success BOOLEAN NOT NULL,
+  errorMessage TEXT,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_login_log_user ON login_log(userId);
+CREATE INDEX idx_login_log_timestamp ON login_log(timestamp);
+CREATE INDEX idx_login_log_ip ON login_log(ipAddress);
+
+-- Create signup log table
+CREATE TABLE IF NOT EXISTS signup_log (
+  id SERIAL PRIMARY KEY,
+  userId INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  ipAddress VARCHAR(45),
+  userAgent TEXT,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_signup_log_user ON signup_log(userId);
+CREATE INDEX idx_signup_log_timestamp ON signup_log(timestamp);
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_users_active ON users(isActive);
+CREATE INDEX IF NOT EXISTS idx_users_email_verified ON users(emailVerified);
+```
+
+---
+
+## Phase 3: Apple Sign-In Integration (App Store Requirement)
+
+### 3.1 Backend Setup
+
+**Install dependencies:**
+```bash
+npm install apple-signin-auth
+```
+
+**Apple Sign-In endpoint:**
+
+```javascript
+// routes/auth/appleSignIn.js
+const appleSignin = require('apple-signin-auth');
+const db = require('../../db/connection');
+const { generateAccessToken, generateRefreshToken } = require('../../utils/jwt');
+
+async function appleSignIn(req, res) {
+  const { identityToken, user } = req.body;
+
+  if (!identityToken) {
+    return res.status(400).json({
+      error: 'Identity token required',
+      code: 'MISSING_TOKEN'
+    });
+  }
+
+  try {
+    // Verify Apple token
+    const appleData = await appleSignin.verifyIdToken(identityToken, {
+      audience: process.env.APPLE_CLIENT_ID,
+      ignoreExpiration: false
+    });
+
+    const appleUserId = appleData.sub;
+    const email = appleData.email;
+
+    // Check if user exists
+    let userResult = await db.query(
+      'SELECT * FROM users WHERE appleId = $1 OR LOWER(email) = LOWER($2)',
+      [appleUserId, email]
+    );
+
+    let dbUser;
+
+    if (userResult.rows.length === 0) {
+      // Create new user from Apple Sign-In
+      // On first sign-in, Apple provides user details
+      const firstName = user?.name?.firstName || 'User';
+      const lastName = user?.name?.lastName || '';
+
+      const createResult = await db.query(
+        `INSERT INTO users (
+          email, appleId, firstName, lastName, 
+          emailVerified, isActive, accountType
+        )
+        VALUES ($1, $2, $3, $4, true, true, 'user')
+        RETURNING *`,
+        [email, appleUserId, firstName, lastName]
+      );
+
+      dbUser = createResult.rows[0];
+
+      // Log signup
+      await db.query(
+        `INSERT INTO signup_log (userId, ipAddress, userAgent)
+         VALUES ($1, $2, $3)`,
+        [dbUser.id, req.ip, req.headers['user-agent']]
+      );
+    } else {
+      dbUser = userResult.rows[0];
+
+      // Update appleId if not set
+      if (!dbUser.appleId) {
+        await db.query(
+          'UPDATE users SET appleId = $1 WHERE id = $2',
+          [appleUserId, dbUser.id]
+        );
+      }
+
+      // Update last login
+      await db.query(
+        'UPDATE users SET lastLoginAt = NOW() WHERE id = $1',
+        [dbUser.id]
+      );
+    }
+
+    // Check if account is active
+    if (!dbUser.isActive) {
+      return res.status(403).json({
+        error: 'Account is inactive',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+
+    // Generate tokens
+    const accessToken = generateAccessToken({
+      id: dbUser.id,
+      email: dbUser.email,
+      role: dbUser.role
+    });
+
+    const refreshToken = generateRefreshToken({
+      id: dbUser.id,
+      email: dbUser.email,
+      role: dbUser.role
+    });
+
+    // Store refresh token
+    await db.query(
+      `INSERT INTO refresh_tokens (userId, token, deviceInfo, expiresAt)
+       VALUES ($1, $2, $3, NOW() + INTERVAL '30 days')`,
+      [dbUser.id, refreshToken, { provider: 'apple' }]
+    );
+
+    // Log successful login
+    await db.query(
+      `INSERT INTO login_log (userId, ipAddress, userAgent, success, deviceInfo)
+       VALUES ($1, $2, $3, true, $4)`,
+      [dbUser.id, req.ip, req.headers['user-agent'], { provider: 'apple' }]
+    );
+
+    res.json({
+      accessToken,
+      refreshToken,
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        role: dbUser.role
+      },
+      isNewUser: userResult.rows.length === 0
+    });
+
+  } catch (error) {
+    console.error('Apple Sign-In error:', error);
+    
+    res.status(500).json({
+      error: 'Apple Sign-In failed',
+      code: 'APPLE_SIGNIN_ERROR'
+    });
+  }
+}
+
+module.exports = appleSignIn;
+```
+
+**Add Apple ID column:**
+
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS appleId VARCHAR(255) UNIQUE;
+CREATE INDEX IF NOT EXISTS idx_users_apple_id ON users(appleId);
+```
+
+### 3.2 React Native Implementation
+
+**Install dependencies:**
+```bash
+npm install @invertase/react-native-apple-authentication
+cd ios && pod install && cd ..
+```
+
+**Apple Sign-In button:**
+
+```jsx
+// components/AppleSignInButton.jsx
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { appleAuth } from '@invertase/react-native-apple-authentication';
+import { API_URL } from '../config';
+
+async function handleAppleSignIn() {
+  try {
+    // Start Apple Sign-In
+    const appleAuthRequestResponse = await appleAuth.performRequest({
+      requestedOperation: appleAuth.Operation.LOGIN,
+      requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+    });
+
+    // Get credential state
+    const credentialState = await appleAuth.getCredentialStateForUser(
+      appleAuthRequestResponse.user
+    );
+
+    if (credentialState === appleAuth.State.AUTHORIZED) {
+      // Send to backend
+      const response = await fetch(`${API_URL}/auth/apple-signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identityToken: appleAuthRequestResponse.identityToken,
+          user: {
+            name: appleAuthRequestResponse.fullName
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Apple Sign-In failed');
+      }
+
+      const data = await response.json();
+      
+      // Store tokens securely
+      await SecureStore.setItemAsync('accessToken', data.accessToken);
+      await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+      await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+
+      return data;
+    }
+  } catch (error) {
+    console.error('Apple Sign-In error:', error);
+    throw error;
+  }
+}
+
+export default function AppleSignInButton({ onSuccess, onError }) {
+  const handlePress = async () => {
+    try {
+      const data = await handleAppleSignIn();
+      onSuccess(data);
+    } catch (error) {
+      onError(error);
+    }
+  };
+
+  if (!appleAuth.isSupported) {
+    return null; // Don't show button on unsupported devices
+  }
+
+  return (
+    <View style={styles.container}>
+      <appleAuth.AppleAuthenticationButton
+        buttonStyle={appleAuth.ButtonStyle.BLACK}
+        buttonType={appleAuth.ButtonType.SIGN_IN}
+        style={styles.button}
+        onPress={handlePress}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    marginVertical: 10
+  },
+  button: {
+    width: '100%',
+    height: 50
+  }
+});
+```
+
+---
+
+## Phase 4: Mobile-Optimized Frontend (React Native)
+
+### 4.1 Secure Token Storage
+
+**Install secure storage:**
+```bash
+npm install expo-secure-store
+# OR for bare React Native:
+npm install react-native-keychain
+```
+
+**Token storage utility:**
+
+```javascript
+// utils/secureStorage.js
+import * as SecureStore from 'expo-secure-store';
+
+const TOKEN_KEY = 'accessToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
+const USER_KEY = 'user';
+
+export const secureStorage = {
+  async setTokens(accessToken, refreshToken) {
+    try {
+      await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+    } catch (error) {
+      console.error('Error storing tokens:', error);
+      throw error;
+    }
+  },
+
+  async getAccessToken() {
+    try {
+      return await SecureStore.getItemAsync(TOKEN_KEY);
+    } catch (error) {
+      console.error('Error getting access token:', error);
+      return null;
+    }
+  },
+
+  async getRefreshToken() {
+    try {
+      return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    } catch (error) {
+      console.error('Error getting refresh token:', error);
+      return null;
+    }
+  },
+
+  async setUser(user) {
+    try {
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    } catch (error) {
+      console.error('Error storing user:', error);
+      throw error;
+    }
+  },
+
+  async getUser() {
+    try {
+      const userStr = await SecureStore.getItemAsync(USER_KEY);
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (error) {
+      console.error('Error getting user:', error);
+      return null;
+    }
+  },
+
+  async clearAll() {
+    try {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(USER_KEY);
+    } catch (error) {
+      console.error('Error clearing storage:', error);
+      throw error;
+    }
+  }
+};
+```
+
+### 4.2 API Client with Auto-Refresh
+
+```javascript
+// utils/apiClient.js
+import axios from 'axios';
+import { secureStorage } from './secureStorage';
+import { API_URL } from '../config';
+
+const apiClient = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Request interceptor - add access token
+apiClient.interceptors.request.use(
+  async (config) => {
+    const token = await secureStorage.getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - handle token refresh
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If token expired and we haven't retried yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Get refresh token
+        const refreshToken = await secureStorage.getRefreshToken();
+        
+        if (!refreshToken) {
+          throw new Error('No refresh token');
+        }
+
+        // Request new access token
+        const response = await axios.post(`${API_URL}/auth/refresh`, {
+          refreshToken
+        });
+
+        const { accessToken } = response.data;
+
+        // Store new access token
+        await secureStorage.setTokens(accessToken, refreshToken);
+
+        // Retry original request with new token
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return apiClient(originalRequest);
+
+      } catch (refreshError) {
+        // Refresh failed - logout user
+        await secureStorage.clearAll();
+        // Navigate to login (implement based on your navigation setup)
+        // navigationRef.navigate('Login');
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default apiClient;
+```
+
+### 4.3 Auth Context for React Native
+
+```jsx
+// context/AuthContext.jsx
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { secureStorage } from '../utils/secureStorage';
+import apiClient from '../utils/apiClient';
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  async function loadUser() {
+    try {
+      const storedUser = await secureStorage.getUser();
+      const token = await secureStorage.getAccessToken();
+      
+      if (storedUser && token) {
+        setUser(storedUser);
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function signIn(email, password) {
+    try {
+      const response = await apiClient.post('/auth/login', {
+        email,
+        password
+      });
+
+      const { accessToken, refreshToken, user } = response.data;
+
+      await secureStorage.setTokens(accessToken, refreshToken);
+      await secureStorage.setUser(user);
+      
+      setUser(user);
+
+      return { success: true, user };
+    } catch (error) {
+      console.error('Sign in error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Sign in failed'
+      };
+    }
+  }
+
+  async function signUp(userData) {
+    try {
+      const response = await apiClient.post('/auth/signup', userData);
+
+      const { accessToken, refreshToken, user } = response.data;
+
+      await secureStorage.setTokens(accessToken, refreshToken);
+      await secureStorage.setUser(user);
+      
+      setUser(user);
+
+      return { success: true, user };
+    } catch (error) {
+      console.error('Sign up error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Sign up failed'
+      };
+    }
+  }
+
+  async function signOut() {
+    try {
+      // Call backend logout
+      await apiClient.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear local data regardless of backend response
+      await secureStorage.clearAll();
+      setUser(null);
+    }
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+        isAuthenticated: !!user
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+}
+```
+
+### 4.4 Modern Login Screen
+
+```jsx
+// screens/LoginScreen.jsx
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Alert
+} from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import AppleSignInButton from '../components/AppleSignInButton';
+
+export default function LoginScreen({ navigation }) {
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  async function handleSignIn() {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await signIn(email, password);
+
+    setLoading(false);
+
+    if (!result.success) {
+      Alert.alert('Sign In Failed', result.error);
+    }
+    // AuthContext will update and app will navigate to main screen
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={styles.content}>
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.subtitle}>Sign in to Rise Local</Text>
+
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              autoComplete="email"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="••••••••"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                textContentType="password"
+                autoComplete="password"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Text>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.forgotPassword}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.signInButton}
+            onPress={handleSignIn}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.signInButtonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <AppleSignInButton
+            onSuccess={() => {
+              // Navigation handled by AuthContext
+            }}
+            onError={(error) => {
+              Alert.alert('Sign In Failed', error.message);
+            }}
+          />
+
+          <View style={styles.signUpContainer}>
+            <Text style={styles.signUpText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+              <Text style={styles.signUpLink}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff'
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center'
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1a202c',
+    marginBottom: 8
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#718096',
+    marginBottom: 32
+  },
+  form: {
+    width: '100%'
+  },
+  inputContainer: {
+    marginBottom: 20
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2d3748',
+    marginBottom: 8
+  },
+  input: {
+    backgroundColor: '#f7fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 14,
+    fontSize: 16,
+    color: '#1a202c'
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 14,
+    fontSize: 16,
+    color: '#1a202c'
+  },
+  eyeIcon: {
+    padding: 14
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 24
+  },
+  forgotPasswordText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  signInButton: {
+    backgroundColor: '#667eea',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  signInButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold'
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0'
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#718096',
+    fontSize: 14
+  },
+  signUpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 24
+  },
+  signUpText: {
+    color: '#718096',
+    fontSize: 14
+  },
+  signUpLink: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600'
+  }
+});
+```
+
+### 4.5 Biometric Authentication
+
+**Install dependencies:**
+```bash
+npm install expo-local-authentication
+```
+
+**Biometric auth utility:**
+
+```javascript
+// utils/biometrics.js
+import * as LocalAuthentication from 'expo-local-authentication';
+import { secureStorage } from './secureStorage';
+
+export const biometrics = {
+  async isAvailable() {
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+    return hasHardware && isEnrolled;
+  },
+
+  async getSupportedTypes() {
+    const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+    return types;
+  },
+
+  async authenticate(reason = 'Authenticate to access your account') {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: reason,
+        fallbackLabel: 'Use Password',
+        disableDeviceFallback: false
+      });
+
+      return result.success;
+    } catch (error) {
+      console.error('Biometric auth error:', error);
+      return false;
+    }
+  },
+
+  async enableBiometrics(userId) {
+    await secureStorage.setItem('biometricsEnabled', 'true');
+    await secureStorage.setItem('biometricsUserId', userId.toString());
+  },
+
+  async disableBiometrics() {
+    await secureStorage.deleteItemAsync('biometricsEnabled');
+    await secureStorage.deleteItemAsync('biometricsUserId');
+  },
+
+  async isBiometricsEnabled() {
+    const enabled = await secureStorage.getItemAsync('biometricsEnabled');
+    return enabled === 'true';
+  }
+};
+```
+
+**Add to login screen:**
+
+```jsx
+// In LoginScreen.jsx
+import { biometrics } from '../utils/biometrics';
+
+export default function LoginScreen({ navigation }) {
+  const { signIn } = useAuth();
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+
+  useEffect(() => {
+    checkBiometrics();
+  }, []);
+
+  async function checkBiometrics() {
+    const available = await biometrics.isAvailable();
+    const enabled = await biometrics.isBiometricsEnabled();
+    setBiometricsAvailable(available && enabled);
+  }
+
+  async function handleBiometricSignIn() {
+    const success = await biometrics.authenticate();
+    
+    if (success) {
+      // Get stored credentials or auto-login
+      // This depends on your implementation
+      // Option 1: Store encrypted credentials
+      // Option 2: Use refresh token
+      const refreshToken = await secureStorage.getRefreshToken();
+      if (refreshToken) {
+        // Use refresh token to get new access token
+        // Then navigate to main app
+      }
+    }
+  }
+
+  return (
+    // ... existing JSX ...
+    
+    {biometricsAvailable && (
+      <TouchableOpacity
+        style={styles.biometricButton}
+        onPress={handleBiometricSignIn}
+      >
+        <Text style={styles.biometricButtonText}>
+          Use Face ID / Touch ID
+        </Text>
+      </TouchableOpacity>
+    )}
+  );
+}
+```
+
+---
+
+## Phase 5: Security Hardening
+
+### 5.1 Environment Security
+
+**Production .env (NEVER commit):**
+```bash
+# Generate strong JWT secret
+# node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_SECRET=your_generated_64_char_hex_string_here
+
+# Use strong bcrypt rounds for production
+BCRYPT_ROUNDS=12
+
+# Database
+DATABASE_URL=postgresql://user:strong_password@host:5432/riselocal_prod
+
+# APIs
+APPLE_CLIENT_ID=com.riselocal.app
+APPLE_TEAM_ID=YOUR_TEAM_ID
+APPLE_KEY_ID=YOUR_KEY_ID
+
+# Email
+SENDGRID_API_KEY=your_sendgrid_key
+
+# URLs (production)
+FRONTEND_URL=https://riselocal.app
+API_URL=https://api.riselocal.app
+
+# Force HTTPS
+FORCE_HTTPS=true
+```
+
+### 5.2 Rate Limiting
+
+```javascript
+// middleware/rateLimiter.js
+const rateLimit = require('express-rate-limit');
+const RedisStore = require('rate-limit-redis');
+const redis = require('redis');
+
+// Create Redis client for distributed rate limiting
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL
+});
+
+// Global rate limiter
+const globalLimiter = rateLimit({
+  store: new RedisStore({
+    client: redisClient,
+    prefix: 'rl:global:'
+  }),
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: {
+    error: 'Too many requests, please try again later',
+    code: 'RATE_LIMIT_EXCEEDED'
+  }
+});
+
+// Auth endpoints - stricter limits
+const authLimiter = rateLimit({
+  store: new RedisStore({
+    client: redisClient,
+    prefix: 'rl:auth:'
+  }),
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  skipSuccessfulRequests: true, // Don't count successful logins
+  message: {
+    error: 'Too many authentication attempts',
+    code: 'AUTH_RATE_LIMIT'
+  }
+});
+
+// Password reset - very strict
+const passwordResetLimiter = rateLimit({
+  store: new RedisStore({
+    client: redisClient,
+    prefix: 'rl:reset:'
+  }),
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: {
+    error: 'Too many password reset attempts',
+    code: 'RESET_RATE_LIMIT'
+  }
+});
+
+module.exports = {
+  globalLimiter,
+  authLimiter,
+  passwordResetLimiter
+};
+```
+
+### 5.3 Input Validation
+
+```javascript
+// middleware/validation.js
+const { body, validationResult } = require('express-validator');
+
+const validateSignup = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Invalid email address'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters'),
+  body('firstName')
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('First name must be 1-50 characters'),
+  body('lastName')
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Last name must be 1-50 characters'),
+  handleValidationErrors
+];
+
+const validateLogin = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Invalid email address'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required'),
+  handleValidationErrors
+];
+
+function handleValidationErrors(req, res, next) {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      error: 'Validation failed',
+      errors: errors.array(),
+      code: 'VALIDATION_ERROR'
+    });
+  }
+  
+  next();
+}
+
+module.exports = {
+  validateSignup,
+  validateLogin
+};
+```
+
+### 5.4 SQL Injection Protection
+
+**Always use parameterized queries:**
+
+```javascript
+// ❌ NEVER DO THIS (SQL injection vulnerable)
+const query = `SELECT * FROM users WHERE email = '${email}'`;
+
+// ✅ ALWAYS DO THIS (safe)
+const query = 'SELECT * FROM users WHERE email = $1';
+await db.query(query, [email]);
+```
+
+### 5.5 Security Headers
+
+```javascript
+// middleware/securityHeaders.js
+const helmet = require('helmet');
+
+function securityHeaders(app) {
+  // Use helmet for security headers
+  app.use(helmet());
+
+  // Additional custom headers
+  app.use((req, res, next) => {
+    // Prevent clickjacking
+    res.setHeader('X-Frame-Options', 'DENY');
+    
+    // Prevent MIME type sniffing
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    
+    // XSS protection
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    
+    // Referrer policy
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    
+    // Content Security Policy
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+    );
+    
+    next();
+  });
+
+  // CORS configuration
+  const cors = require('cors');
+  app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+
+  // Force HTTPS in production
+  if (process.env.NODE_ENV === 'production') {
+    app.use((req, res, next) => {
+      if (req.header('x-forwarded-proto') !== 'https') {
+        return res.redirect(`https://${req.header('host')}${req.url}`);
+      }
+      next();
+    });
+  }
+}
+
+module.exports = securityHeaders;
+```
+
+---
+
+## Phase 6: App Store Submission Checklist
+
+### 6.1 Privacy Policy & Terms
+
+**Required pages to create:**
+
+1. **Privacy Policy** - Must include:
+   - What data you collect (email, name, password hash)
+   - How you use it (authentication, app functionality)
+   - How you store it (encrypted, secure servers)
+   - Third-party services (Apple Sign-In, analytics if any)
+   - User rights (data deletion, export)
+   - Contact information
+
+2. **Terms of Service** - Must include:
+   - User responsibilities
+   - Account termination policy
+   - Intellectual property
+   - Liability limitations
+   - Dispute resolution
+
+**Host these at:**
+- https://riselocal.app/privacy
+- https://riselocal.app/terms
+
+### 6.2 App Store Connect Configuration
+
+**App Information:**
+- App Name: Rise Local
+- Subtitle: Support Local Businesses
+- Category: Business / Shopping
+- Age Rating: 4+ (if no user-generated content)
+
+**App Privacy Details:**
+- Collects: Email, Name, Location (if applicable)
+- Purpose: Account creation, authentication, app functionality
+- Linked to user: Yes
+- Tracking: No (unless using analytics)
+
+**Sign in with Apple:**
+- Required if you offer any social login
+- Configure in Apple Developer Portal
+- Add capability in Xcode
+
+### 6.3 iOS App Configuration
+
+**Info.plist additions:**
+
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <false/>
+    <key>NSExceptionDomains</key>
+    <dict>
+        <key>riselocal.app</key>
+        <dict>
+            <key>NSExceptionRequiresForwardSecrecy</key>
+            <false/>
+            <key>NSIncludesSubdomains</key>
+            <true/>
+            <key>NSExceptionAllowsInsecureHTTPLoads</key>
+            <false/>
+        </dict>
+    </dict>
+</dict>
+
+<key>NSFaceIDUsageDescription</key>
+<string>Use Face ID for quick and secure access to your account</string>
+
+<key>NSCameraUsageDescription</key>
+<string>Take photos of local businesses and deals</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Choose photos to share with the community</string>
+
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Find local businesses and deals near you</string>
+```
+
+### 6.4 Testing Requirements
+
+**Before submission:**
+
+- [ ] Test on multiple devices (iPhone, iPad)
+- [ ] Test on different iOS versions (16.0+)
+- [ ] Test with slow network (simulate 3G)
+- [ ] Test offline behavior
+- [ ] Test all auth flows (signup, login, logout, password reset)
+- [ ] Test Apple Sign-In
+- [ ] Test biometric authentication
+- [ ] Verify token refresh works
+- [ ] Test session expiration
+- [ ] Verify no crashes or memory leaks
+- [ ] Test accessibility features (VoiceOver, Dynamic Type)
+- [ ] Verify all images have proper @2x/@3x versions
+- [ ] Test dark mode compatibility
+- [ ] Review all user-facing text for errors
+
+### 6.5 Build & Archive
+
+**Xcode configuration:**
+
+1. Set proper Bundle ID
+2. Configure signing with your Apple Developer account
+3. Set version and build number
+4. Archive for distribution
+5. Upload to App Store Connect
+6. Submit for review
+
+**Common rejection reasons to avoid:**
+
+- ❌ Incomplete app (missing features)
+- ❌ Crashes or bugs
+- ❌ Privacy policy missing or incorrect
+- ❌ Sign in with Apple not implemented (if using social auth)
+- ❌ Poor user experience
+- ❌ Requires account without clear reason
+- ❌ Missing required permissions descriptions
+- ❌ Links to external payment systems (use Apple In-App Purchase)
+
+---
+
+## Phase 7: Monitoring & Maintenance
+
+### 7.1 Logging
+
+```javascript
+// utils/logger.js
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'riselocal-api' },
+  transports: [
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error'
+    }),
+    new winston.transports.File({
+      filename: 'logs/combined.log'
+    })
+  ]
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
+
+module.exports = logger;
+```
+
+### 7.2 Error Tracking
+
+**Install Sentry:**
+```bash
+npm install @sentry/node @sentry/react-native
+```
+
+**Backend:**
+```javascript
+const Sentry = require('@sentry/node');
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV,
+  tracesSampleRate: 0.1
+});
+
+// Error handler middleware
+app.use(Sentry.Handlers.errorHandler());
+```
+
+**React Native:**
+```javascript
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV
+});
+```
+
+### 7.3 Analytics (Privacy-Friendly)
+
+```javascript
+// utils/analytics.js
+// Use privacy-friendly analytics (Plausible, Fathom, etc.)
+
+export const analytics = {
+  logEvent(eventName, properties = {}) {
+    if (__DEV__) {
+      console.log('Analytics:', eventName, properties);
+      return;
+    }
+
+    // Implement your analytics service
+    // Ensure it's privacy-compliant (GDPR, CCPA)
+  },
+
+  logLogin(method) {
+    this.logEvent('login', { method });
+  },
+
+  logSignup(method) {
+    this.logEvent('signup', { method });
+  }
+};
+```
+
+---
+
+## Success Metrics
+
+**Track these KPIs post-launch:**
+
+1. **Authentication Metrics:**
+   - Login success rate
+   - Signup conversion rate
+   - Apple Sign-In usage rate
+   - Password reset requests
+   - Failed login attempts
+   - Account lockouts
+
+2. **Performance Metrics:**
+   - API response times
+   - Token refresh success rate
+   - App crashes
+   - Network errors
+
+3. **User Metrics:**
+   - Daily/Monthly active users
+   - User retention
+   - Session duration
+   - Feature usage
+
+4. **Security Metrics:**
+   - Suspicious login attempts
+   - Rate limit hits
+   - Failed authentication attempts
+
+---
+
+## Final Checklist
+
+### Before App Store Submission:
+
+**Backend:**
+- [ ] All Replit dependencies removed
+- [ ] JWT authentication implemented
+- [ ] Bcrypt password hashing (12 rounds)
+- [ ] Apple Sign-In integrated
+- [ ] Rate limiting configured
+- [ ] Security headers set
+- [ ] Input validation implemented
+- [ ] SQL injection protection verified
+- [ ] Error handling comprehensive
+- [ ] Logging and monitoring set up
+- [ ] SSL/TLS enforced
+- [ ] Database indexes optimized
+- [ ] Backup strategy implemented
+
+**Frontend:**
+- [ ] Secure token storage (Keychain)
+- [ ] Auto token refresh working
+- [ ] Biometric authentication working
+- [ ] Apple Sign-In button present
+- [ ] Modern login/signup UI
+- [ ] Error messages user-friendly
+- [ ] Loading states implemented
+- [ ] Offline handling graceful
+- [ ] Dark mode supported
+- [ ] Accessibility tested
+
+**Legal:**
+- [ ] Privacy policy published
+- [ ] Terms of service published
+- [ ] App Store privacy details filled
+- [ ] User data handling documented
+
+**Testing:**
+- [ ] All auth flows tested
+- [ ] Multiple devices tested
+- [ ] Different iOS versions tested
+- [ ] Network conditions tested
+- [ ] No crashes or memory leaks
+- [ ] Performance acceptable
+
+**Deployment:**
+- [ ] Production environment configured
+- [ ] Environment variables secured
+- [ ] Database migrations applied
+- [ ] Monitoring and alerts set up
+- [ ] Error tracking configured
+- [ ] CDN configured (if needed)
+- [ ] API documentation updated
+
+---
+
+## Support & Resources
+
+**Apple Documentation:**
+- Human Interface Guidelines: https://developer.apple.com/design/human-interface-guidelines/
+- App Store Review Guidelines: https://developer.apple.com/app-store/review/guidelines/
+- Sign in with Apple: https://developer.apple.com/sign-in-with-apple/
+
+**Security Best Practices:**
+- OWASP Top 10: https://owasp.org/www-project-top-ten/
+- JWT Best Practices: https://tools.ietf.org/html/rfc8725
+
+**React Native:**
+- Official Docs: https://reactnative.dev/
+- Expo Docs: https://docs.expo.dev/
+
+---
+
+## Conclusion
+
+This guide transforms Rise Local from a Replit-dependent app to a production-grade, App Store-ready mobile application with:
+
+✅ **Removed** all Replit OAuth dependencies  
+✅ **Implemented** industry-standard email/password authentication  
+✅ **Added** Apple Sign-In (App Store requirement)  
+✅ **Migrated** all existing users seamlessly  
+✅ **Secured** with JWT tokens, bcrypt, rate limiting  
+✅ **Optimized** for mobile with secure storage, biometrics  
+✅ **Prepared** for App Store submission with privacy policy, terms  
+✅ **Production-ready** with monitoring, logging, error tracking  
+
+Your Rise Local app is now ready to launch on the App Store with enterprise-grade security and user experience! 🚀
+
+**Next steps:**
+1. Complete final user migration from Replit
+2. Remove all Replit code
+3. Implement Apple Sign-In
+4. Complete security hardening
+5. Write privacy policy & terms
+6. Test thoroughly
+7. Submit to App Store
+
+Good luck with your launch!
