@@ -484,7 +484,7 @@ export async function setupCustomAuth(app: Express) {
 
   // Migration Routes - For transitioning OAuth users to email/password
   
-  // Validate migration token and return userId
+  // Validate migration token and return userId (does NOT consume the token)
   app.post("/api/auth/validate-migration-token", async (req: Request, res: Response) => {
     try {
       const { token } = req.body;
@@ -496,12 +496,15 @@ export async function setupCustomAuth(app: Express) {
       const userId = await storage.validateTempToken(token, "migration");
       
       if (!userId) {
+        await storage.logMigrationAction(null, "token_validation", false, "Invalid or expired token");
         return res.status(400).json({ message: "Invalid or expired token" });
       }
 
+      await storage.logMigrationAction(userId, "token_validation", true, "Token validated successfully");
       res.json({ userId });
     } catch (error) {
       console.error("[Custom Auth] Validate migration token error:", error);
+      await storage.logMigrationAction(null, "token_validation", false, `Error: ${error}`);
       res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
@@ -509,10 +512,10 @@ export async function setupCustomAuth(app: Express) {
   // Set password for migrating OAuth user
   app.post("/api/auth/set-password", async (req: Request, res: Response) => {
     try {
-      const { userId, password, token } = req.body;
+      const { password, token } = req.body;
       
-      if (!userId || !password) {
-        return res.status(400).json({ message: "User ID and password are required" });
+      if (!password || !token) {
+        return res.status(400).json({ message: "Password and token are required" });
       }
 
       // Validate password strength
@@ -524,6 +527,13 @@ export async function setupCustomAuth(app: Express) {
       }
       if (!/[0-9]/.test(password)) {
         return res.status(400).json({ message: "Password must contain at least one number" });
+      }
+
+      // Consume the token and get the userId from the server (don't trust client)
+      const userId = await storage.consumeTempToken(token, "migration");
+      if (!userId) {
+        await storage.logMigrationAction(null, "password_set", false, "Invalid or expired token");
+        return res.status(400).json({ message: "Invalid or expired token. Please log in again." });
       }
 
       // Verify user exists and needs migration

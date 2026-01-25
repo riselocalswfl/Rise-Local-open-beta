@@ -287,6 +287,20 @@ export async function setupAuth(app: Express) {
           }
           
           // If returnTo is provided, use it; otherwise redirect based on onboarding status
+          // Check if user needs to set a password (migration from OAuth to email/password)
+          if (existingUser && existingUser.migrationRequired) {
+            console.log("[AUTH] User requires password migration - generating temp token");
+            try {
+              const migrationToken = await storage.createTempToken(userId, "migration", 60);
+              await storage.logMigrationAction(userId, "oauth_login_redirected", true, "Redirecting to password setup");
+              console.log("[AUTH] Redirecting to set-password page for migration");
+              return res.redirect(`/set-password?token=${migrationToken}`);
+            } catch (migrationErr) {
+              console.error("[AUTH] Failed to create migration token:", migrationErr);
+              // Fall through to normal redirect if token creation fails
+            }
+          }
+
           if (returnTo) {
             redirectUrl = returnTo;
             // Clear the returnTo from session and cookie

@@ -52,6 +52,7 @@ import Businesses from "@/pages/Businesses";
 import BusinessProfile from "@/pages/BusinessProfile";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
+import SetPassword from "@/pages/SetPassword";
 import { AuthBoundary } from "@/components/AuthBoundary";
 import AppShell from "@/components/layout/AppShell";
 
@@ -167,6 +168,9 @@ function Router() {
       
       {/* Auth - Single unified authentication page (no footer) */}
       <Route path="/auth" component={Auth} />
+      
+      {/* SetPassword - Migration page for OAuth users transitioning to email/password */}
+      <Route path="/set-password" component={SetPassword} />
       
       {/* Start - Universal gate for role-based routing */}
       <Route path="/start" component={Start} />

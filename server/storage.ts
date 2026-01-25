@@ -2326,7 +2326,23 @@ export class DbStorage implements IStorage {
       return null;
     }
     
-    // Mark as used
+    return result[0].userId;
+  }
+
+  async consumeTempToken(token: string, purpose: string): Promise<string | null> {
+    const result = await db.select().from(tempTokens)
+      .where(and(
+        eq(tempTokens.token, token),
+        eq(tempTokens.purpose, purpose),
+        eq(tempTokens.used, false),
+        gte(tempTokens.expiresAt, new Date())
+      ));
+    
+    if (result.length === 0) {
+      return null;
+    }
+    
+    // Mark as used atomically
     await db.update(tempTokens)
       .set({ used: true })
       .where(eq(tempTokens.token, token));
