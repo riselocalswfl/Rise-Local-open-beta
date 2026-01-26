@@ -1,0 +1,542 @@
+# Rise Local: Fix Session Expiration & Smooth User Experience
+
+## Current Situation - GOOD NEWS! ✅
+
+Your auth logic is **already correct**:
+- ✅ 20 users with passwords can log in
+- ✅ 256 users without passwords get `needsRecovery: true`
+- ✅ Recovery flow is implemented
+- ✅ Replit OAuth removed
+- ✅ replitId column removed
+
+## The ACTUAL Problem 🔴
+
+Based on your screenshot showing "Session expired - Please log in again to continue":
+
+**The issue is NOT authentication - it's session persistence after login/recovery.**
+
+Users are:
+1. Logging in or recovering their account ✅
+2. Getting redirected to dashboard ✅
+3. **Immediately losing their session** ❌
+4. Seeing "Session expired" error ❌
+
+---
+
+## Root Cause Analysis
+
+### Issue 1: Token Not Being Stored Properly
+
+**After login/recovery, the token isn't being saved correctly.**
+
+```javascript
+// ❌ WRONG: Token might not be saving
+localStorage.setItem('token', data.token);
+// But then immediately cleared or not sent with next request
+
+// ✅ CORRECT: Verify token is saved AND sent
+localStorage.setItem('token', data.token);
+// Then verify it's there
+console.log('Token saved:', localStorage.getItem('token'));
+```
+
+### Issue 2: Protected Routes Not Getting Token
+
+**The dashboard tries to load but can't find the token.**
+
+```javascript
+// ❌ WRONG: Token not included in request
+fetch('/api/user/profile')
+
+// ✅ CORRECT: Token sent with every request
+fetch('/api/user/profile', {
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('token')}`
+  }
+})
+```
+
+### Issue 3: Token Expires Too Quickly
+
+**Token might expire in 15 minutes instead of 7 days.**
+
+```javascript
+// ❌ WRONG: Short expiration
+const token = jwt.sign(payload, secret, { expiresIn: '15m' });
+
+// ✅ CORRECT: Long expiration
+const token = jwt.sign(payload, secret, { expiresIn: '7d' });
+```
+
+---
+
+## Complete Fix - Replit Prompt
+
+Copy this entire prompt to Replit:
+
+---
+
+### **REPLIT AGENT: Fix Session Expiration Issues**
+
+We have session expiration bugs. Users log in successfully but immediately see "Session expired" errors. Here's what needs to be fixed:
+
+## Part 1: Backend - Verify JWT Token Configuration
+
+**Check the JWT token generation:**
+
+```javascript
+// In your JWT utility file (utils/jwt.js or wherever tokens are generated)
+
+// CRITICAL: Token expiration should be 7 days minimum
+const JWT_EXPIRATION = '7d'; // NOT '15m' or '1h'
+
+function generateToken(payload) {
+  return jwt.sign(
+    {
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      isVendor: payload.isVendor
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: JWT_EXPIRATION } // 7 days
+  );
+}
+```
+
+**ACTION:** Find where tokens are generated (in login and recovery endpoints) and verify `expiresIn` is set to `'7d'` not `'15m'` or `'1h'`.
+
+## Part 2: Backend - Login Endpoint Returns Token Correctly
+
+**Verify login endpoint returns token in response:**
+
+```javascript
+// In /api/auth/login
+
+// After successful password verification
+const token = generateToken({
+  id: user.id,
+  email: user.email,
+  role: user.role,
+  isVendor: user.isVendor
+});
+
+// CRITICAL: Return token in response
+res.json({
+  token,  // ← MUST be here
+  user: {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    isVendor: user.isVendor
+  }
+});
+```
+
+**ACTION:** Verify login endpoint returns `token` in the JSON response.
+
+## Part 3: Backend - Recovery Endpoint Returns Token + Auto-Login
+
+**Verify recovery endpoint returns token:**
+
+```javascript
+// In /api/auth/recover-account
+
+// After setting password
+const hashedPassword = await bcrypt.hash(password, 10);
+
+await db.query(
+  'UPDATE users SET password = $1, emailVerified = true WHERE id = $2',
+  [hashedPassword, user.id]
+);
+
+// CRITICAL: Generate token and return it (auto-login)
+const token = generateToken({
+  id: user.id,
+  email: user.email,
+  role: user.role,
+  isVendor: user.isVendor
+});
+
+res.json({
+  token,  // ← MUST be here for auto-login
+  user: {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+    isVendor: user.isVendor
+  },
+  message: 'Account recovered successfully'
+});
+```
+
+**ACTION:** Verify recovery endpoint returns `token` in the JSON response.
+
+## Part 4: Frontend - Login Page Stores Token Correctly
+
+**Check the login page stores token before redirect:**
+
+```javascript
+// In client/src/pages/Login.jsx (or wherever login is)
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await response.json();
+
+  // Handle recovery redirect
+  if (data.needsRecovery) {
+    navigate(`/recover-account?email=${encodeURIComponent(email)}`);
+    return;
+  }
+
+  if (!response.ok) {
+    setError(data.error);
+    return;
+  }
+
+  // CRITICAL: Store token BEFORE redirect
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('user', JSON.stringify(data.user));
+  
+  // Add console.log to verify
+  console.log('Token stored:', localStorage.getItem('token'));
+
+  // THEN redirect
+  if (data.user.isVendor) {
+    navigate('/business/dashboard');
+  } else {
+    navigate('/dashboard');
+  }
+}
+```
+
+**ACTION:** 
+1. Find the login form submit handler
+2. Verify it calls `localStorage.setItem('token', data.token)` BEFORE navigating
+3. Add `console.log('Token stored:', localStorage.getItem('token'))` to verify
+
+## Part 5: Frontend - Recovery Page Stores Token Correctly
+
+**Check the recovery page stores token before redirect:**
+
+```javascript
+// In client/src/pages/RecoverAccount.jsx
+
+async function handleRecover(e) {
+  e.preventDefault();
+  
+  const response = await fetch('/api/auth/recover-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    setError(data.error);
+    return;
+  }
+
+  // CRITICAL: Store token BEFORE redirect
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('user', JSON.stringify(data.user));
+  
+  // Add console.log to verify
+  console.log('Token stored after recovery:', localStorage.getItem('token'));
+
+  // THEN redirect
+  if (data.user.isVendor) {
+    navigate('/business/dashboard');
+  } else {
+    navigate('/dashboard');
+  }
+}
+```
+
+**ACTION:**
+1. Find the recovery form submit handler
+2. Verify it calls `localStorage.setItem('token', data.token)` BEFORE navigating
+3. Add `console.log('Token stored after recovery:', localStorage.getItem('token'))` to verify
+
+## Part 6: Frontend - API Calls Include Token
+
+**Create/verify API utility that auto-includes token:**
+
+```javascript
+// In client/src/utils/api.js (create if doesn't exist)
+
+const API_BASE = '/api';
+
+async function apiCall(endpoint, options = {}) {
+  const token = localStorage.getItem('token');
+  
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    }
+  };
+
+  const response = await fetch(`${API_BASE}${endpoint}`, config);
+
+  // Handle token expiration
+  if (response.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+
+  return response;
+}
+
+export const api = {
+  get: (endpoint) => apiCall(endpoint),
+  post: (endpoint, body) => apiCall(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  }),
+  put: (endpoint, body) => apiCall(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(body)
+  }),
+  delete: (endpoint) => apiCall(endpoint, { method: 'DELETE' })
+};
+```
+
+**ACTION:**
+1. Create `client/src/utils/api.js` if it doesn't exist
+2. Use this API utility for ALL API calls
+3. Replace direct `fetch()` calls with `api.get()`, `api.post()`, etc.
+
+## Part 7: Frontend - Dashboard Uses API Utility
+
+**Update dashboard to use API utility with token:**
+
+```javascript
+// In client/src/pages/BusinessDashboard.jsx (or wherever dashboard is)
+
+import { api } from '../utils/api';
+
+function BusinessDashboard() {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  async function loadProfile() {
+    try {
+      const response = await api.get('/business/profile');
+      // or fetch('/api/business/profile', {
+      //   headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      // })
+      
+      const data = await response.json();
+      setProfile(data);
+    } catch (error) {
+      console.error('Load profile error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  // ... rest of dashboard
+}
+```
+
+**ACTION:**
+1. Find all dashboard/protected pages
+2. Verify they include `Authorization: Bearer ${token}` header in ALL API calls
+3. OR use the api utility which does this automatically
+
+## Part 8: Frontend - Protected Route Component
+
+**Add/verify ProtectedRoute component:**
+
+```javascript
+// In client/src/components/ProtectedRoute.jsx
+
+import { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+
+export default function ProtectedRoute({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  async function checkAuth() {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      setIsAuthenticated(false);
+      return;
+    }
+
+    try {
+      // Verify token is still valid
+      const response = await fetch('/api/auth/verify', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      setIsAuthenticated(response.ok);
+      
+      if (!response.ok) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setIsAuthenticated(false);
+    }
+  }
+
+  if (isAuthenticated === null) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+```
+
+**ACTION:**
+1. Create/update ProtectedRoute component
+2. Wrap all protected routes with it in App.jsx:
+
+```javascript
+<Route 
+  path="/business/dashboard" 
+  element={
+    <ProtectedRoute>
+      <BusinessDashboard />
+    </ProtectedRoute>
+  } 
+/>
+```
+
+## Part 9: Backend - Add Token Verify Endpoint
+
+**Create endpoint to verify token is valid:**
+
+```javascript
+// In backend/routes/auth/verify.js
+
+const { verifyToken } = require('../../middleware/auth');
+const db = require('../../config/database');
+
+async function verify(req, res) {
+  // verifyToken middleware already validated token
+  // Just need to check user still exists and is active
+  
+  const userResult = await db.query(
+    'SELECT id, email, role, isVendor FROM users WHERE id = $1 AND isActive = true',
+    [req.user.id]
+  );
+
+  if (userResult.rows.length === 0) {
+    return res.status(401).json({ error: 'User not found' });
+  }
+
+  res.json({ 
+    valid: true,
+    user: userResult.rows[0]
+  });
+}
+
+module.exports = verify;
+
+// In routes/index.js, add:
+// const verify = require('./auth/verify');
+// router.get('/auth/verify', authenticateToken, verify);
+```
+
+**ACTION:**
+1. Create `/api/auth/verify` endpoint
+2. It should use authenticateToken middleware
+3. Return `{ valid: true }` if token is valid
+
+## Part 10: Testing Checklist
+
+After implementing the above fixes, test this flow:
+
+### Test 1: User With Password
+1. Go to login page
+2. Enter email + password of a user with password
+3. Click login
+4. **CHECK**: Console shows "Token stored: eyJhbG..."
+5. **CHECK**: Redirects to dashboard
+6. **CHECK**: Dashboard loads without "Session expired" error
+7. **CHECK**: Refresh the page
+8. **CHECK**: Still logged in (no redirect to login)
+
+### Test 2: User Without Password (Recovery)
+1. Go to login page
+2. Enter email of user without password + any password
+3. Click login
+4. **CHECK**: Redirects to /recover-account with email pre-filled
+5. Enter new password
+6. Click "Set Password"
+7. **CHECK**: Console shows "Token stored after recovery: eyJhbG..."
+8. **CHECK**: Redirects to dashboard
+9. **CHECK**: Dashboard loads without "Session expired" error
+10. **CHECK**: Refresh the page
+11. **CHECK**: Still logged in
+
+### Test 3: Protected Routes
+1. While logged in, visit dashboard
+2. **CHECK**: Dashboard loads
+3. Open browser DevTools → Network tab
+4. Refresh dashboard
+5. **CHECK**: All API calls have `Authorization: Bearer ...` header
+6. **CHECK**: No 401 errors
+7. Log out
+8. Try to visit dashboard directly
+9. **CHECK**: Redirects to login page
+
+## Summary of What We're Fixing
+
+**Issue:** "Session expired" immediately after login
+**Cause:** Token not being stored, sent, or lasting long enough
+**Fix:**
+1. Backend: Token expires in 7 days (not 15 min)
+2. Backend: Login/recovery return token
+3. Backend: Verify endpoint exists
+4. Frontend: Store token BEFORE redirect
+5. Frontend: Send token with EVERY API call
+6. Frontend: ProtectedRoute checks token validity
+
+After these fixes, users should:
+- ✅ Log in once and stay logged in for 7 days
+- ✅ Never see "Session expired" on fresh login
+- ✅ Dashboard loads immediately after login
+- ✅ Can refresh and stay logged in
+
+---
+
+**Please implement all 10 parts above and run the test checklist. This will fix the session expiration issues.**
