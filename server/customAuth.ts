@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction, RequestHandler } from "express";
 import { storage } from "./storage";
 import { generateToken, verifyToken, extractBearerToken } from "./jwtAuth";
+import { sendPasswordResetEmail, sendAccountRecoveryEmail, sendWelcomeEmail } from "./emailService";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { z } from "zod";
@@ -379,7 +380,7 @@ export async function setupCustomAuth(app: Express) {
       
       const user = await storage.getUserByEmail(validatedData.email);
       
-      if (user && user.password) {
+      if (user && user.password && user.email) {
         const resetToken = generateSecureToken();
         const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
         
@@ -389,8 +390,17 @@ export async function setupCustomAuth(app: Express) {
           expiresAt,
         });
 
-        // In production, send password reset email here
-        console.log(`[Custom Auth] Password reset requested for: ${user.email}`);
+        const emailResult = await sendPasswordResetEmail(
+          user.email,
+          resetToken,
+          user.firstName || ''
+        );
+        
+        if (emailResult.success) {
+          console.log(`[Custom Auth] Password reset email sent to: ${user.email}`);
+        } else {
+          console.error(`[Custom Auth] Failed to send password reset email: ${emailResult.error}`);
+        }
       }
 
       res.json({ 
@@ -603,6 +613,49 @@ export async function setupCustomAuth(app: Express) {
     } catch (error) {
       console.error("[Custom Auth] Check migration error:", error);
       res.status(500).json({ message: "Something went wrong" });
+    }
+  });
+
+  // Request email-based account recovery (for OAuth users migrating to password)
+  app.post("/api/auth/request-recovery-email", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
+      
+      if (user && !user.password && user.email) {
+        const resetToken = generateSecureToken();
+        const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+        
+        await storage.createPasswordResetToken({
+          userId: user.id,
+          token: resetToken,
+          expiresAt,
+        });
+
+        const emailResult = await sendAccountRecoveryEmail(
+          user.email,
+          resetToken,
+          user.firstName || ''
+        );
+        
+        if (emailResult.success) {
+          console.log(`[Custom Auth] Account recovery email sent to: ${user.email}`);
+        } else {
+          console.error(`[Custom Auth] Failed to send account recovery email: ${emailResult.error}`);
+        }
+      }
+
+      res.json({ 
+        message: "If an account with that email exists and needs recovery, we've sent instructions." 
+      });
+    } catch (error) {
+      console.error("[Custom Auth] Request recovery email error:", error);
+      res.status(500).json({ message: "Something went wrong. Please try again." });
     }
   });
 
