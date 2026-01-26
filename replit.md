@@ -38,6 +38,14 @@ The frontend is built using React 18, TypeScript, and Vite, leveraging Radix UI,
 - **Discount Codes**: Optional `discountCode` field on deals, visible to Pass members and blurred for non-members.
 - **Viewable Locked Deals**: Pass-locked deals are fully viewable by non-members to encourage conversion, with redemption restricted.
 - **Admin Dashboard**: A redesigned interface focused on founder-readable metrics for deals, membership, and business participation, including manual membership toggling for buyers.
+- **Business Analytics Dashboard**: Comprehensive founder-focused analytics with:
+  - **Revenue Analytics**: MRR, churn rate, ARPU, LTV, 6-month revenue trend charts
+  - **User Growth Analytics**: Total users, Pass members, signups, conversion rates, DAU/WAU, 30/60/90-day retention cohorts
+  - **Geographic Breakdown**: User distribution across SWFL cities (Fort Myers, Cape Coral, Naples, etc.)
+  - **Deal Performance**: Top performing deals, underperforming deals (low redemptions), category performance, member redemption rates
+  - **Business Health Indicators**: Churn risk alerts (inactive Pass members), inactive vendors, engagement scores, revenue concentration
+  - **API Endpoints**: `/api/admin/analytics/revenue`, `/api/admin/analytics/users`, `/api/admin/analytics/deals`, `/api/admin/analytics/health`
+  - **Charts**: Recharts library for line charts (MRR trend, user growth) and bar charts (geographic, category performance)
 
 ### Security & Compliance (App Store Ready)
 - **Security Headers**: Helmet middleware with HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy

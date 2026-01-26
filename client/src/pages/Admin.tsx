@@ -1,4 +1,5 @@
-import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw, UserPlus, Plus, Tag, Trash2, Eye, Edit, History, ClipboardList, Download } from "lucide-react";
+import { CheckCircle, XCircle, Users, ShoppingBag, Mail, Phone, Store, CreditCard, Link2, Search, AlertTriangle, RefreshCw, UserPlus, Plus, Tag, Trash2, Eye, Edit, History, ClipboardList, Download, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1750,6 +1751,7 @@ function SubscriptionReconciliation() {
 function AdminContent() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const [showAnalytics, setShowAnalytics] = useState(true);
 
   // Fetch admin statistics
   const { data: stats, isLoading: statsLoading, error: statsError, isError: statsIsError } = useQuery<AdminStats>({
@@ -1905,6 +1907,35 @@ function AdminContent() {
           <h1 className="text-3xl font-semibold" data-testid="heading-admin-dashboard">Admin Dashboard</h1>
           <Badge variant="destructive">Admin Access</Badge>
         </div>
+
+        {/* Business Analytics Section */}
+        <Card className="mb-8">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  Business Analytics
+                </CardTitle>
+                <CardDescription>Revenue, growth, and performance insights</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                data-testid="button-toggle-analytics"
+              >
+                {showAnalytics ? <ChevronUp className="w-4 h-4 mr-2" /> : <ChevronDown className="w-4 h-4 mr-2" />}
+                {showAnalytics ? "Hide" : "Show"} Analytics
+              </Button>
+            </div>
+          </CardHeader>
+          {showAnalytics && (
+            <CardContent>
+              <AnalyticsDashboard />
+            </CardContent>
+          )}
+        </Card>
 
         {/* Deal Metrics - Core KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
