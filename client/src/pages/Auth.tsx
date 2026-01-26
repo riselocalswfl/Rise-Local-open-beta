@@ -108,7 +108,8 @@ export default function Auth() {
                 className="text-3xl md:text-4xl font-bold text-white leading-tight drop-shadow-lg"
                 data-testid="heading-auth-hero"
               >
-                Shop local. Sell local.
+                <span className="block">Small businesses.</span>
+                <span className="block">Big deals.</span>
               </h1>
               <p className="text-lg text-white/90 drop-shadow" data-testid="text-auth-subheadline">
                 Deals from SWFL businesses
