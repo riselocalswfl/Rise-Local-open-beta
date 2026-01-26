@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./replitAuth";
 import { setupCustomAuth } from "./customAuth";
+import { setupAnalyticsRoutes } from "./analyticsRoutes";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import Stripe from "stripe";
@@ -153,6 +154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Setup Custom Email/Password Auth (new streamlined auth system)
   await setupCustomAuth(app);
+  
+  // Setup Analytics Routes for Admin Dashboard
+  setupAnalyticsRoutes(app);
 
   // Health check endpoint for monitoring and deployment
   app.get("/api/health", async (_req, res) => {
