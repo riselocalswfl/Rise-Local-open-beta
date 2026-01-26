@@ -1,0 +1,98 @@
+ADMIN DASHBOARD OPTIMIZATION - Rise Local
+
+Context: I'm the founder of Rise Local, a mobile app with 63+ production users (free + $4.99/month Pass members). I need my admin dashboard rebuilt to provide actionable business insights beyond basic stats. Current stack: React/TypeScript frontend, Node.js/Express backend, PostgreSQL database, styled with Tailwind CSS and shadcn/ui components.
+
+Current Dashboard: Basic stats (deals, redemptions, pass holders), deal/vendor management, user search, audit logs, orphaned subscriptions tracking.
+
+Goal: Transform this into a founder-focused business intelligence dashboard with time-series analytics, revenue metrics, and actionable insights.
+
+REQUIREMENTS:
+
+1. REVENUE & GROWTH ANALYTICS (CRITICAL PRIORITY)
+- Monthly Recurring Revenue (MRR) - Current MRR, month-over-month growth percentage
+- Revenue Breakdown - Total revenue vs free user engagement
+- Churn Rate - Monthly subscription cancellations with trend
+- Average Revenue Per User (ARPU) - For Pass members
+- Lifetime Value (LTV) estimate - Based on average subscription length
+- Revenue chart - Last 6 months MRR trend line
+
+2. USER GROWTH & ENGAGEMENT (HIGH PRIORITY)
+- User Growth Chart - Total users, Pass members, free users over last 6 months
+- Daily/Weekly Active Users - Engagement trends
+- Conversion Funnel - Free to Pass member conversion rate over time
+- New Signups This Month - With comparison to last month
+- User Retention Cohort - Percentage of users still active after 30/60/90 days
+- Geographic Breakdown - Users by city/region (top 5 locations)
+
+3. DEAL PERFORMANCE ANALYTICS (HIGH PRIORITY)
+- Top Performing Deals - Most redeemed deals in last 30 days
+- Deal Conversion Impact - Which deals drive free to Pass conversions
+- Redemption Rate - Percentage of Pass members actively using deals
+- Underperforming Deals - Deals with low redemptions (flag for removal consideration)
+- Premium vs Free Deal Usage - Comparison chart
+- Deal Category Performance - If deals have categories
+
+4. BUSINESS HEALTH INDICATORS (MEDIUM PRIORITY)
+- Churn Risk Signals - Pass members with zero redemptions in 30 days
+- Vendor Engagement - Active vendors vs inactive (no deal updates in 60+ days)
+- Customer Satisfaction Proxy - Redemptions per Pass member (engagement score)
+- Revenue Concentration - Percentage revenue from top 10% of users (diversification check)
+
+5. OPERATIONAL METRICS (MEDIUM PRIORITY)
+- Pending Actions - Vendor verifications, reported issues, orphaned subscriptions
+- System Health - Failed Stripe webhooks, authentication errors from logs
+- Support Indicators - If user feedback/issues are tracked
+
+TECHNICAL IMPLEMENTATION:
+
+New Backend Endpoints Required:
+- GET /api/admin/analytics/revenue - MRR, churn, ARPU, growth trends
+- GET /api/admin/analytics/users - Growth charts, cohort retention, DAU/WAU
+- GET /api/admin/analytics/deals - Top performers, conversion impact, redemption rates
+- GET /api/admin/analytics/health - Churn risks, vendor engagement, concentration
+- GET /api/admin/analytics/geography - User distribution by location
+
+Database Queries Needed:
+- Aggregate subscriptions by month from Stripe data
+- User signup cohorts with retention calculations
+- Deal redemptions grouped by deal_id with timestamps
+- Join users, subscriptions, and redemptions for conversion analysis
+- Geolocation data from user profiles if available
+
+Frontend Components:
+- Chart library integration (use Recharts or Chart.js for React)
+- Time range selector (Last 7/30/90 days, All Time)
+- Responsive grid layout for metric cards
+- Export to CSV functionality for deeper analysis
+- Real-time refresh capability or manual refresh button
+
+DASHBOARD LAYOUT:
+
+Top Section: REVENUE SNAPSHOT
+- MRR: $XXX (+X%) | Churn: X% | ARPU: $X.XX
+
+Two Column Charts:
+- Left: USER GROWTH (Line Chart showing 6 month trend)
+- Right: MRR TREND (Line Chart showing 6 month trend)
+
+Full Width Section: TOP PERFORMING DEALS (Last 30 Days)
+- Ranked list showing deal names and redemption counts
+
+Two Column Bottom:
+- Left: CHURN RISK ALERTS (List of inactive Pass members)
+- Right: GEOGRAPHIC BREAKDOWN (Bar chart by city)
+
+Below this: Existing sections (Deal Management, Vendors, etc.)
+
+OUTPUT REQUIREMENTS:
+
+Provide me with:
+1. Complete React component code for the new analytics dashboard section
+2. Backend API endpoint implementations in Express.js with SQL queries
+3. Database schema modifications if needed (new tables/indexes)
+4. Plain-English explanations of what each metric means and why it matters for my business
+5. Copy-paste ready code - I'm a vibe-coder, make it work out of the box
+
+Style: Match existing Tailwind CSS and shadcn/ui component patterns. Keep it clean, scannable, and mobile-friendly since I check metrics on the go.
+
+Important: Make all code production-ready and optimized for my existing PostgreSQL database structure with users, subscriptions, deals, and redemptions tables.
