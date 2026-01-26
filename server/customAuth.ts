@@ -215,13 +215,21 @@ export async function setupCustomAuth(app: Express) {
     try {
       const validatedData = loginSchema.parse(req.body);
       
-      const user = await storage.getUserByEmail(validatedData.email);
+      // Normalize email for case-insensitive lookup
+      const normalizedEmail = validatedData.email.trim().toLowerCase();
+      console.log(`[Custom Auth] Login attempt for: ${normalizedEmail}`);
+      
+      const user = await storage.getUserByEmail(normalizedEmail);
       if (!user) {
+        console.log(`[Custom Auth] No user found for email: ${normalizedEmail}`);
         return res.status(401).json({ message: "Invalid email or password" });
       }
+      
+      console.log(`[Custom Auth] User found: ${user.email}, hasPassword: ${!!user.password}, passwordLength: ${user.password?.length || 0}`);
 
       // Check if user has no password set - they need to recover their account
       if (!user.password) {
+        console.log(`[Custom Auth] User needs recovery - no password set`);
         return res.status(200).json({
           needsRecovery: true,
           email: user.email,
@@ -231,10 +239,22 @@ export async function setupCustomAuth(app: Express) {
         });
       }
 
-      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
-      if (!isValidPassword) {
+      // Verify password hash format is valid bcrypt
+      const validBcryptPrefix = user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$');
+      if (!validBcryptPrefix) {
+        console.log(`[Custom Auth] Invalid password hash format for user: ${user.email}, prefix: ${user.password.substring(0, 7)}`);
         return res.status(401).json({ message: "Invalid email or password" });
       }
+
+      const isValidPassword = await bcrypt.compare(validatedData.password, user.password);
+      console.log(`[Custom Auth] Password comparison result: ${isValidPassword}`);
+      
+      if (!isValidPassword) {
+        console.log(`[Custom Auth] Password mismatch for user: ${user.email}`);
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      console.log(`[Custom Auth] Login successful for: ${user.email}`);
       await storage.updateLastLogin(user.id);
 
       const token = generateToken(user.id);
