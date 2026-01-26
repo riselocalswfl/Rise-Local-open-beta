@@ -1,18 +1,36 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import BrandLogo from "@/components/BrandLogo";
 import AuthModal from "@/components/AuthModal";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Store } from "lucide-react";
 import heroImage from "@assets/ChatGPT_Image_Dec_17,_2025,_03_54_36_PM_1766004883576.png";
 
 export default function Auth() {
   const { user, isLoading } = useAuth();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   
-  const searchParams = new URLSearchParams(location.split("?")[1] || "");
-  const initialMode = searchParams.get("mode");
+  const [mode, setMode] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const updateMode = () => {
+      const params = new URLSearchParams(window.location.search);
+      setMode(params.get("mode"));
+    };
+    
+    updateMode();
+    window.addEventListener("popstate", updateMode);
+    return () => window.removeEventListener("popstate", updateMode);
+  }, []);
+
+  const navigateTo = (newMode: string | null) => {
+    if (newMode) {
+      window.history.pushState({}, "", `/auth?mode=${newMode}`);
+    } else {
+      window.history.pushState({}, "", "/auth");
+    }
+    setMode(newMode);
+  };
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -28,16 +46,23 @@ export default function Auth() {
     );
   }
 
-  if (initialMode === "login" || initialMode === "signup") {
+  if (mode === "login" || mode === "signup") {
     return (
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <header className="px-4 py-3 flex items-center gap-4">
+          <button
+            onClick={() => navigateTo(null)}
+            className="text-muted-foreground hover:text-foreground"
+            data-testid="button-back-to-hero"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
           <BrandLogo size="sm" />
         </header>
         
         <main className="px-4 pb-8 pt-4">
           <AuthModal 
-            defaultView={initialMode === "signup" ? "account-type" : "login"}
+            defaultView={mode === "signup" ? "account-type" : "login"}
             onNavigate={setLocation}
           />
         </main>
@@ -94,7 +119,7 @@ export default function Auth() {
               <Button 
                 size="lg"
                 className="w-full h-14 text-lg font-semibold bg-white text-foreground hover:bg-white/90"
-                onClick={() => setLocation("/auth?mode=signup")}
+                onClick={() => navigateTo("signup")}
                 data-testid="button-get-started"
               >
                 Get Started
@@ -104,7 +129,7 @@ export default function Auth() {
                 size="lg"
                 variant="outline"
                 className="w-full h-14 text-lg font-semibold border-2 border-white text-white bg-white/10 backdrop-blur-sm hover:bg-white/20"
-                onClick={() => setLocation("/auth?mode=login")}
+                onClick={() => navigateTo("login")}
                 data-testid="button-sign-in"
               >
                 Sign In
