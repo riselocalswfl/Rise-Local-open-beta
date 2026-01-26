@@ -45,3 +45,8 @@ integrations = ["javascript_log_in_with_replit:1.0.0", "javascript_object_storag
 
 [userenv.production]
 APP_BASE_URL = "https://riselocal.replit.app"
+
+[userenv.shared]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-10cad5e2-ab3e-4219-a19f-f505e69a0e98"
