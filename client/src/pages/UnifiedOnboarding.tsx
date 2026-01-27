@@ -168,9 +168,17 @@ export default function UnifiedOnboarding() {
   // Vendor completion mutation with centralized cache invalidation
   const completeMutation = useMutation({
     mutationFn: async (vendorId: string) => {
+      // Include JWT token for authentication
+      const token = localStorage.getItem("auth_token");
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`/api/vendors/${vendorId}/complete`, {
         method: "POST",
         credentials: "include",
+        headers,
       });
       if (!response.ok) {
         const error = await response.text();
