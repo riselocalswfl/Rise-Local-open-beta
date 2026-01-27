@@ -143,7 +143,7 @@ export default function UnifiedOnboarding() {
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!authUser, // Only fetch when authenticated
+    // Categories are public data - always fetch them
   });
 
   // Auto-save state
