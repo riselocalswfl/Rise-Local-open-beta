@@ -733,6 +733,19 @@ export default function UnifiedOnboarding() {
   return (
     <div className="min-h-screen bg-muted/30 py-12 px-4">
       <div className="max-w-3xl mx-auto">
+        {/* Back to Sign In */}
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => setLocation("/auth")}
+            className="text-muted-foreground hover:text-foreground"
+            data-testid="button-back-to-auth"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Sign In
+          </Button>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
