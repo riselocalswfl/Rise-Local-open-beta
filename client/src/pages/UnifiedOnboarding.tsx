@@ -366,8 +366,16 @@ export default function UnifiedOnboarding() {
 
     const loadDraft = async () => {
       try {
+        // Include JWT token for authentication
+        const token = localStorage.getItem("auth_token");
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        
         const response = await fetch("/api/vendors/draft", {
           credentials: "include",
+          headers,
         });
         
         if (!response.ok) {
@@ -469,14 +477,24 @@ export default function UnifiedOnboarding() {
     loadDraft();
   }, [authUser]);
 
-  // Helper function: fetch with timeout
+  // Helper function: fetch with timeout (includes JWT auth header)
   const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 15000) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     
+    // Include JWT token from localStorage
+    const token = localStorage.getItem("auth_token");
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> || {}),
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    
     try {
       const response = await fetch(url, {
         ...options,
+        headers,
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -668,10 +686,15 @@ export default function UnifiedOnboarding() {
     return () => subscription4.unsubscribe();
   }, [form4.watch, debouncedAutoSave]);
 
-  // Step navigation
+  // Step navigation - forces immediate save before advancing
   const handleStep1Next = async () => {
     const isValid = await form1.trigger();
     if (isValid) {
+      // Cancel any pending debounced save and save immediately
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      await autoSave(form1.getValues(), 'step1');
       setStep(2);
       window.scrollTo(0, 0);
     }
@@ -680,6 +703,11 @@ export default function UnifiedOnboarding() {
   const handleStep2Next = async () => {
     const isValid = await form2.trigger();
     if (isValid) {
+      // Cancel any pending debounced save and save immediately
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      await autoSave(form2.getValues(), 'step2');
       setStep(3);
       window.scrollTo(0, 0);
     }
@@ -688,6 +716,11 @@ export default function UnifiedOnboarding() {
   const handleStep3Next = async () => {
     const isValid = await form3.trigger();
     if (isValid) {
+      // Cancel any pending debounced save and save immediately
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      await autoSave(form3.getValues(), 'step3');
       setStep(4);
       window.scrollTo(0, 0);
     }
@@ -696,9 +729,48 @@ export default function UnifiedOnboarding() {
   const handleStep4Next = async () => {
     const isValid = await form4.trigger();
     if (isValid) {
+      // Cancel any pending debounced save and save immediately
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      await autoSave(form4.getValues(), 'step4');
       setStep(5);
       window.scrollTo(0, 0);
     }
+  };
+
+  // Back button handlers - save current step before going back
+  const handleStep2Back = async () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    await autoSave(form2.getValues(), 'step2');
+    setStep(1);
+    window.scrollTo(0, 0);
+  };
+
+  const handleStep3Back = async () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    await autoSave(form3.getValues(), 'step3');
+    setStep(2);
+    window.scrollTo(0, 0);
+  };
+
+  const handleStep4Back = async () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    await autoSave(form4.getValues(), 'step4');
+    setStep(3);
+    window.scrollTo(0, 0);
+  };
+
+  const handleStep5Back = async () => {
+    // Step 5 is review, no form data to save
+    setStep(4);
+    window.scrollTo(0, 0);
   };
 
   // Final submission
@@ -1381,10 +1453,7 @@ export default function UnifiedOnboarding() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
-                        setStep(1);
-                        window.scrollTo(0, 0);
-                      }}
+                      onClick={handleStep2Back}
                       data-testid="button-back-step2"
                     >
                       <ArrowLeft className="mr-2 w-4 h-4" />
@@ -1482,10 +1551,7 @@ export default function UnifiedOnboarding() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
-                        setStep(2);
-                        window.scrollTo(0, 0);
-                      }}
+                      onClick={handleStep3Back}
                       data-testid="button-back-step3"
                     >
                       <ArrowLeft className="mr-2 w-4 h-4" />
@@ -1651,10 +1717,7 @@ export default function UnifiedOnboarding() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
-                        setStep(3);
-                        window.scrollTo(0, 0);
-                      }}
+                      onClick={handleStep4Back}
                       data-testid="button-back-step4"
                     >
                       <ArrowLeft className="mr-2 w-4 h-4" />
@@ -1764,10 +1827,7 @@ export default function UnifiedOnboarding() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    setStep(4);
-                    window.scrollTo(0, 0);
-                  }}
+                  onClick={handleStep5Back}
                   data-testid="button-back-step5"
                 >
                   <ArrowLeft className="mr-2 w-4 h-4" />
