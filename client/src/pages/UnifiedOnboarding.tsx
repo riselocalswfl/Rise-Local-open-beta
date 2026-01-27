@@ -353,13 +353,8 @@ export default function UnifiedOnboarding() {
         });
         
         if (!response.ok) {
-          // Handle 401 authentication errors
+          // Handle 401 authentication errors - silently redirect to auth
           if (response.status === 401) {
-            toast({
-              title: "Session expired",
-              description: "Please log in again to continue.",
-              variant: "destructive",
-            });
             sessionStorage.setItem("returnTo", "/onboarding");
             setLocation("/auth");
           }
@@ -507,13 +502,8 @@ export default function UnifiedOnboarding() {
           const errorText = await createResponse.text();
           console.error("[Auto-save] Create failed:", createResponse.status, errorText);
           
-          // Handle 401 authentication errors
+          // Handle 401 authentication errors - silently redirect to auth
           if (createResponse.status === 401) {
-            toast({
-              title: "Session expired",
-              description: "Please log in again to continue.",
-              variant: "destructive",
-            });
             sessionStorage.setItem("returnTo", "/onboarding");
             setLocation("/auth");
             return;
@@ -592,13 +582,8 @@ export default function UnifiedOnboarding() {
           const errorText = await updateResponse.text();
           console.error("[Auto-save] Update failed:", updateResponse.status, errorText);
           
-          // Handle 401 authentication errors
+          // Handle 401 authentication errors - silently redirect to auth
           if (updateResponse.status === 401) {
-            toast({
-              title: "Session expired",
-              description: "Please log in again to continue.",
-              variant: "destructive",
-            });
             sessionStorage.setItem("returnTo", "/onboarding");
             setLocation("/auth");
             return;
