@@ -691,12 +691,18 @@ export async function setupCustomAuth(app: Express) {
         });
       }
 
-      // Check if user already has a password - they should use forgot password instead
+      // Check if user already has a VALID bcrypt password - they should use forgot password instead
+      // Allow recovery if password is NULL or contains invalid/garbage data from OAuth migration
       if (user.password) {
-        return res.status(400).json({ 
-          message: "This account already has a password. Please use 'Forgot Password' instead.",
-          code: "PASSWORD_EXISTS"
-        });
+        const validBcryptPrefix = user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$');
+        if (validBcryptPrefix) {
+          return res.status(400).json({ 
+            message: "This account already has a password. Please use 'Forgot Password' instead.",
+            code: "PASSWORD_EXISTS"
+          });
+        }
+        // Password exists but is invalid (OAuth migration garbage data) - allow recovery
+        console.log(`[Custom Auth] User ${user.email} has invalid password hash, allowing recovery`);
       }
 
       // Hash and set password
