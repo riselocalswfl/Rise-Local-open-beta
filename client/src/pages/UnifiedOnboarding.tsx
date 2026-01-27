@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +112,11 @@ const SERVICE_AREA_OPTIONS = [
   "Lehigh Acres",
 ];
 
+interface AuthUser {
+  id: string;
+  [key: string]: unknown;
+}
+
 export default function UnifiedOnboarding() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -118,7 +124,15 @@ export default function UnifiedOnboarding() {
   const [step, setStep] = useState(1);
   const [selectedVendorType, setSelectedVendorType] = useState<"shop" | "dine" | "service" | null>(null);
 
-  // Fetch categories from API - single source of truth
+  // Check if user is authenticated first
+  const { data: authUser, isLoading: authLoading } = useQuery<AuthUser | null>({
+    queryKey: ["/api/auth/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: false,
+    staleTime: 30000,
+  });
+
+  // Fetch categories from API - single source of truth (only when authenticated)
   const { 
     data: categoriesData, 
     isLoading: categoriesLoading, 
@@ -129,6 +143,7 @@ export default function UnifiedOnboarding() {
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!authUser, // Only fetch when authenticated
   });
 
   // Auto-save state
@@ -344,8 +359,11 @@ export default function UnifiedOnboarding() {
     previousVendorType.current = selectedVendorType;
   }, [selectedVendorType, draftVendorId, form2]);
 
-  // Load draft vendor on mount
+  // Load draft vendor on mount (only when authenticated)
   useEffect(() => {
+    // Don't try to load draft if not authenticated
+    if (!authUser) return;
+
     const loadDraft = async () => {
       try {
         const response = await fetch("/api/vendors/draft", {
@@ -353,10 +371,9 @@ export default function UnifiedOnboarding() {
         });
         
         if (!response.ok) {
-          // Handle 401 authentication errors - silently redirect to auth
+          // Handle 401 authentication errors - silently return (don't redirect)
           if (response.status === 401) {
-            sessionStorage.setItem("returnTo", "/onboarding");
-            setLocation("/auth");
+            return;
           }
           return;
         }
@@ -450,7 +467,7 @@ export default function UnifiedOnboarding() {
     };
 
     loadDraft();
-  }, []);
+  }, [authUser]);
 
   // Helper function: fetch with timeout
   const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs = 15000) => {
@@ -714,6 +731,43 @@ export default function UnifiedOnboarding() {
   };
 
   const progress = (step / 5) * 100;
+
+  // If still loading auth, show loading spinner
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show a friendly screen with back button
+  if (!authUser) {
+    return (
+      <div className="min-h-screen bg-muted/30 py-12 px-4">
+        <div className="max-w-md mx-auto text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
+            <Store className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Sign In Required</h1>
+          <p className="text-muted-foreground mb-8">
+            Please sign in to create your business profile.
+          </p>
+          <Button
+            onClick={() => setLocation("/auth")}
+            className="w-full"
+            data-testid="button-go-to-signin"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go to Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/30 py-12 px-4">
