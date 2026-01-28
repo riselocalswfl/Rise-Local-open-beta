@@ -2869,18 +2869,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Update vendor to complete status
         console.log("[COMPLETE] Updating vendor profile status to complete...");
+        const previousStatus = vendor.profileStatus;
         const updatedVendor = await storage.updateVendor(vendorId, {
           profileStatus: "complete",
         });
         console.log("[COMPLETE] Vendor updated successfully");
 
         // Update user role AND set onboardingComplete to true
+        // If this fails, roll back the vendor status change
         console.log("[COMPLETE] Updating user role and onboardingComplete...");
-        await storage.updateUser(userId, {
-          role: "vendor",
-          isVendor: true,
-          onboardingComplete: true,
-        });
+        try {
+          await storage.updateUser(userId, {
+            role: "vendor",
+            isVendor: true,
+            onboardingComplete: true,
+          });
+        } catch (userUpdateError) {
+          // Roll back vendor status to maintain consistency
+          console.error("[COMPLETE] User update failed, rolling back vendor status");
+          await storage.updateVendor(vendorId, {
+            profileStatus: previousStatus || "draft",
+          });
+          throw userUpdateError;
+        }
 
         console.log(
           "[COMPLETE] Vendor profile completed successfully, onboardingComplete and isVendor set to true",
