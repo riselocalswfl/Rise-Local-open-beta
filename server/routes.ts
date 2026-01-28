@@ -199,15 +199,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public route to fetch basic user info by ID (for vendor profile role determination)
+  // SECURITY: Public route to fetch MINIMAL user info by ID
+  // Only returns fields safe for public display - no PII, no auth data
   app.get('/api/users/:id', async (req, res) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      // Return only non-sensitive user data
-      const { password, ...publicUserData } = user;
+      // SECURITY: Return only truly public fields using strict allowlist
+      // Never expose: email, phone, stripeIds, membership status, role flags
+      const publicUserData = {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        profileImageUrl: user.profileImageUrl,
+        // Include role only for determining if user is vendor (needed for vendor profile pages)
+        isVendor: user.isVendor,
+      };
       res.json(publicUserData);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -4543,17 +4552,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const ownerId = req.user.claims.sub;
       const vendorData = req.body;
-      
+
+      // Check if user already has a vendor profile
+      const existingVendor = await storage.getVendorByOwnerId(ownerId);
+      if (existingVendor) {
+        return res.status(400).json({ error: "Vendor profile already exists" });
+      }
+
       // Update user role to vendor
-      await storage.updateUser(ownerId, { role: "vendor" });
-      
-      // Create vendor profile
+      await storage.updateUser(ownerId, { role: "vendor", isVendor: true });
+
+      // SECURITY: Never allow client to control verification status
+      // Remove any client-provided sensitive fields
+      const {
+        isVerified,
+        isFoundingMember,
+        stripeConnectAccountId,
+        stripeOnboardingComplete,
+        ...safeVendorData
+      } = vendorData;
+
+      // Create vendor profile - always starts unverified
+      // Admin must manually verify vendors through admin panel
       const vendor = await storage.createVendor({
-        ...vendorData,
+        ...safeVendorData,
         ownerId,
-        isVerified: vendorData.isFoundingMember || false,
+        isVerified: false,
+        isFoundingMember: false,
       });
 
+      console.log(`[VENDOR] New vendor signup: ${vendor.id} by user ${ownerId}`);
       res.json(vendor);
     } catch (error) {
       console.error("Vendor signup error:", error);
@@ -4618,12 +4646,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", async (req, res) => {
+  // SECURITY: Admin-only endpoint to create users manually
+  // Normal user creation happens through Replit OIDC authentication flow
+  app.post("/api/users", isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertUserSchema.parse(req.body);
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+      const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+
+      if (!isAdmin) {
+        console.warn(`[SECURITY] Unauthorized user creation attempt by ${adminUserId}`);
+        return res.status(403).json({ error: "Forbidden - Admin access required" });
+      }
+
+      // SECURITY: Restrict creatable fields - never allow setting sensitive fields directly
+      const allowedFields = insertUserSchema.pick({
+        email: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+      });
+      const validatedData = allowedFields.parse(req.body);
+
       const user = await storage.createUser(validatedData);
+      console.log(`[ADMIN] User ${adminUserId} created new user: ${user.id}`);
       res.status(201).json(user);
     } catch (error) {
+      console.error("Error creating user:", error);
       res.status(400).json({ error: "Invalid user data" });
     }
   });
@@ -4650,21 +4700,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", async (req, res) => {
+  // SECURITY: Admin-only endpoint to update any user
+  // Regular users should use PATCH /api/users/me instead
+  app.patch("/api/users/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertUserSchema.partial().parse(req.body);
-      await storage.updateUser(req.params.id, validatedData);
+      const adminUserId = req.user.claims.sub;
+      const targetUserId = req.params.id;
+
+      // Get admin user to verify permissions
+      const adminUser = await storage.getUser(adminUserId);
+      const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+
+      if (!isAdmin) {
+        console.warn(`[SECURITY] Unauthorized user update attempt by ${adminUserId} on ${targetUserId}`);
+        return res.status(403).json({ error: "Forbidden - Admin access required" });
+      }
+
+      // Validate input - restrict updatable fields for safety
+      const allowedFields = insertUserSchema.partial().pick({
+        firstName: true,
+        lastName: true,
+        phone: true,
+        role: true,
+        isAdmin: true,
+        isVendor: true,
+        onboardingComplete: true,
+        welcomeCompleted: true,
+      });
+      const validatedData = allowedFields.parse(req.body);
+
+      await storage.updateUser(targetUserId, validatedData);
+
+      // Log admin action for audit
+      console.log(`[ADMIN] User ${adminUserId} updated user ${targetUserId}:`, Object.keys(validatedData));
+
       res.json({ success: true });
     } catch (error) {
+      console.error("Error updating user:", error);
       res.status(400).json({ error: "Invalid user update data" });
     }
   });
 
-  app.delete("/api/users/:id", async (req, res) => {
+  // SECURITY: Admin-only endpoint to delete users
+  app.delete("/api/users/:id", isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteUser(req.params.id);
-      res.json({ success: true });
+      const adminUserId = req.user.claims.sub;
+      const targetUserId = req.params.id;
+
+      // Get admin user to verify permissions
+      const adminUser = await storage.getUser(adminUserId);
+      const isAdmin = adminUser?.isAdmin === true || adminUser?.role === 'admin';
+
+      if (!isAdmin) {
+        console.warn(`[SECURITY] Unauthorized user delete attempt by ${adminUserId} on ${targetUserId}`);
+        return res.status(403).json({ error: "Forbidden - Admin access required" });
+      }
+
+      // Prevent self-deletion
+      if (adminUserId === targetUserId) {
+        return res.status(400).json({ error: "Cannot delete your own account" });
+      }
+
+      // Verify target user exists
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Log admin action for audit before deletion
+      console.log(`[ADMIN] User ${adminUserId} deleting user ${targetUserId} (${targetUser.email})`);
+
+      await storage.deleteUser(targetUserId);
+      res.json({ success: true, message: `User ${targetUserId} deleted` });
     } catch (error) {
+      console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
     }
   });
@@ -4970,21 +5079,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Message routes
+  // Message routes (Legacy direct messaging)
+  // NOTE: This endpoint is deprecated in favor of B2C conversations
+  // Kept for backwards compatibility but with added security controls
   app.post("/api/messages", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const { receiverId, content } = req.body;
+
+      // SECURITY: Validate receiver exists
+      if (!receiverId) {
+        return res.status(400).json({ error: "receiverId is required" });
+      }
+      const receiver = await storage.getUser(receiverId);
+      if (!receiver) {
+        return res.status(404).json({ error: "Recipient not found" });
+      }
+
+      // SECURITY: Prevent self-messaging
+      if (receiverId === userId) {
+        return res.status(400).json({ error: "Cannot send message to yourself" });
+      }
+
+      // SECURITY: Validate message content
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+      if (content.length > 5000) {
+        return res.status(400).json({ error: "Message content too long (max 5000 characters)" });
+      }
+
       const messageData = insertMessageSchema.parse({
-        ...req.body,
         senderId: userId,
+        receiverId,
+        content: content.trim(),
       });
-      
-      console.log("[MESSAGE] Creating message:", { 
-        senderId: messageData.senderId, 
+
+      console.log("[MESSAGE] Creating message:", {
+        senderId: messageData.senderId,
         receiverId: messageData.receiverId,
         content: messageData.content?.substring(0, 50)
       });
-      
+
       const message = await storage.createMessage(messageData);
       console.log("[MESSAGE] Message created successfully:", message.id);
       res.json(message);
@@ -5175,6 +5311,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Message content is required" });
       }
 
+      // SECURITY: Validate message length
+      if (content.length > 5000) {
+        return res.status(400).json({ error: "Message content too long (max 5000 characters)" });
+      }
+
       // Get conversation
       const conversation = await storage.getConversation(conversationId);
       if (!conversation) {
@@ -5305,9 +5446,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/notifications/:id/read - Mark a notification as read
+  // SECURITY: Verify ownership before marking as read (prevents IDOR)
   app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+
+      // Verify the notification belongs to the current user
+      const notification = await storage.getNotification(id);
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      if (notification.userId !== userId) {
+        console.warn(`[SECURITY] User ${userId} attempted to mark notification ${id} belonging to user ${notification.userId}`);
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       await storage.markNotificationAsRead(id);
       res.json({ success: true });
     } catch (error) {

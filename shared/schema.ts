@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, index, jsonb, doublePrecision, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, index, uniqueIndex, jsonb, doublePrecision, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -597,7 +597,14 @@ export const conversations = pgTable("conversations", {
   dealId: varchar("deal_id").references(() => deals.id), // Optional context
   lastMessageAt: timestamp("last_message_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  // Ensure only one conversation per consumer-vendor pair (prevents duplicates)
+  uniqueIndex("conversations_consumer_vendor_unique").on(table.consumerId, table.vendorId),
+  // Index for faster consumer conversation lookups
+  index("idx_conversations_consumer_id").on(table.consumerId),
+  // Index for faster vendor conversation lookups
+  index("idx_conversations_vendor_id").on(table.vendorId),
+]);
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
@@ -617,7 +624,12 @@ export const conversationMessages = pgTable("conversation_messages", {
   content: text("content").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  // Index for faster message lookups by conversation
+  index("idx_conversation_messages_conversation_id").on(table.conversationId),
+  // Composite index for ordered message retrieval
+  index("idx_conversation_messages_conv_created").on(table.conversationId, table.createdAt),
+]);
 
 export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
   id: true,
@@ -642,7 +654,12 @@ export const notifications = pgTable("notifications", {
   referenceType: text("reference_type"), // "conversation" | "deal" | etc.
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  // Index for faster notification lookups by user
+  index("idx_notifications_user_id").on(table.userId),
+  // Composite index for unread notification queries
+  index("idx_notifications_user_unread").on(table.userId, table.isRead),
+]);
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
