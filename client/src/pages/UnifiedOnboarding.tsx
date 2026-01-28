@@ -1788,33 +1788,113 @@ export default function UnifiedOnboarding() {
               <CardDescription>You're almost done! Review your information and submit.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Validation Summary */}
+              {(() => {
+                const businessName = form1.getValues("businessName");
+                const contactName = form1.getValues("contactName");
+                const email = form1.getValues("email");
+                const city = form1.getValues("city");
+                const zipCode = form1.getValues("zipCode");
+                const bio = form1.getValues("bio");
+                const paymentMethods = form3.getValues("paymentMethods") || [];
+                const address = form4.getValues("address");
+                const hours = form4.getValues("hours") || {};
+                const hasHours = Object.values(hours).some(h => h);
+                
+                const requiredComplete = businessName && contactName && email && city && zipCode && bio?.length >= 10 && paymentMethods.length > 0;
+                const missingRequired = [];
+                if (!businessName) missingRequired.push("Business Name");
+                if (!contactName) missingRequired.push("Contact Name");
+                if (!email) missingRequired.push("Email");
+                if (!city) missingRequired.push("City");
+                if (!zipCode) missingRequired.push("Zip Code");
+                if (!bio || bio.length < 10) missingRequired.push("Business Description");
+                if (paymentMethods.length === 0) missingRequired.push("Payment Methods");
+                
+                const recommendations = [];
+                if (!logoUrl) recommendations.push("Add a logo for better visibility");
+                if (!address) recommendations.push("Add your street address");
+                if (!hasHours) recommendations.push("Add business hours");
+                
+                return (
+                  <div className="space-y-3">
+                    {missingRequired.length > 0 && (
+                      <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4" data-testid="validation-errors">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertTriangle className="w-4 h-4 text-destructive" />
+                          <span className="font-medium text-destructive">Missing Required Information</span>
+                        </div>
+                        <ul className="text-sm text-destructive/80 list-disc list-inside space-y-1">
+                          {missingRequired.map(item => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {requiredComplete && (
+                      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4" data-testid="validation-success">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          <span className="font-medium text-green-700 dark:text-green-400">All required information complete</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {recommendations.length > 0 && requiredComplete && (
+                      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4" data-testid="validation-recommendations">
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600" />
+                          <span className="font-medium text-amber-700 dark:text-amber-500">Recommendations to improve your profile</span>
+                        </div>
+                        <ul className="text-sm text-amber-600/80 dark:text-amber-400/80 list-disc list-inside space-y-1">
+                          {recommendations.map(item => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              
               <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-medium">Business Type</h3>
+                  <Badge variant="outline" className="text-xs">
+                    {selectedVendorType === "shop" && "Shop"}
+                    {selectedVendorType === "dine" && "Dine"}
+                    {selectedVendorType === "service" && "Service"}
+                  </Badge>
+                </div>
+
                 <div>
-                  <h3 className="font-medium mb-2">Business Type</h3>
+                  <h3 className="font-medium mb-1">Business Name</h3>
+                  <p className="text-muted-foreground">{form1.getValues("businessName") || <span className="text-destructive italic">Not provided</span>}</p>
+                </div>
+
+                <div>
+                  <h3 className="font-medium mb-1">Contact Information</h3>
                   <p className="text-muted-foreground">
-                    {selectedVendorType === "shop" && "Shop (Products & Goods)"}
-                    {selectedVendorType === "dine" && "Dine (Restaurant & Food)"}
-                    {selectedVendorType === "service" && "Services (Professional Services)"}
+                    {form1.getValues("contactName") || <span className="text-destructive italic">No contact</span>} • {form1.getValues("email") || <span className="text-destructive italic">No email</span>}
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2">Business Name</h3>
-                  <p className="text-muted-foreground">{form1.getValues("businessName")}</p>
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-2">Contact Information</h3>
-                  <p className="text-muted-foreground">
-                    {form1.getValues("contactName")} • {form1.getValues("email")}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-2">Location</h3>
+                  <h3 className="font-medium mb-1">Location</h3>
                   <p className="text-muted-foreground">
                     {form4.getValues("address") ? `${form4.getValues("address")}, ` : ""}
-                    {form1.getValues("city")}, FL {form1.getValues("zipCode")}
+                    {form1.getValues("city") || "No city"}, FL {form1.getValues("zipCode") || "No zip"}
+                  </p>
+                </div>
+                
+                <div>
+                  <h3 className="font-medium mb-1">Payment Methods</h3>
+                  <p className="text-muted-foreground">
+                    {(form3.getValues("paymentMethods") || []).length > 0 
+                      ? (form3.getValues("paymentMethods") || []).join(", ")
+                      : <span className="text-destructive italic">No payment methods selected</span>
+                    }
                   </p>
                 </div>
 
@@ -1874,24 +1954,37 @@ export default function UnifiedOnboarding() {
                   <ArrowLeft className="mr-2 w-4 h-4" />
                   Back
                 </Button>
-                <Button
-                  size="lg"
-                  onClick={handleFinalSubmit}
-                  disabled={completeMutation.isPending}
-                  data-testid="button-submit-final"
-                >
-                  {completeMutation.isPending ? (
-                    <>
-                      <CloudUpload className="mr-2 w-4 h-4 animate-pulse" />
-                      Creating Profile...
-                    </>
-                  ) : (
-                    <>
-                      Complete Setup
-                      <CheckCircle2 className="ml-2 w-4 h-4" />
-                    </>
-                  )}
-                </Button>
+                {(() => {
+                  const businessName = form1.getValues("businessName");
+                  const contactName = form1.getValues("contactName");
+                  const email = form1.getValues("email");
+                  const city = form1.getValues("city");
+                  const zipCode = form1.getValues("zipCode");
+                  const bio = form1.getValues("bio");
+                  const paymentMethods = form3.getValues("paymentMethods") || [];
+                  const isValid = businessName && contactName && email && city && zipCode && bio?.length >= 10 && paymentMethods.length > 0;
+                  
+                  return (
+                    <Button
+                      size="lg"
+                      onClick={handleFinalSubmit}
+                      disabled={completeMutation.isPending || !isValid}
+                      data-testid="button-submit-final"
+                    >
+                      {completeMutation.isPending ? (
+                        <>
+                          <CloudUpload className="mr-2 w-4 h-4 animate-pulse" />
+                          Creating Profile...
+                        </>
+                      ) : (
+                        <>
+                          Complete Setup
+                          <CheckCircle2 className="ml-2 w-4 h-4" />
+                        </>
+                      )}
+                    </Button>
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>
