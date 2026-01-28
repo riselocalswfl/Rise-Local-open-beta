@@ -241,10 +241,6 @@ export default function ConversationPage() {
 
       {/* Message Input */}
       <div className="border-t bg-background p-4">
-        {/* "Sending as" indicator for clarity */}
-        <p className="text-xs text-muted-foreground mb-2 text-center" data-testid="text-sending-as">
-          Sending as {userRole === "vendor" ? vendorName : "yourself"}
-        </p>
         <div className="flex items-center gap-3">
           <div className="flex-1 relative">
             <Input
