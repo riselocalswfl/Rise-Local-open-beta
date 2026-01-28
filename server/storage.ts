@@ -118,6 +118,7 @@ export interface IStorage {
 
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotification(notificationId: string): Promise<Notification | undefined>;
   getNotifications(userId: string): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   markNotificationAsRead(notificationId: string): Promise<void>;
@@ -880,6 +881,15 @@ export class DbStorage implements IStorage {
       .insert(notifications)
       .values(notification)
       .returning();
+    return result[0];
+  }
+
+  async getNotification(notificationId: string): Promise<Notification | undefined> {
+    const result = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, notificationId))
+      .limit(1);
     return result[0];
   }
 

@@ -5079,21 +5079,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Message routes
+  // Message routes (Legacy direct messaging)
+  // NOTE: This endpoint is deprecated in favor of B2C conversations
+  // Kept for backwards compatibility but with added security controls
   app.post("/api/messages", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const { receiverId, content } = req.body;
+
+      // SECURITY: Validate receiver exists
+      if (!receiverId) {
+        return res.status(400).json({ error: "receiverId is required" });
+      }
+      const receiver = await storage.getUser(receiverId);
+      if (!receiver) {
+        return res.status(404).json({ error: "Recipient not found" });
+      }
+
+      // SECURITY: Prevent self-messaging
+      if (receiverId === userId) {
+        return res.status(400).json({ error: "Cannot send message to yourself" });
+      }
+
+      // SECURITY: Validate message content
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        return res.status(400).json({ error: "Message content is required" });
+      }
+      if (content.length > 5000) {
+        return res.status(400).json({ error: "Message content too long (max 5000 characters)" });
+      }
+
       const messageData = insertMessageSchema.parse({
-        ...req.body,
         senderId: userId,
+        receiverId,
+        content: content.trim(),
       });
-      
-      console.log("[MESSAGE] Creating message:", { 
-        senderId: messageData.senderId, 
+
+      console.log("[MESSAGE] Creating message:", {
+        senderId: messageData.senderId,
         receiverId: messageData.receiverId,
         content: messageData.content?.substring(0, 50)
       });
-      
+
       const message = await storage.createMessage(messageData);
       console.log("[MESSAGE] Message created successfully:", message.id);
       res.json(message);
@@ -5284,6 +5311,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Message content is required" });
       }
 
+      // SECURITY: Validate message length
+      if (content.length > 5000) {
+        return res.status(400).json({ error: "Message content too long (max 5000 characters)" });
+      }
+
       // Get conversation
       const conversation = await storage.getConversation(conversationId);
       if (!conversation) {
@@ -5414,9 +5446,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/notifications/:id/read - Mark a notification as read
+  // SECURITY: Verify ownership before marking as read (prevents IDOR)
   app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+
+      // Verify the notification belongs to the current user
+      const notification = await storage.getNotification(id);
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      if (notification.userId !== userId) {
+        console.warn(`[SECURITY] User ${userId} attempted to mark notification ${id} belonging to user ${notification.userId}`);
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       await storage.markNotificationAsRead(id);
       res.json({ success: true });
     } catch (error) {
