@@ -822,6 +822,31 @@ export async function setupCustomAuth(app: Express) {
     }
   });
 
+  // Logout endpoint for custom auth
+  app.post("/api/auth/logout", async (req: Request, res: Response) => {
+    try {
+      // Clear any session cookies that might exist
+      res.clearCookie('connect.sid');
+      
+      // Log the logout (token extraction is optional - client already removed it)
+      const token = extractBearerToken(req);
+      if (token) {
+        const payload = verifyToken(token);
+        if (payload) {
+          console.log(`[Custom Auth] User ${payload.sub} logged out`);
+          // Update last activity (optional tracking)
+          await storage.updateLastLogin(payload.sub).catch(() => {});
+        }
+      }
+      
+      res.json({ success: true, message: "Logged out successfully" });
+    } catch (error) {
+      console.error("[Custom Auth] Logout error:", error);
+      // Still return success - client should clear token regardless
+      res.json({ success: true, message: "Logged out" });
+    }
+  });
+
   // Admin endpoint - Generate recovery tokens for users without passwords
   app.post("/api/admin/generate-recovery-tokens", async (req: Request, res: Response) => {
     try {

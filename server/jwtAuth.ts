@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import type { Request } from 'express';
 
 const JWT_SECRET = process.env.JWT_SECRET || '';
-const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '30d';
+const JWT_EXPIRATION = process.env.JWT_EXPIRATION || '7d'; // 7 days - reasonable for mobile apps
 
 if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('JWT_SECRET environment variable must be set in production');
