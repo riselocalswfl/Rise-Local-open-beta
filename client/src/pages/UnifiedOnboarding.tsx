@@ -590,6 +590,8 @@ export default function UnifiedOnboarding() {
 
         const newDraft = await createResponse.json();
         console.log("[Auto-save] Draft created successfully:", newDraft.id);
+        // Clear any retry counters on success
+        sessionStorage.removeItem(`autoSaveRetry_${formType}`);
         updateDraftVendorId(newDraft.id);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
@@ -669,6 +671,8 @@ export default function UnifiedOnboarding() {
         }
 
         console.log("[Auto-save] Update successful");
+        // Clear any retry counters on success
+        sessionStorage.removeItem(`autoSaveRetry_${formType}`);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       } else {
@@ -683,8 +687,28 @@ export default function UnifiedOnboarding() {
         }
         console.error("[Auto-save] Error details:", error.message);
       }
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 3000);
+      
+      // Retry logic for transient failures (not auth errors which are handled above)
+      const retryKey = `autoSaveRetry_${formType}`;
+      const currentRetries = parseInt(sessionStorage.getItem(retryKey) || "0");
+      const maxRetries = 3;
+      
+      if (currentRetries < maxRetries) {
+        const nextRetry = currentRetries + 1;
+        sessionStorage.setItem(retryKey, String(nextRetry));
+        const backoffMs = Math.min(1000 * Math.pow(2, currentRetries), 8000); // 1s, 2s, 4s, max 8s
+        console.log(`[Auto-save] Retry ${nextRetry}/${maxRetries} in ${backoffMs}ms`);
+        setSaveStatus("saving"); // Keep showing saving status during retry
+        
+        setTimeout(() => {
+          autoSave(data, formType);
+        }, backoffMs);
+      } else {
+        // Max retries reached, show error and reset counter
+        sessionStorage.removeItem(retryKey);
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus("idle"), 5000);
+      }
     }
   }, [draftVendorId, selectedVendorType, updateDraftVendorId]);
 
