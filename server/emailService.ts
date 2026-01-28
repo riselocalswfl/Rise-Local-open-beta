@@ -300,3 +300,57 @@ Rise Local - Supporting Southwest Florida Businesses
     text
   });
 }
+
+export async function sendPasswordChangedEmail(
+  email: string, 
+  firstName: string
+): Promise<{ success: boolean; error?: string }> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #2D5016; margin: 0;">Rise Local</h1>
+        <p style="color: #666; margin-top: 5px;">Southwest Florida Deals</p>
+      </div>
+      
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 30px; margin-bottom: 20px;">
+        <h2 style="margin-top: 0; color: #333;">Password Changed</h2>
+        <p>Hi ${firstName || 'there'},</p>
+        <p>Your Rise Local password was recently changed.</p>
+        <p>If you made this change, you can safely ignore this email.</p>
+        <p style="color: #c00; font-weight: 600;">If you did not make this change, please contact us immediately or reset your password.</p>
+      </div>
+      
+      <div style="text-align: center; color: #999; font-size: 12px;">
+        <p>Rise Local - Supporting Southwest Florida Businesses</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Password Changed
+
+Hi ${firstName || 'there'},
+
+Your Rise Local password was recently changed.
+
+If you made this change, you can safely ignore this email.
+
+If you did not make this change, please contact us immediately or reset your password.
+
+Rise Local - Supporting Southwest Florida Businesses
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: 'Your Rise Local Password Was Changed',
+    html,
+    text
+  });
+}

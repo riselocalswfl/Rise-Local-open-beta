@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction, RequestHandler } from "express";
 import { storage } from "./storage";
 import { generateToken, verifyToken, extractBearerToken } from "./jwtAuth";
-import { sendPasswordResetEmail, sendAccountRecoveryEmail, sendWelcomeEmail } from "./emailService";
+import { sendPasswordResetEmail, sendAccountRecoveryEmail, sendWelcomeEmail, sendPasswordChangedEmail } from "./emailService";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { z } from "zod";
@@ -9,6 +9,15 @@ import { z } from "zod";
 const SALT_ROUNDS = 12;
 const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
 const PASSWORD_RESET_TOKEN_EXPIRY_HOURS = 1;
+const MIGRATION_TOKEN_EXPIRY_HOURS = 24;
+
+// Account lockout settings
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const ACCOUNT_LOCKOUT_MINUTES = 15;
+
+// Password reset rate limiting (in-memory store for simplicity)
+const passwordResetRequests = new Map<string, { count: number; resetAt: number }>();
+const MAX_PASSWORD_RESET_REQUESTS_PER_HOUR = 3;
 
 const registerUserSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -228,6 +237,23 @@ export async function setupCustomAuth(app: Express) {
       
       console.log(`[Custom Auth] User found: ${user.email}, hasPassword: ${!!user.password}, passwordLength: ${user.password?.length || 0}`);
 
+      // Check if account is locked (but allow OAuth migration users to bypass lockout)
+      if (user.lockedUntil && new Date() < user.lockedUntil) {
+        // If user needs migration (OAuth user), skip lockout check and direct them to recovery
+        if (!user.password || user.migrationRequired) {
+          console.log(`[Custom Auth] Locked user needs recovery, bypassing lockout`);
+        } else {
+          const minutesRemaining = Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000));
+          console.log(`[Custom Auth] Account locked for: ${user.email}, ${minutesRemaining} minutes remaining`);
+          return res.status(423).json({ 
+            message: `Account temporarily locked due to too many failed attempts. Please try again in ${minutesRemaining} minutes, or reset your password.`,
+            code: "ACCOUNT_LOCKED",
+            lockedUntil: user.lockedUntil.toISOString(),
+            canResetPassword: true
+          });
+        }
+      }
+
       // Check if user has no password set - they need to recover their account
       if (!user.password) {
         console.log(`[Custom Auth] User needs recovery - no password set`);
@@ -252,8 +278,30 @@ export async function setupCustomAuth(app: Express) {
       
       if (!isValidPassword) {
         console.log(`[Custom Auth] Password mismatch for user: ${user.email}`);
-        return res.status(401).json({ message: "Invalid email or password" });
+        
+        // Increment failed login attempts and potentially lock account
+        const failedAttempts = await storage.incrementFailedLoginAttempts(user.id);
+        console.log(`[Custom Auth] Failed attempts: ${failedAttempts}/${MAX_FAILED_LOGIN_ATTEMPTS}`);
+        
+        if (failedAttempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+          await storage.lockAccount(user.id, ACCOUNT_LOCKOUT_MINUTES);
+          console.log(`[Custom Auth] Account locked for: ${user.email}`);
+          return res.status(423).json({ 
+            message: `Account locked due to too many failed attempts. Please try again in ${ACCOUNT_LOCKOUT_MINUTES} minutes, or reset your password.`,
+            code: "ACCOUNT_LOCKED",
+            canResetPassword: true
+          });
+        }
+        
+        const remainingAttempts = MAX_FAILED_LOGIN_ATTEMPTS - failedAttempts;
+        return res.status(401).json({ 
+          message: "Invalid email or password",
+          remainingAttempts: remainingAttempts > 0 ? remainingAttempts : undefined
+        });
       }
+      
+      // Clear failed login attempts on successful login
+      await storage.resetFailedLoginAttempts(user.id);
       
       console.log(`[Custom Auth] Login successful for: ${user.email}`);
       await storage.updateLastLogin(user.id);
@@ -377,8 +425,33 @@ export async function setupCustomAuth(app: Express) {
   app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
     try {
       const validatedData = forgotPasswordSchema.parse(req.body);
+      const normalizedEmail = validatedData.email.trim().toLowerCase();
       
-      const user = await storage.getUserByEmail(validatedData.email);
+      // Rate limiting: Check if too many requests for this email
+      const now = Date.now();
+      const hourInMs = 60 * 60 * 1000;
+      const rateLimit = passwordResetRequests.get(normalizedEmail);
+      
+      if (rateLimit) {
+        if (now < rateLimit.resetAt) {
+          if (rateLimit.count >= MAX_PASSWORD_RESET_REQUESTS_PER_HOUR) {
+            console.log(`[Custom Auth] Rate limit hit for password reset: ${normalizedEmail}`);
+            // Return success message anyway to prevent email enumeration
+            return res.json({ 
+              message: "If an account with that email exists, we've sent password reset instructions." 
+            });
+          }
+          rateLimit.count++;
+        } else {
+          // Reset the counter after an hour
+          rateLimit.count = 1;
+          rateLimit.resetAt = now + hourInMs;
+        }
+      } else {
+        passwordResetRequests.set(normalizedEmail, { count: 1, resetAt: now + hourInMs });
+      }
+      
+      const user = await storage.getUserByEmail(normalizedEmail);
       
       if (user && user.password && user.email) {
         const resetToken = generateSecureToken();
@@ -431,10 +504,24 @@ export async function setupCustomAuth(app: Express) {
 
       const passwordHash = await bcrypt.hash(validatedData.password, SALT_ROUNDS);
       
+      // Update password
       await storage.updateUser(resetToken.userId, { password: passwordHash });
+      
+      // Invalidate the reset token
       await storage.markPasswordResetTokenUsed(validatedData.token);
+      
+      // Clear any account lockout (important: allows user to regain access after lockout)
+      await storage.resetFailedLoginAttempts(resetToken.userId);
 
       console.log(`[Custom Auth] Password reset for user: ${resetToken.userId}`);
+      
+      // Send password changed notification email (non-blocking)
+      const user = await storage.getUser(resetToken.userId);
+      if (user?.email) {
+        sendPasswordChangedEmail(user.email, user.firstName || '').catch((err) => {
+          console.error(`[Custom Auth] Failed to send password changed email:`, err);
+        });
+      }
 
       res.json({ 
         message: "Password reset successfully. You can now log in with your new password." 

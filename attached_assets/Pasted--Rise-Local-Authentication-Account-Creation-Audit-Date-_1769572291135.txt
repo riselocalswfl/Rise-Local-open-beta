@@ -1,0 +1,1330 @@
+# Rise Local Authentication & Account Creation Audit
+**Date:** January 27, 2026  
+**Auditor:** Claude  
+**Scope:** Login, Signup, Account Recovery, Business Account Creation
+
+---
+
+## Executive Summary
+
+### Critical Issues Found: 🔴 5 High Priority | 🟡 8 Medium Priority | 🟢 4 Low Priority
+
+**Most Critical Problems:**
+1. **Business Account Creation Failure Points** - Multiple places where business signup can fail silently
+2. **JWT Storage Security** - localStorage vulnerable to XSS attacks
+3. **Missing Transaction Rollback** - Database inconsistencies possible on partial failures
+4. **No Email Verification Enforcement** - Users can access app without verifying email
+5. **Incomplete Error Handling** - Generic errors don't help users recover from failures
+
+---
+
+## 1. Login Functionality Audit
+
+### Flow Analysis
+```
+User enters email + password
+    ↓
+Frontend validates via Zod
+    ↓
+POST /api/auth/login
+    ↓
+Backend validates format
+    ↓
+Case-insensitive email lookup
+    ↓
+bcrypt.compare password
+    ↓
+Return JWT + user object
+    ↓
+Store JWT in localStorage
+    ↓
+Redirect based on user type
+```
+
+### 🔴 Critical Issues
+
+#### 1.1 JWT Storage in localStorage (High Security Risk)
+**Location:** `AuthModal.tsx` after successful login  
+**Problem:** JWTs stored in localStorage are vulnerable to XSS attacks
+```typescript
+// Current implementation
+localStorage.setItem('token', data.token);
+```
+
+**Impact:** If malicious script executes on your domain, it can steal all user tokens
+
+**Recommendation:**
+- **Option A (Best):** Use httpOnly cookies instead
+  ```typescript
+  // Backend sets cookie
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+  });
+  ```
+- **Option B (Quick Fix):** Add Content Security Policy headers to mitigate XSS
+- **Option C (Current State):** Document risk and plan migration
+
+#### 1.2 No Account Lockout Protection
+**Location:** `customAuth.ts` - `/api/auth/login`  
+**Problem:** Unlimited login attempts allow brute force attacks
+
+**Current State:**
+- IP-based rate limiting exists (Express middleware)
+- NO account-level lockout after failed attempts
+- Attacker can try passwords from different IPs
+
+**Recommendation:**
+```typescript
+// Add to login endpoint
+const failedAttempts = await db.query(
+  'SELECT failed_login_attempts, locked_until FROM users WHERE email = $1',
+  [email]
+);
+
+if (failedAttempts.locked_until && new Date() < failedAttempts.locked_until) {
+  return res.status(423).json({ 
+    error: 'Account locked. Try again in 15 minutes.' 
+  });
+}
+
+// After failed login
+await db.query(
+  'UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE email = $1',
+  [email]
+);
+
+// Lock after 5 attempts
+if (failedAttempts.failed_login_attempts >= 5) {
+  await db.query(
+    'UPDATE users SET locked_until = $1 WHERE email = $2',
+    [new Date(Date.now() + 15 * 60 * 1000), email]
+  );
+}
+```
+
+### 🟡 Medium Priority Issues
+
+#### 1.3 Case-Insensitive Email Lookup Inconsistency
+**Location:** `customAuth.ts` - login endpoint  
+**Problem:** Uses `LOWER(email)` in query but doesn't enforce lowercase storage
+
+**Current Code:**
+```typescript
+const result = await db.query(
+  'SELECT * FROM users WHERE LOWER(email) = LOWER($1)',
+  [email]
+);
+```
+
+**Issue:** Emails stored with mixed case (John@Example.com) create duplicate risk
+
+**Recommendation:**
+```typescript
+// Always normalize on signup
+const normalizedEmail = email.toLowerCase().trim();
+
+// Add unique constraint
+ALTER TABLE users ADD CONSTRAINT users_email_lower_unique 
+UNIQUE (LOWER(email));
+```
+
+#### 1.4 Generic Error Messages
+**Location:** `AuthModal.tsx` - error handling  
+**Problem:** "Invalid email or password" doesn't distinguish between:
+- Email not found
+- Password incorrect
+- Account not verified
+- Account locked
+- Server error
+
+**Security Note:** Intentionally vague for security, but could provide better UX for legitimate errors
+
+**Recommendation:**
+```typescript
+// Return specific codes for client to handle
+return res.status(401).json({ 
+  error: 'Invalid credentials',
+  code: 'INVALID_PASSWORD', // or EMAIL_NOT_FOUND, ACCOUNT_LOCKED, etc.
+  canRecover: true // show "forgot password?" link
+});
+```
+
+### 🟢 Working Well
+
+✅ Password hashing with bcrypt (12 rounds)  
+✅ Zod validation prevents malformed requests  
+✅ JWT expiration set to 30 days  
+✅ OAuth migration detection via invalid bcrypt hash check
+
+---
+
+## 2. Signup Functionality Audit
+
+### Flow Analysis
+
+**User Signup:**
+```
+Fill form (firstName, lastName, email, password, zipCode?)
+    ↓
+Zod validation (8+ chars, letter, number)
+    ↓
+POST /api/auth/register/user
+    ↓
+Check email uniqueness
+    ↓
+bcrypt.hash password
+    ↓
+INSERT INTO users
+    ↓
+Generate verification token
+    ↓
+Send welcome email + verification email
+    ↓
+Return JWT (user can access app immediately)
+```
+
+**Business Signup:**
+```
+Fill form (businessName, firstName, lastName, email, password)
+    ↓
+Zod validation
+    ↓
+POST /api/auth/register/business
+    ↓
+Check email uniqueness
+    ↓
+bcrypt.hash password
+    ↓
+BEGIN TRANSACTION
+    ↓
+INSERT INTO users (role='business')
+    ↓
+INSERT INTO vendors (incomplete=true)
+    ↓
+COMMIT
+    ↓
+Send welcome email
+    ↓
+Return JWT + vendorId
+    ↓
+Redirect to /onboarding/:vendorId
+```
+
+### 🔴 Critical Issues
+
+#### 2.1 No Email Verification Enforcement
+**Location:** Both user and business registration  
+**Problem:** Users get JWT immediately, can use app before verifying email
+
+**Risk:**
+- Fake email addresses clutter database
+- No way to reach users for important notifications
+- Spam signups from bots
+
+**Current State:**
+```typescript
+// Email sent but never checked
+await sendVerificationEmail(userId, email, verificationToken);
+
+// User gets full access anyway
+return res.json({ 
+  token: generateToken(userId),
+  user: { id: userId, ... }
+});
+```
+
+**Recommendation:**
+```typescript
+// Option A: Block until verified
+if (!user.email_verified) {
+  return res.status(403).json({ 
+    error: 'Please verify your email',
+    userId: user.id,
+    needsVerification: true
+  });
+}
+
+// Option B: Limited access until verified
+if (!user.email_verified) {
+  return res.json({
+    token: generateToken(userId),
+    user: { ...user, limitedAccess: true }
+  });
+}
+```
+
+#### 2.2 Missing Transaction Rollback on Business Signup Failure
+**Location:** `customAuth.ts` - `/api/auth/register/business`  
+**Problem:** If vendor INSERT fails after user INSERT, orphaned user record exists
+
+**Risk Scenario:**
+```
+1. User created successfully ✅
+2. Vendor creation fails ❌ (constraint violation, DB error, etc.)
+3. User record remains in database
+4. User can't sign up again (email already exists)
+5. User has no vendor record (broken state)
+```
+
+**Current Code Pattern:**
+```typescript
+// Assuming no explicit transaction management shown
+const userResult = await db.query('INSERT INTO users...');
+const vendorResult = await db.query('INSERT INTO vendors...');
+// If vendorResult fails, userResult is not rolled back
+```
+
+**Recommendation:**
+```typescript
+const client = await db.pool.connect();
+try {
+  await client.query('BEGIN');
+  
+  const userResult = await client.query(
+    'INSERT INTO users (email, password_hash, role, ...) VALUES (...) RETURNING id',
+    [...]
+  );
+  
+  const vendorResult = await client.query(
+    'INSERT INTO vendors (user_id, business_name, incomplete, ...) VALUES (...) RETURNING id',
+    [userResult.rows[0].id, ...]
+  );
+  
+  await client.query('COMMIT');
+  
+  return res.json({ 
+    token: generateToken(userResult.rows[0].id),
+    vendorId: vendorResult.rows[0].id 
+  });
+  
+} catch (error) {
+  await client.query('ROLLBACK');
+  console.error('Signup failed:', error);
+  return res.status(500).json({ 
+    error: 'Account creation failed. Please try again.' 
+  });
+} finally {
+  client.release();
+}
+```
+
+#### 2.3 Password Strength Indicator Misleading
+**Location:** `AuthModal.tsx` - password strength calculation  
+**Problem:** Visual indicator may show "strong" for passwords that meet minimum but are still weak
+
+**Example:**
+- "Password1" passes validation (8 chars, letter, number)
+- Shows as "medium" or "strong"
+- Actually very weak (common pattern, no special chars)
+
+**Recommendation:**
+```typescript
+// Add entropy-based scoring
+const calculatePasswordStrength = (password: string): number => {
+  let score = 0;
+  
+  // Length
+  if (password.length >= 12) score += 25;
+  else if (password.length >= 10) score += 15;
+  else if (password.length >= 8) score += 5;
+  
+  // Character variety
+  if (/[a-z]/.test(password)) score += 10;
+  if (/[A-Z]/.test(password)) score += 10;
+  if (/[0-9]/.test(password)) score += 10;
+  if (/[^A-Za-z0-9]/.test(password)) score += 15;
+  
+  // Patterns (deduct points)
+  if (/(.)\1{2,}/.test(password)) score -= 10; // Repeated chars
+  if (/^[A-Za-z]+[0-9]+$/.test(password)) score -= 10; // Common pattern
+  if (/^[0-9]+[A-Za-z]+$/.test(password)) score -= 10;
+  
+  // Common passwords check (integrate zxcvbn library)
+  
+  return Math.max(0, Math.min(100, score));
+};
+```
+
+### 🟡 Medium Priority Issues
+
+#### 2.4 Duplicate Email Check Race Condition
+**Location:** Both registration endpoints  
+**Problem:** Two simultaneous signups with same email could both pass uniqueness check
+
+**Scenario:**
+```
+Request A: Check email "test@example.com" - not found ✅
+Request B: Check email "test@example.com" - not found ✅
+Request A: INSERT user with test@example.com ✅
+Request B: INSERT user with test@example.com ❌ (constraint violation)
+```
+
+**Current State:** Database constraint will catch it, but user gets ugly error
+
+**Recommendation:**
+```sql
+-- Ensure unique constraint exists
+ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
+
+-- Catch duplicate error gracefully
+try {
+  await db.query('INSERT INTO users...');
+} catch (error) {
+  if (error.code === '23505') { // PostgreSQL unique violation
+    return res.status(409).json({ 
+      error: 'An account with this email already exists' 
+    });
+  }
+  throw error;
+}
+```
+
+#### 2.5 zipCode Optional But Not Validated
+**Location:** `AuthModal.tsx` - user signup form  
+**Problem:** If provided, zipCode not validated for format
+
+**Recommendation:**
+```typescript
+// Add to Zod schema
+zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code').optional()
+```
+
+### 🟢 Working Well
+
+✅ Password requirements clearly communicated  
+✅ Email format validation via Zod  
+✅ Welcome emails sent immediately  
+✅ Business name captured during signup
+
+---
+
+## 3. Account Recovery Audit
+
+### Flow Analysis
+
+**Forgot Password:**
+```
+User enters email
+    ↓
+POST /api/auth/forgot-password
+    ↓
+Lookup user by email
+    ↓
+Generate reset token (crypto.randomBytes)
+    ↓
+Store token + expiry (1 hour) in DB
+    ↓
+Send reset email via Resend
+    ↓
+User clicks link → ResetPassword.tsx
+    ↓
+Extract token from URL
+    ↓
+User enters new password
+    ↓
+POST /api/auth/reset-password
+    ↓
+Validate token + expiry
+    ↓
+bcrypt.hash new password
+    ↓
+Update password + clear reset token
+    ↓
+Return success
+    ↓
+Redirect to login
+```
+
+**OAuth Migration (needsRecovery):**
+```
+User with OAuth account tries to login
+    ↓
+Backend detects invalid bcrypt hash
+    ↓
+Return { needsRecovery: true }
+    ↓
+Frontend switches to forgot-password view
+    ↓
+User requests recovery email
+    ↓
+POST /api/auth/recover-account
+    ↓
+Generate migration token
+    ↓
+Send recovery email via Resend
+    ↓
+User clicks link → RecoverAccount.tsx
+    ↓
+User sets new password
+    ↓
+POST /api/auth/set-password
+    ↓
+Update password + mark migrated
+    ↓
+Return JWT (auto-login)
+```
+
+### 🔴 Critical Issues
+
+#### 3.1 Reset Token Not Invalidated After Use
+**Location:** `customAuth.ts` - `/api/auth/reset-password`  
+**Problem:** Reset token remains valid after successful password reset
+
+**Risk:** Token could be reused within 1-hour window
+
+**Current Code:**
+```typescript
+// After successful reset
+await db.query(
+  'UPDATE users SET password_hash = $1 WHERE id = $2',
+  [hashedPassword, user.id]
+);
+// reset_token and reset_token_expires NOT cleared
+```
+
+**Recommendation:**
+```typescript
+await db.query(
+  'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
+  [hashedPassword, user.id]
+);
+```
+
+#### 3.2 No Rate Limiting on Password Reset Requests
+**Location:** `/api/auth/forgot-password`  
+**Problem:** Attacker can flood user's inbox with reset emails
+
+**Attack Scenario:**
+1. Attacker knows victim's email
+2. Submits 100 reset requests
+3. Victim's inbox flooded
+4. Legitimate reset email buried
+
+**Recommendation:**
+```typescript
+// Track reset requests per email
+const recentResets = await db.query(
+  'SELECT COUNT(*) FROM password_reset_log WHERE email = $1 AND created_at > NOW() - INTERVAL \'1 hour\'',
+  [email]
+);
+
+if (recentResets.rows[0].count >= 3) {
+  return res.status(429).json({ 
+    error: 'Too many reset requests. Please try again later.' 
+  });
+}
+
+// Log the request
+await db.query(
+  'INSERT INTO password_reset_log (email, created_at) VALUES ($1, NOW())',
+  [email]
+);
+```
+
+### 🟡 Medium Priority Issues
+
+#### 3.3 Reset Token Uses crypto.randomBytes (Good) But Length Unknown
+**Location:** Token generation in `customAuth.ts`  
+**Problem:** Can't verify token entropy from summary
+
+**Recommendation:** Ensure at least 32 bytes (256 bits)
+```typescript
+const resetToken = crypto.randomBytes(32).toString('hex'); // 64 hex chars
+```
+
+#### 3.4 Migration Token Doesn't Expire
+**Location:** OAuth migration flow  
+**Problem:** Migration tokens for account recovery may not have expiration
+
+**Risk:** Old migration emails remain valid indefinitely
+
+**Recommendation:**
+```typescript
+// Add expiry to migration tokens
+const migrationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+// Check expiry when setting password
+if (user.migration_token_expires && new Date() > user.migration_token_expires) {
+  return res.status(400).json({ 
+    error: 'Recovery link expired. Please request a new one.' 
+  });
+}
+```
+
+#### 3.5 No Notification When Password Changed
+**Location:** After successful password reset  
+**Problem:** User not notified if someone else resets their password
+
+**Recommendation:**
+```typescript
+// After successful reset, send confirmation email
+await sendPasswordChangedEmail(user.email);
+
+// emailService.ts
+export async function sendPasswordChangedEmail(email: string) {
+  await resend.emails.send({
+    from: 'Rise Local <no-reply@riselocal.co>',
+    to: email,
+    subject: 'Your Password Was Changed',
+    html: `
+      <p>Your Rise Local password was recently changed.</p>
+      <p>If you did not make this change, please contact support immediately.</p>
+    `
+  });
+}
+```
+
+### 🟢 Working Well
+
+✅ 1-hour expiry on reset tokens  
+✅ Tokens stored hashed in database  
+✅ OAuth migration flow thoughtfully designed  
+✅ Auto-login after recovery improves UX
+
+---
+
+## 4. Business Account Creation Audit ⚠️ PRIMARY PROBLEM AREA
+
+### Flow Analysis
+
+**Complete Business Onboarding Flow:**
+```
+Business signs up via AuthModal
+    ↓
+User record + incomplete Vendor record created
+    ↓
+JWT returned + vendorId
+    ↓
+Redirect to /onboarding/:vendorId
+    ↓
+UnifiedOnboarding.tsx loads
+    ↓
+Fetch vendor data + categories
+    ↓
+5-step form with auto-save
+    ↓
+Complete button triggers PUT /api/vendors/:id/complete
+    ↓
+Backend validates all required fields
+    ↓
+Update vendor (incomplete=false)
+    ↓
+Create Stripe Connect account
+    ↓
+Send success email
+    ↓
+Redirect to vendor dashboard
+```
+
+### 🔴 CRITICAL ISSUES - WHY BUSINESS SIGNUP FAILS
+
+#### 4.1 No Atomic Transaction for Complete Flow
+**Location:** `/api/vendors/:id/complete`  
+**Problem:** Multiple operations that can fail independently
+
+**Failure Points:**
+1. ✅ Vendor validation passes
+2. ❌ Stripe account creation fails (API error, network timeout)
+3. Vendor marked complete=false (inconsistent state)
+4. Business can't complete onboarding again (thinks they're done)
+5. Business can't access features (no Stripe account)
+
+**Critical Scenario:**
+```typescript
+// Current suspected flow
+await db.query('UPDATE vendors SET incomplete = false WHERE id = $1', [vendorId]);
+
+// Stripe fails here
+const stripeAccount = await stripe.accounts.create({...});
+
+// This never executes
+await db.query('UPDATE vendors SET stripe_account_id = $1 WHERE id = $2', [stripeAccount.id, vendorId]);
+```
+
+**Result:** Vendor marked complete but has no Stripe account = BROKEN STATE
+
+**RECOMMENDED FIX:**
+```typescript
+const client = await db.pool.connect();
+
+try {
+  await client.query('BEGIN');
+  
+  // 1. Validate all required fields
+  const vendor = await client.query(
+    'SELECT * FROM vendors WHERE id = $1',
+    [vendorId]
+  );
+  
+  // Check all required fields present
+  const requiredFields = [
+    'business_name', 'business_type', 'category_id', 
+    'contact_email', 'contact_phone', 'address', 
+    'city', 'state', 'zip_code'
+  ];
+  
+  for (const field of requiredFields) {
+    if (!vendor.rows[0][field]) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: `Missing required field: ${field}`,
+        field 
+      });
+    }
+  }
+  
+  // 2. Create Stripe account BEFORE marking complete
+  let stripeAccountId;
+  try {
+    const stripeAccount = await stripe.accounts.create({
+      type: 'express',
+      country: 'US',
+      email: vendor.rows[0].contact_email,
+      business_type: 'company',
+      company: {
+        name: vendor.rows[0].business_name
+      },
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true }
+      }
+    });
+    stripeAccountId = stripeAccount.id;
+  } catch (stripeError) {
+    await client.query('ROLLBACK');
+    console.error('Stripe account creation failed:', stripeError);
+    return res.status(500).json({ 
+      error: 'Failed to set up payment processing. Please try again.',
+      code: 'STRIPE_SETUP_FAILED'
+    });
+  }
+  
+  // 3. Update vendor with Stripe ID and mark complete
+  await client.query(
+    `UPDATE vendors 
+     SET incomplete = false, 
+         stripe_account_id = $1,
+         completed_at = NOW()
+     WHERE id = $2`,
+    [stripeAccountId, vendorId]
+  );
+  
+  await client.query('COMMIT');
+  
+  // 4. Send success email (non-critical, outside transaction)
+  await sendBusinessWelcomeEmail(vendor.rows[0].contact_email);
+  
+  return res.json({ 
+    success: true,
+    vendorId,
+    stripeAccountId 
+  });
+  
+} catch (error) {
+  await client.query('ROLLBACK');
+  console.error('Business onboarding completion failed:', error);
+  return res.status(500).json({ 
+    error: 'Failed to complete onboarding. Please try again.',
+    details: process.env.NODE_ENV === 'development' ? error.message : undefined
+  });
+} finally {
+  client.release();
+}
+```
+
+#### 4.2 Auto-Save Creates Partial Data
+**Location:** `UnifiedOnboarding.tsx` - 2-second debounced auto-save  
+**Problem:** User can navigate away with incomplete data saved
+
+**Risk Scenario:**
+```
+User fills Step 1 → Auto-saves business_name, category ✅
+User fills Step 2 → Auto-saves tagline, social media ✅
+User closes browser ❌
+Vendor record has partial data
+User returns → Sees incomplete profile
+Required fields for Step 3-5 missing
+Complete button disabled or fails
+```
+
+**Recommendation:**
+```typescript
+// Add validation state tracking
+const [stepValidation, setStepValidation] = useState({
+  step1: false,
+  step2: false,
+  step3: false,
+  step4: false,
+  step5: false
+});
+
+// Validate before allowing navigation
+const canProceedToStep = (nextStep: number): boolean => {
+  const currentStep = getCurrentStep();
+  
+  if (nextStep > currentStep) {
+    // Check current step is complete
+    const requiredFields = getRequiredFieldsForStep(currentStep);
+    const allFilled = requiredFields.every(field => formData[field]);
+    
+    if (!allFilled) {
+      toast.error('Please complete all required fields');
+      return false;
+    }
+  }
+  
+  return true;
+};
+
+// Show warning on browser close
+useEffect(() => {
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (!stepValidation.step5) {
+      e.preventDefault();
+      e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    }
+  };
+  
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+}, [stepValidation]);
+```
+
+#### 4.3 No Validation Summary Before Complete
+**Location:** `UnifiedOnboarding.tsx` - Step 5 (Review)  
+**Problem:** User clicks Complete without knowing what's missing
+
+**Current UX Issue:**
+- User fills form across 5 steps
+- Clicks "Complete" button
+- Backend returns 400 "Missing required field: contact_phone"
+- User has to figure out which step has the missing field
+- Frustrating UX = abandoned onboarding
+
+**Recommendation:**
+```typescript
+// Add validation summary in Step 5
+const validateAllSteps = (): ValidationResult => {
+  const errors: Record<string, string[]> = {};
+  
+  // Step 1 validation
+  if (!formData.business_name) errors.step1 = [...(errors.step1 || []), 'Business name required'];
+  if (!formData.category_id) errors.step1 = [...(errors.step1 || []), 'Category required'];
+  if (!formData.contact_email) errors.step1 = [...(errors.step1 || []), 'Email required'];
+  if (!formData.contact_phone) errors.step1 = [...(errors.step1 || []), 'Phone required'];
+  
+  // Step 2 validation
+  if (!formData.tagline) errors.step2 = [...(errors.step2 || []), 'Tagline required'];
+  
+  // Step 3 validation
+  if (!formData.payment_method) errors.step3 = [...(errors.step3 || []), 'Payment method required'];
+  
+  // Step 4 validation
+  if (!formData.hours) errors.step4 = [...(errors.step4 || []), 'Business hours required'];
+  if (!formData.logo_url) errors.step4 = [...(errors.step4 || []), 'Logo required'];
+  
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};
+
+// Show validation summary in UI
+{Object.keys(validationErrors).length > 0 && (
+  <div className="validation-summary">
+    <h3>Please complete the following:</h3>
+    {Object.entries(validationErrors).map(([step, errors]) => (
+      <div key={step}>
+        <button onClick={() => navigateToStep(step)}>
+          Go to {step}
+        </button>
+        <ul>
+          {errors.map(error => <li>{error}</li>)}
+        </ul>
+      </div>
+    ))}
+  </div>
+)}
+```
+
+#### 4.4 Stripe Connect Onboarding Not Completed
+**Location:** After initial account creation  
+**Problem:** Stripe Express account created but onboarding link not provided
+
+**Issue:** Business has Stripe account but can't receive payments until onboarding complete
+
+**Current Flow:**
+```
+Stripe account created ✅
+stripe_account_id saved ✅
+Business redirected to dashboard ✅
+Stripe onboarding NOT initiated ❌
+Business can't receive payments ❌
+```
+
+**Recommendation:**
+```typescript
+// After creating Stripe account in /complete endpoint
+const accountLink = await stripe.accountLinks.create({
+  account: stripeAccountId,
+  refresh_url: `https://riselocal.co/onboarding/${vendorId}/stripe-refresh`,
+  return_url: `https://riselocal.co/dashboard`,
+  type: 'account_onboarding'
+});
+
+return res.json({
+  success: true,
+  vendorId,
+  stripeAccountId,
+  stripeOnboardingUrl: accountLink.url // Frontend redirects here
+});
+
+// Frontend handles redirect
+if (response.stripeOnboardingUrl) {
+  window.location.href = response.stripeOnboardingUrl;
+}
+```
+
+#### 4.5 No Business Onboarding Recovery
+**Location:** Entire onboarding flow  
+**Problem:** If business closes browser mid-onboarding, unclear how to resume
+
+**Scenarios:**
+1. Business signs up, gets to Step 3, closes browser
+2. Returns to app, logs in
+3. Where do they go? Dashboard shows incomplete state?
+4. How do they get back to onboarding?
+
+**Recommendation:**
+```typescript
+// Backend: Check vendor completion status on login
+const vendor = await db.query(
+  'SELECT incomplete, id FROM vendors WHERE user_id = $1',
+  [userId]
+);
+
+if (vendor.rows.length > 0 && vendor.rows[0].incomplete) {
+  return res.json({
+    token,
+    user,
+    needsOnboarding: true,
+    vendorId: vendor.rows[0].id
+  });
+}
+
+// Frontend: Redirect incomplete businesses
+if (loginResponse.needsOnboarding) {
+  navigate(`/onboarding/${loginResponse.vendorId}`);
+}
+
+// Add banner in dashboard for incomplete businesses
+{vendor?.incomplete && (
+  <div className="onboarding-reminder">
+    ⚠️ Complete your business profile to start receiving customers
+    <button onClick={() => navigate(`/onboarding/${vendor.id}`)}>
+      Continue Setup
+    </button>
+  </div>
+)}
+```
+
+### 🟡 Medium Priority Issues
+
+#### 4.6 Auto-Save Network Failures Not Handled
+**Location:** `UnifiedOnboarding.tsx` - auto-save function  
+**Problem:** Network error during auto-save fails silently
+
+**Recommendation:**
+```typescript
+const autoSave = async (data: FormData) => {
+  try {
+    await axios.put(`/api/vendors/${vendorId}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setLastSaved(new Date());
+    setSaveStatus('saved');
+  } catch (error) {
+    setSaveStatus('error');
+    // Retry logic
+    setTimeout(() => autoSave(data), 5000);
+  }
+};
+
+// Show save status in UI
+<div className="save-indicator">
+  {saveStatus === 'saving' && '💾 Saving...'}
+  {saveStatus === 'saved' && '✅ Saved'}
+  {saveStatus === 'error' && '⚠️ Save failed - retrying...'}
+</div>
+```
+
+#### 4.7 Categories Fetched on Every Step Load
+**Location:** `UnifiedOnboarding.tsx` - category selection  
+**Problem:** API call to fetch categories on every component render
+
+**Recommendation:**
+```typescript
+// Cache categories in context or localStorage
+const [categories, setCategories] = useState(() => {
+  const cached = localStorage.getItem('categories');
+  return cached ? JSON.parse(cached) : [];
+});
+
+useEffect(() => {
+  if (categories.length === 0) {
+    fetchCategories().then(data => {
+      setCategories(data);
+      localStorage.setItem('categories', JSON.stringify(data));
+    });
+  }
+}, []);
+```
+
+#### 4.8 Image Upload Validation Missing
+**Location:** `UnifiedOnboarding.tsx` - Step 4 (Hours & Images)  
+**Problem:** No client-side validation for image size, format, dimensions
+
+**Recommendation:**
+```typescript
+const validateImage = (file: File): ValidationResult => {
+  // Check file size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    return { valid: false, error: 'Image must be under 5MB' };
+  }
+  
+  // Check file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    return { valid: false, error: 'Image must be JPEG, PNG, or WebP' };
+  }
+  
+  // Check dimensions (async)
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.width < 200 || img.height < 200) {
+        resolve({ valid: false, error: 'Image must be at least 200x200px' });
+      } else {
+        resolve({ valid: true });
+      }
+    };
+    img.src = URL.createObjectURL(file);
+  });
+};
+```
+
+### 🟢 Working Well
+
+✅ 5-step wizard breaks complex form into manageable chunks  
+✅ Auto-save prevents data loss (when it works)  
+✅ Draft recovery from sessionStorage  
+✅ JWT authentication on all API calls
+
+---
+
+## 5. Cross-Cutting Concerns
+
+### 🔴 Critical
+
+#### 5.1 No Centralized Error Logging
+**Location:** All error handling blocks  
+**Problem:** `console.error()` doesn't capture errors in production
+
+**Recommendation:**
+```typescript
+// Add Sentry or similar
+import * as Sentry from '@sentry/node';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV
+});
+
+// Wrap all endpoints
+app.use(Sentry.Handlers.errorHandler());
+
+// Custom error logger
+export const logError = (error: Error, context: Record<string, any>) => {
+  console.error(error);
+  Sentry.captureException(error, { extra: context });
+};
+```
+
+#### 5.2 No Health Check Endpoint
+**Location:** N/A  
+**Problem:** Can't monitor if auth endpoints are functioning
+
+**Recommendation:**
+```typescript
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database
+    await db.query('SELECT 1');
+    
+    // Check email service
+    const emailHealthy = await checkResendHealth();
+    
+    // Check Stripe
+    const stripeHealthy = await checkStripeHealth();
+    
+    res.json({
+      status: 'healthy',
+      services: {
+        database: 'up',
+        email: emailHealthy ? 'up' : 'down',
+        stripe: stripeHealthy ? 'up' : 'down'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message
+    });
+  }
+});
+```
+
+### 🟡 Medium Priority
+
+#### 5.3 JWT Secret Management
+**Location:** `jwtAuth.ts`  
+**Problem:** Default JWT_SECRET in development could leak to production
+
+**Current Code:**
+```typescript
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
+```
+
+**Recommendation:**
+```typescript
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET must be set in production');
+}
+
+if (!JWT_SECRET) {
+  console.warn('⚠️  Using default JWT secret - DO NOT USE IN PRODUCTION');
+}
+```
+
+#### 5.4 No Request ID Tracking
+**Location:** All API endpoints  
+**Problem:** Can't trace requests across logs
+
+**Recommendation:**
+```typescript
+import { v4 as uuidv4 } from 'uuid';
+
+app.use((req, res, next) => {
+  req.id = uuidv4();
+  res.setHeader('X-Request-ID', req.id);
+  next();
+});
+
+// Use in logs
+console.log(`[${req.id}] Login attempt for ${email}`);
+```
+
+---
+
+## 6. Testing Recommendations
+
+### Critical Test Cases Missing
+
+**Login:**
+- [ ] Test with locked account
+- [ ] Test with unverified email
+- [ ] Test with expired JWT
+- [ ] Test with invalid JWT signature
+
+**Signup:**
+- [ ] Test duplicate email (concurrent requests)
+- [ ] Test business signup with Stripe failure
+- [ ] Test business signup with database failure mid-transaction
+- [ ] Test email verification link expiry
+
+**Password Reset:**
+- [ ] Test token reuse after successful reset
+- [ ] Test expired token
+- [ ] Test invalid token
+- [ ] Test rate limiting
+
+**Business Onboarding:**
+- [ ] Test completing with missing required fields
+- [ ] Test Stripe account creation failure
+- [ ] Test auto-save during network outage
+- [ ] Test browser refresh mid-onboarding
+- [ ] Test returning to incomplete onboarding after logout
+
+---
+
+## 7. Priority Action Plan
+
+### 🔥 FIX IMMEDIATELY (Blocking Business Signups)
+
+1. **Add transaction management to business signup** (4.2)
+   - Wrap user + vendor creation in BEGIN/COMMIT/ROLLBACK
+   - Test rollback on vendor creation failure
+
+2. **Add transaction to onboarding completion** (4.1)
+   - Create Stripe account before marking complete
+   - Roll back if Stripe fails
+   - Add detailed error logging
+
+3. **Add validation summary to Step 5** (4.3)
+   - Show all missing fields before Complete button
+   - Link to steps with errors
+
+4. **Add onboarding recovery flow** (4.5)
+   - Redirect incomplete businesses to onboarding on login
+   - Add banner in dashboard for incomplete profiles
+
+### 📋 FIX THIS WEEK (Security & UX)
+
+5. **Invalidate reset tokens after use** (3.1)
+6. **Add account lockout protection** (1.2)
+7. **Improve error messages** (1.4, 4.3)
+8. **Add Stripe onboarding redirect** (4.4)
+9. **Add error logging service** (5.1)
+
+### 📅 FIX THIS MONTH (Improvements)
+
+10. **Migrate to httpOnly cookies** (1.1)
+11. **Enforce email verification** (2.1)
+12. **Add password changed notification** (3.5)
+13. **Add rate limiting to forgot-password** (3.2)
+14. **Add health check endpoint** (5.2)
+
+---
+
+## 8. Database Schema Recommendations
+
+Based on this audit, your database needs these fields (add if missing):
+
+```sql
+-- Users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+-- Vendors table
+ALTER TABLE vendors ADD COLUMN IF NOT EXISTS stripe_account_id VARCHAR(255);
+ALTER TABLE vendors ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP;
+ALTER TABLE vendors ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE vendors ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+-- Add unique constraints
+ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
+ALTER TABLE vendors ADD CONSTRAINT vendors_stripe_account_unique UNIQUE (stripe_account_id);
+
+-- Add indexes
+CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_vendors_user_id ON vendors (user_id);
+CREATE INDEX IF NOT EXISTS idx_vendors_incomplete ON vendors (incomplete) WHERE incomplete = true;
+
+-- New table for rate limiting
+CREATE TABLE IF NOT EXISTS password_reset_log (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_log_email_time 
+ON password_reset_log (email, created_at);
+```
+
+---
+
+## 9. Monitoring Checklist
+
+After implementing fixes, monitor these metrics:
+
+**Business Signup Success Rate:**
+```sql
+SELECT 
+  COUNT(*) FILTER (WHERE role = 'business') as total_business_signups,
+  COUNT(*) FILTER (WHERE role = 'business' AND id IN (
+    SELECT user_id FROM vendors WHERE incomplete = false
+  )) as completed_onboardings,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE role = 'business' AND id IN (
+    SELECT user_id FROM vendors WHERE incomplete = false
+  )) / NULLIF(COUNT(*) FILTER (WHERE role = 'business'), 0), 2) as completion_rate
+FROM users
+WHERE created_at > NOW() - INTERVAL '30 days';
+```
+
+**Failed Login Attempts:**
+```sql
+SELECT 
+  COUNT(*) as locked_accounts,
+  AVG(failed_login_attempts) as avg_failed_attempts
+FROM users
+WHERE locked_until > NOW()
+OR failed_login_attempts > 0;
+```
+
+**Incomplete Business Profiles:**
+```sql
+SELECT 
+  COUNT(*) as incomplete_profiles,
+  AVG(EXTRACT(EPOCH FROM (NOW() - created_at))/3600) as avg_hours_since_signup
+FROM vendors
+WHERE incomplete = true
+AND created_at > NOW() - INTERVAL '30 days';
+```
+
+---
+
+## 10. Summary & Next Steps
+
+### Critical Findings
+
+Your authentication system is **generally well-structured** with good password security and thoughtful OAuth migration handling. However, **business account creation has several failure points** that explain why signups are failing.
+
+### Root Cause of Business Signup Failures
+
+The primary issue is **lack of atomic transactions** in both initial signup and onboarding completion. When Stripe account creation or vendor record insertion fails, partial state is left in the database, leaving businesses unable to complete signup or access their account.
+
+### Immediate Action Required
+
+1. Add database transactions to `/api/auth/register/business`
+2. Add database transactions to `/api/vendors/:id/complete`  
+3. Create Stripe account INSIDE transaction, not after
+4. Add comprehensive error logging to identify failure patterns
+5. Add validation summary to onboarding Step 5
+
+### Timeline Estimate
+
+- **Critical fixes (business signup):** 4-6 hours
+- **Security improvements:** 8-12 hours  
+- **UX enhancements:** 6-8 hours
+- **Testing:** 4-6 hours
+
+**Total estimated effort:** 2-3 days of focused work
+
+### Testing Your Fixes
+
+After implementing transaction management:
+
+1. Test business signup with Stripe API disabled (mock failure)
+2. Verify user record is rolled back
+3. Test business signup with database write failure
+4. Verify no orphaned records exist
+5. Test successful complete flow end-to-end
+6. Monitor error logs for patterns
+
+---
+
+**Questions or need help implementing any of these fixes? I can provide specific code implementations for any section.**
