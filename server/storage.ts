@@ -44,6 +44,41 @@ export { db };
 
 const SALT_ROUNDS = 12;
 
+// Error types for better error handling
+export class StorageError extends Error {
+  code: string;
+  details?: any;
+  
+  constructor(message: string, code: string, details?: any) {
+    super(message);
+    this.name = 'StorageError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
+// Registration data types
+export interface BusinessRegistrationData {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  passwordHash: string;
+  phone?: string;
+  businessName: string;
+  businessType?: string;
+}
+
+export interface UserRegistrationData {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  passwordHash: string;
+  phone?: string;
+  zipCode?: string;
+}
+
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
@@ -56,6 +91,10 @@ export interface IStorage {
   updateUser(id: string, data: Partial<InsertUser>): Promise<void>;
   deleteUser(id: string): Promise<void>;
   verifyPassword(password: string, hashedPassword: string): Promise<boolean>;
+  
+  // Transactional registration (with rollback on failure)
+  registerBusinessUser(data: BusinessRegistrationData, verificationToken: string, verificationExpiry: Date): Promise<{ user: User; verificationTokenId: string }>;
+  registerCustomerUser(data: UserRegistrationData, verificationToken: string, verificationExpiry: Date): Promise<{ user: User; verificationTokenId: string }>;
 
   // Vendor operations
   getVendor(id: string): Promise<Vendor | undefined>;
@@ -420,6 +459,123 @@ export class DbStorage implements IStorage {
 
   async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
     return await bcrypt.compare(password, hashedPassword);
+  }
+
+  // Transactional business registration with manual rollback on failure
+  async registerBusinessUser(
+    data: BusinessRegistrationData, 
+    verificationToken: string, 
+    verificationExpiry: Date
+  ): Promise<{ user: User; verificationTokenId: string }> {
+    let createdUserId: string | null = null;
+    
+    try {
+      // Step 1: Create user with all fields in a single insert (atomic)
+      const [user] = await db.insert(users).values({
+        id: data.id,
+        email: data.email.toLowerCase().trim(),
+        firstName: data.firstName,
+        lastName: data.lastName,
+        password: data.passwordHash,
+        phone: data.phone,
+        role: "vendor",
+        accountType: "business",
+        isVendor: true,
+        isAdmin: false,
+        emailVerified: false,
+        onboardingComplete: false,
+        welcomeCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).returning();
+      
+      createdUserId = user.id;
+      
+      // Step 2: Create verification token
+      const [tokenRecord] = await db.insert(verificationTokens).values({
+        userId: user.id,
+        token: verificationToken,
+        expiresAt: verificationExpiry,
+      }).returning();
+      
+      return { user, verificationTokenId: tokenRecord.id };
+      
+    } catch (error: any) {
+      // Rollback: Delete user if it was created
+      if (createdUserId) {
+        console.error(`[Storage] Rolling back user creation for ${createdUserId}`);
+        try {
+          await db.delete(users).where(eq(users.id, createdUserId));
+        } catch (rollbackError) {
+          console.error(`[Storage] Rollback failed:`, rollbackError);
+        }
+      }
+      
+      // Re-throw with specific error code
+      if (error.code === '23505') {
+        throw new StorageError('Email already exists', 'EMAIL_EXISTS', { email: data.email });
+      }
+      throw new StorageError('Failed to create business account', 'REGISTRATION_FAILED', { originalError: error.message });
+    }
+  }
+
+  // Transactional customer registration with manual rollback on failure
+  async registerCustomerUser(
+    data: UserRegistrationData, 
+    verificationToken: string, 
+    verificationExpiry: Date
+  ): Promise<{ user: User; verificationTokenId: string }> {
+    let createdUserId: string | null = null;
+    
+    try {
+      // Step 1: Create user with all fields in a single insert (atomic)
+      const [user] = await db.insert(users).values({
+        id: data.id,
+        email: data.email.toLowerCase().trim(),
+        firstName: data.firstName,
+        lastName: data.lastName,
+        password: data.passwordHash,
+        phone: data.phone,
+        zipCode: data.zipCode,
+        role: "buyer",
+        accountType: "user",
+        isVendor: false,
+        isAdmin: false,
+        emailVerified: false,
+        onboardingComplete: true, // Customers don't need onboarding
+        welcomeCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).returning();
+      
+      createdUserId = user.id;
+      
+      // Step 2: Create verification token
+      const [tokenRecord] = await db.insert(verificationTokens).values({
+        userId: user.id,
+        token: verificationToken,
+        expiresAt: verificationExpiry,
+      }).returning();
+      
+      return { user, verificationTokenId: tokenRecord.id };
+      
+    } catch (error: any) {
+      // Rollback: Delete user if it was created
+      if (createdUserId) {
+        console.error(`[Storage] Rolling back user creation for ${createdUserId}`);
+        try {
+          await db.delete(users).where(eq(users.id, createdUserId));
+        } catch (rollbackError) {
+          console.error(`[Storage] Rollback failed:`, rollbackError);
+        }
+      }
+      
+      // Re-throw with specific error code
+      if (error.code === '23505') {
+        throw new StorageError('Email already exists', 'EMAIL_EXISTS', { email: data.email });
+      }
+      throw new StorageError('Failed to create account', 'REGISTRATION_FAILED', { originalError: error.message });
+    }
   }
 
   // Vendor operations

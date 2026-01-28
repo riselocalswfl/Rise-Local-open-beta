@@ -1,10 +1,25 @@
 import type { Express, Request, Response, NextFunction, RequestHandler } from "express";
-import { storage } from "./storage";
+import { storage, StorageError } from "./storage";
 import { generateToken, verifyToken, extractBearerToken } from "./jwtAuth";
 import { sendPasswordResetEmail, sendAccountRecoveryEmail, sendWelcomeEmail, sendPasswordChangedEmail } from "./emailService";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { z } from "zod";
+
+// Error codes for client-side handling
+export const AUTH_ERROR_CODES = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  EMAIL_EXISTS: 'EMAIL_EXISTS',
+  REGISTRATION_FAILED: 'REGISTRATION_FAILED',
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
+  NEEDS_RECOVERY: 'NEEDS_RECOVERY',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  TOKEN_INVALID: 'TOKEN_INVALID',
+  RATE_LIMITED: 'RATE_LIMITED',
+  SERVER_ERROR: 'SERVER_ERROR',
+  DATABASE_ERROR: 'DATABASE_ERROR',
+} as const;
 
 const SALT_ROUNDS = 12;
 const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
@@ -73,46 +88,31 @@ export async function setupCustomAuth(app: Express) {
     try {
       const validatedData = registerUserSchema.parse(req.body);
       
+      // Check for existing user first
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(400).json({ 
           message: "An account with this email already exists",
+          code: AUTH_ERROR_CODES.EMAIL_EXISTS,
           field: "email"
         });
       }
 
       const passwordHash = await bcrypt.hash(validatedData.password, SALT_ROUNDS);
+      const verificationToken = generateSecureToken();
+      const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
       
-      const user = await storage.upsertUser({
+      // Use transactional registration - all steps succeed or all fail
+      const { user } = await storage.registerCustomerUser({
         id: crypto.randomUUID(),
         email: validatedData.email,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
-      });
-
-      await storage.updateUser(user.id, {
-        password: passwordHash,
+        passwordHash,
         phone: validatedData.phone,
         zipCode: validatedData.zipCode,
-        role: "buyer",
-        accountType: "user",
-        isVendor: false,
-        isAdmin: false,
-        emailVerified: false,
-        onboardingComplete: true,
-        welcomeCompleted: false,
-      });
+      }, verificationToken, expiresAt);
 
-      const verificationToken = generateSecureToken();
-      const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
-      
-      await storage.createVerificationToken({
-        userId: user.id,
-        token: verificationToken,
-        expiresAt,
-      });
-
-      // In production, send verification email here instead of logging
       console.log(`[Custom Auth] User registered: ${user.email}`);
 
       const token = generateToken(user.id);
@@ -136,11 +136,29 @@ export async function setupCustomAuth(app: Express) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error",
+          code: AUTH_ERROR_CODES.VALIDATION_ERROR,
           errors: error.errors 
         });
       }
+      if (error instanceof StorageError) {
+        console.error(`[Custom Auth] Register user storage error: ${error.code}`, error.message);
+        if (error.code === 'EMAIL_EXISTS') {
+          return res.status(400).json({ 
+            message: "An account with this email already exists",
+            code: AUTH_ERROR_CODES.EMAIL_EXISTS,
+            field: "email"
+          });
+        }
+        return res.status(500).json({ 
+          message: "Failed to create account. Please try again.",
+          code: AUTH_ERROR_CODES.REGISTRATION_FAILED
+        });
+      }
       console.error("[Custom Auth] Register user error:", error);
-      res.status(500).json({ message: "Something went wrong. Please try again." });
+      res.status(500).json({ 
+        message: "Something went wrong. Please try again.",
+        code: AUTH_ERROR_CODES.SERVER_ERROR
+      });
     }
   });
 
@@ -148,45 +166,32 @@ export async function setupCustomAuth(app: Express) {
     try {
       const validatedData = registerBusinessSchema.parse(req.body);
       
+      // Check for existing user first
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(400).json({ 
           message: "An account with this email already exists",
+          code: AUTH_ERROR_CODES.EMAIL_EXISTS,
           field: "email"
         });
       }
 
       const passwordHash = await bcrypt.hash(validatedData.password, SALT_ROUNDS);
+      const verificationToken = generateSecureToken();
+      const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
       
-      const user = await storage.upsertUser({
+      // Use transactional registration - all steps succeed or all fail
+      const { user } = await storage.registerBusinessUser({
         id: crypto.randomUUID(),
         email: validatedData.email,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
-      });
-
-      await storage.updateUser(user.id, {
-        password: passwordHash,
+        passwordHash,
         phone: validatedData.phone,
-        role: "vendor",
-        accountType: "business",
-        isVendor: true,
-        isAdmin: false,
-        emailVerified: false,
-        onboardingComplete: false,
-        welcomeCompleted: false,
-      });
+        businessName: validatedData.businessName,
+        businessType: validatedData.businessType,
+      }, verificationToken, expiresAt);
 
-      const verificationToken = generateSecureToken();
-      const expiresAt = new Date(Date.now() + VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
-      
-      await storage.createVerificationToken({
-        userId: user.id,
-        token: verificationToken,
-        expiresAt,
-      });
-
-      // In production, send verification email here instead of logging
       console.log(`[Custom Auth] Business user registered: ${user.email}`);
 
       const token = generateToken(user.id);
@@ -213,11 +218,29 @@ export async function setupCustomAuth(app: Express) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error",
+          code: AUTH_ERROR_CODES.VALIDATION_ERROR,
           errors: error.errors 
         });
       }
+      if (error instanceof StorageError) {
+        console.error(`[Custom Auth] Register business storage error: ${error.code}`, error.message);
+        if (error.code === 'EMAIL_EXISTS') {
+          return res.status(400).json({ 
+            message: "An account with this email already exists",
+            code: AUTH_ERROR_CODES.EMAIL_EXISTS,
+            field: "email"
+          });
+        }
+        return res.status(500).json({ 
+          message: "Failed to create business account. Please try again.",
+          code: AUTH_ERROR_CODES.REGISTRATION_FAILED
+        });
+      }
       console.error("[Custom Auth] Register business error:", error);
-      res.status(500).json({ message: "Something went wrong. Please try again." });
+      res.status(500).json({ 
+        message: "Something went wrong. Please try again.",
+        code: AUTH_ERROR_CODES.SERVER_ERROR
+      });
     }
   });
 
@@ -339,11 +362,15 @@ export async function setupCustomAuth(app: Express) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error",
+          code: AUTH_ERROR_CODES.VALIDATION_ERROR,
           errors: error.errors 
         });
       }
       console.error("[Custom Auth] Login error:", error);
-      res.status(500).json({ message: "Something went wrong. Please try again." });
+      res.status(500).json({ 
+        message: "Something went wrong. Please try again.",
+        code: AUTH_ERROR_CODES.SERVER_ERROR
+      });
     }
   });
 
@@ -354,7 +381,16 @@ export async function setupCustomAuth(app: Express) {
       const verificationToken = await storage.getVerificationToken(validatedData.token);
       if (!verificationToken) {
         return res.status(400).json({ 
-          message: "Invalid or expired verification link. Please request a new one." 
+          message: "Invalid or expired verification link. Please request a new one.",
+          code: AUTH_ERROR_CODES.TOKEN_INVALID
+        });
+      }
+
+      // Check if token is expired
+      if (new Date() > verificationToken.expiresAt) {
+        return res.status(400).json({ 
+          message: "This verification link has expired. Please request a new one.",
+          code: AUTH_ERROR_CODES.TOKEN_EXPIRED
         });
       }
 
@@ -364,17 +400,22 @@ export async function setupCustomAuth(app: Express) {
       console.log(`[Custom Auth] Email verified for user: ${verificationToken.userId}`);
 
       res.json({ 
-        message: "Email verified successfully. You can now access all features." 
+        message: "Email verified successfully. You can now access all features.",
+        success: true
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error",
+          code: AUTH_ERROR_CODES.VALIDATION_ERROR,
           errors: error.errors 
         });
       }
       console.error("[Custom Auth] Verify email error:", error);
-      res.status(500).json({ message: "Something went wrong. Please try again." });
+      res.status(500).json({ 
+        message: "Something went wrong. Please try again.",
+        code: AUTH_ERROR_CODES.SERVER_ERROR
+      });
     }
   });
 
@@ -477,17 +518,22 @@ export async function setupCustomAuth(app: Express) {
       }
 
       res.json({ 
-        message: "If an account with that email exists, we've sent password reset instructions." 
+        message: "If an account with that email exists, we've sent password reset instructions.",
+        success: true
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error",
+          code: AUTH_ERROR_CODES.VALIDATION_ERROR,
           errors: error.errors 
         });
       }
       console.error("[Custom Auth] Forgot password error:", error);
-      res.status(500).json({ message: "Something went wrong. Please try again." });
+      res.status(500).json({ 
+        message: "Something went wrong. Please try again.",
+        code: AUTH_ERROR_CODES.SERVER_ERROR
+      });
     }
   });
 
@@ -498,7 +544,16 @@ export async function setupCustomAuth(app: Express) {
       const resetToken = await storage.getPasswordResetToken(validatedData.token);
       if (!resetToken) {
         return res.status(400).json({ 
-          message: "Invalid or expired reset link. Please request a new one." 
+          message: "Invalid or expired reset link. Please request a new one.",
+          code: AUTH_ERROR_CODES.TOKEN_INVALID
+        });
+      }
+      
+      // Check if token is expired
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ 
+          message: "This reset link has expired. Please request a new one.",
+          code: AUTH_ERROR_CODES.TOKEN_EXPIRED
         });
       }
 
@@ -524,17 +579,22 @@ export async function setupCustomAuth(app: Express) {
       }
 
       res.json({ 
-        message: "Password reset successfully. You can now log in with your new password." 
+        message: "Password reset successfully. You can now log in with your new password.",
+        success: true
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Validation error",
+          code: AUTH_ERROR_CODES.VALIDATION_ERROR,
           errors: error.errors 
         });
       }
       console.error("[Custom Auth] Reset password error:", error);
-      res.status(500).json({ message: "Something went wrong. Please try again." });
+      res.status(500).json({ 
+        message: "Something went wrong. Please try again.",
+        code: AUTH_ERROR_CODES.SERVER_ERROR
+      });
     }
   });
 
