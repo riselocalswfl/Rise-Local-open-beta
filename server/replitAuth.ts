@@ -7,62 +7,10 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
-import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
-
-// SECURITY: Rate limiters to prevent brute force and abuse
-// Auth rate limiter: 10 requests per 15 minutes per IP
-const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per window
-  message: { error: "Too many authentication attempts. Please try again later." },
-  standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false,
-  handler: (req, res) => {
-    console.warn(`[SECURITY] Auth rate limit exceeded for IP: ${req.ip}`);
-    res.status(429).json({ error: "Too many authentication attempts. Please try again in 15 minutes." });
-  },
-});
-
-// Callback rate limiter: 20 requests per 15 minutes (slightly higher for legitimate OIDC flow)
-const callbackRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { error: "Too many requests. Please try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
-}
-
-// SECURITY: Validate returnTo URLs to prevent open redirect attacks
-// Only allows relative paths or URLs matching allowed domains
-function isValidReturnTo(url: string | undefined): boolean {
-  if (!url) return false;
-
-  // Only allow relative paths that start with / but not //
-  // This prevents protocol-relative URLs like //evil.com
-  if (url.startsWith('/') && !url.startsWith('//')) {
-    // Additional check: no backslash tricks like /\evil.com
-    if (url.includes('\\')) return false;
-    // No @ symbols that could be used for URL confusion
-    if (url.includes('@')) return false;
-    return true;
-  }
-
-  // If it's an absolute URL, validate against allowed domains
-  try {
-    const parsed = new URL(url);
-    const allowedDomains = process.env.REPLIT_DOMAINS!.split(',');
-    return allowedDomains.some(domain =>
-      parsed.hostname === domain ||
-      parsed.hostname.endsWith('.' + domain)
-    );
-  } catch {
-    return false;
-  }
 }
 
 const getOidcConfig = memoize(
@@ -93,7 +41,6 @@ export function getSession() {
       httpOnly: true,
       secure: true,
       maxAge: sessionTtl,
-      sameSite: 'lax', // SECURITY: Prevents CSRF attacks while allowing normal navigation
     },
   });
 }
@@ -155,8 +102,7 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  // SECURITY: Rate limit login attempts to prevent brute force
-  app.get("/api/login", authRateLimiter, (req, res, next) => {
+  app.get("/api/login", (req, res, next) => {
     // Store the intended role and returnTo URL in both session and cookie for reliability across OIDC redirects
     const intendedRole = req.query.intended_role as string;
     const returnTo = req.query.returnTo as string;
@@ -175,8 +121,8 @@ export async function setupAuth(app: Express) {
       console.log("[AUTH] Stored intended_role in session and cookie:", intendedRole);
     }
     
-    // SECURITY: Only store returnTo URL if it passes validation (prevents open redirect attacks)
-    if (returnTo && isValidReturnTo(returnTo)) {
+    // Store returnTo URL if provided
+    if (returnTo) {
       (req.session as any).returnTo = returnTo;
       res.cookie("return_to", returnTo, {
         maxAge: 5 * 60 * 1000,
@@ -184,9 +130,7 @@ export async function setupAuth(app: Express) {
         secure: true,
         sameSite: "lax"
       });
-      console.log("[AUTH] Stored validated returnTo in session and cookie:", returnTo);
-    } else if (returnTo) {
-      console.warn("[AUTH] Rejected invalid returnTo URL (potential open redirect):", returnTo);
+      console.log("[AUTH] Stored returnTo in session and cookie:", returnTo);
     }
     
     // Save session before redirect to ensure it persists across OIDC flow
@@ -202,8 +146,7 @@ export async function setupAuth(app: Express) {
     });
   });
 
-  // SECURITY: Rate limit callback requests
-  app.get("/api/callback", callbackRateLimiter, (req, res, next) => {
+  app.get("/api/callback", (req, res, next) => {
     try {
       const strategyName = `replitauth:${req.hostname}`;
       console.log("[AUTH CALLBACK] Starting callback for hostname:", req.hostname);
@@ -340,33 +283,23 @@ export async function setupAuth(app: Express) {
             console.log("[AUTH] Fallback: refetched user role:", userRole);
           }
           
-          // SECURITY: If returnTo is provided, validate it again before using (defense in depth)
-          if (returnTo && isValidReturnTo(returnTo)) {
+          // If returnTo is provided, use it; otherwise redirect based on onboarding status
+          if (returnTo) {
             redirectUrl = returnTo;
             // Clear the returnTo from session and cookie
             delete (req.session as any).returnTo;
             res.clearCookie("return_to");
-            console.log("[AUTH] Redirecting to validated returnTo URL:", redirectUrl);
-          } else if (returnTo) {
-            // Invalid returnTo - log and ignore it
-            console.warn("[AUTH] Rejected invalid returnTo URL in callback (potential attack):", returnTo);
-            delete (req.session as any).returnTo;
-            res.clearCookie("return_to");
-          }
-
-          // If no valid returnTo, determine redirect based on onboarding status
-          if (!returnTo || !isValidReturnTo(returnTo)) {
-            if ((req.session as any).needsOnboarding) {
-              // New vendor needs onboarding - redirectUrl already set to /onboarding
-              console.log("[AUTH] New vendor redirecting to onboarding");
-            } else {
-              // Redirect all users to /start gate which handles:
-              // - welcomeCompleted check (routes to /welcome if not completed)
-              // - onboardingComplete check (routes to /onboarding for vendors)
-              // - Role-based routing (discover for buyers, dashboard for vendors)
-              redirectUrl = "/start";
-              console.log("[AUTH] Redirecting to /start gate for welcome/onboarding checks");
-            }
+            console.log("[AUTH] Redirecting to returnTo URL:", redirectUrl);
+          } else if ((req.session as any).needsOnboarding) {
+            // New vendor needs onboarding - redirectUrl already set to /onboarding
+            console.log("[AUTH] New vendor redirecting to onboarding");
+          } else {
+            // Redirect all users to /start gate which handles:
+            // - welcomeCompleted check (routes to /welcome if not completed)
+            // - onboardingComplete check (routes to /onboarding for vendors)
+            // - Role-based routing (discover for buyers, dashboard for vendors)
+            redirectUrl = "/start";
+            console.log("[AUTH] Redirecting to /start gate for welcome/onboarding checks");
           }
         } catch (error) {
           console.error("Failed to process user role:", error);
