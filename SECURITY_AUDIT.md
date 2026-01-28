@@ -1,8 +1,16 @@
 # Rise Local Backend Security Audit Report
 
 **Audit Date:** January 28, 2026
+**Fixes Applied:** January 28, 2026
 **Scope:** Login/Signup Workflows, Session Management, Admin Functions, Critical Backend Routes
 **Auditor:** Claude Code Security Review
+
+---
+
+## Status: FIXES APPLIED
+
+All critical and high-priority vulnerabilities identified in this audit have been remediated.
+See commit `05c4e3a` for the security fixes.
 
 ---
 
@@ -406,35 +414,36 @@ The admin `/api/users` endpoint returns Stripe subscription IDs which could be u
 
 ## 7. Recommendations Summary
 
-### Critical Priority (Fix Immediately)
+### Critical Priority - FIXED ✅
+
+| Issue | Location | Status |
+|-------|----------|--------|
+| AUTHZ-1 | `routes.ts:4653` | ✅ FIXED - Added `isAuthenticated` + admin check |
+| AUTHZ-2 | `routes.ts:4663` | ✅ FIXED - Added `isAuthenticated` + admin check |
+| AUTHZ-3 | `routes.ts:4621` | ✅ FIXED - Added `isAuthenticated` + admin check to POST /api/users |
+| API-1 | Global | ✅ FIXED - Added rate limiting (10 req/15min login, 20 req/15min callback) |
+
+### High Priority - FIXED ✅
+
+| Issue | Location | Status |
+|-------|----------|--------|
+| AUTH-1 | `replitAuth.ts:125` | ✅ FIXED - Added `isValidReturnTo()` validation |
+| AUTHZ-5 | `routes.ts:4554` | ✅ FIXED - Removed client control, always starts unverified |
+| AUTHZ-4 | `routes.ts:203` | ✅ FIXED - Returns only id, name, profileImageUrl, isVendor |
+
+### Medium Priority - FIXED ✅
+
+| Issue | Location | Status |
+|-------|----------|--------|
+| SESS-1 | `replitAuth.ts:40` | ✅ FIXED - Added `sameSite: 'lax'` |
+
+### Remaining Items (Lower Priority)
 
 | Issue | Location | Recommendation |
 |-------|----------|----------------|
-| AUTHZ-1 | `routes.ts:4653` | Add `isAuthenticated` + ownership check to PATCH /api/users/:id |
-| AUTHZ-2 | `routes.ts:4663` | Add `isAuthenticated` + admin check to DELETE /api/users/:id |
-| API-1 | Global | Implement rate limiting on auth endpoints |
-
-### High Priority (Fix This Sprint)
-
-| Issue | Location | Recommendation |
-|-------|----------|----------------|
-| AUTH-1 | `replitAuth.ts:125` | Validate returnTo URL before storing/redirecting |
-| AUTHZ-5 | `routes.ts:4554` | Remove client control over isVerified/isFoundingMember |
-| AUTHZ-4 | `routes.ts:203` | Use strict allowlist for public user fields |
-
-### Medium Priority (Fix Next Sprint)
-
-| Issue | Location | Recommendation |
-|-------|----------|----------------|
-| SESS-1 | `replitAuth.ts:40` | Add `sameSite: 'lax'` to session cookie |
 | API-2 | Global | Configure CORS properly |
 | ADMIN-1 | `routes.ts:1632` | Review API key authentication pattern |
 | DATA-1 | `routes.ts:3006` | Sanitize PII from logs |
-
-### Low Priority (Technical Debt)
-
-| Issue | Location | Recommendation |
-|-------|----------|----------------|
 | AUTH-2 | `replitAuth.ts:181` | Remove cookie fallback for intended_role |
 | SESS-2 | `replitAuth.ts:48` | Consider encrypting tokens in session |
 
