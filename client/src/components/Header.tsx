@@ -76,7 +76,10 @@ export default function Header() {
                 <BrandButton 
                   size="sm" 
                   data-testid="button-logout"
-                  onClick={() => { localStorage.removeItem("auth_token"); window.location.href = '/api/logout'; }}
+                  onClick={async () => { 
+                    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); 
+                    window.location.href = '/auth'; 
+                  }}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out

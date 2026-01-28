@@ -172,7 +172,7 @@ export default function AuthModal({
       return response.json();
     },
     onSuccess: (data) => {
-      localStorage.setItem("auth_token", data.token);
+      // Auth token is now set via httpOnly cookie by the server
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
       if (accountType === "business") {
@@ -215,7 +215,7 @@ export default function AuthModal({
         return;
       }
       
-      localStorage.setItem("auth_token", data.token);
+      // Auth token is now set via httpOnly cookie by the server
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({ title: "Welcome back!" });
       onNavigate?.("/start");

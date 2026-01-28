@@ -78,12 +78,11 @@ export default function NavMenu() {
     setOpen(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setOpen(false);
-    // Clear JWT token from localStorage
-    localStorage.removeItem("auth_token");
-    // Clear session on server and redirect to auth
-    window.location.href = "/api/logout";
+    // Clear auth cookie on server and redirect to auth
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    window.location.href = "/auth";
   };
 
   // Determine which navigation items to show based on user role

@@ -8,14 +8,8 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-function getAuthHeaders(): HeadersInit {
-  const headers: HeadersInit = {};
-  const token = localStorage.getItem("auth_token");
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
-}
+// Auth is now handled via httpOnly cookies - no localStorage needed
+// Cookies are automatically sent with credentials: "include"
 
 export async function apiRequest(
   method: string,
@@ -23,7 +17,6 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const headers: HeadersInit = {
-    ...getAuthHeaders(),
     ...(data ? { "Content-Type": "application/json" } : {}),
   };
   
@@ -31,7 +24,7 @@ export async function apiRequest(
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    credentials: "include", // Send cookies automatically
   });
 
   await throwIfResNotOk(res);
@@ -45,9 +38,8 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
+      credentials: "include", // Send cookies automatically
       cache: "no-store", // Prevent 304 responses from CDN/cache
-      headers: getAuthHeaders(),
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

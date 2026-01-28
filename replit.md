@@ -54,10 +54,12 @@ The frontend is built using React 18, TypeScript, and Vite, leveraging Radix UI,
 - **Rate Limiting**: Tiered rate limits - general (1000/15min), auth (10/15min), password reset (3/hour)
 - **Response Compression**: gzip/deflate for reduced bandwidth
 - **Password Security**: bcrypt with 12 salt rounds, account lockout after 5 failed attempts
-- **Session Security**: JWT tokens expire after 7 days, POST /api/auth/logout endpoint for custom auth
+- **Session Security**: JWT tokens stored in httpOnly cookies (XSS-safe), expire after 7 days, sameSite: lax, secure in production. POST /api/auth/logout clears cookie.
 - **XSS Prevention**: Defense-in-depth input sanitization with strict protocol whitelist (http/https/mailto/tel only)
+  - JWT token storage migrated from localStorage to httpOnly cookies for complete XSS protection
   - Client-side: `sanitizeUrl()` and `sanitizeText()` utilities in `client/src/lib/utils.ts`
   - Server-side: `sanitizeObject()` in `server/sanitize.ts` applied at storage layer for vendor/deal operations
+- **Transactional Registration**: User registration uses saga pattern with manual rollback to prevent partial account creation failures
 - **Environment Validation**: Startup validation of required environment variables (JWT_SECRET min 32 chars, DATABASE_URL required)
 - **Production Error Handling**: Stack traces hidden in production, sanitized error messages
 - **Health Check**: GET /api/health returns status, uptime, version, environment

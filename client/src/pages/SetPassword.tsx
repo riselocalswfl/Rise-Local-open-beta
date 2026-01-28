@@ -82,10 +82,7 @@ export default function SetPassword() {
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.token) {
-        localStorage.setItem("auth_token", data.token);
-      }
-      
+      // Auth token is now set via httpOnly cookie by the server
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
       toast({

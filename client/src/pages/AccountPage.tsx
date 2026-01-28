@@ -100,11 +100,10 @@ export default function AccountPage({ tab = "profile" }: AccountPageProps) {
     setLocation(`/account/${newTab}`);
   };
 
-  const handleLogout = () => {
-    // Clear JWT token from localStorage
-    localStorage.removeItem("auth_token");
-    // Clear session on server and redirect to auth
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    // Clear auth cookie on server and redirect to auth
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    window.location.href = "/auth";
   };
 
   if (userLoading) {

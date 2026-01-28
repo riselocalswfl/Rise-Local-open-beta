@@ -169,17 +169,10 @@ export default function UnifiedOnboarding() {
   // Vendor completion mutation with centralized cache invalidation
   const completeMutation = useMutation({
     mutationFn: async (vendorId: string) => {
-      // Include JWT token for authentication
-      const token = localStorage.getItem("auth_token");
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      
+      // Auth is handled via httpOnly cookies with credentials: "include"
       const response = await fetch(`/api/vendors/${vendorId}/complete`, {
         method: "POST",
         credentials: "include",
-        headers,
       });
       if (!response.ok) {
         const error = await response.text();
@@ -393,16 +386,9 @@ export default function UnifiedOnboarding() {
 
     const loadDraft = async () => {
       try {
-        // Include JWT token for authentication
-        const token = localStorage.getItem("auth_token");
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-        
+        // Auth is handled via httpOnly cookies with credentials: "include"
         const response = await fetch("/api/vendors/draft", {
           credentials: "include",
-          headers,
         });
         
         if (!response.ok) {
@@ -509,19 +495,11 @@ export default function UnifiedOnboarding() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     
-    // Include JWT token from localStorage
-    const token = localStorage.getItem("auth_token");
-    const headers: Record<string, string> = {
-      ...(options.headers as Record<string, string> || {}),
-    };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    
+    // Auth is handled via httpOnly cookies with credentials: "include"
     try {
       const response = await fetch(url, {
         ...options,
-        headers,
+        credentials: "include",
         signal: controller.signal,
       });
       clearTimeout(timeoutId);

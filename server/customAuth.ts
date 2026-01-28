@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction, RequestHandler } from "express";
 import { storage, StorageError } from "./storage";
-import { generateToken, verifyToken, extractBearerToken } from "./jwtAuth";
+import { generateToken, verifyToken, extractBearerToken, setAuthCookie, clearAuthCookie } from "./jwtAuth";
 import { sendPasswordResetEmail, sendAccountRecoveryEmail, sendWelcomeEmail, sendPasswordChangedEmail } from "./emailService";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
@@ -116,10 +116,12 @@ export async function setupCustomAuth(app: Express) {
       console.log(`[Custom Auth] User registered: ${user.email}`);
 
       const token = generateToken(user.id);
+      
+      // Set httpOnly cookie for secure token storage
+      setAuthCookie(res, token);
 
       res.status(201).json({
         message: "Account created successfully. Please verify your email.",
-        token,
         user: {
           id: user.id,
           email: user.email,
@@ -195,10 +197,12 @@ export async function setupCustomAuth(app: Express) {
       console.log(`[Custom Auth] Business user registered: ${user.email}`);
 
       const token = generateToken(user.id);
+      
+      // Set httpOnly cookie for secure token storage
+      setAuthCookie(res, token);
 
       res.status(201).json({
         message: "Business account created successfully. Please verify your email.",
-        token,
         user: {
           id: user.id,
           email: user.email,
@@ -330,12 +334,14 @@ export async function setupCustomAuth(app: Express) {
       await storage.updateLastLogin(user.id);
 
       const token = generateToken(user.id);
+      
+      // Set httpOnly cookie for secure token storage
+      setAuthCookie(res, token);
 
       // Note: Email verification is encouraged but not required for login
       // Certain features may be restricted for unverified accounts
       const response: any = {
         message: "Login successful",
-        token,
         user: {
           id: user.id,
           email: user.email,
@@ -717,11 +723,13 @@ export async function setupCustomAuth(app: Express) {
 
       // Generate JWT token for auto-login
       const jwtToken = generateToken(userId);
+      
+      // Set httpOnly cookie for secure token storage
+      setAuthCookie(res, jwtToken);
 
       res.json({
         success: true,
         message: "Password successfully created",
-        token: jwtToken,
         user: {
           id: user.id,
           email: user.email,
@@ -861,11 +869,13 @@ export async function setupCustomAuth(app: Express) {
 
       // Generate JWT for auto-login
       const jwtToken = generateToken(user.id);
+      
+      // Set httpOnly cookie for secure token storage
+      setAuthCookie(res, jwtToken);
 
       res.json({
         success: true,
         message: `Welcome back, ${user.firstName || 'User'}! Your account has been recovered.`,
-        token: jwtToken,
         user: {
           id: user.id,
           email: user.email,
@@ -885,10 +895,7 @@ export async function setupCustomAuth(app: Express) {
   // Logout endpoint for custom auth
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
     try {
-      // Clear any session cookies that might exist
-      res.clearCookie('connect.sid');
-      
-      // Log the logout (token extraction is optional - client already removed it)
+      // Log the logout before clearing cookies
       const token = extractBearerToken(req);
       if (token) {
         const payload = verifyToken(token);
@@ -898,6 +905,12 @@ export async function setupCustomAuth(app: Express) {
           await storage.updateLastLogin(payload.sub).catch(() => {});
         }
       }
+      
+      // Clear the auth cookie (primary method)
+      clearAuthCookie(res);
+      
+      // Clear any legacy session cookies that might exist
+      res.clearCookie('connect.sid');
       
       res.json({ success: true, message: "Logged out successfully" });
     } catch (error) {
