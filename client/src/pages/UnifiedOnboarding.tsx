@@ -517,6 +517,21 @@ export default function UnifiedOnboarding() {
   const autoSave = useCallback(async (data: any, formType: 'step1' | 'step2' | 'step3' | 'step4') => {
     if (isInitialLoadRef.current) return;
 
+    // Early return if we can't save yet (no draft and missing required fields for draft creation)
+    // This prevents showing "Saving..." when we can't actually save
+    if (!draftVendorId) {
+      if (formType !== 'step1') {
+        // Can't update other steps without a draft
+        console.log("[Auto-save] No draft ID yet, skipping non-step1 save");
+        return;
+      }
+      if (!data.vendorType || !data.businessName || data.businessName.trim() === '') {
+        // Can't create draft without vendorType and businessName
+        console.log("[Auto-save] Missing required fields for draft creation, skipping");
+        return;
+      }
+    }
+
     try {
       setSaveStatus("saving");
       console.log("[Auto-save] Starting save for", formType, "with vendor ID:", draftVendorId);
