@@ -153,6 +153,7 @@ export default function UnifiedOnboarding() {
   });
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
   // Helper function to update draftVendorId with sessionStorage persistence
@@ -541,11 +542,15 @@ export default function UnifiedOnboarding() {
       if (formType !== 'step1') {
         // Can't update other steps without a draft
         console.log("[Auto-save] No draft ID yet, skipping non-step1 save");
+        // Clear any pending retries since we're not attempting a save
+        sessionStorage.removeItem(`autoSaveRetry_${formType}`);
         return;
       }
       if (!data.vendorType || !data.businessName || data.businessName.trim() === '') {
         // Can't create draft without vendorType and businessName
         console.log("[Auto-save] Missing required fields for draft creation, skipping");
+        // Clear any pending retries since we're not attempting a save
+        sessionStorage.removeItem(`autoSaveRetry_${formType}`);
         return;
       }
     }
@@ -580,6 +585,8 @@ export default function UnifiedOnboarding() {
           
           // Handle 401 authentication errors - silently redirect to auth
           if (createResponse.status === 401) {
+            // Clear retry counter since we're redirecting away
+            sessionStorage.removeItem(`autoSaveRetry_${formType}`);
             sessionStorage.setItem("returnTo", "/onboarding");
             setLocation("/auth");
             return;
@@ -662,6 +669,8 @@ export default function UnifiedOnboarding() {
           
           // Handle 401 authentication errors - silently redirect to auth
           if (updateResponse.status === 401) {
+            // Clear retry counter since we're redirecting away
+            sessionStorage.removeItem(`autoSaveRetry_${formType}`);
             sessionStorage.setItem("returnTo", "/onboarding");
             setLocation("/auth");
             return;
@@ -694,13 +703,19 @@ export default function UnifiedOnboarding() {
       const maxRetries = 3;
       
       if (currentRetries < maxRetries) {
+        // Clear any existing retry timer to prevent overlapping retries
+        if (retryTimerRef.current) {
+          clearTimeout(retryTimerRef.current);
+        }
+        
         const nextRetry = currentRetries + 1;
         sessionStorage.setItem(retryKey, String(nextRetry));
         const backoffMs = Math.min(1000 * Math.pow(2, currentRetries), 8000); // 1s, 2s, 4s, max 8s
         console.log(`[Auto-save] Retry ${nextRetry}/${maxRetries} in ${backoffMs}ms`);
         setSaveStatus("saving"); // Keep showing saving status during retry
         
-        setTimeout(() => {
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
           autoSave(data, formType);
         }, backoffMs);
       } else {
@@ -714,8 +729,16 @@ export default function UnifiedOnboarding() {
 
   // Debounced auto-save for each form
   const debouncedAutoSave = useCallback((data: any, formType: 'step1' | 'step2' | 'step3' | 'step4') => {
+    // Clear any pending debounce timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
+    }
+    // Clear any pending retry timer since new data is coming in
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+      // Reset retry counter since we're starting fresh with new data
+      sessionStorage.removeItem(`autoSaveRetry_${formType}`);
     }
     debounceTimerRef.current = setTimeout(() => {
       autoSave(data, formType);
