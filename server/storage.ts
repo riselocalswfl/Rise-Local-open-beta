@@ -23,6 +23,7 @@ import {
 } from "@shared/schema";
 import { eq, desc, and, sql, gte, lte, isNull, or } from "drizzle-orm";
 import { calculateDistanceMiles } from "./geocoding";
+import { sanitizeObject } from "./sanitize";
 
 // Type for deals with distance information
 export interface DealWithDistance extends Deal {
@@ -518,7 +519,12 @@ export class DbStorage implements IStorage {
   }
 
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
-    const result = await db.insert(vendors).values(vendor as any).returning();
+    // Sanitize input to prevent XSS
+    const sanitizedVendor = sanitizeObject(vendor, {
+      urlFields: ['website', 'instagram', 'facebook', 'tiktok', 'youtube', 'twitter', 'logoUrl', 'bannerUrl'],
+      skipFields: ['id', 'userId', 'categoryId', 'createdAt', 'updatedAt']
+    });
+    const result = await db.insert(vendors).values(sanitizedVendor as any).returning();
     return result[0];
   }
 
@@ -529,7 +535,13 @@ export class DbStorage implements IStorage {
       return existing[0];
     }
     
-    await db.update(vendors).set(data as any).where(eq(vendors.id, id));
+    // Sanitize input to prevent XSS
+    const sanitizedData = sanitizeObject(data, {
+      urlFields: ['website', 'instagram', 'facebook', 'tiktok', 'youtube', 'twitter', 'logoUrl', 'bannerUrl'],
+      skipFields: ['id', 'userId', 'categoryId', 'createdAt', 'updatedAt']
+    });
+    
+    await db.update(vendors).set(sanitizedData as any).where(eq(vendors.id, id));
     const updated = await db.select().from(vendors).where(eq(vendors.id, id));
     return updated[0];
   }
@@ -1177,15 +1189,25 @@ export class DbStorage implements IStorage {
   }
 
   async createDeal(deal: InsertDeal): Promise<Deal> {
-    const result = await db.insert(deals).values(deal).returning();
+    // Sanitize input to prevent XSS
+    const sanitizedDeal = sanitizeObject(deal, {
+      urlFields: ['imageUrl'],
+      skipFields: ['id', 'vendorId', 'createdAt', 'updatedAt', 'startsAt', 'endsAt', 'deletedAt']
+    });
+    const result = await db.insert(deals).values(sanitizedDeal).returning();
     return result[0];
   }
 
   async updateDeal(id: string, data: Partial<InsertDeal>): Promise<Deal> {
     console.log("[STORAGE] updateDeal called with id:", id, "data:", JSON.stringify(data));
+    // Sanitize input to prevent XSS
+    const sanitizedData = sanitizeObject(data, {
+      urlFields: ['imageUrl'],
+      skipFields: ['id', 'vendorId', 'createdAt', 'updatedAt', 'startsAt', 'endsAt', 'deletedAt']
+    });
     const result = await db
       .update(deals)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...sanitizedData, updatedAt: new Date() })
       .where(eq(deals.id, id))
       .returning();
     console.log("[STORAGE] updateDeal result:", result.length > 0 ? { id: result[0].id, status: result[0].status, isActive: result[0].isActive } : "NO RESULT");

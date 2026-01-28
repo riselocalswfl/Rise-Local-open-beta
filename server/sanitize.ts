@@ -1,9 +1,6 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+/**
+ * Server-side input sanitization utilities for XSS prevention
+ */
 
 /**
  * Sanitize a URL to prevent XSS attacks via javascript: or data: protocols
@@ -53,7 +50,6 @@ export function sanitizeUrl(url: string | null | undefined): string {
 
 /**
  * Sanitize text content by removing HTML tags and script content
- * React already escapes content, but this provides defense-in-depth
  */
 export function sanitizeText(text: string | null | undefined): string {
   if (!text || typeof text !== 'string') return '';
@@ -64,13 +60,52 @@ export function sanitizeText(text: string | null | undefined): string {
   // Remove all HTML tags
   sanitized = sanitized.replace(/<[^>]*>/g, '');
   
-  // Decode common HTML entities for display
-  sanitized = sanitized
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#x27;/g, "'");
-  
   return sanitized.trim();
+}
+
+/**
+ * Sanitize an object's string values recursively
+ * Useful for sanitizing request bodies before storage
+ */
+export function sanitizeObject<T extends Record<string, any>>(obj: T, options?: {
+  urlFields?: string[];
+  skipFields?: string[];
+}): T {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const urlFields = options?.urlFields || ['website', 'instagram', 'facebook', 'tiktok', 'youtube', 'twitter', 'logoUrl', 'bannerUrl', 'imageUrl'];
+  const skipFields = options?.skipFields || ['password', 'passwordHash', 'token'];
+  
+  const result = { ...obj };
+  
+  for (const key of Object.keys(result)) {
+    const value = result[key];
+    
+    // Skip specified fields
+    if (skipFields.includes(key)) continue;
+    
+    if (typeof value === 'string') {
+      if (urlFields.includes(key)) {
+        // Sanitize URLs
+        (result as any)[key] = sanitizeUrl(value);
+      } else {
+        // Sanitize text (remove HTML tags)
+        (result as any)[key] = sanitizeText(value);
+      }
+    } else if (Array.isArray(value)) {
+      // Recursively sanitize array elements
+      (result as any)[key] = value.map(item => 
+        typeof item === 'object' && item !== null 
+          ? sanitizeObject(item, options) 
+          : typeof item === 'string' 
+            ? sanitizeText(item)
+            : item
+      );
+    } else if (typeof value === 'object' && value !== null) {
+      // Recursively sanitize nested objects
+      (result as any)[key] = sanitizeObject(value, options);
+    }
+  }
+  
+  return result;
 }

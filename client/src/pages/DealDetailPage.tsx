@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { hasRiseLocalPass, isMemberOnlyDeal } from "@shared/dealAccess";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { sanitizeUrl } from "@/lib/utils";
 import RedeemDealModal from "@/components/RedeemDealModal";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
@@ -443,9 +444,9 @@ export default function DealDetailPage() {
                         </Button>
                       </a>
                     )}
-                    {vendor.website && (
+                    {vendor.website && sanitizeUrl(vendor.website) && (
                       <a
-                        href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`}
+                        href={sanitizeUrl(vendor.website)}
                         target="_blank"
                         rel="noopener noreferrer"
                         data-testid="link-vendor-website"
@@ -466,7 +467,7 @@ export default function DealDetailPage() {
                     <div className="flex flex-wrap gap-2">
                       {vendor.instagram && (
                         <a
-                          href={vendor.instagram.startsWith('http') ? vendor.instagram : `https://instagram.com/${vendor.instagram.replace('@', '')}`}
+                          href={sanitizeUrl(vendor.instagram.startsWith('http') ? vendor.instagram : `https://instagram.com/${vendor.instagram.replace('@', '')}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           data-testid="link-vendor-instagram"
@@ -479,7 +480,7 @@ export default function DealDetailPage() {
                       )}
                       {vendor.facebook && (
                         <a
-                          href={vendor.facebook.startsWith('http') ? vendor.facebook : `https://facebook.com/${vendor.facebook}`}
+                          href={sanitizeUrl(vendor.facebook.startsWith('http') ? vendor.facebook : `https://facebook.com/${vendor.facebook}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           data-testid="link-vendor-facebook"
@@ -492,7 +493,7 @@ export default function DealDetailPage() {
                       )}
                       {vendor.tiktok && (
                         <a
-                          href={vendor.tiktok.startsWith('http') ? vendor.tiktok : `https://tiktok.com/@${vendor.tiktok.replace('@', '')}`}
+                          href={sanitizeUrl(vendor.tiktok.startsWith('http') ? vendor.tiktok : `https://tiktok.com/@${vendor.tiktok.replace('@', '')}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           data-testid="link-vendor-tiktok"
@@ -505,7 +506,7 @@ export default function DealDetailPage() {
                       )}
                       {vendor.youtube && (
                         <a
-                          href={vendor.youtube.startsWith('http') ? vendor.youtube : `https://youtube.com/${vendor.youtube}`}
+                          href={sanitizeUrl(vendor.youtube.startsWith('http') ? vendor.youtube : `https://youtube.com/${vendor.youtube}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           data-testid="link-vendor-youtube"
@@ -518,7 +519,7 @@ export default function DealDetailPage() {
                       )}
                       {vendor.twitter && (
                         <a
-                          href={vendor.twitter.startsWith('http') ? vendor.twitter : `https://x.com/${vendor.twitter.replace('@', '')}`}
+                          href={sanitizeUrl(vendor.twitter.startsWith('http') ? vendor.twitter : `https://x.com/${vendor.twitter.replace('@', '')}`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           data-testid="link-vendor-twitter"
