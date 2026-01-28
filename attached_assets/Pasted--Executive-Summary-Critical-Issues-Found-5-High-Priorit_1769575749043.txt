@@ -1,0 +1,184 @@
+## Executive Summary
+
+### Critical Issues Found: 🔴 5 High Priority | 🟡 8 Medium Priority | 🟢 4 Low Priority
+
+**Most Critical Problems:**
+1. **Business Account Creation Failure Points** - Multiple places where business signup can fail silently
+2. **JWT Storage Security** - localStorage vulnerable to XSS attacks
+3. **Missing Transaction Rollback** - Database inconsistencies possible on partial failures
+4. **No Email Verification Enforcement** - Users can access app without verifying email
+5. **Incomplete Error Handling** - Generic errors don't help users recover from failures
+
+---
+
+## 1. Login Functionality Audit
+
+### Flow Analysis
+```
+User enters email + password
+    ↓
+Frontend validates via Zod
+    ↓
+POST /api/auth/login
+    ↓
+Backend validates format
+    ↓
+Case-insensitive email lookup
+    ↓
+bcrypt.compare password
+    ↓
+Return JWT + user object
+    ↓
+Store JWT in localStorage
+    ↓
+Redirect based on user type
+```
+
+### 🔴 Critical Issues
+
+#### 1.1 JWT Storage in localStorage (High Security Risk)
+**Location:** `AuthModal.tsx` after successful login  
+**Problem:** JWTs stored in localStorage are vulnerable to XSS attacks
+```typescript
+// Current implementation
+localStorage.setItem('token', data.token);
+```
+
+**Impact:** If malicious script executes on your domain, it can steal all user tokens
+
+**Recommendation:**
+- **Option A (Best):** Use httpOnly cookies instead
+  ```typescript
+  // Backend sets cookie
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+  });
+  ```
+- **Option B (Quick Fix):** Add Content Security Policy headers to mitigate XSS
+- **Option C (Current State):** Document risk and plan migration
+
+#### 1.2 No Account Lockout Protection
+**Location:** `customAuth.ts` - `/api/auth/login`  
+**Problem:** Unlimited login attempts allow brute force attacks
+
+**Current State:**
+- IP-based rate limiting exists (Express middleware)
+- NO account-level lockout after failed attempts
+- Attacker can try passwords from different IPs
+
+**Recommendation:**
+```typescript
+// Add to login endpoint
+const failedAttempts = await db.query(
+  'SELECT failed_login_attempts, locked_until FROM users WHERE email = $1',
+  [email]
+);
+
+if (failedAttempts.locked_until && new Date() < failedAttempts.locked_until) {
+  return res.status(423).json({ 
+    error: 'Account locked. Try again in 15 minutes.' 
+  });
+}
+
+// After failed login
+await db.query(
+  'UPDATE users SET failed_login_attempts = failed_login_attempts + 1 WHERE email = $1',
+  [email]
+);
+
+// Lock after 5 attempts
+if (failedAttempts.failed_login_attempts >= 5) {
+  await db.query(
+    'UPDATE users SET locked_until = $1 WHERE email = $2',
+    [new Date(Date.now() + 15 * 60 * 1000), email]
+  );
+}
+```
+
+### 🟡 Medium Priority Issues
+
+#### 1.3 Case-Insensitive Email Lookup Inconsistency
+**Location:** `customAuth.ts` - login endpoint  
+**Problem:** Uses `LOWER(email)` in query but doesn't enforce lowercase storage
+
+**Current Code:**
+```typescript
+const result = await db.query(
+  'SELECT * FROM users WHERE LOWER(email) = LOWER($1)',
+  [email]
+);
+```
+
+**Issue:** Emails stored with mixed case (John@Example.com) create duplicate risk
+
+**Recommendation:**
+```typescript
+// Always normalize on signup
+const normalizedEmail = email.toLowerCase().trim();
+
+// Add unique constraint
+ALTER TABLE users ADD CONSTRAINT users_email_lower_unique 
+UNIQUE (LOWER(email));
+```
+
+#### 1.4 Generic Error Messages
+**Location:** `AuthModal.tsx` - error handling  
+**Problem:** "Invalid email or password" doesn't distinguish between:
+- Email not found
+- Password incorrect
+- Account not verified
+- Account locked
+- Server error
+
+**Security Note:** Intentionally vague for security, but could provide better UX for legitimate errors
+
+**Recommendation:**
+```typescript
+// Return specific codes for client to handle
+return res.status(401).json({ 
+  error: 'Invalid credentials',
+  code: 'INVALID_PASSWORD', // or EMAIL_NOT_FOUND, ACCOUNT_LOCKED, etc.
+  canRecover: true // show "forgot password?" link
+});
+```
+
+### 🟢 Working Well
+
+✅ Password hashing with bcrypt (12 rounds)  
+✅ Zod validation prevents malformed requests  
+✅ JWT expiration set to 30 days  
+✅ OAuth migration detection via invalid bcrypt hash check
+
+---
+
+## 2. Signup Functionality Audit
+
+### Flow Analysis
+
+**User Signup:**
+```
+Fill form (firstName, lastName, email, password, zipCode?)
+    ↓
+Zod validation (8+ chars, letter, number)
+    ↓
+POST /api/auth/register/user
+    ↓
+Check email uniqueness
+    ↓
+bcrypt.hash password
+    ↓
+INSERT INTO users
+    ↓
+Generate verification token
+    ↓
+Send welcome email + verification email
+    ↓
+Return JWT (user can access app immediately)
+```
+
+**Business Signup:**
+```
+Fill form (businessName, firstName, lastName, email, passw...
