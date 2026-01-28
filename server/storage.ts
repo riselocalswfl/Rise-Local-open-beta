@@ -2402,3 +2402,39 @@ export class DbStorage implements IStorage {
 }
 
 export const storage = new DbStorage();
+
+// Default categories to seed if none exist
+const DEFAULT_CATEGORIES = [
+  { key: "food_drink", label: "Food & Drink", icon: "Utensils", sortOrder: 1 },
+  { key: "wellness", label: "Wellness & Fitness", icon: "Heart", sortOrder: 2 },
+  { key: "home_services", label: "Home & Services", icon: "Home", sortOrder: 3 },
+  { key: "shopping", label: "Shopping & Retail", icon: "ShoppingBag", sortOrder: 4 },
+  { key: "experiences", label: "Experiences", icon: "Sparkles", sortOrder: 5 },
+];
+
+// Seed categories if none exist (called on startup)
+export async function seedCategoriesIfEmpty(): Promise<void> {
+  try {
+    const existingCategories = await db.select().from(categories);
+    
+    if (existingCategories.length === 0) {
+      console.log("[Seed] No categories found, seeding default categories...");
+      
+      for (const cat of DEFAULT_CATEGORIES) {
+        await db.insert(categories).values({
+          key: cat.key,
+          label: cat.label,
+          icon: cat.icon,
+          sortOrder: cat.sortOrder,
+          isActive: true,
+        } as any);
+      }
+      
+      console.log("[Seed] Successfully seeded", DEFAULT_CATEGORIES.length, "categories");
+    } else {
+      console.log("[Seed] Categories already exist (", existingCategories.length, "found), skipping seed");
+    }
+  } catch (error) {
+    console.error("[Seed] Error seeding categories:", error);
+  }
+}

@@ -7,6 +7,7 @@ import compression from "compression";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { validateEnv } from "./validateEnv";
+import { seedCategoriesIfEmpty } from "./storage";
 
 validateEnv();
 
@@ -144,6 +145,9 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Seed categories if none exist (ensures production has categories)
+    await seedCategoriesIfEmpty();
+    
     const server = await registerRoutes(app);
 
     app.use((err: any, req: Request, res: Response, _next: NextFunction) => {

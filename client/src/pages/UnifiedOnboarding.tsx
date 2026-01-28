@@ -213,9 +213,27 @@ export default function UnifiedOnboarding() {
     },
     onError: (error: Error) => {
       console.error("Onboarding completion error:", error);
+      
+      // Try to parse the error message from the server
+      let errorMessage = "Please try again or contact support.";
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed.error) {
+          errorMessage = parsed.error;
+          if (parsed.details) {
+            errorMessage += `: ${parsed.details}`;
+          }
+        }
+      } catch {
+        // If not JSON, use the raw message
+        if (error.message && error.message !== "Failed to complete onboarding") {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Submission failed",
-        description: "Please try again or contact support.",
+        description: errorMessage,
         variant: "destructive",
       });
     },

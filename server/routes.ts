@@ -2844,19 +2844,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Verify vendor belongs to user
         const vendor = await storage.getVendor(vendorId);
-        if (!vendor || vendor.ownerId !== userId) {
-          console.log(
-            "[COMPLETE] Unauthorized - vendor not found or wrong owner",
-          );
-          return res.status(403).json({ error: "Unauthorized" });
+        if (!vendor) {
+          console.log("[COMPLETE] Vendor not found:", vendorId);
+          return res.status(404).json({ 
+            error: "Vendor profile not found",
+            details: "The vendor profile may have been deleted. Please try creating a new business account."
+          });
         }
+        
+        if (vendor.ownerId !== userId) {
+          console.log("[COMPLETE] Owner mismatch - vendor owner:", vendor.ownerId, "user:", userId);
+          return res.status(403).json({ 
+            error: "Unauthorized",
+            details: "This vendor profile belongs to a different user."
+          });
+        }
+        
+        console.log("[COMPLETE] Vendor found:", {
+          id: vendor.id,
+          businessName: vendor.businessName,
+          categoryId: vendor.categoryId,
+          profileStatus: vendor.profileStatus
+        });
 
         // Update vendor to complete status
+        console.log("[COMPLETE] Updating vendor profile status to complete...");
         const updatedVendor = await storage.updateVendor(vendorId, {
           profileStatus: "complete",
         });
+        console.log("[COMPLETE] Vendor updated successfully");
 
         // Update user role AND set onboardingComplete to true
+        console.log("[COMPLETE] Updating user role and onboardingComplete...");
         await storage.updateUser(userId, {
           role: "vendor",
           isVendor: true,
@@ -2868,7 +2887,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         res.json({ success: true, vendor: updatedVendor });
       } catch (error) {
-        console.error("[COMPLETE ERROR]", error);
+        console.error("[COMPLETE ERROR] Full error:", error);
+        console.error("[COMPLETE ERROR] Stack:", error instanceof Error ? error.stack : "no stack");
         res.status(400).json({
           error: "Failed to complete vendor profile",
           details: error instanceof Error ? error.message : String(error),
