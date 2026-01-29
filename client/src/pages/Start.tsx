@@ -5,9 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 interface User {
   id: string;
   role: string;
+  accountType?: string | null;
   onboardingComplete?: boolean;
   welcomeCompleted?: boolean;
 }
+
+const BUSINESS_ROLES = new Set(["vendor", "restaurant", "service_provider"]);
 
 export default function Start() {
   const [, setLocation] = useLocation();
@@ -24,7 +27,7 @@ export default function Start() {
       return;
     }
 
-    const { role, onboardingComplete, welcomeCompleted } = user;
+    const { role, accountType, onboardingComplete, welcomeCompleted } = user;
 
     // Read returnTo early so we can manage it properly
     const returnTo = sessionStorage.getItem("returnTo");
@@ -53,6 +56,20 @@ export default function Start() {
       return;
     }
 
+    const isBusinessRole = BUSINESS_ROLES.has(role);
+    const isBuyerRole = role === "buyer";
+    const isRoleKnown = isBusinessRole || isBuyerRole;
+    const isAccountTypeKnown = accountType === "business" || accountType === "user";
+    const isBusinessUser = isBusinessRole || accountType === "business";
+
+    if (!isRoleKnown && !isAccountTypeKnown) {
+      if (returnTo) {
+        sessionStorage.removeItem("returnTo");
+      }
+      setLocation("/choose-account-type");
+      return;
+    }
+
     if (!onboardingComplete) {
       // Clear returnTo when user hasn't completed onboarding
       // They can't access protected routes yet
@@ -60,7 +77,7 @@ export default function Start() {
         sessionStorage.removeItem("returnTo");
       }
       
-      if (role === "vendor") {
+      if (isBusinessUser) {
         setLocation("/onboarding");
       } else {
         // Buyers don't need onboarding, mark as complete and go to discover
@@ -76,7 +93,7 @@ export default function Start() {
       return;
     }
 
-    if (role === "vendor") {
+    if (isBusinessUser) {
       setLocation("/dashboard");
     } else {
       setLocation("/discover");

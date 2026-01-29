@@ -119,8 +119,8 @@ interface AuthUser {
 
 export default function UnifiedOnboarding() {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [selectedVendorType, setSelectedVendorType] = useState<"shop" | "dine" | "service" | null>(null);
 
@@ -870,6 +870,19 @@ export default function UnifiedOnboarding() {
 
   const progress = (step / 5) * 100;
 
+  const handleBackToSignIn = async () => {
+    sessionStorage.removeItem("returnTo");
+    sessionStorage.removeItem("onboardingDraftId");
+    if (authUser) {
+      try {
+        await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      }
+    }
+    setLocation("/auth");
+  };
+
   // If still loading auth, show loading spinner
   if (authLoading) {
     return (
@@ -895,7 +908,7 @@ export default function UnifiedOnboarding() {
             Please sign in to create your business profile.
           </p>
           <Button
-            onClick={() => setLocation("/auth")}
+            onClick={handleBackToSignIn}
             className="w-full"
             data-testid="button-go-to-signin"
           >
@@ -914,7 +927,7 @@ export default function UnifiedOnboarding() {
         <div className="mb-6">
           <Button
             variant="ghost"
-            onClick={() => setLocation("/auth")}
+            onClick={handleBackToSignIn}
             className="text-muted-foreground hover:text-foreground"
             data-testid="button-back-to-auth"
           >

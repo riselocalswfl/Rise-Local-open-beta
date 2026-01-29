@@ -416,6 +416,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (role === "buyer") {
           updateData.onboardingComplete = true;
         }
+        updateData.isVendor = role === "vendor";
+        updateData.accountType = role === "vendor" ? "business" : "user";
       }
 
       await storage.updateUser(userId, updateData);
@@ -4011,14 +4013,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTE: This endpoint receives raw body from express.raw() middleware in index.ts
   // Middleware order in server/index.ts ensures express.raw() runs BEFORE express.json()
   app.post("/api/stripe/webhook", async (req, res) => {
-    app.post("/api/stripe/webhook", async (req, res) => {
-      console.log("🔔 WEBHOOK RECEIVED - Headers:", req.headers);
-      console.log("🔔 WEBHOOK RECEIVED - Path:", req.path);
-      console.log("🔔 WEBHOOK RECEIVED - Body exists:", !!req.body);
-
-      // ... rest of your webhook code
-    });
-
     console.log("[Stripe Webhook] Received request");
 
     const sig = req.headers["stripe-signature"];
@@ -4897,12 +4891,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ error: "User not found" });
         }
 
-        // For now, only allow self-lookup or admin role
-        if (
-          requestingUserId !== targetUserId &&
-          requestingUser.role !== "admin"
-        ) {
-          return res.status(403).json({ error: "Unauthorized" });
+        const isAdmin =
+          requestingUser?.isAdmin === true || requestingUser?.role === "admin";
+
+        // In production, require admin. In dev, allow self-lookup or admin.
+        if (process.env.NODE_ENV === "production") {
+          if (!isAdmin) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
+        } else {
+          if (requestingUserId !== targetUserId && !isAdmin) {
+            return res.status(403).json({ error: "Unauthorized" });
+          }
         }
 
         const user = await storage.getUser(targetUserId);

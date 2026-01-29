@@ -13,6 +13,7 @@ import fallbackImage from "@assets/stock_images/adult_woman_shopping_9321ca4a.jp
 interface User {
   id: string;
   role: string;
+  accountType?: string | null;
   onboardingComplete?: boolean;
   welcomeCompleted?: boolean;
 }
@@ -45,9 +46,20 @@ export default function Welcome() {
 
     setIsNavigating(true);
     const role = user.role;
+    const accountType = user.accountType;
+    const isBusinessRole = role === "vendor" || role === "restaurant" || role === "service_provider";
+    const isBuyerRole = role === "buyer";
+    const isRoleKnown = isBusinessRole || isBuyerRole;
+    const isAccountTypeKnown = accountType === "business" || accountType === "user";
+    const isBusinessUser = isBusinessRole || accountType === "business";
+    
+    if (!isRoleKnown && !isAccountTypeKnown) {
+      setLocation("/choose-account-type");
+      return;
+    }
     
     if (!user.welcomeCompleted) {
-      const roleToSend = (role === "vendor" || role === "restaurant" || role === "service_provider") ? "vendor" : "buyer";
+      const roleToSend = isBusinessUser ? "vendor" : "buyer";
       try {
         await completeWelcomeMutation.mutateAsync({ role: roleToSend });
       } catch (error) {
@@ -55,7 +67,7 @@ export default function Welcome() {
       }
     }
 
-    if (role === "vendor" || role === "restaurant" || role === "service_provider") {
+    if (isBusinessUser) {
       setLocation("/dashboard");
     } else {
       setLocation("/discover");

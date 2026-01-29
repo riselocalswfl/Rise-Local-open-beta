@@ -26,11 +26,17 @@ export function validateEnv(): void {
   }
 
   if (process.env.NODE_ENV === 'production') {
+    if (!process.env.APP_BASE_URL) {
+      missing.push('APP_BASE_URL');
+    }
     if (!process.env.STRIPE_SECRET_KEY) {
-      warnings.push('STRIPE_SECRET_KEY is not set (Stripe payments will not work)');
+      missing.push('STRIPE_SECRET_KEY');
     }
     if (!process.env.STRIPE_WEBHOOK_SECRET) {
-      warnings.push('STRIPE_WEBHOOK_SECRET is not set (Stripe webhooks will not be verified)');
+      missing.push('STRIPE_WEBHOOK_SECRET');
+    }
+    if (process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')) {
+      warnings.push('STRIPE_SECRET_KEY is a test key (sk_test_) in production');
     }
   }
 
@@ -43,6 +49,9 @@ export function validateEnv(): void {
   if (warnings.length > 0) {
     console.warn('[Env Validation] Warnings:');
     warnings.forEach(warning => console.warn(`  - ${warning}`));
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
   }
 
   console.log('[Env Validation] All required environment variables present');

@@ -11,6 +11,11 @@ import { seedCategoriesIfEmpty } from "./storage";
 
 validateEnv();
 
+// Reduce noisy logs in production unless explicitly enabled
+if (process.env.NODE_ENV === "production" && process.env.VERBOSE_LOGS !== "true") {
+  console.log = () => {};
+}
+
 const app = express();
 
 // Trust proxy for rate limiting behind reverse proxy
@@ -26,13 +31,26 @@ app.use(helmet({
 }));
 
 // CORS configuration
+const isProduction = process.env.NODE_ENV === "production";
+const extraAllowedOrigins = (process.env.APP_ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   process.env.APP_BASE_URL,
-  process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : null,
-  'http://localhost:5000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5000',
-  'http://127.0.0.1:5173',
+  ...extraAllowedOrigins,
+  ...(isProduction
+    ? []
+    : [
+        process.env.REPLIT_DEV_DOMAIN
+          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+          : null,
+        "http://localhost:5000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:5173",
+      ]),
 ].filter(Boolean) as string[];
 
 app.use(cors({

@@ -50,6 +50,7 @@ import CheckoutCancel from "@/pages/CheckoutCancel";
 import Start from "@/pages/Start";
 import ResetPassword from "@/pages/ResetPassword";
 import RecoverAccount from "@/pages/RecoverAccount";
+import ChooseAccountType from "@/pages/ChooseAccountType";
 import Businesses from "@/pages/Businesses";
 import BusinessProfile from "@/pages/BusinessProfile";
 import Privacy from "@/pages/Privacy";
@@ -178,6 +179,7 @@ function Router() {
       
       {/* Start - Universal gate for role-based routing */}
       <Route path="/start" component={Start} />
+      <Route path="/choose-account-type" component={ChooseAccountType} />
       
       {/* Welcome - Multi-slide introduction carousel for new users */}
       <Route path="/welcome" component={Welcome} />
