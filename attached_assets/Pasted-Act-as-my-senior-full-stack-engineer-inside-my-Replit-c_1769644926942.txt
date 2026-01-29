@@ -1,0 +1,139 @@
+Act as my senior full-stack engineer inside my Replit codebase for Rise Local.
+
+TASK:
+Add a “Manage Membership” feature so Pass members can:
+1) View current membership details
+2) Cancel membership (access continues until period end)
+3) Upgrade from Monthly → Yearly where:
+   - Yearly starts immediately
+   - User pays for the next full year from the upgrade date
+   - Monthly is canceled cleanly so there is no overlap / double billing
+
+IMPORTANT CONTEXT:
+- My app is a Rise Local deals marketplace.
+- Stripe payments work, but I’m actively fixing webhooks + membership unlocking, so your changes must be compatible with a webhook-driven “source of truth”.
+- Stack is typical Replit app:
+  - Frontend: React + TypeScript (Vite), Tailwind/shadcn
+  - Backend: Express + TypeScript
+  - DB: Postgres via Drizzle ORM
+  - Auth: existing session/auth middleware
+
+NON-NEGOTIABLE REQUIREMENTS:
+- Do NOT break existing checkout flow.
+- Do NOT rely on client-side flags alone. Membership status must come from DB, updated by Stripe webhooks.
+- Only one active subscription per user.
+- All routes must be protected (auth required).
+- Handle “double click” / duplicate requests safely (idempotent).
+
+PHASE 1 — Locate current billing + membership code
+1) Find and list:
+   - Stripe checkout/subscription creation endpoint(s)
+   - Stripe webhook handler route and logic
+   - User table fields related to membership (isPassMember, membershipStatus, passExpiresAt, stripeCustomerId, stripeSubscriptionId, plan, etc.)
+   - Frontend gating logic for member-only deals
+2) Summarize “current state” in 10 lines max before coding:
+   - what event(s) mark a user as active
+   - what fields the UI checks
+
+PHASE 2 — Ensure we have a Yearly plan in Stripe
+1) Confirm a Yearly Price exists (price_…).
+2) Add env vars in Replit Secrets if not present:
+   - STRIPE_SECRET_KEY
+   - STRIPE_WEBHOOK_SECRET
+   - STRIPE_MONTHLY_PRICE_ID
+   - STRIPE_YEARLY_PRICE_ID
+3) If yearly price is missing, stop and add code that supports it once I provide the ID.
+
+PHASE 3 — Backend API: membership management
+Create/modify API endpoints:
+
+A) GET /api/membership
+Return:
+- plan (monthly/yearly)
+- status (active/canceling/canceled/past_due)
+- currentPeriodEnd (if subscription)
+- cancelAtPeriodEnd (boolean)
+- passExpiresAt (from DB)
+- nextBillingDate (derived if available)
+
+B) POST /api/membership/cancel
+Behavior:
+- Auth required
+- Load user’s active Stripe subscription (from DB stripeSubscriptionId; fallback lookup by stripeCustomerId)
+- Set Stripe subscription: cancel_at_period_end = true
+- Update DB:
+  - membershipStatus = "canceling"
+  - passExpiresAt = subscription.current_period_end
+- Return success + effective end date
+
+C) POST /api/membership/upgrade-to-yearly
+Behavior (simple + safest MVP):
+- Auth required
+- If user already has yearly active → return idempotent success (do nothing)
+- If user has monthly active:
+   1) Cancel monthly immediately (cancel_at_period_end = false) OR set it to cancel now
+   2) Create a NEW yearly subscription using STRIPE_YEARLY_PRICE_ID starting immediately
+      - Do NOT use complicated proration for MVP
+   3) Update DB with new stripeSubscriptionId and plan="yearly"
+- Return success + new plan details
+
+Idempotency:
+- Prevent creating multiple yearly subscriptions for same user.
+- Use a DB lock/transaction or check for existing active yearly subscription before creating another.
+
+PHASE 4 — Webhook alignment (source of truth)
+Audit webhook logic so it properly updates DB for:
+- checkout.session.completed (if used)
+- invoice.payment_succeeded (recommended for subscription “active paid”)
+- customer.subscription.updated
+- customer.subscription.deleted
+
+Rules:
+- Webhook must set:
+  - isPassMember true/false
+  - membershipStatus active/canceling/canceled/past_due
+  - plan monthly/yearly
+  - passExpiresAt (when canceling/ended)
+  - stripeCustomerId and stripeSubscriptionId
+- If cancel_at_period_end is true, user stays active until period end.
+
+Add structured logs (safe):
+- event.type, event.id, userId linkage, subscriptionId, update result
+
+PHASE 5 — Frontend UI: Account → Membership section
+Add a new section on the Account page (consumer side) titled “Membership”.
+
+UI:
+- Show current plan and status
+- Show next billing date / “access ends on …” if canceling
+- Buttons:
+  - “Cancel membership” (confirmation modal)
+  - “Upgrade to Yearly” (only when on monthly; include small “Save” copy)
+- Loading + error states
+- Prevent double submits
+
+Copy requirements:
+- Cancel: “You’ll keep Pass access until <date>.”
+- Upgrade: “Your Yearly Pass starts today and renews one year from today.”
+
+PHASE 6 — Keep member-only deal gating consistent
+- Confirm that member-only deals unlock based on DB membership fields.
+- Ensure canceling users keep access until passExpiresAt.
+- Ensure upgrade preserves uninterrupted access.
+
+PHASE 7 — Manual QA checklist (must provide)
+Write a step-by-step test plan for Replit:
+1) Monthly user cancels → access continues until end date
+2) Monthly user upgrades → yearly starts immediately, no overlap
+3) Webhook received → DB updated → UI reflects correct status after refresh
+4) Duplicate clicks don’t create multiple subscriptions
+5) Logout/login still shows correct membership
+
+OUTPUT:
+- Implement code changes directly in the Replit project
+- List files changed
+- Provide the QA checklist at the end
+- If you need IDs: ask only for STRIPE_MONTHLY_PRICE_ID and STRIPE_YEARLY_PRICE_ID (nothing else)
+
+START NOW:
+Search the repo for “stripe”, “webhook”, “checkout”, “subscription”, “isPassMember”, and identify the current flow before implementing.
