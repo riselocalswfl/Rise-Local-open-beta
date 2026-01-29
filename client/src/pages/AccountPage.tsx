@@ -604,10 +604,26 @@ interface SettingsTabProps {
   handleLogout: () => void;
 }
 
+interface MembershipData {
+  plan: "monthly" | "yearly" | null;
+  status: string;
+  isActive: boolean;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+  passExpiresAt: string | null;
+  nextBillingDate: string | null;
+}
+
 function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }: SettingsTabProps) {
   const { toast } = useToast();
   
   const isPassMember = hasRiseLocalPass(user);
+
+  const { data: membershipData, isLoading: membershipLoading, refetch: refetchMembership } = useQuery<MembershipData>({
+    queryKey: ["/api/membership"],
+    enabled: !!user,
+    staleTime: 30000,
+  });
 
   const checkoutMutation = useMutation({
     mutationFn: async (plan: 'monthly' | 'annual') => {
@@ -659,6 +675,96 @@ function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }
     },
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/membership/cancel");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Subscription Canceled",
+          description: data.message || "Your membership will remain active until the end of your billing period.",
+        });
+        refetchMembership();
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Could not cancel subscription.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Cancellation Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/membership/reactivate");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Subscription Reactivated",
+          description: data.message || "Your membership has been restored!",
+        });
+        refetchMembership();
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Could not reactivate subscription.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Reactivation Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const upgradeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/membership/upgrade-to-yearly");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: data.alreadyYearly ? "Already on Yearly" : "Upgraded to Yearly!",
+          description: data.message || "You're now saving with the yearly plan!",
+        });
+        refetchMembership();
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Could not upgrade subscription.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upgrade Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <div className="space-y-6">
       <Card data-testid="card-membership">
@@ -678,46 +784,116 @@ function SettingsTab({ vendor, user, deals, updateVendorMutation, handleLogout }
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isPassMember ? (
+          {membershipLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : isPassMember || membershipData?.isActive ? (
             <div className="space-y-4">
               <div className="p-4 border rounded-lg bg-primary/5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <p className="font-medium">Rise Local Pass</p>
-                    <Badge variant="default" className="bg-primary">Active</Badge>
+                    {membershipData?.cancelAtPeriodEnd ? (
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-800">Canceling</Badge>
+                    ) : (
+                      <Badge variant="default" className="bg-primary">Active</Badge>
+                    )}
+                    {membershipData?.plan && (
+                      <Badge variant="outline">
+                        {membershipData.plan === "yearly" ? "Yearly" : "Monthly"}
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2 text-sm">
-                  {user?.passExpiresAt && (
+                  {membershipData?.cancelAtPeriodEnd && membershipData.currentPeriodEnd ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Access ends:</span>
+                      <span className="font-medium text-amber-600">{safeFormatDate(membershipData.currentPeriodEnd)}</span>
+                    </div>
+                  ) : membershipData?.nextBillingDate ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Next renewal:</span>
+                      <span className="font-medium">{safeFormatDate(membershipData.nextBillingDate)}</span>
+                    </div>
+                  ) : user?.passExpiresAt ? (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Next renewal:</span>
                       <span className="font-medium">{safeFormatDate(user.passExpiresAt) || "Unknown"}</span>
                     </div>
-                  )}
+                  ) : null}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Status:</span>
-                    <span className="font-medium text-green-600">Active</span>
+                    {membershipData?.cancelAtPeriodEnd ? (
+                      <span className="font-medium text-amber-600">Canceling at period end</span>
+                    ) : (
+                      <span className="font-medium text-green-600">Active</span>
+                    )}
                   </div>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => portalMutation.mutate()}
-                disabled={portalMutation.isPending}
-                data-testid="button-manage-membership"
-              >
-                {portalMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  "Manage or Cancel Subscription"
-                )}
-              </Button>
+
+              {membershipData?.cancelAtPeriodEnd ? (
+                <Button 
+                  className="w-full"
+                  onClick={() => reactivateMutation.mutate()}
+                  disabled={reactivateMutation.isPending}
+                  data-testid="button-reactivate-membership"
+                >
+                  {reactivateMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Reactivating...
+                    </>
+                  ) : (
+                    "Keep My Membership"
+                  )}
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  {membershipData?.plan === "monthly" && (
+                    <Button 
+                      className="w-full"
+                      onClick={() => upgradeMutation.mutate()}
+                      disabled={upgradeMutation.isPending}
+                      data-testid="button-upgrade-yearly"
+                    >
+                      {upgradeMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Upgrading...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Upgrade to Yearly (Save 25%)
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => cancelMutation.mutate()}
+                    disabled={cancelMutation.isPending}
+                    data-testid="button-cancel-membership"
+                  >
+                    {cancelMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Canceling...
+                      </>
+                    ) : (
+                      "Cancel Subscription"
+                    )}
+                  </Button>
+                </div>
+              )}
               <p className="text-xs text-center text-muted-foreground">
-                Cancel anytime. No questions asked.
+                {membershipData?.cancelAtPeriodEnd 
+                  ? "Click above to restore your membership and keep saving!" 
+                  : "Cancel anytime. You'll keep access until your billing period ends."}
               </p>
             </div>
           ) : (
