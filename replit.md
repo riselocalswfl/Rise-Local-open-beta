@@ -23,8 +23,14 @@ The frontend is built using React 18, TypeScript, and Vite, leveraging Radix UI,
 - **5-Step Vendor Onboarding Flow**: A comprehensive `/onboarding` process for vendors, covering business details, operations, hours, and images with auto-save.
 - **Mobile-First Discover Page**: Features location filtering, horizontally-scrollable filter chips, curated deal sections, and bottom tab navigation.
 - **Rise Local Pass Membership**: A subscription model ($4.99/month or $44.91/year) managed through `isPassMember` and `passExpiresAt` fields in the `users` table.
+- **Membership Management API**: User-facing endpoints for subscription control:
+  - `GET /api/membership` - Returns plan type (monthly/yearly), status, cancel_at_period_end flag, billing dates
+  - `POST /api/membership/cancel` - Sets cancel_at_period_end=true (user keeps access until period ends)
+  - `POST /api/membership/reactivate` - Removes cancel_at_period_end flag to restore subscription
+  - `POST /api/membership/upgrade-to-yearly` - Upgrades monthly to yearly with Stripe proration
+- **Membership UI in AccountPage**: Shows plan type, billing dates, status (Active/Canceling), with Cancel/Reactivate/Upgrade buttons based on current state
 - **Centralized Membership Access Logic**: All membership checks are centralized in `shared/dealAccess.ts` for consistency across frontend and backend.
-- **Stripe Webhook Integration**: A robust handler at `POST /api/stripe/webhook` with raw body parsing, structured event logging, signature verification, and idempotency via `stripe_webhook_events` table. It processes various Stripe events to manage user subscriptions and includes fallbacks for user lookup.
+- **Stripe Webhook Integration**: A robust handler at `POST /api/stripe/webhook` with raw body parsing, structured event logging, signature verification, and idempotency via `stripe_webhook_events` table. It processes various Stripe events to manage user subscriptions, tracks `cancel_at_period_end` status as "canceling" in the database, and includes fallbacks for user lookup.
 - **CheckoutSuccess Retry Logic**: Implemented on the `/checkout/success` page for webhook processing delays.
 - **Unified Vendor Dashboard**: A single `/dashboard` dynamically adjusts tabs based on vendor capabilities, optimized for mobile with sticky headers and responsive menus.
 - **Mobile-First Profile Editor**: A collapsible profile editor in the Business Dashboard for managing business details, contacts, hours, and branding, supporting image uploads and auto-save.
