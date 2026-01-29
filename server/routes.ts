@@ -3569,6 +3569,266 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // ============================================================================
+  // Membership Management Routes
+  // ============================================================================
+
+  // GET /api/membership - Return current membership details
+  app.get("/api/membership", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Base response for non-members
+      if (!user.stripeSubscriptionId) {
+        return res.json({
+          plan: null,
+          status: user.membershipStatus || "none",
+          isActive: false,
+          cancelAtPeriodEnd: false,
+          currentPeriodEnd: null,
+          passExpiresAt: user.passExpiresAt ? new Date(user.passExpiresAt).toISOString() : null,
+          nextBillingDate: null,
+        });
+      }
+
+      // Fetch subscription details from Stripe for accurate status
+      try {
+        const subscription = await getStripe().subscriptions.retrieve(user.stripeSubscriptionId);
+        
+        const isActive = subscription.status === "active" || subscription.status === "trialing";
+        const periodEnd = stripeUnixToDateOrNull(subscription.current_period_end);
+        
+        // Determine plan type from price ID
+        const priceId = subscription.items.data[0]?.price?.id;
+        const monthlyPriceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
+        const annualPriceId = process.env.STRIPE_RISELOCAL_ANNUAL_PRICE_ID;
+        
+        let plan: "monthly" | "yearly" | null = null;
+        if (priceId === monthlyPriceId) {
+          plan = "monthly";
+        } else if (priceId === annualPriceId) {
+          plan = "yearly";
+        } else if (user.membershipPlan === "rise_local_monthly") {
+          plan = "monthly";
+        } else if (user.membershipPlan === "rise_local_annual") {
+          plan = "yearly";
+        }
+
+        return res.json({
+          plan,
+          status: subscription.cancel_at_period_end ? "canceling" : subscription.status,
+          isActive,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          currentPeriodEnd: periodEnd ? periodEnd.toISOString() : null,
+          passExpiresAt: user.passExpiresAt ? new Date(user.passExpiresAt).toISOString() : null,
+          nextBillingDate: !subscription.cancel_at_period_end && periodEnd ? periodEnd.toISOString() : null,
+        });
+      } catch (stripeError) {
+        console.error("[Membership] Error fetching subscription from Stripe:", stripeError);
+        // Fall back to DB data
+        return res.json({
+          plan: user.membershipPlan === "rise_local_annual" ? "yearly" : (user.membershipPlan === "rise_local_monthly" ? "monthly" : null),
+          status: user.membershipStatus || "none",
+          isActive: user.isPassMember && user.passExpiresAt && new Date(user.passExpiresAt) > new Date(),
+          cancelAtPeriodEnd: false,
+          currentPeriodEnd: user.membershipCurrentPeriodEnd ? new Date(user.membershipCurrentPeriodEnd).toISOString() : null,
+          passExpiresAt: user.passExpiresAt ? new Date(user.passExpiresAt).toISOString() : null,
+          nextBillingDate: null,
+        });
+      }
+    } catch (error) {
+      console.error("[Membership] Error getting membership:", error);
+      res.status(500).json({ error: "Failed to get membership details" });
+    }
+  });
+
+  // POST /api/membership/cancel - Cancel subscription at period end
+  app.post("/api/membership/cancel", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!user.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No active subscription found" });
+      }
+
+      console.log("[Membership] Canceling subscription at period end:", {
+        userId,
+        subscriptionId: user.stripeSubscriptionId,
+      });
+
+      // Set subscription to cancel at period end (user keeps access until then)
+      const subscription = await getStripe().subscriptions.update(user.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+
+      // Update DB with canceling status
+      const periodEnd = stripeUnixToDateOrNull(subscription.current_period_end);
+      await storage.updateUser(userId, {
+        membershipStatus: "canceling",
+        passExpiresAt: periodEnd,
+      });
+
+      console.log("[Membership] Subscription set to cancel at period end:", {
+        userId,
+        subscriptionId: subscription.id,
+        cancelAt: periodEnd?.toISOString(),
+      });
+
+      res.json({
+        success: true,
+        message: "Your membership will be canceled at the end of your billing period.",
+        accessEndsAt: periodEnd?.toISOString(),
+      });
+    } catch (error) {
+      console.error("[Membership] Error canceling subscription:", error);
+      res.status(500).json({ 
+        error: "Failed to cancel subscription",
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // POST /api/membership/reactivate - Undo cancellation (if still in period)
+  app.post("/api/membership/reactivate", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (!user.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No subscription found" });
+      }
+
+      // Reactivate by removing cancel_at_period_end
+      const subscription = await getStripe().subscriptions.update(user.stripeSubscriptionId, {
+        cancel_at_period_end: false,
+      });
+
+      // Update DB status back to active
+      await storage.updateUser(userId, {
+        membershipStatus: subscription.status,
+      });
+
+      console.log("[Membership] Subscription reactivated:", {
+        userId,
+        subscriptionId: subscription.id,
+      });
+
+      res.json({
+        success: true,
+        message: "Your membership has been reactivated!",
+      });
+    } catch (error) {
+      console.error("[Membership] Error reactivating subscription:", error);
+      res.status(500).json({ 
+        error: "Failed to reactivate subscription",
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // POST /api/membership/upgrade-to-yearly - Upgrade from monthly to yearly
+  app.post("/api/membership/upgrade-to-yearly", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const yearlyPriceId = process.env.STRIPE_RISELOCAL_ANNUAL_PRICE_ID;
+      if (!yearlyPriceId) {
+        return res.status(500).json({ error: "Yearly plan not configured" });
+      }
+
+      // Idempotency: Check if already on yearly plan
+      if (user.membershipPlan === "rise_local_annual") {
+        console.log("[Membership] User already on yearly plan:", userId);
+        return res.json({
+          success: true,
+          message: "You're already on the yearly plan!",
+          alreadyYearly: true,
+        });
+      }
+
+      if (!user.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No active subscription to upgrade" });
+      }
+
+      console.log("[Membership] Upgrading to yearly:", {
+        userId,
+        currentSubscription: user.stripeSubscriptionId,
+      });
+
+      // Fetch current subscription to get the item ID
+      const currentSubscription = await getStripe().subscriptions.retrieve(user.stripeSubscriptionId);
+      
+      // Verify subscription is active
+      if (currentSubscription.status !== "active" && currentSubscription.status !== "trialing") {
+        return res.status(400).json({ error: "Current subscription is not active" });
+      }
+
+      // Upgrade approach: Update the subscription item to the yearly price
+      // This handles proration automatically and keeps one subscription
+      const subscriptionItemId = currentSubscription.items.data[0]?.id;
+      if (!subscriptionItemId) {
+        return res.status(400).json({ error: "Invalid subscription structure" });
+      }
+
+      // Update subscription to yearly price, prorating charges
+      const updatedSubscription = await getStripe().subscriptions.update(user.stripeSubscriptionId, {
+        items: [{
+          id: subscriptionItemId,
+          price: yearlyPriceId,
+        }],
+        proration_behavior: "create_prorations", // User pays the difference
+        cancel_at_period_end: false, // Ensure not set to cancel
+      });
+
+      // Update DB with new plan
+      const periodEnd = stripeUnixToDateOrNull(updatedSubscription.current_period_end);
+      await storage.updateUser(userId, {
+        membershipPlan: "rise_local_annual",
+        membershipStatus: updatedSubscription.status,
+        membershipCurrentPeriodEnd: periodEnd,
+        passExpiresAt: periodEnd,
+      });
+
+      console.log("[Membership] Upgraded to yearly:", {
+        userId,
+        subscriptionId: updatedSubscription.id,
+        newPeriodEnd: periodEnd?.toISOString(),
+      });
+
+      res.json({
+        success: true,
+        message: "Congratulations! You've upgraded to the yearly plan and saved!",
+        plan: "yearly",
+        nextBillingDate: periodEnd?.toISOString(),
+      });
+    } catch (error) {
+      console.error("[Membership] Error upgrading to yearly:", error);
+      res.status(500).json({ 
+        error: "Failed to upgrade subscription",
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // ============================================================================
   // Stripe Connect Routes (Vendor Payment Setup)
   // ============================================================================
 
