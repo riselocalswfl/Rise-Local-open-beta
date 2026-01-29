@@ -4631,12 +4631,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             // Continue processing other events - don't return
           } else {
+            // Determine effective status: if cancel_at_period_end is true, show "canceling"
+            const effectiveStatus = subscriptionData.cancel_at_period_end 
+              ? "canceling" 
+              : subscriptionData.status;
+
+            // Determine plan type from price ID
+            const priceId = subscriptionData.items?.data?.[0]?.price?.id;
+            const monthlyPriceId = process.env.STRIPE_RISELOCAL_MONTHLY_PRICE_ID;
+            const annualPriceId = process.env.STRIPE_RISELOCAL_ANNUAL_PRICE_ID;
+            
+            let membershipPlan = user.membershipPlan;
+            if (isActive) {
+              if (priceId === annualPriceId) {
+                membershipPlan = "rise_local_annual";
+              } else if (priceId === monthlyPriceId) {
+                membershipPlan = "rise_local_monthly";
+              } else {
+                // Fallback to monthly if price ID not recognized
+                membershipPlan = membershipPlan || "rise_local_monthly";
+              }
+            }
+
             await storage.updateUser(user.id, {
               stripeSubscriptionId: subscriptionData.id,
-              membershipStatus: subscriptionData.status,
-              membershipPlan: isActive
-                ? "rise_local_monthly"
-                : user.membershipPlan,
+              membershipStatus: effectiveStatus,
+              membershipPlan: membershipPlan,
               membershipCurrentPeriodEnd: periodEnd,
               isPassMember: isActive,
               passExpiresAt: periodEnd,
@@ -4648,14 +4668,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               stripeEventId: event.id,
               eventType: event.type,
               previousStatus: previousStatus || undefined,
-              newStatus: subscriptionData.status,
+              newStatus: effectiveStatus,
               previousPlan: previousPlan || undefined,
-              newPlan: isActive
-                ? "rise_local_monthly"
-                : user.membershipPlan || undefined,
+              newPlan: membershipPlan || undefined,
               metadata: JSON.stringify({
                 subscriptionId: subscriptionData.id,
                 periodEnd: safeToISOString(periodEnd),
+                cancelAtPeriodEnd: subscriptionData.cancel_at_period_end,
               }),
             });
 
@@ -4663,7 +4682,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               "[Stripe Webhook] User subscription updated:",
               user.id,
               "status:",
-              subscriptionData.status,
+              effectiveStatus,
+              "cancelAtPeriodEnd:",
+              subscriptionData.cancel_at_period_end,
             );
           }
         }
