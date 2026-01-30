@@ -1,10 +1,11 @@
-import { 
+import {
   type User, type InsertUser, type UpsertUser,
   type Vendor, type InsertVendor,
   type Service, type InsertService,
   type Message, type InsertMessage,
   type Deal, type InsertDeal,
   type DealRedemption, type InsertDealRedemption,
+  type DealCode, type InsertDealCode,
   type Conversation, type InsertConversation,
   type ConversationMessage, type InsertConversationMessage,
   type SenderRole,
@@ -13,7 +14,7 @@ import {
   type Favorite, type InsertFavorite,
   type MembershipEvent, type InsertMembershipEvent,
   type AdminAuditLog, type InsertAdminAuditLog,
-  users, vendors, services, messages, deals, dealRedemptions,
+  users, vendors, services, messages, deals, dealRedemptions, dealCodes,
   restaurants, serviceProviders, preferredPlacements, placementImpressions, placementClicks,
   conversations, conversationMessages, notifications, categories, favorites, membershipEvents, stripeWebhookEvents,
   adminAuditLogs,
@@ -286,6 +287,29 @@ export interface IStorage {
   }>;
   getRedemptionById(id: string): Promise<DealRedemption | undefined>;
   adminVoidRedemption(id: string, reason: string): Promise<DealRedemption | undefined>;
+
+  // Deal Code Pool operations (for PASS_UNIQUE_CODE_POOL deals)
+  getUserReservedDealCode(userId: string, dealId: string): Promise<DealCode | undefined>;
+  reserveDealCode(dealId: string, userId: string, reserveMinutes: number): Promise<{
+    success: boolean;
+    code?: DealCode;
+    error?: string
+  }>;
+  markDealCodeAsRedeemed(codeId: string): Promise<DealCode | undefined>;
+  uploadDealCodes(dealId: string, codes: string[]): Promise<{
+    inserted: number;
+    duplicates: number;
+    errors: string[]
+  }>;
+  getDealCodePoolStats(dealId: string): Promise<{
+    available: number;
+    reserved: number;
+    redeemed: number;
+    expired: number;
+    total: number;
+  }>;
+  expireOldReservedCodes(): Promise<number>;
+  getVendorDealsWithCodePools(vendorId: string): Promise<Array<Deal & { codeStats: { available: number; reserved: number; redeemed: number; expired: number; total: number } }>>;
 }
 
 export class DbStorage implements IStorage {
@@ -2166,7 +2190,7 @@ export class DbStorage implements IStorage {
 
   async adminVoidRedemption(id: string, reason: string): Promise<DealRedemption | undefined> {
     const result = await db.update(dealRedemptions)
-      .set({ 
+      .set({
         status: 'voided',
         voidedAt: new Date(),
         voidReason: reason,
@@ -2175,6 +2199,211 @@ export class DbStorage implements IStorage {
       .where(eq(dealRedemptions.id, id))
       .returning();
     return result[0];
+  }
+
+  // ===== Deal Code Pool operations (for PASS_UNIQUE_CODE_POOL deals) =====
+
+  async getUserReservedDealCode(userId: string, dealId: string): Promise<DealCode | undefined> {
+    // Find a code that is reserved for this user and hasn't expired yet
+    const now = new Date();
+    const result = await db.select()
+      .from(dealCodes)
+      .where(
+        and(
+          eq(dealCodes.dealId, dealId),
+          eq(dealCodes.assignedToUserId, userId),
+          eq(dealCodes.status, 'RESERVED'),
+          gte(dealCodes.expiresAt, now)
+        )
+      );
+    return result[0];
+  }
+
+  async reserveDealCode(dealId: string, userId: string, reserveMinutes: number): Promise<{
+    success: boolean;
+    code?: DealCode;
+    error?: string;
+  }> {
+    try {
+      // First, expire any old reserved codes for this user on this deal
+      const now = new Date();
+      await db.update(dealCodes)
+        .set({ status: 'EXPIRED' })
+        .where(
+          and(
+            eq(dealCodes.dealId, dealId),
+            eq(dealCodes.assignedToUserId, userId),
+            eq(dealCodes.status, 'RESERVED'),
+            lte(dealCodes.expiresAt, now)
+          )
+        );
+
+      // Atomically reserve the first available code using a transaction-like approach
+      // Using UPDATE ... RETURNING with a subquery for atomicity
+      const expiresAt = new Date(Date.now() + reserveMinutes * 60 * 1000);
+
+      // Find and update the first available code atomically
+      const result = await db.execute(sql`
+        UPDATE deal_codes
+        SET
+          status = 'RESERVED',
+          assigned_to_user_id = ${userId},
+          reserved_at = NOW(),
+          expires_at = ${expiresAt}
+        WHERE id = (
+          SELECT id FROM deal_codes
+          WHERE deal_id = ${dealId}
+            AND status = 'AVAILABLE'
+          ORDER BY created_at ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING *
+      `);
+
+      if (!result.rows || result.rows.length === 0) {
+        return { success: false, error: 'No codes available for this deal' };
+      }
+
+      // Map the raw result to DealCode type
+      const row = result.rows[0] as any;
+      const code: DealCode = {
+        id: row.id,
+        dealId: row.deal_id,
+        code: row.code,
+        status: row.status,
+        assignedToUserId: row.assigned_to_user_id,
+        reservedAt: row.reserved_at,
+        expiresAt: row.expires_at,
+        redeemedAt: row.redeemed_at,
+        createdAt: row.created_at,
+      };
+
+      return { success: true, code };
+    } catch (error) {
+      console.error('[DEAL_CODES] Error reserving code:', error);
+      return { success: false, error: 'Failed to reserve code' };
+    }
+  }
+
+  async markDealCodeAsRedeemed(codeId: string): Promise<DealCode | undefined> {
+    const result = await db.update(dealCodes)
+      .set({
+        status: 'REDEEMED',
+        redeemedAt: new Date()
+      })
+      .where(eq(dealCodes.id, codeId))
+      .returning();
+    return result[0];
+  }
+
+  async uploadDealCodes(dealId: string, codes: string[]): Promise<{
+    inserted: number;
+    duplicates: number;
+    errors: string[];
+  }> {
+    let inserted = 0;
+    let duplicates = 0;
+    const errors: string[] = [];
+
+    for (const code of codes) {
+      const trimmedCode = code.trim();
+
+      // Validate code
+      if (!trimmedCode || trimmedCode.length < 8) {
+        errors.push(`Code too short (min 8 chars): "${trimmedCode.substring(0, 20)}..."`);
+        continue;
+      }
+
+      // Check for invalid characters (only allow alphanumeric, dash, underscore)
+      if (!/^[A-Za-z0-9_-]+$/.test(trimmedCode)) {
+        errors.push(`Invalid characters in code: "${trimmedCode.substring(0, 20)}..."`);
+        continue;
+      }
+
+      try {
+        await db.insert(dealCodes).values({
+          dealId,
+          code: trimmedCode,
+          status: 'AVAILABLE',
+        });
+        inserted++;
+      } catch (error: any) {
+        // Handle duplicate key violation
+        if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+          duplicates++;
+        } else {
+          errors.push(`Failed to insert code "${trimmedCode.substring(0, 20)}...": ${error.message}`);
+        }
+      }
+    }
+
+    return { inserted, duplicates, errors };
+  }
+
+  async getDealCodePoolStats(dealId: string): Promise<{
+    available: number;
+    reserved: number;
+    redeemed: number;
+    expired: number;
+    total: number;
+  }> {
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'AVAILABLE') as available,
+        COUNT(*) FILTER (WHERE status = 'RESERVED') as reserved,
+        COUNT(*) FILTER (WHERE status = 'REDEEMED') as redeemed,
+        COUNT(*) FILTER (WHERE status = 'EXPIRED') as expired,
+        COUNT(*) as total
+      FROM deal_codes
+      WHERE deal_id = ${dealId}
+    `);
+
+    const row = result.rows[0] as any;
+    return {
+      available: parseInt(row.available || '0'),
+      reserved: parseInt(row.reserved || '0'),
+      redeemed: parseInt(row.redeemed || '0'),
+      expired: parseInt(row.expired || '0'),
+      total: parseInt(row.total || '0'),
+    };
+  }
+
+  async expireOldReservedCodes(): Promise<number> {
+    const now = new Date();
+    const result = await db.update(dealCodes)
+      .set({ status: 'EXPIRED' })
+      .where(
+        and(
+          eq(dealCodes.status, 'RESERVED'),
+          lte(dealCodes.expiresAt, now)
+        )
+      )
+      .returning();
+    return result.length;
+  }
+
+  async getVendorDealsWithCodePools(vendorId: string): Promise<Array<Deal & { codeStats: { available: number; reserved: number; redeemed: number; expired: number; total: number } }>> {
+    // Get all deals with PASS_UNIQUE_CODE_POOL redemption type for this vendor
+    const vendorDeals = await db.select()
+      .from(deals)
+      .where(
+        and(
+          eq(deals.vendorId, vendorId),
+          eq(deals.couponRedemptionType, 'PASS_UNIQUE_CODE_POOL'),
+          isNull(deals.deletedAt)
+        )
+      );
+
+    // Get stats for each deal
+    const dealsWithStats = await Promise.all(
+      vendorDeals.map(async (deal) => {
+        const codeStats = await this.getDealCodePoolStats(deal.id);
+        return { ...deal, codeStats };
+      })
+    );
+
+    return dealsWithStats;
   }
 }
 

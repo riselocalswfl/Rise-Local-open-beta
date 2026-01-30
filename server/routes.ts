@@ -5748,6 +5748,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/deals/:id/coupon-code - Get coupon code for online deals (FREE_STATIC_CODE or PASS_UNIQUE_CODE_POOL)
+  app.post("/api/deals/:id/coupon-code", isAuthenticated, async (req: any, res) => {
+    try {
+      const dealId = req.params.id;
+      const userId = req.user.claims.sub;
+
+      // Get the deal
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ success: false, error: "Deal not found" });
+      }
+
+      // Check if deal has coupon code support
+      if (!deal.couponRedemptionType) {
+        return res.status(400).json({
+          success: false,
+          error: "This deal does not support online coupon codes"
+        });
+      }
+
+      // Handle FREE_STATIC_CODE - same code for everyone
+      if (deal.couponRedemptionType === 'FREE_STATIC_CODE') {
+        return res.json({
+          success: true,
+          type: 'STATIC',
+          code: deal.staticCode || null,
+          message: deal.staticCode ? 'Use this code at checkout' : 'No code required for this deal'
+        });
+      }
+
+      // Handle PASS_UNIQUE_CODE_POOL - unique codes from vendor-uploaded pool
+      if (deal.couponRedemptionType === 'PASS_UNIQUE_CODE_POOL') {
+        // Verify user is a Pass member
+        const user = await storage.getUser(userId);
+        if (!user?.isPassMember) {
+          return res.status(403).json({
+            success: false,
+            error: "This deal requires a Rise Local Pass membership",
+            requiresPass: true
+          });
+        }
+
+        // Check if user already has a reserved code (idempotency)
+        const existingCode = await storage.getUserReservedDealCode(userId, dealId);
+        if (existingCode) {
+          console.log("[COUPON_CODES] Returning existing reserved code for user:", userId, "deal:", dealId);
+          return res.json({
+            success: true,
+            type: 'UNIQUE',
+            code: existingCode.code,
+            codeId: existingCode.id,
+            expiresAt: existingCode.expiresAt,
+            message: 'Your exclusive code is ready'
+          });
+        }
+
+        // Reserve a new code atomically
+        const reserveMinutes = deal.codeReserveMinutes || 30;
+        const reserveResult = await storage.reserveDealCode(dealId, userId, reserveMinutes);
+
+        if (!reserveResult.success) {
+          console.warn("[COUPON_CODES] Code pool empty for deal:", dealId);
+          return res.status(503).json({
+            success: false,
+            error: "No codes currently available for this deal. Please try again later.",
+            poolEmpty: true
+          });
+        }
+
+        console.log("[COUPON_CODES] Reserved new code for user:", userId, "deal:", dealId, "code:", reserveResult.code?.id);
+        return res.json({
+          success: true,
+          type: 'UNIQUE',
+          code: reserveResult.code!.code,
+          codeId: reserveResult.code!.id,
+          expiresAt: reserveResult.code!.expiresAt,
+          message: 'Your exclusive code is ready'
+        });
+      }
+
+      return res.status(400).json({ success: false, error: "Invalid coupon redemption type" });
+    } catch (error) {
+      console.error("Error getting coupon code:", error);
+      res.status(500).json({ success: false, error: "Failed to get coupon code" });
+    }
+  });
+
+  // POST /api/deals/:id/coupon-code/mark-used - Mark a unique code as redeemed (best-effort)
+  app.post("/api/deals/:id/coupon-code/mark-used", isAuthenticated, async (req: any, res) => {
+    try {
+      const dealId = req.params.id;
+      const userId = req.user.claims.sub;
+      const { codeId } = req.body;
+
+      if (!codeId) {
+        return res.status(400).json({ success: false, error: "codeId is required" });
+      }
+
+      // Get the user's reserved code
+      const existingCode = await storage.getUserReservedDealCode(userId, dealId);
+      if (!existingCode || existingCode.id !== codeId) {
+        return res.status(403).json({
+          success: false,
+          error: "This code does not belong to you or has expired"
+        });
+      }
+
+      // Mark as redeemed
+      const redeemedCode = await storage.markDealCodeAsRedeemed(codeId);
+      if (!redeemedCode) {
+        return res.status(500).json({ success: false, error: "Failed to mark code as used" });
+      }
+
+      console.log("[COUPON_CODES] Code marked as redeemed:", codeId, "user:", userId);
+      res.json({
+        success: true,
+        message: "Code marked as used",
+        code: redeemedCode
+      });
+    } catch (error) {
+      console.error("Error marking code as used:", error);
+      res.status(500).json({ success: false, error: "Failed to mark code as used" });
+    }
+  });
+
+  // GET /api/business/deals/code-pools - Get vendor's deals with unique code pools and stats
+  app.get("/api/business/deals/code-pools", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Get vendor for this user
+      const vendor = await storage.getVendorByOwnerId(userId);
+      if (!vendor) {
+        return res.status(403).json({ error: "Only business owners can access this endpoint" });
+      }
+
+      const dealsWithCodePools = await storage.getVendorDealsWithCodePools(vendor.id);
+
+      res.json({
+        success: true,
+        deals: dealsWithCodePools.map(deal => ({
+          id: deal.id,
+          title: deal.title,
+          status: deal.status,
+          codeStats: deal.codeStats,
+          codeReserveMinutes: deal.codeReserveMinutes || 30,
+          lowCodesWarning: deal.codeStats.available > 0 && deal.codeStats.available < 25,
+          outOfCodes: deal.codeStats.available === 0
+        }))
+      });
+    } catch (error) {
+      console.error("Error getting code pools:", error);
+      res.status(500).json({ error: "Failed to get code pools" });
+    }
+  });
+
+  // POST /api/deals/:dealId/codes/upload - Upload codes to deal code pool (vendor only)
+  app.post("/api/deals/:dealId/codes/upload", isAuthenticated, async (req: any, res) => {
+    try {
+      const dealId = req.params.dealId;
+      const userId = req.user.claims.sub;
+      const { codes } = req.body; // Array of code strings or CSV text
+
+      if (!codes || (!Array.isArray(codes) && typeof codes !== 'string')) {
+        return res.status(400).json({ success: false, error: "codes is required (array or CSV text)" });
+      }
+
+      // Get the deal
+      const deal = await storage.getDealById(dealId);
+      if (!deal) {
+        return res.status(404).json({ success: false, error: "Deal not found" });
+      }
+
+      // Check if deal is PASS_UNIQUE_CODE_POOL type
+      if (deal.couponRedemptionType !== 'PASS_UNIQUE_CODE_POOL') {
+        return res.status(400).json({
+          success: false,
+          error: "This deal does not use unique code pools"
+        });
+      }
+
+      // Verify user owns the vendor that owns this deal
+      const vendor = await storage.getVendor(deal.vendorId);
+      if (!vendor || vendor.ownerId !== userId) {
+        // Check if admin
+        const user = await storage.getUser(userId);
+        if (!user?.isAdmin) {
+          return res.status(403).json({
+            success: false,
+            error: "You don't have permission to upload codes for this deal"
+          });
+        }
+      }
+
+      // Parse codes - handle both array and CSV/text input
+      let codeList: string[];
+      if (Array.isArray(codes)) {
+        codeList = codes;
+      } else {
+        // Parse CSV or newline-separated text
+        codeList = codes
+          .split(/[\r\n,]+/)
+          .map((c: string) => c.trim())
+          .filter((c: string) => c.length > 0);
+      }
+
+      if (codeList.length === 0) {
+        return res.status(400).json({ success: false, error: "No valid codes provided" });
+      }
+
+      // Upload codes
+      const result = await storage.uploadDealCodes(dealId, codeList);
+
+      // Get updated stats
+      const stats = await storage.getDealCodePoolStats(dealId);
+
+      console.log("[COUPON_CODES] Codes uploaded for deal:", dealId, "inserted:", result.inserted, "duplicates:", result.duplicates);
+
+      res.json({
+        success: true,
+        inserted: result.inserted,
+        duplicates: result.duplicates,
+        errors: result.errors.length > 0 ? result.errors.slice(0, 10) : [], // Limit error messages
+        totalErrors: result.errors.length,
+        updatedStats: stats
+      });
+    } catch (error) {
+      console.error("Error uploading codes:", error);
+      res.status(500).json({ success: false, error: "Failed to upload codes" });
+    }
+  });
+
   // GET /api/me/redemptions - Get current user's redemption history (button-based)
   app.get("/api/me/redemptions", isAuthenticated, async (req: any, res) => {
     try {

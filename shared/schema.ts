@@ -742,6 +742,14 @@ export type StripeWebhookEvent = typeof stripeWebhookEvents.$inferSelect;
 export const DEAL_REDEMPTION_STATUSES = ["issued", "verified", "voided", "expired"] as const;
 export type DealRedemptionStatus = typeof DEAL_REDEMPTION_STATUSES[number];
 
+// Coupon code redemption type enum values (for online/in-person deals)
+export const COUPON_REDEMPTION_TYPES = ["FREE_STATIC_CODE", "PASS_UNIQUE_CODE_POOL"] as const;
+export type CouponRedemptionType = typeof COUPON_REDEMPTION_TYPES[number];
+
+// Deal code status enum values (for unique code pool management)
+export const DEAL_CODE_STATUSES = ["AVAILABLE", "RESERVED", "REDEEMED", "EXPIRED"] as const;
+export type DealCodeStatus = typeof DEAL_CODE_STATUSES[number];
+
 // Deal status enum values (for vendor management)
 export const DEAL_STATUSES = ["draft", "published", "paused", "expired"] as const;
 export type DealStatus = typeof DEAL_STATUSES[number];
@@ -785,7 +793,12 @@ export const deals = pgTable("deals", {
   tier: text("tier").notNull().default("free"), // "free" | "premium" (legacy support)
   isPassLocked: boolean("is_pass_locked").notNull().default(true), // Locked unless subscribed
   dealType: varchar("deal_type", { length: 32 }).notNull().default("other"), // percent_off, amount_off, bogo, free_item, fixed_price, other
-  redemptionType: text("redemption_type").default("IN_PERSON"), // How deal is redeemed
+  redemptionType: text("redemption_type").default("IN_PERSON"), // How deal is redeemed (IN_PERSON)
+
+  // Coupon Code System (for online deals)
+  couponRedemptionType: text("coupon_redemption_type"), // FREE_STATIC_CODE | PASS_UNIQUE_CODE_POOL (null = in-person only)
+  staticCode: varchar("static_code", { length: 50 }), // Static promo code for FREE_STATIC_CODE deals
+  codeReserveMinutes: integer("code_reserve_minutes").default(30), // How long unique codes are reserved before expiring
   
   // Vendor Deal Management
   status: varchar("status", { length: 16 }).notNull().default("published"), // published, paused, draft
@@ -821,6 +834,37 @@ export const insertDealSchema = createInsertSchema(deals).omit({
 
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
+
+// Deal Codes - Pool of unique codes for PASS_UNIQUE_CODE_POOL deals
+export const dealCodes = pgTable("deal_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  dealId: varchar("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 50 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("AVAILABLE"), // AVAILABLE | RESERVED | REDEEMED | EXPIRED
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  reservedAt: timestamp("reserved_at"),
+  expiresAt: timestamp("expires_at"), // When the reservation expires (user must use before this)
+  redeemedAt: timestamp("redeemed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  // Unique constraint: no duplicate codes per deal
+  uniqueIndex("deal_codes_deal_code_unique").on(table.dealId, table.code),
+  // Index for finding available codes quickly
+  index("deal_codes_deal_status_idx").on(table.dealId, table.status),
+  // Index for looking up user's reserved codes
+  index("deal_codes_user_deal_idx").on(table.assignedToUserId, table.dealId),
+]);
+
+export const insertDealCodeSchema = createInsertSchema(dealCodes).omit({
+  id: true,
+  reservedAt: true,
+  expiresAt: true,
+  redeemedAt: true,
+  createdAt: true,
+});
+
+export type InsertDealCode = z.infer<typeof insertDealCodeSchema>;
+export type DealCode = typeof dealCodes.$inferSelect;
 
 // Deal Redemptions - Simple button-based redemption system
 export const dealRedemptions = pgTable("deal_redemptions", {

@@ -771,6 +771,10 @@ export default function VendorDashboard() {
               <Ticket className="w-4 h-4" />
               Redemptions
             </TabsTrigger>
+            <TabsTrigger value="coupon-codes" className="gap-2" data-testid="tab-coupon-codes">
+              <Lock className="w-4 h-4" />
+              Coupon Codes
+            </TabsTrigger>
           </TabsList>
 
           {/* Profile Tab - Mobile-First Accordion Layout */}
@@ -1497,6 +1501,10 @@ export default function VendorDashboard() {
 
           <TabsContent value="verify">
             <VerifyCodeTab />
+          </TabsContent>
+
+          <TabsContent value="coupon-codes">
+            <CouponCodesTab />
           </TabsContent>
         </Tabs>
 
@@ -3382,4 +3390,222 @@ function VendorMessagesTab({ vendorId, isSubscribed }: { vendorId: string; isSub
   );
 }
 
+// Coupon Codes Management Tab for Member-Only Online Deals
+function CouponCodesTab() {
+  const { toast } = useToast();
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [codesText, setCodesText] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Fetch deals with code pools
+  const { data: codePoolsData, isLoading, refetch } = useQuery<{
+    success: boolean;
+    deals: Array<{
+      id: string;
+      title: string;
+      status: string;
+      codeStats: { available: number; reserved: number; redeemed: number; expired: number; total: number };
+      codeReserveMinutes: number;
+      lowCodesWarning: boolean;
+      outOfCodes: boolean;
+    }>;
+  }>({
+    queryKey: ["/api/business/deals/code-pools"],
+  });
+
+  const handleUploadCodes = async () => {
+    if (!selectedDealId || !codesText.trim()) {
+      toast({ title: "Please enter codes to upload", variant: "destructive" });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const response = await apiRequest("POST", `/api/deals/${selectedDealId}/codes/upload`, {
+        codes: codesText,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: "Codes uploaded successfully",
+          description: `${result.inserted} codes added, ${result.duplicates} duplicates skipped`,
+        });
+        setCodesText("");
+        setUploadDialogOpen(false);
+        refetch();
+      } else {
+        toast({ title: result.error || "Failed to upload codes", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Failed to upload codes", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const deals = codePoolsData?.deals || [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-section-header flex items-center gap-2">
+          <Lock className="w-5 h-5" />
+          Coupon Codes (Member-Only Deals)
+        </CardTitle>
+        <CardDescription>
+          Manage unique promo codes for your Pass member-only online deals.
+          Upload codes from your vendor platform that members can use at checkout.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {deals.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Lock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="text-body mb-2">No deals with unique code pools yet</p>
+            <p className="text-caption">
+              Create a deal with "Pass Member Unique Code Pool" redemption type to manage codes here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {deals.map((deal) => (
+              <div
+                key={deal.id}
+                className={`border rounded-lg p-4 ${deal.outOfCodes ? 'border-red-300 bg-red-50' : deal.lowCodesWarning ? 'border-amber-300 bg-amber-50' : ''}`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-semibold text-body">{deal.title}</h4>
+                    <Badge variant={deal.status === 'published' ? 'default' : 'secondary'} className="mt-1">
+                      {deal.status}
+                    </Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDealId(deal.id);
+                      setUploadDialogOpen(true);
+                    }}
+                    data-testid={`button-upload-codes-${deal.id}`}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Codes
+                  </Button>
+                </div>
+
+                {/* Warning Messages */}
+                {deal.outOfCodes && (
+                  <Alert variant="destructive" className="mb-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Out of codes! Members cannot redeem this deal. Upload more codes immediately.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {deal.lowCodesWarning && !deal.outOfCodes && (
+                  <Alert className="mb-3 border-amber-300 bg-amber-50">
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800">
+                      Low codes warning: Only {deal.codeStats.available} codes remaining. Consider uploading more.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-5 gap-2 text-center">
+                  <div className="bg-green-50 rounded p-2">
+                    <div className="text-lg font-bold text-green-700">{deal.codeStats.available}</div>
+                    <div className="text-caption text-green-600">Available</div>
+                  </div>
+                  <div className="bg-blue-50 rounded p-2">
+                    <div className="text-lg font-bold text-blue-700">{deal.codeStats.reserved}</div>
+                    <div className="text-caption text-blue-600">Reserved</div>
+                  </div>
+                  <div className="bg-purple-50 rounded p-2">
+                    <div className="text-lg font-bold text-purple-700">{deal.codeStats.redeemed}</div>
+                    <div className="text-caption text-purple-600">Redeemed</div>
+                  </div>
+                  <div className="bg-gray-50 rounded p-2">
+                    <div className="text-lg font-bold text-gray-700">{deal.codeStats.expired}</div>
+                    <div className="text-caption text-gray-600">Expired</div>
+                  </div>
+                  <div className="bg-slate-50 rounded p-2">
+                    <div className="text-lg font-bold text-slate-700">{deal.codeStats.total}</div>
+                    <div className="text-caption text-slate-600">Total</div>
+                  </div>
+                </div>
+
+                <p className="text-caption text-muted-foreground mt-2">
+                  Codes reserved for {deal.codeReserveMinutes} minutes before expiring
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upload Codes Dialog */}
+        <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Upload Coupon Codes</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="codes-textarea">Enter codes (one per line or comma-separated)</Label>
+                <Textarea
+                  id="codes-textarea"
+                  placeholder="ABC123-DEF456&#10;GHI789-JKL012&#10;MNO345-PQR678"
+                  value={codesText}
+                  onChange={(e) => setCodesText(e.target.value)}
+                  rows={8}
+                  className="font-mono text-sm"
+                  data-testid="textarea-upload-codes"
+                />
+                <p className="text-caption text-muted-foreground mt-1">
+                  Min 8 characters per code. Only alphanumeric, dash, and underscore allowed.
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setUploadDialogOpen(false);
+                    setCodesText("");
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleUploadCodes}
+                  disabled={isUploading || !codesText.trim()}
+                  data-testid="button-confirm-upload-codes"
+                >
+                  {isUploading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
+                  Upload Codes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
 

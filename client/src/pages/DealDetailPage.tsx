@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Info, Heart, RefreshCw, ExternalLink, Phone, Mail, Globe } from "lucide-react";
+import { MapPin, Tag, Lock, Store, ChevronRight, MessageSquare, Ticket, Info, Heart, RefreshCw, ExternalLink, Phone, Mail, Globe, Gift } from "lucide-react";
 import { SiInstagram, SiFacebook, SiTiktok, SiYoutube, SiX } from "react-icons/si";
 import DetailHeader from "@/components/layout/DetailHeader";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { hasRiseLocalPass, isMemberOnlyDeal } from "@shared/dealAccess";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import RedeemDealModal from "@/components/RedeemDealModal";
+import CouponCodeRevealModal from "@/components/CouponCodeRevealModal";
 import type { Deal, Vendor } from "@shared/schema";
 import placeholderImage from "@assets/stock_images/local_store_shopping_d3918e51.jpg";
 
@@ -43,8 +44,9 @@ export default function DealDetailPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [redeemModalOpen, setRedeemModalOpen] = useState(false);
+  const [couponCodeModalOpen, setCouponCodeModalOpen] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
-  
+
   const isPassMember = hasRiseLocalPass(user);
 
   const { data: deal, isLoading: dealLoading } = useQuery<Deal>({
@@ -271,6 +273,52 @@ export default function DealDetailPage() {
               );
             }
             
+            // Check if deal has coupon code support
+            const hasCouponCode = deal.couponRedemptionType === 'FREE_STATIC_CODE' || deal.couponRedemptionType === 'PASS_UNIQUE_CODE_POOL';
+            const isUniqueCodeDeal = deal.couponRedemptionType === 'PASS_UNIQUE_CODE_POOL';
+
+            // For unique code deals that require Pass membership
+            if (isUniqueCodeDeal && !isPassMember) {
+              return (
+                <div className="px-4 py-4 flex flex-col items-center gap-2">
+                  <Button
+                    size="lg"
+                    className="w-full max-w-sm"
+                    onClick={() => setLocation("/membership")}
+                    data-testid="button-join-for-code"
+                  >
+                    <span className="flex items-center gap-2 uppercase font-semibold tracking-wide">
+                      <Lock className="w-4 h-4" />
+                      Join to Get Code
+                    </span>
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Rise Local Pass required for exclusive member codes
+                  </p>
+                </div>
+              );
+            }
+
+            // For coupon code deals (both static and unique)
+            if (hasCouponCode) {
+              return (
+                <div className="px-4 py-4 flex justify-center">
+                  <Button
+                    size="lg"
+                    className="w-full max-w-sm"
+                    onClick={() => setCouponCodeModalOpen(true)}
+                    data-testid="button-reveal-code"
+                  >
+                    <span className="flex items-center gap-2 uppercase font-semibold tracking-wide">
+                      <Gift className="w-4 h-4" />
+                      {isUniqueCodeDeal ? "Reveal Member Code" : "Reveal Code"}
+                    </span>
+                  </Button>
+                </div>
+              );
+            }
+
+            // For in-person redemption deals
             return (
               <div className="px-4 py-4 flex justify-center">
                 <Button
@@ -574,6 +622,13 @@ export default function DealDetailPage() {
         vendor={vendor}
         open={redeemModalOpen}
         onOpenChange={setRedeemModalOpen}
+      />
+
+      <CouponCodeRevealModal
+        deal={deal}
+        vendor={vendor}
+        open={couponCodeModalOpen}
+        onOpenChange={setCouponCodeModalOpen}
       />
     </div>
   );
