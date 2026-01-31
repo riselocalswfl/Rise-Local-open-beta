@@ -7,11 +7,22 @@ import Header from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight, Shield, Crown, Sparkles, Loader2, Undo2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { LogOut, Edit2, Save, X, Ticket, Store, ChevronRight, Shield, Crown, Sparkles, Loader2, Undo2, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -46,6 +57,9 @@ export default function CustomerProfile() {
   const [editedFirstName, setEditedFirstName] = useState("");
   const [editedLastName, setEditedLastName] = useState("");
   const [editedPhone, setEditedPhone] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   // Check both isVendor/isAdmin flags and legacy role for backward compatibility
   const isVendor = user?.isVendor === true || user?.role === "vendor" || user?.role === "restaurant" || user?.role === "service_provider";
   const isAdmin = user?.isAdmin === true || user?.role === "admin";
@@ -83,6 +97,30 @@ export default function CustomerProfile() {
       });
     },
   });
+
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") return;
+
+    setIsDeleting(true);
+    try {
+      await apiRequest("DELETE", `/api/users/${user?.id}`);
+      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
+      // Clear everything and redirect to home
+      queryClient.clear();
+      window.location.href = "/";
+    } catch (error) {
+      toast({
+        title: "Failed to delete account",
+        description: "Please try again or contact support.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setDeleteConfirmText("");
+    }
+  };
 
   // Redirect vendors to the dedicated dashboard
   useEffect(() => {
@@ -628,24 +666,89 @@ export default function CustomerProfile() {
           {/* Delete Account */}
           <Card data-testid="card-delete-account" className="border-destructive/30">
             <CardHeader>
-              <CardTitle className="text-destructive">Delete Account</CardTitle>
+              <CardTitle className="text-destructive flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                Delete Account
+              </CardTitle>
               <CardDescription>Permanently remove your account and data</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                To delete your account and all associated data, please contact our support team. 
-                We'll process your request within 30 days as required by applicable privacy laws.
+                This action cannot be undone. Your account, profile, and all associated data will be permanently deleted.
               </p>
-              <Button 
-                variant="outline"
-                className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                onClick={() => window.location.href = 'mailto:support@riselocal.com?subject=Account%20Deletion%20Request'}
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => setDeleteDialogOpen(true)}
                 data-testid="button-delete-account"
               >
-                Request Account Deletion
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete My Account
               </Button>
             </CardContent>
           </Card>
+
+          {/* Account Deletion Confirmation Dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Delete Account Permanently?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3">
+                  <p>
+                    This action <strong>cannot be undone</strong>. This will permanently delete your account and remove all your data from our servers, including:
+                  </p>
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    <li>Your profile and personal information</li>
+                    <li>Your redemption history</li>
+                    <li>Your Rise Local Pass subscription</li>
+                    <li>Your saved favorites</li>
+                  </ul>
+                  <div className="pt-2">
+                    <Label htmlFor="delete-confirm-customer" className="text-foreground font-medium">
+                      Type DELETE to confirm:
+                    </Label>
+                    <Input
+                      id="delete-confirm-customer"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value.toUpperCase())}
+                      placeholder="DELETE"
+                      className="mt-2"
+                      data-testid="input-delete-confirm"
+                    />
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel
+                  onClick={() => setDeleteConfirmText("")}
+                  data-testid="button-cancel-delete"
+                >
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== "DELETE" || isDeleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  data-testid="button-confirm-delete"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Account
+                    </>
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </main>
     </div>

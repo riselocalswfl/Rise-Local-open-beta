@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Check, Sparkles, ArrowLeft, Loader2, Crown, Settings } from "lucide-react";
+import { Check, Sparkles, ArrowLeft, Loader2, Crown, Settings, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { hasRiseLocalPass } from "@shared/dealAccess";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const BENEFITS = [
@@ -72,6 +72,36 @@ export default function Membership() {
       toast({
         title: "Portal Error",
         description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Restore Purchases - Sync membership status from payment provider
+  const restoreMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/entitlements/refresh");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Invalidate auth cache to refresh user data
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      if (data.isPassMember) {
+        toast({
+          title: "Membership Restored!",
+          description: "Your Rise Local Pass has been restored successfully.",
+        });
+      } else {
+        toast({
+          title: "No Active Membership Found",
+          description: "We couldn't find an active subscription. Please subscribe or contact support.",
+        });
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Restore Failed",
+        description: error.message || "Could not restore purchases. Please try again.",
         variant: "destructive",
       });
     },
@@ -278,6 +308,35 @@ export default function Membership() {
               </Link>
             </CardContent>
           </Card>
+
+          {/* Restore Purchases - Required for iOS App Store */}
+          {user && (
+            <div className="text-center mt-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => restoreMutation.mutate()}
+                disabled={restoreMutation.isPending}
+                className="text-muted-foreground"
+                data-testid="button-restore-purchases"
+              >
+                {restoreMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Restore Purchases
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1">
+                Previously subscribed? Restore your membership.
+              </p>
+            </div>
+          )}
 
           <div className="h-8" />
         </div>

@@ -30,15 +30,12 @@ export default function CheckoutSuccess() {
   const refreshEntitlements = useCallback(async () => {
     // Only call if we have a valid session ID from checkout
     if (!sessionId) {
-      console.log('[CheckoutSuccess] Skipping entitlements refresh - no session_id in URL');
       return;
     }
     try {
-      console.log('[CheckoutSuccess] Calling entitlements refresh', { sessionId });
       await apiRequest('POST', '/api/entitlements/refresh', { checkout_session_id: sessionId });
-      console.log('[CheckoutSuccess] Entitlements refresh successful');
-    } catch (error) {
-      console.warn('[CheckoutSuccess] Entitlements refresh failed (may not have subscription yet):', error);
+    } catch {
+      // Entitlements refresh may fail if subscription isn't ready yet - this is expected
     }
   }, [sessionId]);
 
@@ -46,8 +43,8 @@ export default function CheckoutSuccess() {
     try {
       // Refetch user data to get the latest membership status
       await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
-    } catch (error) {
-      console.error("Failed to refresh user data:", error);
+    } catch {
+      // Silently fail - user will see stale data but can retry
     }
   }, []);
 
@@ -75,7 +72,6 @@ export default function CheckoutSuccess() {
     }
 
     const retryTimer = setTimeout(async () => {
-      console.log(`[CheckoutSuccess] Retry ${retryCount + 1}/${MAX_RETRY_ATTEMPTS} - checking membership status`);
       // Try syncing from Stripe again in case the first attempt failed
       await refreshEntitlements();
       await refreshUserData();

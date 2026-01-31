@@ -38,8 +38,11 @@ class AdminErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryStat
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[Admin Error Boundary] Caught error:', error);
-    console.error('[Admin Error Boundary] Error info:', errorInfo);
+    // Log errors only in development
+    if (import.meta.env.DEV) {
+      console.error('[Admin Error Boundary] Caught error:', error);
+      console.error('[Admin Error Boundary] Error info:', errorInfo);
+    }
   }
 
   render() {
@@ -1610,8 +1613,8 @@ function SubscriptionReconciliation() {
       const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchQuery)}`);
       const users = await response.json();
       setSearchResults(users);
-    } catch (e) {
-      console.error('Search failed:', e);
+    } catch {
+      // Search failed - silently ignore
     } finally {
       setIsSearching(false);
     }

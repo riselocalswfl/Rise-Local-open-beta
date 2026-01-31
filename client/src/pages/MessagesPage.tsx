@@ -78,8 +78,8 @@ export default function MessagesPage() {
           setSearchResults(results);
           setShowResults(true);
         }
-      } catch (error) {
-        console.error("Search failed:", error);
+      } catch {
+        // Search failed - silently ignore
       } finally {
         setIsSearching(false);
       }
@@ -129,8 +129,8 @@ export default function MessagesPage() {
       setShowResults(false);
       navigate(`/messages/${result.conversationId}`);
     },
-    onError: (error) => {
-      console.error("Failed to start conversation:", error);
+    onError: () => {
+      // Failed to start conversation - silently ignore
     },
   });
 

@@ -50,8 +50,8 @@ export default function Welcome() {
       const roleToSend = (role === "vendor" || role === "restaurant" || role === "service_provider") ? "vendor" : "buyer";
       try {
         await completeWelcomeMutation.mutateAsync({ role: roleToSend });
-      } catch (error) {
-        console.error("Failed to complete welcome:", error);
+      } catch {
+        // Silently continue - welcome completion is non-critical
       }
     }
 

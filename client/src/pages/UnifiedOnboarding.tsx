@@ -188,8 +188,7 @@ export default function UnifiedOnboarding() {
         setLocation("/dashboard");
       }, 1500);
     },
-    onError: (error: Error) => {
-      console.error("Onboarding completion error:", error);
+    onError: () => {
       toast({
         title: "Submission failed",
         description: "Please try again or contact support.",
@@ -298,8 +297,6 @@ export default function UnifiedOnboarding() {
     
     // If vendor type actually changed, reset form2 and clear stale type-specific data
     if (previousVendorType.current && previousVendorType.current !== selectedVendorType) {
-      console.log(`[VENDOR TYPE CHANGE] ${previousVendorType.current} → ${selectedVendorType}, resetting form2`);
-      
       // Reset form2 with clean defaults
       form2.reset({
         tagline: "",
@@ -337,7 +334,7 @@ export default function UnifiedOnboarding() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(clearData),
-        }).catch(err => console.error("Failed to clear old type data:", err));
+        }).catch(() => { /* Silently fail - non-critical */ });
       }
     }
     
@@ -369,7 +366,6 @@ export default function UnifiedOnboarding() {
         const draft = await response.json();
         
         if (draft && draft.id) {
-          console.log("Loaded draft vendor:", draft.id);
           updateDraftVendorId(draft.id);
           setSelectedVendorType(draft.vendorType);
           
@@ -446,7 +442,7 @@ export default function UnifiedOnboarding() {
           if (draft.bannerUrl) setBannerUrl(draft.bannerUrl);
         }
       } catch (error) {
-        console.error("Error loading draft vendor:", error);
+        // Draft loading failed - user will start fresh
       } finally {
         setTimeout(() => {
           isInitialLoadRef.current = false;
@@ -481,11 +477,9 @@ export default function UnifiedOnboarding() {
 
     try {
       setSaveStatus("saving");
-      console.log("[Auto-save] Starting save for", formType, "with vendor ID:", draftVendorId);
 
       // If no draft exists, create it first
       if (!draftVendorId && formType === 'step1' && data.vendorType && data.businessName) {
-        console.log("[Auto-save] Creating new draft vendor");
         const createResponse = await fetchWithTimeout("/api/vendors/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -504,9 +498,6 @@ export default function UnifiedOnboarding() {
         });
 
         if (!createResponse.ok) {
-          const errorText = await createResponse.text();
-          console.error("[Auto-save] Create failed:", createResponse.status, errorText);
-          
           // Handle 401 authentication errors
           if (createResponse.status === 401) {
             toast({
@@ -518,12 +509,11 @@ export default function UnifiedOnboarding() {
             setLocation("/auth");
             return;
           }
-          
+
           throw new Error(`Failed to create draft: ${createResponse.status}`);
         }
 
         const newDraft = await createResponse.json();
-        console.log("[Auto-save] Draft created successfully:", newDraft.id);
         updateDraftVendorId(newDraft.id);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
@@ -580,7 +570,6 @@ export default function UnifiedOnboarding() {
           updateData.hours = data.hours;
         }
 
-        console.log("[Auto-save] Updating draft vendor with fields:", Object.keys(updateData));
         const updateResponse = await fetchWithTimeout(`/api/vendors/${draftVendorId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -589,9 +578,6 @@ export default function UnifiedOnboarding() {
         });
 
         if (!updateResponse.ok) {
-          const errorText = await updateResponse.text();
-          console.error("[Auto-save] Update failed:", updateResponse.status, errorText);
-          
           // Handle 401 authentication errors
           if (updateResponse.status === 401) {
             toast({
@@ -607,21 +593,12 @@ export default function UnifiedOnboarding() {
           throw new Error(`Failed to update draft: ${updateResponse.status}`);
         }
 
-        console.log("[Auto-save] Update successful");
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       } else {
-        console.log("[Auto-save] No draft ID yet, skipping update");
         setSaveStatus("idle");
       }
-    } catch (error) {
-      console.error("[Auto-save] Error:", error);
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          console.error("[Auto-save] Request timed out after 15 seconds");
-        }
-        console.error("[Auto-save] Error details:", error.message);
-      }
+    } catch {
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
@@ -705,7 +682,6 @@ export default function UnifiedOnboarding() {
     if (!draftVendorId) {
       const savedId = sessionStorage.getItem("onboardingDraftId");
       if (savedId) {
-        console.log("Recovered draft ID from sessionStorage:", savedId);
         updateDraftVendorId(savedId);
         // Try again with recovered ID
         toast({

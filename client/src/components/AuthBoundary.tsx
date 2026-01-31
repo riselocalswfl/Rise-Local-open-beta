@@ -36,7 +36,6 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
     if (isLoading) return;
 
     if (!isPublicRoute && !isGateRoute && !user) {
-      console.log("[AuthBoundary] Not authenticated, redirecting to /auth");
       const currentPath = window.location.pathname;
       sessionStorage.setItem("returnTo", currentPath);
       setLocation("/auth");
@@ -46,7 +45,6 @@ export function AuthBoundary({ children }: AuthBoundaryProps) {
     // Admins bypass onboarding requirements (check both isAdmin flag and legacy role)
     const isAdmin = user?.isAdmin === true || user?.role === "admin";
     if (user && !isGateRoute && !isPublicRoute && !user.onboardingComplete && !isAdmin) {
-      console.log("[AuthBoundary] Authenticated but onboarding incomplete, redirecting to /start");
       setLocation("/start");
     }
   }, [isLoading, user, setLocation, isPublicRoute, isGateRoute, location]);

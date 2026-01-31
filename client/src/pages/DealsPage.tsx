@@ -161,7 +161,6 @@ export default function DealsPage() {
           clearTimeout(locationTimeoutRef.current);
           locationTimeoutRef.current = null;
         }
-        console.log("Geolocation error:", error.message);
         // Use default location on any error
         setLocation({
           status: "granted",

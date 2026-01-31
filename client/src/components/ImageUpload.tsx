@@ -89,8 +89,7 @@ export function ImageUpload({
         });
 
         onUploadComplete(objectPath);
-      } catch (error) {
-        console.error("Upload error:", error);
+      } catch {
         URL.revokeObjectURL(previewUrl);
         setPreview(null);
         toast({

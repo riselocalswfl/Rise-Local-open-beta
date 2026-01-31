@@ -30,7 +30,6 @@ export function ProtectedRoute({
     if (isLoading) return;
 
     if (error || !user) {
-      console.log("[ProtectedRoute] Not authenticated, redirecting to", redirectTo);
       const currentPath = window.location.pathname;
       sessionStorage.setItem("returnTo", currentPath);
       setLocation(redirectTo);
@@ -38,7 +37,6 @@ export function ProtectedRoute({
     }
 
     if (requireOnboarding && !user.onboardingComplete && location !== "/welcome") {
-      console.log("[ProtectedRoute] Onboarding not complete, redirecting to /welcome");
       setLocation("/welcome");
     }
   }, [isLoading, user, error, redirectTo, setLocation, requireOnboarding, location]);

@@ -447,11 +447,10 @@ export default function VendorDashboard() {
       toast({ title: "Service created successfully" });
     },
     onError: (error: any) => {
-      console.error("Service creation error:", error);
-      toast({ 
-        title: "Failed to create service", 
+      toast({
+        title: "Failed to create service",
         description: error?.message || "Please try again",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -475,11 +474,10 @@ export default function VendorDashboard() {
       toast({ title: "Service updated successfully" });
     },
     onError: (error: any) => {
-      console.error("Service update error:", error);
-      toast({ 
-        title: "Failed to update service", 
+      toast({
+        title: "Failed to update service",
         description: error?.message || "Please try again",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -501,11 +499,10 @@ export default function VendorDashboard() {
       toast({ title: "Service deleted successfully" });
     },
     onError: (error: any) => {
-      console.error("Service deletion error:", error);
-      toast({ 
-        title: "Failed to delete service", 
+      toast({
+        title: "Failed to delete service",
         description: error?.message || "Please try again",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -533,11 +530,10 @@ export default function VendorDashboard() {
       toast({ title: "Deal published!", description: "Your deal is now live and visible to shoppers" });
     },
     onError: (error: any) => {
-      console.error("Deal creation error:", error);
-      toast({ 
-        title: "Failed to create deal", 
+      toast({
+        title: "Failed to create deal",
         description: error?.message || "Please try again",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -553,11 +549,10 @@ export default function VendorDashboard() {
       toast({ title: "Deal updated successfully" });
     },
     onError: (error: any) => {
-      console.error("Deal update error:", error);
-      toast({ 
-        title: "Failed to update deal", 
+      toast({
+        title: "Failed to update deal",
         description: error?.message || "Please try again",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -571,11 +566,10 @@ export default function VendorDashboard() {
       toast({ title: "Deal published!", description: "Your deal is now live" });
     },
     onError: (error: any) => {
-      console.error("Deal publish error:", error);
-      toast({ 
-        title: "Failed to publish deal", 
+      toast({
+        title: "Failed to publish deal",
         description: error?.message || "Please try again",
-        variant: "destructive" 
+        variant: "destructive"
       });
     },
   });
@@ -588,11 +582,10 @@ export default function VendorDashboard() {
       invalidateAllDealQueries();
       toast({ title: "Deal paused" });
     },
-    onError: (error: any) => {
-      console.error("Deal pause error:", error);
-      toast({ 
-        title: "Failed to pause deal", 
-        variant: "destructive" 
+    onError: () => {
+      toast({
+        title: "Failed to pause deal",
+        variant: "destructive"
       });
     },
   });
@@ -605,11 +598,10 @@ export default function VendorDashboard() {
       invalidateAllDealQueries();
       toast({ title: "Deal deleted" });
     },
-    onError: (error: any) => {
-      console.error("Deal delete error:", error);
-      toast({ 
-        title: "Failed to delete deal", 
-        variant: "destructive" 
+    onError: () => {
+      toast({
+        title: "Failed to delete deal",
+        variant: "destructive"
       });
     },
   });
@@ -2725,10 +2717,7 @@ function AddServiceForm({ onSubmit, isPending, defaultValues }: { onSubmit: (dat
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
-        console.error("❌ Service form validation errors:", errors);
-        console.error("📝 Form values:", form.getValues());
-      })} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="offeringName"
