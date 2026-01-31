@@ -231,15 +231,6 @@ export default function RecoverAccount() {
               </button>
             </p>
             <p>
-              Forgot your password?{" "}
-              <button
-                onClick={() => setLocation("/reset-password")}
-                className="text-primary hover:underline"
-              >
-                Reset it here
-              </button>
-            </p>
-            <p>
               Don't have an account?{" "}
               <button
                 onClick={() => setLocation("/auth")}
