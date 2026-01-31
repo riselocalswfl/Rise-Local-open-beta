@@ -12,5 +12,19 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Service Worker Registration for Offline Support -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              // Service worker registered successfully
+            })
+            .catch((error) => {
+              // Service worker registration failed (non-blocking)
+            });
+        });
+      }
+    </script>
   </body>
 </html>

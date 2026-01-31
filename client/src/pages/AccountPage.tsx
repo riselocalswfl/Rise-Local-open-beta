@@ -11,15 +11,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { 
-  ArrowLeft, 
-  Building2, 
-  Tag, 
-  Settings, 
-  ChevronRight, 
-  Plus, 
-  Eye, 
-  Bell, 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  ArrowLeft,
+  Building2,
+  Tag,
+  Settings,
+  ChevronRight,
+  Plus,
+  Eye,
+  Bell,
   LogOut,
   MapPin,
   Phone,
@@ -28,7 +38,9 @@ import {
   User as UserIcon,
   Crown,
   Sparkles,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";

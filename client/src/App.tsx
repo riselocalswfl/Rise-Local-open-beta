@@ -53,6 +53,7 @@ import BusinessProfile from "@/pages/BusinessProfile";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import { AuthBoundary } from "@/components/AuthBoundary";
+import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import AppShell from "@/components/layout/AppShell";
 
 function Router() {
@@ -328,15 +329,17 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ScrollToTop />
-        <Toaster />
-        <AuthBoundary>
-          <Router />
-        </AuthBoundary>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <GlobalErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ScrollToTop />
+          <Toaster />
+          <AuthBoundary>
+            <Router />
+          </AuthBoundary>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </GlobalErrorBoundary>
   );
 }
 
