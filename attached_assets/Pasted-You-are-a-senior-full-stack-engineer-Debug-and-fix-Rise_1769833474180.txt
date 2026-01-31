@@ -1,0 +1,92 @@
+You are a senior full-stack engineer. Debug and fix Rise Local’s account recovery + login flow for users who originally signed up using Replit Auth (OIDC), where their password is not native to our database.
+
+PROBLEM
+- On the Sign In page, “Account Recovery” exists for Replit-Auth users (email remembered / existing account).
+- Current recovery flow:
+  1) User enters email → we detect an existing user record.
+  2) We redirect them to set a password (create local credentials).
+  3) They recover their info and successfully save the new password and profile data.
+- This works on the first login immediately after password creation.
+- But when they log OUT and try to log BACK in using that email + password, login continuously fails and claims the credentials are incorrect.
+
+GOAL
+Make account recovery + local login seamless and reliable:
+- After a Replit-Auth user sets a password, they must be able to log in with email/password on every subsequent attempt.
+- No “password incorrect” loops.
+- Ensure Replit-Auth (OIDC) login still works too, and both methods can coexist without breaking each other.
+
+CONTEXT / ASSUMPTIONS
+- Backend: Node/Express + TypeScript + Passport (Replit OIDC) + Drizzle + Postgres (Neon)
+- Frontend: React + TS
+- We likely store users by email and also store OIDC provider identifiers (like replit user id / sub).
+- There is a local password login route using bcrypt/argon hashing (confirm which).
+- There is a recovery route that sets a password for an existing user.
+
+TASKS (DO ALL OF THESE)
+1) TRACE THE FULL AUTH FLOW
+   - Find and list:
+     a) Local login endpoint (email/password) handler
+     b) Password set/recovery endpoint handler
+     c) User table fields related to auth (email, passwordHash, provider, providerId/sub, authMethod, etc.)
+     d) Passport strategies and serializeUser/deserializeUser session logic
+   - Add temporary, safe debug logs (no raw password) to see:
+     - which user record is being matched by email
+     - whether passwordHash exists and which hashing algo is used
+     - whether compare() returns false and why
+
+2) IDENTIFY ROOT CAUSE(S) (COMMON ONES)
+   Check and explicitly confirm:
+   - Password hashing mismatch:
+     - saving plaintext or double-hashing
+     - using bcrypt in one place and argon2 in another
+     - different salt rounds or encoding errors
+   - Wrong user record used:
+     - duplicate users with same email (case sensitivity, whitespace)
+     - lookup uses email in one route and customerId/sub in another
+   - Email normalization bug:
+     - one place lowercases email, the other doesn’t
+   - Schema issue:
+     - passwordHash column too short/truncated
+   - Session/cookie/csrf issues:
+     - login works once because of existing session, but subsequent logins fail due to different route logic
+   - “Auth method” gating:
+     - local login route refusing users with provider=replit even after password set
+
+3) IMPLEMENT A CORRECT, UNIFIED MODEL
+   - Implement a clear “linked credentials” approach:
+     - A user can have provider=replit AND also have passwordHash set.
+     - Local login should allow login if passwordHash exists, regardless of provider.
+   - Add (or enforce) email normalization:
+     - Always trim + lowercase emails at input, and store normalizedEmail or always store lowercased email.
+   - Add protections:
+     - Ensure only one user per normalized email (add unique index / migration if safe).
+     - If duplicates exist, write a safe resolution strategy (pick oldest, merge data, or block with admin tool).
+   - Ensure passwordHash is stored properly:
+     - Use bcrypt (or argon2) consistently in BOTH: setPassword and login compare.
+     - Add unit-level checks: hash length, compare success.
+
+4) FIX RECOVERY FLOW + UX
+   - After “set password” completes:
+     - Either log the user in immediately (create session/token) OR redirect them to login with a success message.
+   - Ensure the next login succeeds.
+   - Ensure logout truly clears session/cookies.
+
+5) ADD TESTS / VERIFICATION STEPS
+   Provide a short test plan I can run locally:
+   - Scenario A: Replit-auth user sets password → logout → login with email/password → success
+   - Scenario B: Replit-auth user still can login via Replit OIDC → success
+   - Scenario C: Local-only user login remains unchanged
+   - Scenario D: Wrong password fails properly
+   - Scenario E: Email case differences still login successfully
+
+DELIVERABLES
+- Explain the root cause clearly with code references (file paths + functions).
+- Provide exact code changes (diff-style or clearly marked “before/after”).
+- Provide any DB migration SQL/Drizzle migration needed (unique index, column length changes, etc.)
+- Remove or downgrade debug logs after confirming fix.
+
+IMPORTANT
+- Do NOT store plaintext passwords anywhere.
+- Do NOT log secrets or raw passwords.
+- Ensure backward compatibility for existing users.
+- Keep changes minimal but correct.
