@@ -564,6 +564,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to check auth state (admin only)
+  app.get('/api/debug/auth-status/:email', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const adminUser = await storage.getUser(adminUserId);
+
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const email = req.params.email.toLowerCase().trim();
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found", email });
+      }
+
+      res.json({
+        id: user.id,
+        email: user.email,
+        hasPassword: !!user.password,
+        passwordLength: user.password?.length || 0,
+        authProvider: user.authProvider || 'not set',
+        failedLoginAttempts: user.failedLoginAttempts ?? 'field not in db',
+        lockoutUntil: user.lockoutUntil || null,
+        isLockedOut: user.lockoutUntil ? new Date(user.lockoutUntil) > new Date() : false,
+        lastLoginAt: user.lastLoginAt || null,
+        createdAt: user.createdAt,
+      });
+    } catch (error) {
+      console.error("[Debug] Auth status error:", error);
+      res.status(500).json({ error: "Failed to get auth status", details: String(error) });
+    }
+  });
+
   // SECURITY: Public route to fetch MINIMAL user info by ID
   // Only returns fields safe for public display - no PII, no auth data
   app.get('/api/users/:id', async (req, res) => {

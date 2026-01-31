@@ -397,7 +397,7 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -406,10 +406,17 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return next();
   }
 
+  // Session expired - try to refresh if we have a refresh token (Replit OIDC)
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
+    // Native auth sessions don't have refresh tokens
+    // Check if this is a native auth session that just needs renewal
+    if (user.claims?.sub) {
+      // Extend the session for native auth users
+      user.expires_at = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
