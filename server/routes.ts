@@ -3872,10 +3872,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("[Entitlements Refresh] Error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to refresh entitlements",
         details: error instanceof Error ? error.message : String(error),
       });
+    }
+  });
+
+  // ============================================================================
+  // APPLE IN-APP PURCHASE SUPPORT
+  // These endpoints prepare the backend for iOS App Store subscription handling
+  // when using Median (or similar) webview wrapper for iOS distribution.
+  // ============================================================================
+
+  // Validate Apple App Store receipt and sync membership
+  // Called by iOS app after successful purchase or restore
+  app.post("/api/billing/apple/validate-receipt", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { receipt_data, source = 'purchase' } = req.body;
+
+      if (!receipt_data) {
+        return res.status(400).json({ error: "Missing receipt_data" });
+      }
+
+      console.log('[Apple IAP] Validating receipt', { userId, source, receiptLength: receipt_data.length });
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // TODO: When Apple Developer account and App Store Connect are configured:
+      // 1. Validate receipt with Apple's verifyReceipt endpoint
+      // 2. For sandbox: https://sandbox.itunes.apple.com/verifyReceipt
+      // 3. For production: https://buy.itunes.apple.com/verifyReceipt
+      // 4. Parse the response to extract subscription status and expiration
+      //
+      // Example validation flow:
+      // const appleResponse = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
+      //   method: 'POST',
+      //   body: JSON.stringify({
+      //     'receipt-data': receipt_data,
+      //     'password': process.env.APPLE_SHARED_SECRET,
+      //     'exclude-old-transactions': true
+      //   })
+      // });
+      // const validationResult = await appleResponse.json();
+      //
+      // Parse latest_receipt_info to get subscription details:
+      // - product_id: Identifies the subscription product
+      // - expires_date_ms: Subscription expiration timestamp
+      // - is_in_billing_retry_period: Grace period status
+      // - auto_renew_status: Whether auto-renew is enabled
+
+      // For now, return a placeholder response indicating the endpoint is ready
+      // but Apple validation is not yet configured
+      console.log('[Apple IAP] Receipt validation endpoint ready - awaiting Apple configuration');
+
+      return res.status(503).json({
+        error: "Apple IAP not yet configured",
+        message: "Apple In-App Purchase validation requires App Store Connect configuration. Please use web checkout for now.",
+        code: "APPLE_IAP_NOT_CONFIGURED"
+      });
+
+    } catch (error) {
+      console.error("[Apple IAP] Receipt validation error:", error);
+      res.status(500).json({
+        error: "Failed to validate Apple receipt",
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
+
+  // Apple Server-to-Server Notifications (V2)
+  // Receives subscription lifecycle events from Apple
+  // Similar to Stripe webhooks but for App Store subscriptions
+  app.post("/api/apple/webhook", async (req, res) => {
+    try {
+      const { signedPayload } = req.body;
+
+      if (!signedPayload) {
+        console.log('[Apple Webhook] Missing signedPayload');
+        return res.status(400).json({ error: "Missing signedPayload" });
+      }
+
+      console.log('[Apple Webhook] Received notification');
+
+      // TODO: When Apple Developer account is configured:
+      // 1. Verify the JWS signature using Apple's public keys
+      // 2. Decode the payload to get notification details
+      // 3. Handle different notification types:
+      //    - SUBSCRIBED: New subscription
+      //    - DID_RENEW: Subscription renewed
+      //    - DID_CHANGE_RENEWAL_PREF: Changed auto-renew
+      //    - DID_CHANGE_RENEWAL_STATUS: Changed renewal status
+      //    - EXPIRED: Subscription expired
+      //    - DID_FAIL_TO_RENEW: Billing problem
+      //    - GRACE_PERIOD_EXPIRED: Grace period ended
+      //    - REFUND: User received a refund
+      //
+      // Example handling:
+      // const decoded = await verifyAndDecodeAppleJWS(signedPayload);
+      // const { notificationType, subtype, data } = decoded;
+      // const originalTransactionId = data.signedTransactionInfo.originalTransactionId;
+      // const expiresDate = new Date(data.signedTransactionInfo.expiresDate);
+      //
+      // Find user by Apple original transaction ID stored during initial purchase
+      // Update membership status based on notification type
+
+      // For now, acknowledge receipt but log that configuration is needed
+      console.log('[Apple Webhook] Endpoint ready - awaiting Apple configuration');
+
+      // Always return 200 to Apple to acknowledge receipt
+      // Apple will retry notifications that don't receive 200
+      return res.status(200).json({
+        received: true,
+        message: "Apple S2S notifications endpoint ready - awaiting configuration"
+      });
+
+    } catch (error) {
+      console.error("[Apple Webhook] Error:", error);
+      // Return 500 so Apple will retry the notification
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Check if user has an active Apple subscription
+  // Used by iOS app to determine if restore purchases should be available
+  app.get("/api/billing/apple/subscription-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Return current membership status
+      // iOS app can use this to determine if user has an active subscription
+      // (whether from Apple, Stripe, or admin grant)
+      const isActive = user.isPassMember && user.passExpiresAt && new Date(user.passExpiresAt) > new Date();
+
+      res.json({
+        isPassMember: isActive,
+        passExpiresAt: user.passExpiresAt,
+        membershipStatus: user.membershipStatus,
+        membershipPlan: user.membershipPlan,
+        // Indicate subscription source for iOS app
+        source: user.stripeSubscriptionId ? 'stripe' : (user.membershipPlan === 'admin_manual_grant' ? 'admin' : 'unknown')
+      });
+
+    } catch (error) {
+      console.error("[Apple IAP] Status check error:", error);
+      res.status(500).json({ error: "Failed to check subscription status" });
     }
   });
 
