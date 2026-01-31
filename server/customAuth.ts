@@ -862,9 +862,13 @@ export async function setupCustomAuth(app: Express) {
 
       // Hash and set password
       const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+      console.log(`[Custom Auth] Generated hash prefix: ${passwordHash.substring(0, 7)}, length: ${passwordHash.length}`);
       await storage.updateUser(user.id, { password: passwordHash });
       await storage.markUserMigrated(user.id);
 
+      // Verify the stored password is correct format (debug)
+      const updatedUser = await storage.getUserByEmail(user.email!);
+      console.log(`[Custom Auth] Stored hash prefix: ${updatedUser?.password?.substring(0, 7)}, length: ${updatedUser?.password?.length}`);
       console.log(`[Custom Auth] Account recovered for user: ${user.email}`);
 
       // Generate JWT for auto-login

@@ -445,11 +445,9 @@ export class DbStorage implements IStorage {
   }
 
   async updateUser(id: string, data: Partial<InsertUser>): Promise<void> {
-    const updateData: any = { ...data };
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, SALT_ROUNDS);
-    }
-    await db.update(users).set(updateData).where(eq(users.id, id));
+    // Note: Password must be pre-hashed by caller - no auto-hashing here
+    // All password updates go through customAuth.ts which handles hashing
+    await db.update(users).set(data).where(eq(users.id, id));
   }
 
   async deleteUser(id: string): Promise<void> {
