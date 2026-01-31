@@ -77,7 +77,15 @@ export const users = pgTable("users", {
   
   // Email notification preferences
   emailMessageNotifications: boolean("email_message_notifications").default(true), // Receive email when new message arrives
-  
+
+  // Authentication tracking
+  authProvider: text("auth_provider").default("replit"), // 'replit' | 'native' - how user originally signed up
+  lastLoginAt: timestamp("last_login_at"), // Last successful login timestamp
+
+  // Login security / lockout
+  failedLoginAttempts: integer("failed_login_attempts").default(0), // Number of consecutive failed login attempts
+  lockoutUntil: timestamp("lockout_until"), // If set and in future, user is locked out
+
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

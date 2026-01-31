@@ -48,6 +48,7 @@ import Checkout from "@/pages/Checkout";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
 import Start from "@/pages/Start";
+import SignIn from "@/pages/SignIn";
 import Businesses from "@/pages/Businesses";
 import BusinessProfile from "@/pages/BusinessProfile";
 import Privacy from "@/pages/Privacy";
@@ -281,17 +282,18 @@ function Router() {
         {() => <Redirect to="/onboarding" />}
       </Route>
       
-      {/* Auth Redirects - All old auth routes redirect to /auth */}
+      {/* Native Email/Password Sign In */}
+      <Route path="/signin" component={SignIn} />
+      <Route path="/sign-in" component={SignIn} />
+
+      {/* Auth Redirects - Old auth routes redirect to /auth for signup */}
       <Route path="/join">
         {() => <Redirect to="/auth" />}
       </Route>
       <Route path="/login">
-        {() => <Redirect to="/auth" />}
+        {() => <Redirect to="/signin" />}
       </Route>
       <Route path="/signup">
-        {() => <Redirect to="/auth" />}
-      </Route>
-      <Route path="/sign-in">
         {() => <Redirect to="/auth" />}
       </Route>
       <Route path="/sign-up">

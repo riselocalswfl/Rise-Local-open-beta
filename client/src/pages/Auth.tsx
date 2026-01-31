@@ -85,19 +85,14 @@ export default function Auth() {
             <div className="pt-6">
               <p className="text-sm text-white/80">
                 Already have an account?{" "}
-                <button
-                  onClick={() => {
-                    const returnTo = sessionStorage.getItem("returnTo");
-                    const url = returnTo 
-                      ? `/api/login?returnTo=${encodeURIComponent(returnTo)}`
-                      : "/api/login";
-                    window.location.href = url;
-                  }}
-                  className="text-white font-semibold underline underline-offset-2 hover:text-white/90"
-                  data-testid="button-sign-in"
-                >
-                  Sign in
-                </button>
+                <Link href="/signin">
+                  <span
+                    className="text-white font-semibold underline underline-offset-2 hover:text-white/90 cursor-pointer"
+                    data-testid="button-sign-in"
+                  >
+                    Sign in
+                  </span>
+                </Link>
               </p>
             </div>
 

@@ -199,6 +199,371 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // NATIVE EMAIL/PASSWORD AUTHENTICATION
+  // For users who want to log in with email/password instead of Replit OAuth
+  // Supports account recovery for existing Replit Auth users
+  // ============================================================================
+
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+  // Check if email exists and what auth method is available
+  app.post('/api/auth/check-email', async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      // Normalize email (lowercase, trim)
+      const normalizedEmail = email.toLowerCase().trim();
+
+      const user = await storage.getUserByEmail(normalizedEmail);
+
+      if (!user) {
+        // Don't reveal whether email exists for security
+        return res.json({
+          exists: false,
+          hasPassword: false,
+          authProvider: null,
+          message: "No account found with this email"
+        });
+      }
+
+      // Check if user is locked out
+      if (user.lockoutUntil && new Date(user.lockoutUntil) > new Date()) {
+        const remainingMs = new Date(user.lockoutUntil).getTime() - Date.now();
+        const remainingMinutes = Math.ceil(remainingMs / 60000);
+        return res.json({
+          exists: true,
+          hasPassword: !!user.password,
+          authProvider: user.authProvider || 'replit',
+          lockedOut: true,
+          lockoutRemainingMinutes: remainingMinutes,
+          message: `Account temporarily locked. Try again in ${remainingMinutes} minutes.`
+        });
+      }
+
+      res.json({
+        exists: true,
+        hasPassword: !!user.password,
+        authProvider: user.authProvider || 'replit',
+        lockedOut: false,
+        // If they have no password but exist, they need to set one (recovery flow)
+        needsPasswordSetup: !user.password && (user.authProvider === 'replit' || !user.authProvider),
+        message: user.password
+          ? "Account found. Enter your password to sign in."
+          : "Account found. Set a password to enable email login."
+      });
+    } catch (error) {
+      console.error("[Native Auth] Check email error:", error);
+      res.status(500).json({ error: "Failed to check email" });
+    }
+  });
+
+  // Set password for account recovery (Replit users setting native password)
+  app.post('/api/auth/set-password', async (req, res) => {
+    try {
+      const { email, password, confirmPassword } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({ error: "Passwords do not match" });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+
+      // Normalize email
+      const normalizedEmail = email.toLowerCase().trim();
+
+      const user = await storage.getUserByEmail(normalizedEmail);
+
+      if (!user) {
+        return res.status(404).json({ error: "No account found with this email" });
+      }
+
+      // Check lockout before allowing password set
+      if (user.lockoutUntil && new Date(user.lockoutUntil) > new Date()) {
+        const remainingMs = new Date(user.lockoutUntil).getTime() - Date.now();
+        const remainingMinutes = Math.ceil(remainingMs / 60000);
+        return res.status(429).json({
+          error: `Account temporarily locked. Try again in ${remainingMinutes} minutes.`
+        });
+      }
+
+      // Update user with new password (storage.updateUser handles bcrypt hashing)
+      // Also clear any lockout state and reset failed attempts
+      await storage.updateUser(user.id, {
+        password: password,
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+        lastLoginAt: new Date(),
+      });
+
+      console.log(`[Native Auth] Password set for user ${user.id} (email: ${normalizedEmail})`);
+
+      // Create a session for the user (log them in)
+      // We'll use a simplified session approach for native auth
+      const sessionUser = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+        },
+        expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 1 week
+      };
+
+      req.login(sessionUser, (loginErr: any) => {
+        if (loginErr) {
+          console.error("[Native Auth] Session creation error:", loginErr);
+          return res.status(500).json({ error: "Password set but failed to create session" });
+        }
+
+        res.json({
+          success: true,
+          message: "Password set successfully. You are now logged in.",
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+          }
+        });
+      });
+    } catch (error) {
+      console.error("[Native Auth] Set password error:", error);
+      res.status(500).json({ error: "Failed to set password" });
+    }
+  });
+
+  // Native email/password login
+  app.post('/api/auth/native-login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      // Normalize email
+      const normalizedEmail = email.toLowerCase().trim();
+
+      const user = await storage.getUserByEmail(normalizedEmail);
+
+      if (!user) {
+        // Don't reveal whether email exists
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      // Check if user is locked out
+      if (user.lockoutUntil) {
+        const lockoutTime = new Date(user.lockoutUntil);
+        const now = new Date();
+
+        if (lockoutTime > now) {
+          // Still locked out
+          const remainingMs = lockoutTime.getTime() - now.getTime();
+          const remainingMinutes = Math.ceil(remainingMs / 60000);
+          return res.status(429).json({
+            error: `Account temporarily locked due to too many failed attempts. Try again in ${remainingMinutes} minutes.`,
+            lockedOut: true,
+            lockoutRemainingMinutes: remainingMinutes
+          });
+        } else {
+          // Lockout expired - clear it
+          await storage.updateUser(user.id, {
+            lockoutUntil: null,
+            failedLoginAttempts: 0,
+          });
+        }
+      }
+
+      // Check if user has a password set
+      if (!user.password) {
+        return res.status(401).json({
+          error: "No password set for this account. Please use 'Set Password' to create one.",
+          needsPasswordSetup: true
+        });
+      }
+
+      // Verify password using bcrypt
+      const isValidPassword = await storage.verifyPassword(password, user.password);
+
+      if (!isValidPassword) {
+        // Increment failed attempts
+        const newFailedAttempts = (user.failedLoginAttempts || 0) + 1;
+
+        if (newFailedAttempts >= MAX_LOGIN_ATTEMPTS) {
+          // Lock the account
+          const lockoutUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+          await storage.updateUser(user.id, {
+            failedLoginAttempts: newFailedAttempts,
+            lockoutUntil: lockoutUntil,
+          });
+          console.warn(`[Native Auth] Account locked for user ${user.id} after ${newFailedAttempts} failed attempts`);
+          return res.status(429).json({
+            error: `Too many failed login attempts. Account locked for 15 minutes.`,
+            lockedOut: true,
+            lockoutRemainingMinutes: 15
+          });
+        } else {
+          // Just increment counter
+          await storage.updateUser(user.id, {
+            failedLoginAttempts: newFailedAttempts,
+          });
+          const remainingAttempts = MAX_LOGIN_ATTEMPTS - newFailedAttempts;
+          return res.status(401).json({
+            error: `Invalid email or password. ${remainingAttempts} attempt${remainingAttempts !== 1 ? 's' : ''} remaining before lockout.`,
+            remainingAttempts
+          });
+        }
+      }
+
+      // Password is correct - clear failed attempts and update last login
+      await storage.updateUser(user.id, {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+        lastLoginAt: new Date(),
+        authProvider: user.authProvider || 'replit', // Keep existing provider
+      });
+
+      // Create session for the user
+      const sessionUser = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+        },
+        expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 1 week
+      };
+
+      req.login(sessionUser, (loginErr: any) => {
+        if (loginErr) {
+          console.error("[Native Auth] Session creation error:", loginErr);
+          return res.status(500).json({ error: "Authentication succeeded but failed to create session" });
+        }
+
+        console.log(`[Native Auth] Successful login for user ${user.id}`);
+
+        res.json({
+          success: true,
+          message: "Login successful",
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            isVendor: user.isVendor,
+            isAdmin: user.isAdmin,
+            onboardingComplete: user.onboardingComplete,
+            welcomeCompleted: user.welcomeCompleted,
+          }
+        });
+      });
+    } catch (error) {
+      console.error("[Native Auth] Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Admin endpoint to clear user lockout
+  app.post('/api/admin/users/:userId/clear-lockout', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const targetUserId = req.params.userId;
+
+      // Verify admin privileges
+      const adminUser = await storage.getUser(adminUserId);
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Clear lockout
+      await storage.updateUser(targetUserId, {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+      });
+
+      console.log(`[Admin] Lockout cleared for user ${targetUserId} by admin ${adminUserId}`);
+
+      res.json({
+        success: true,
+        message: `Lockout cleared for user ${targetUser.email}`,
+        user: {
+          id: targetUser.id,
+          email: targetUser.email,
+          failedLoginAttempts: 0,
+          lockoutUntil: null,
+        }
+      });
+    } catch (error) {
+      console.error("[Admin] Clear lockout error:", error);
+      res.status(500).json({ error: "Failed to clear lockout" });
+    }
+  });
+
+  // Admin endpoint to clear lockout by email
+  app.post('/api/admin/clear-lockout-by-email', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminUserId = req.user.claims.sub;
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      // Verify admin privileges
+      const adminUser = await storage.getUser(adminUserId);
+      if (!adminUser?.isAdmin) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const normalizedEmail = email.toLowerCase().trim();
+      const targetUser = await storage.getUserByEmail(normalizedEmail);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Clear lockout
+      await storage.updateUser(targetUser.id, {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+      });
+
+      console.log(`[Admin] Lockout cleared for ${normalizedEmail} by admin ${adminUserId}`);
+
+      res.json({
+        success: true,
+        message: `Lockout cleared for ${normalizedEmail}`,
+        user: {
+          id: targetUser.id,
+          email: targetUser.email,
+          failedLoginAttempts: 0,
+          lockoutUntil: null,
+        }
+      });
+    } catch (error) {
+      console.error("[Admin] Clear lockout by email error:", error);
+      res.status(500).json({ error: "Failed to clear lockout" });
+    }
+  });
+
   // SECURITY: Public route to fetch MINIMAL user info by ID
   // Only returns fields safe for public display - no PII, no auth data
   app.get('/api/users/:id', async (req, res) => {
